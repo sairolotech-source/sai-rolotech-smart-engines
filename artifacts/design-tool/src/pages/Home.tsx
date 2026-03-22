@@ -18,7 +18,7 @@ import {
   ArrowLeftRight, Database, Flame, ChevronRight, Layers, Brain, Download,
   Circle, Triangle, Wand2, Table, Minus, ScanLine, FolderTree,
   TrendingDown, TrendingUp, ShieldCheck, Shield, Hexagon, Trophy, PlayCircle, Layers2,
-  Gauge, Crosshair, Eye, Key,
+  Gauge, Crosshair, Eye, Key, Github,
 } from "lucide-react";
 
 const LeftPanel = lazy(() => import("../components/cnc/LeftPanel").then(m => ({ default: m.LeftPanel })));
@@ -57,6 +57,7 @@ const RollDesignSuite = lazy(() => import("../components/cnc/RollDesignSuite").t
 const RollKnowledgeHub = lazy(() => import("../components/cnc/RollKnowledgeHub").then(m => ({ default: m.RollKnowledgeHub })));
 const AutoProfileConverter = lazy(() => import("../components/cnc/AutoProfileConverter").then(m => ({ default: m.AutoProfileConverter })));
 const AutoCncPlanner = lazy(() => import("../components/cnc/AutoCncPlanner").then(m => ({ default: m.AutoCncPlanner })));
+const GitHubUpdatePanel = lazy(() => import("../components/cnc/GitHubUpdatePanel").then(m => ({ default: m.GitHubUpdatePanel })));
 const FormingSimulationView = lazy(() => import("../components/cnc/FormingSimulationView").then(m => ({ default: m.FormingSimulationView })));
 const SpringbackView = lazy(() => import("../components/cnc/SpringbackView").then(m => ({ default: m.SpringbackView })));
 const StripWidthView = lazy(() => import("../components/cnc/StripWidthView").then(m => ({ default: m.StripWidthView })));
@@ -138,7 +139,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "cage-forming": "formaxis-modules", "wire-rolling": "formaxis-modules",
   "rf-closed-section": "formaxis-modules", "formaxis-compare": "formaxis-modules", "sheet-metal": "formaxis-modules",
   "profile-scan": "quality", "roll-scanner": "quality", "roll-lifecycle": "quality", "cad-finder": "quality",
-  "drawing-vision": "ai", "safety-panel": "ai", "roll-design-suite": "ai", "roll-knowledge-hub": "ai", "auto-profile-converter": "ai", "auto-cnc-planner": "ai", troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
+  "drawing-vision": "ai", "safety-panel": "ai", "roll-design-suite": "ai", "roll-knowledge-hub": "ai", "auto-profile-converter": "ai", "auto-cnc-planner": "ai", "github-update": "ai", troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
   "master-designer": "ai", "admin-dashboard": "ai", "desktop-install": "ai", "real-mukabla": "ai",
   "fea-simulation": "ai", "gcode-verify": "ai", "advanced-cam": "ai", "erp-integration": "ai",
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
@@ -345,6 +346,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "ai-chatbots", label: "5 Smart Experts", icon: <Cpu className="w-4 h-4" />, desc: "5 experts + quality check" },
         { id: "master-designer", label: "Master Designer", icon: <Brain className="w-4 h-4" />, desc: "50-year veteran AI chatbot with project context" },
         { id: "auto-backup", label: "Auto Backup (5 min)", icon: <Save className="w-4 h-4" />, desc: "Auto-save har 5 min — laptop band ho to bhi kuch nahi jayega" },
+        { id: "github-update", label: "GitHub Auto-Update (Pull / Push)", icon: <Github className="w-4 h-4" />, desc: "GitHub se latest code pull karo — ya Replit se GitHub pe push karo — auto-sync system" },
         { id: "demo-c-channel", label: "Demo C-Channel Program", icon: <Layers className="w-4 h-4" />, desc: "Complete C-channel — stations, rolls, bearings, motor, BOM" },
         { id: "rf-machine", label: "🏭 Roll Forming Machine (Animated)", icon: <Activity className="w-4 h-4" />, desc: "Live animated roll forming machine — 9 stations, spinning rollers, C-channel forming, cut-off press" },
         { id: "station-control", label: "Station Control (3-Mode)", icon: <Gauge className="w-4 h-4" />, desc: "Fully Auto / Semi Auto / Manual — per station mix & match control" },
@@ -407,6 +409,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "roll-knowledge-hub": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollKnowledgeHub /></div></Suspense>;
       case "auto-profile-converter": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoProfileConverter /></div></Suspense>;
       case "auto-cnc-planner": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoCncPlanner /></div></Suspense>;
+      case "github-update": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><GitHubUpdatePanel /></div></Suspense>;
       case "ai-chatbots": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AIChatbotsView /></div></Suspense>;
       case "forming-sim": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FormingSimulationView /></div></Suspense>;
       case "springback": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><SpringbackView /></div></Suspense>;

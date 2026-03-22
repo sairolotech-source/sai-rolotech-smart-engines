@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkGcodeSafety } from "../lib/gcode-safety-checker.js";
+import { checkGcodeSafety, SOLIDCAM_REFERENCE } from "../lib/gcode-safety-checker.js";
 
 const router = Router();
 
@@ -18,6 +18,10 @@ router.post("/api/gcode-safety-check", (req, res) => {
     const message = err instanceof Error ? err.message : "Safety check failed";
     return res.status(400).json({ error: message });
   }
+});
+
+router.get("/api/solidcam-reference", (_req, res) => {
+  res.json({ success: true, reference: SOLIDCAM_REFERENCE });
 });
 
 export default router;

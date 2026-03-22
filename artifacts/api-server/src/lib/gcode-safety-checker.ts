@@ -38,6 +38,32 @@ const DELTA2X_LIMITS = {
   maxRapidFeedZ: 2.8,
 };
 
+export const SOLIDCAM_REFERENCE = {
+  machine: "2X_DELTA2",
+  toolType: "Profile",
+  toolNumber: 2,
+  toolOffset: 8,
+  toolCode: "T0208",
+  orientation: "Right",
+  spinDirection: "CW",
+  feedNormal: 0.175,
+  feedFinish: 0.175,
+  spinRoughV: 200,
+  spinRoughRpm: 454.73,
+  spinFinishV: 225,
+  spinFinishRpm: 511.58,
+  maxSpin: 500,
+  referenceDia: 139.997,
+  safetyDistance: 2,
+  stepDown: 0.75,
+  roughOffsetX: 0.6,
+  roughOffsetZ: 0.2,
+  retreatDistance: 0.2,
+  roughType: "Smooth",
+  finishMethod: "ISO-Turning",
+  gearRange: "Gear#1 (0-5000rpm, 15kW)",
+};
+
 function parseNumber(token: string): number | null {
   const n = parseFloat(token);
   return isNaN(n) ? null : n;
@@ -145,7 +171,7 @@ export function checkGcodeSafety(gcodeText: string): SafetyCheckResult {
           issues.push({
             line: lineNum, code: "FEED-001", severity: "CRITICAL",
             message: `F${f} — Feed rate ${f}mm/rev too high (max ${DELTA2X_LIMITS.maxFeedRate}mm/rev)`,
-            fix: `Use F0.102 for roughing, F0.051 for finishing on Delta 2X`,
+            fix: `Use F0.102-0.175 for roughing, F0.051-0.175 for finishing (SolidCAM default: 0.175)`,
           });
         }
         if (f < DELTA2X_LIMITS.minFeedRate && f > 0) {
@@ -160,7 +186,7 @@ export function checkGcodeSafety(gcodeText: string): SafetyCheckResult {
     }
 
     // --- Tool Change Sequence ---
-    const toolMatch = line.match(/^T(\d{2})(\d{2})/);
+    const toolMatch = line.match(/T(\d{2})(\d{2})/);
     if (toolMatch) {
       const tNum = `T${toolMatch[1]}${toolMatch[2]}`;
       if (!toolsUsed.includes(tNum)) toolsUsed.push(tNum);
@@ -175,11 +201,20 @@ export function checkGcodeSafety(gcodeText: string): SafetyCheckResult {
         });
       }
 
-      if (toolMatch[1] !== toolMatch[2]) {
+      const toolNum = parseInt(toolMatch[1]!, 10);
+      const offsetNum = parseInt(toolMatch[2]!, 10);
+      if (toolNum === 0 || offsetNum === 0) {
         issues.push({
           line: lineNum, code: "TOOL-002", severity: "CRITICAL",
-          message: `${tNum} — Tool number (${toolMatch[1]}) and offset (${toolMatch[2]}) do not match`,
-          fix: `Use matching offset: T${toolMatch[1]}${toolMatch[1]} (e.g., T0202, T0404)`,
+          message: `${tNum} — Tool or offset number is zero`,
+          fix: `Tool/offset must be non-zero (e.g., T0202 or T0208)`,
+        });
+      }
+      if (offsetNum > 32) {
+        issues.push({
+          line: lineNum, code: "TOOL-003", severity: "WARNING",
+          message: `${tNum} — Offset ${offsetNum} is very high — verify offset exists on Delta 2X`,
+          fix: `Delta 2X standard offsets: 1-8 for matching, SolidCAM allows mixed (e.g., T0208)`,
         });
       }
     }

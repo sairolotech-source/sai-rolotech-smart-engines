@@ -1,4 +1,13 @@
 import type { ProfileGeometry } from "./dxf-parser-util.js";
+import {
+  validateFlowerInputs,
+  validateFlowerOutputs,
+  computeSpringback,
+  computeFormingForce,
+  computeNeutralAxisStripWidth,
+  sanitizeNumber,
+  type ValidationResult,
+} from "./calc-validator.js";
 
 export interface FlowerStation {
   stationId: string;
@@ -24,6 +33,8 @@ export interface FlowerPattern {
   materialType: string;
   thickness: number;
   numStations: number;
+  validation?: ValidationResult;
+  stretchedWidth?: number;
 }
 
 const K_FACTORS: Record<string, number> = {
@@ -41,6 +52,16 @@ const UTS: Record<string, number> = {
   MS: 360, CU: 250, TI: 950, PP: 180, HSLA: 500,
 };
 
+const YIELD_STRENGTH: Record<string, number> = {
+  GI: 240, CR: 280, HR: 280, SS: 280, AL: 130,
+  MS: 280, CU: 150, TI: 830, PP: 120, HSLA: 380,
+};
+
+const ELASTIC_MODULUS: Record<string, number> = {
+  GI: 200000, CR: 200000, HR: 200000, SS: 193000, AL: 70000,
+  MS: 200000, CU: 120000, TI: 115000, PP: 1500, HSLA: 205000,
+};
+
 export function generateFlowerPattern(
   geometry: ProfileGeometry,
   numStations: number,
@@ -48,36 +69,94 @@ export function generateFlowerPattern(
   materialType = "GI",
   materialThickness = 1.0
 ): FlowerPattern {
-  const mat = materialType.toUpperCase();
-  const t = parseFloat(String(materialThickness)) || 1.0;
-  const n = Math.max(1, parseInt(String(numStations)));
+  const mat = (materialType ?? "GI").toUpperCase();
+  const t = sanitizeNumber(materialThickness, 1.0, 0.1, 20.0);
+  const n = Math.max(1, Math.min(30, Math.round(sanitizeNumber(numStations, 5, 1, 30))));
 
-  const K = K_FACTORS[mat] ?? 0.38;
+  const K  = K_FACTORS[mat]  ?? 0.38;
   const sbFactor = SPRINGBACK_FACTORS[mat] ?? 1.05;
   const uts = UTS[mat] ?? 350;
+  const Sy  = YIELD_STRENGTH[mat]  ?? 280;
+  const E   = ELASTIC_MODULUS[mat] ?? 200000;
 
-  const totalBendAngle = geometry.bends.reduce((sum, b) => sum + (b.angle || 0), 0) || n * 15;
+  const rawTotalBend = geometry.bends.reduce((sum, b) => sum + Math.abs(b.angle || 0), 0);
+  const totalBendAngle = rawTotalBend > 0 ? rawTotalBend : n * 15;
   const anglePerStation = totalBendAngle / n;
 
   const baseRollOD = Math.max(80, t * 60);
-  const baseStripWidth = geometry.totalLength > 0 ? geometry.totalLength : 100 + t * 5;
+
+  let baseStripWidth: number;
+  if (geometry.bends.length > 0 && geometry.segments.length > 0) {
+    const flanges = geometry.segments.map(s => s.length ?? 0);
+    const bends = geometry.bends.map(b => ({
+      angle: Math.abs(b.angle || 0),
+      innerRadius: b.radius ?? t * 1.5,
+    }));
+    baseStripWidth = computeNeutralAxisStripWidth(bends, flanges, K, t);
+    if (baseStripWidth <= 0) {
+      baseStripWidth = geometry.totalLength > 0 ? geometry.totalLength : 100 + t * 5;
+    }
+  } else {
+    baseStripWidth = geometry.totalLength > 0 ? geometry.totalLength : 100 + t * 5;
+  }
+
+  const inputValidation = validateFlowerInputs({
+    thickness: t,
+    numStations: n,
+    totalBendAngle,
+    stripWidth: baseStripWidth,
+    materialType: mat,
+  });
 
   const stations: FlowerStation[] = [];
 
   for (let i = 1; i <= n; i++) {
     const bendAngle = anglePerStation;
     const cumulativeBendAngle = anglePerStation * i;
-    const springbackAngle = (bendAngle * (sbFactor - 1));
-    const compensatedAngle = bendAngle + springbackAngle;
 
     const progress = i / n;
-    const rollDiameter = baseRollOD + (i - 1) * 2;
-    const rollGap = t * (1 + 0.02 * (n - i));
+    const rollDiameter = parseFloat((baseRollOD + (i - 1) * 2).toFixed(1));
+    const bendRadius = rollDiameter * 0.5 * 0.1;
 
-    // Karnezis forming force model
-    const contactArc = Math.sqrt(rollDiameter * t * 0.5);
-    const w = baseStripWidth * 0.001;
-    const formingForce = Math.round(1.5 * uts * t * t * w / (2 * 0.005) * 0.001);
+    const { springbackAngle, springbackFactor } = computeSpringback(
+      bendAngle,
+      bendRadius,
+      t,
+      Sy,
+      E,
+    );
+    const compensatedAngle = parseFloat((bendAngle * springbackFactor).toFixed(3));
+
+    const rollGap = parseFloat((t * (1 + 0.02 * (n - i))).toFixed(4));
+
+    const stationBendRadius = Math.max(t * 1.5, rollDiameter * 0.5 * 0.15);
+    const formingForce = computeFormingForce(uts, t, baseStripWidth, stationBendRadius);
+
+    const stripWidthAtStation = parseFloat((baseStripWidth - (i - 1) * 0.1).toFixed(3));
+
+    const outputCheck = validateFlowerOutputs(
+      {
+        springbackAngle,
+        compensatedAngle,
+        bendAngle,
+        rollGap,
+        rollDiameter,
+        formingForce,
+        stripWidthAtStation,
+        thickness: t,
+      },
+      {
+        thickness: t,
+        numStations: n,
+        totalBendAngle,
+        stripWidth: baseStripWidth,
+        materialType: mat,
+      },
+    );
+
+    if (outputCheck.errors.length > 0) {
+      console.warn(`[calc-validator] Station ${i} errors:`, outputCheck.errors);
+    }
 
     let description = "";
     if (i <= Math.ceil(n * 0.15)) description = `Entry — initial ${bendAngle.toFixed(1)}° forming`;
@@ -88,13 +167,13 @@ export function generateFlowerPattern(
     stations.push({
       stationId: `${stationPrefix}${i}`,
       stationIndex: i,
-      bendAngle: parseFloat(bendAngle.toFixed(2)),
-      cumulativeBendAngle: parseFloat(cumulativeBendAngle.toFixed(2)),
-      springbackAngle: parseFloat(springbackAngle.toFixed(2)),
-      compensatedAngle: parseFloat(compensatedAngle.toFixed(2)),
-      stripWidth: parseFloat((baseStripWidth - (i - 1) * 0.1).toFixed(2)),
-      rollGap: parseFloat(rollGap.toFixed(3)),
-      rollDiameter: parseFloat(rollDiameter.toFixed(1)),
+      bendAngle: parseFloat(bendAngle.toFixed(3)),
+      cumulativeBendAngle: parseFloat(cumulativeBendAngle.toFixed(3)),
+      springbackAngle: parseFloat(springbackAngle.toFixed(3)),
+      compensatedAngle: parseFloat(compensatedAngle.toFixed(3)),
+      stripWidth: stripWidthAtStation,
+      rollGap: parseFloat(rollGap.toFixed(4)),
+      rollDiameter,
       formingForce,
       description,
     });
@@ -102,10 +181,12 @@ export function generateFlowerPattern(
 
   return {
     stations,
-    totalBendAngle: parseFloat(totalBendAngle.toFixed(2)),
-    stripWidth: parseFloat(baseStripWidth.toFixed(2)),
+    totalBendAngle: parseFloat(totalBendAngle.toFixed(3)),
+    stripWidth: parseFloat(baseStripWidth.toFixed(3)),
     materialType: mat,
     thickness: t,
     numStations: n,
+    validation: inputValidation,
+    stretchedWidth: parseFloat(baseStripWidth.toFixed(3)),
   };
 }

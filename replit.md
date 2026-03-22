@@ -1,5 +1,16 @@
 # SAI Rolotech Smart Engines — Professional Roll Forming & CNC Engineering Suite
 
+## Latest Changes (March 2026 Session)
+
+- **"Replit" naam hata diya** — codebase mein sirf ek code comment tha, wo bhi remove kiya. App fully branded as "SAI Rolotech Engine"
+- **Accuracy server error fix** — `useAccuracyScoring.ts` offline-first ho gaya: server unreachable ho to local browser computation se score calculate karta hai — koi error toast nahi aata
+- **Server accuracy endpoints fixed** — `accuracy.ts` mein `/accuracy/design-score` aur `/accuracy/:taskType` dynamic routes add kiye gaye
+- **Accuracy Graph Calculator** — naya tool `AccuracyGraphView.tsx`: SVG line chart, sub-score bar graph, grade history, CSV export, statistics (min/max/avg/trend), offline-first
+- **SolidCAM / SolidWorks FEA / CNC Lathe Pro — har category mein** — Design, Analysis, FormAxis, Quality, Simulation categories mein ab yeh teeno tools directly accessible hain
+- **NVIDIA GPU Override** — `gpu-tier.ts` mein manual override system (localStorage) + `HardwareMonitorPanel.tsx` mein full UI (36 GPU models, VRAM, Apply/Reset)
+
+
+
 ## Windows Build — GitHub Actions
 
 **File:** `.github/workflows/build-windows.yml`
@@ -29,6 +40,7 @@ SAI Rolotech Smart Engines is a pnpm workspace monorepo project developing a pro
 - Full 3D solid modeling and 2D drafting capabilities.
 - Offline-first architecture with hardware acceleration and extensive offline knowledge bases.
 - Machine-verified Delta 2X CNC patterns (from actual TAP files: G0→G53→G28 U0.→G28 W0.→M1→T0404()→G92 S500→G96 S200 M4).
+- **SolidCAM Production TAP Files Reference (6 files, March 2026):** Real G-code from SolidCAM 2024 SP0.1 for Part5 roll forming roller profiles — D1/D5/D6/D8 variants with T02 (Profile VNMG) and T04 (Profile/Groove). Common pattern: G96 S200 M4 (rough CSS) → G96 S225 M4 (finish CSS), G92 S500 (max RPM), F0.102 (rough) / F0.051 (finish), G2/G3 arcs with R values (R34.5419, R5.5517, R4.7459, R0.8, R2.6273, R3.4849, R0.8003, R1.8, R10.8, R19.2, R58.1352), multi-pass step-down 0.75mm-1.5mm, ZX-ABS offset X=0.6 Z=0.2. Files: `D1_TR_contour.TAP` (324 lines), `D5_TR_contour1.TAP` (594 lines), `130_OD_D6_TOOL_NO_4_TR_contour.TAP` (498 lines), `D6_TR_contour1.TAP` (110 lines), `D8_TOOL_NO_2_TR_contour.TAP` (449 lines), `D8_TOOL_NO_4TR_contour.TAP` (215 lines). All stored in `attached_assets/`.
 
 The project aims to deliver a high-quality, stable, and accurate engineering suite with a premium user experience, incorporating advanced AI features and robust offline functionality to serve the roll forming and CNC engineering domain.
 
@@ -96,12 +108,13 @@ The project is structured as a pnpm workspace monorepo (`artifacts-monorepo`) co
 - **Digital Twin:** Machine side-view SVG with animated strip flow, rolls, pass line, and station detail.
 - **Smart Defect Diagnosis:** 12 defect types with station-specific numeric corrections based on machine data.
 - **AI Integration:** GPT-4o-mini powered AI for design analysis, G-code optimization, power pattern advising, material/tool recommendations, and a Master Designer Chatbot. Open/Closed Section AI Model Selector for routing projects.
-- **Offline AI & Resilience:** Extensive offline knowledge base (`src/lib/offline-ai-kb-expanded.ts`, `artifacts/api-server/src/lib/offline-knowledge-base.ts`) with TF-IDF engine and 38+ expert domains. Offline-first architecture with `safeFetchWithCache()`, offline queue for write operations, and `OfflineGuard` component.
+- **Offline AI & Resilience:** Extensive offline knowledge base (`src/lib/offline-ai-kb-expanded.ts`, `artifacts/api-server/src/lib/offline-knowledge-base.ts`) with TF-IDF engine and 50+ expert domains (springback 22 materials, r/t ratios, 6 design rules, 4 pass phases, 8 defect diagnoses, 5 roll types, production rate/OEE, DIN EN 10162 tolerances, machine frame design, coil/decoiler guide, Hindi general support). Context-aware scoring uses last 4 user messages as context clues (10% boost only — never overrides direct match). Smart fallback covers 12 topic patterns for free-form queries. Offline-first architecture with `safeFetchWithCache()`, offline queue for write operations, and `OfflineGuard` component. **Bug fixed (2026-03-22):** Context history contamination fixed by (1) filtering only user messages from memory (not assistant responses), and (2) reducing context boost multiplier 0.4→0.1 to prevent past conversations from overriding direct query matching.
 - **Auto Backup System:** Auto-saves project state to localStorage every 5 minutes with smart change detection and 50 backup slots.
 - **Validation Pipeline:** 5-layer validation (Geometry, Flower Pattern, Roll Tooling, G-Code, AI Review) with strict 100% gates.
 - **BOM Generator:** Generates comprehensive Bill of Materials for roll forming lines and machines.
 - **3D Solid Modeling:** Parametric solid modeling kernel with Boolean CSG, Revolve, Sweep, Loft, Shell, Fillet, Chamfer operations, feature tree, and STL/STEP export.
 - **2D Drafting Tools:** AutoCAD-level manual drawing environment with hatching, editing commands (Trim, Extend, Fillet, Chamfer, Array), block/symbol library, multiline text, dimension styles, and print/plot layout.
+- **Line → Sheet Converter** (`artifacts/design-tool/src/components/cnc/LineToSheetView.tsx`): AutoCAD-style canvas tool — click to draw polylines (profile cross-section), snap-to-grid, zoom/pan. Auto-calculates flat blank width (sum of all segment lengths), weight, area. DXF import (extract LINE entities), DXF export (flat_blank.dxf). Segment table with live dimensions. Material selector (CR/GI/SS304/AL5052/AL6061/HSLA350/CU110) + thickness + piece length inputs. Registered under Design panel as "Line → Sheet Converter".
 - **FormAxis RF 2025 Specialized Modules:** 14 specialized modules for various roll forming applications (RF Tubes, SmartRolls, RF DTM, CageForming, etc.).
 - **FormAxis Analysis Suite:** 8 analysis modules including 3D strip forming visualization, springback prediction, strip width calculator, roll gap analysis, production cost estimator, camber prediction, forming energy analysis, and a comprehensive material database.
 - **20-Layer Testing Engine:** Offline validation across 20 levels (Data Integrity, Geometry, Bend Accuracy, G-Code Safety, etc.).

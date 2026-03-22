@@ -1,13 +1,13 @@
 {
   "name": "@workspace/desktop",
   "version": "2.2.0",
-  "description": "SAI Sai Rolotech Smart Engines AI — Roll Forming Engineering Suite (Windows Desktop)",
+  "description": "SAI Rolotech Smart Engines — Roll Forming Engineering Suite (Windows Desktop)",
   "private": true,
   "main": "dist/main.js",
   "homepage": "./",
   "author": {
-    "name": "SAI Sai Rolotech Smart Engines",
-    "email": "support@saisai-rolotech-smart-engines.com"
+    "name": "SAI Rolotech Smart Engines",
+    "email": "support@sairolotech.com"
   },
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:5000 && electron .\"",
@@ -37,8 +37,8 @@
   },
   "build": {
     "appId": "com.saisai-rolotech-smart-engines.rollformingai",
-    "productName": "SAI Sai Rolotech Smart Engines AI",
-    "copyright": "Copyright © 2025 SAI Sai Rolotech Smart Engines",
+    "productName": "SAI Rolotech Smart Engines",
+    "copyright": "Copyright © 2026 SAI Rolotech Smart Engines",
     "icon": "assets/icon",
     "directories": {
       "output": "release",
@@ -73,7 +73,7 @@
         { "target": "portable", "arch": ["x64"] }
       ],
       "icon": "assets/icon.ico",
-      "publisherName": "SAI Sai Rolotech Smart Engines",
+      "publisherName": "SAI Rolotech Smart Engines",
       "verifyUpdateCodeSignature": false,
       "requestedExecutionLevel": "requireAdministrator"
     },
@@ -86,17 +86,20 @@
       "installerHeaderIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SAI Sai Rolotech Smart Engines AI",
+      "shortcutName": "SAI Rolotech Smart Engines",
+      "artifactName": "SAI-Rolotech-Smart-Engines-Setup-${version}.exe",
       "include": "installers/installer.nsh",
       "license": "installers/license.txt",
       "language": 1033
     },
     "portable": {
-      "artifactName": "SAI-Sai Rolotech Smart Engines-AI-Portable-${version}.exe"
+      "artifactName": "SAI-Rolotech-Smart-Engines-Portable-${version}.exe"
     },
     "publish": {
-      "provider": "generic",
-      "url": "https://updates.saisai-rolotech-smart-engines.com/releases"
+      "provider": "github",
+      "owner": "sairolotech-source",
+      "repo": "sai-rolotech-smart-engines",
+      "releaseType": "release"
     }
   }
 }

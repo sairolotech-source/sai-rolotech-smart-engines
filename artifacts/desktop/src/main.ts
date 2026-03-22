@@ -1,5 +1,5 @@
 /**
- * SAI Sai Rolotech Smart Engines AI — Electron Main Process
+ * SAI Rolotech Smart Engines — Electron Main Process
  * Windows 10/11 Native Desktop App
  *
  * Features:
@@ -35,7 +35,7 @@ app.commandLine.appendSwitch("enable-accelerated-video-decode");
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const APP_NAME    = "SAI Sai Rolotech Smart Engines AI";
+const APP_NAME    = "SAI Rolotech Smart Engines";
 const APP_VERSION = app.getVersion();
 const API_PORT    = 3001;
 const IS_DEV      = process.env.NODE_ENV === "development" || !app.isPackaged;
@@ -393,7 +393,7 @@ function createTray(): void {
       },
     },
     {
-      label: "Diagnose AI",
+      label: "Smart Diagnose",
       click: () => {
         mainWindow?.show();
         mainWindow?.focus();
@@ -409,7 +409,7 @@ function createTray(): void {
     },
     { type: "separator" },
     {
-      label: "Quit SAI Sai Rolotech Smart Engines AI",
+      label: `Quit ${APP_NAME}`,
       click: () => {
         isQuitting = true;
         app.quit();
@@ -546,7 +546,7 @@ function buildAppMenu(): void {
       label: "&Tools",
       submenu: [
         {
-          label: "AI Engine Status",
+          label: "Smart Engine Status",
           click: () => shell.openExternal(`http://localhost:${API_PORT}/api/ai/status`),
         },
         {
@@ -583,7 +583,7 @@ function buildAppMenu(): void {
               type:    "info",
               title:   `About ${APP_NAME}`,
               message: `${APP_NAME}\nVersion: ${APP_VERSION}`,
-              detail:  `SAI Sai Rolotech Smart Engines AI — Roll Forming Engineering Suite\n\nFeatures:\n• FormAxis-grade Power Pattern Generation\n• Roll Tooling Design & CAM Plan\n• AutoCAD DXF 2D Export\n• G-Code Output (RAW + FINAL split)\n• AI Defect Diagnosis (offline)\n• Digital Twin Simulation\n• Factory AI — 8 Production Modules\n\nBuilt for Windows 10/11 × 64-bit\n© 2025 SAI Sai Rolotech Smart Engines`,
+              detail:  `SAI Rolotech Smart Engines — Roll Forming Engineering Suite\n\nFeatures:\n• FormAxis-grade Power Pattern Generation\n• Roll Tooling Design & CAM Plan\n• AutoCAD DXF 2D Export\n• G-Code Output (RAW + FINAL split)\n• Smart Defect Diagnosis (offline)\n• Digital Twin Simulation\n• Factory Smart Engine — 8 Production Modules\n• Arc Calculator & SimCam Profile Builder\n• Auto-Update from GitHub Releases\n\nBuilt for Windows 10/11 × 64-bit\n© 2026 SAI Rolotech Smart Engines`,
               buttons: ["OK"],
             });
           },
@@ -783,7 +783,7 @@ function setupAutoUpdater(): void {
       type:    "info",
       title:   "Update Available",
       message: `Version ${info.version} available`,
-      detail:  `A new version of SAI Sai Rolotech Smart Engines AI is available.\n\n${releaseNotes ? "Release Notes:\n" + releaseNotes.slice(0, 500) : "Would you like to download it?"}`,
+      detail:  `SAI Rolotech Smart Engines ka naya version available hai!\n\n${releaseNotes ? "Release Notes:\n" + releaseNotes.slice(0, 500) : "Download karna chahte hain?"}`,
       buttons: ["Download", "Later"],
     }).then(({ response }) => {
       if (response === 0) {
@@ -818,7 +818,7 @@ function setupAutoUpdater(): void {
     dialog.showMessageBox(mainWindow!, {
       type:    "info",
       title:   "Update Ready",
-      message: `Version ${info.version} downloaded. Restart to install.`,
+      message: `Version ${info.version} download ho gaya! Restart karein to install ho jaayega.`,
       buttons: ["Restart Now", "Later"],
     }).then(({ response }) => {
       if (response === 0) {

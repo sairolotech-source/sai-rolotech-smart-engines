@@ -405,26 +405,27 @@ const SOLIDCAM_TEMPLATE_CONFIGS: {
   },
 ];
 
-/* ─── AI Planner using Gemini ──────────────────────────────────────────────── */
+/* ─── AI Planner via API Server ──────────────────────────────────────────── */
 async function callGemini(prompt: string): Promise<string> {
-  const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY
-    || (import.meta as any).env?.AI_INTEGRATIONS_GEMINI_API_KEY
-    || "";
-  if (!apiKey) throw new Error("GEMINI_API_KEY not set");
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
-      }),
-    }
-  );
-  if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "No response";
+  const token = localStorage.getItem("cnc_token") ?? "";
+  const res = await fetch("/api/ai/cnc-plan", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      systemPrompt: "You are a senior CNC machining expert at Sai Rolotech Smart Engines, a roll forming tool manufacturing company. Provide safe, precise, and complete machining plans. Always prioritize safety. Use conservative feeds/speeds. Reference real tool numbers and real machine parameters.",
+      userPrompt: prompt,
+    }),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(errData.error ?? `Server error: ${res.status}`);
+  }
+  const data = await res.json() as { success: boolean; result: string; model: string };
+  if (!data.success) throw new Error("AI plan generation failed");
+  return data.result;
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
@@ -583,7 +584,7 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
                 <div>
                   <p className="text-[11px] font-semibold text-red-300">AI Error</p>
                   <p className="text-[10px] text-red-400 mt-0.5">{error}</p>
-                  <p className="text-[10px] text-zinc-500 mt-1">Check: GEMINI_API_KEY secret set hai? Niche Templates tab me manual templates use karo.</p>
+                  <p className="text-[10px] text-zinc-500 mt-1">Server ya network issue ho sakta hai. Phir try karo, ya niche Templates tab me manual templates use karo.</p>
                 </div>
               </div>
             )}

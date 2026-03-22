@@ -221,4 +221,35 @@ G-Code lines: ${gcode ? (Array.isArray(gcode) ? gcode.length : "present") : "not
   }
 });
 
+router.post("/ai/cnc-plan", async (req: Request, res: Response) => {
+  try {
+    const { systemPrompt, userPrompt } = req.body as { systemPrompt?: string; userPrompt: string };
+    if (!userPrompt?.trim()) {
+      res.status(400).json({ error: "userPrompt is required" });
+      return;
+    }
+
+    const sysMsg = systemPrompt?.trim() ||
+      "You are a senior CNC machining expert working in a roll forming tool manufacturing company (Sai Rolotech). Provide safe, accurate machining plans with conservative parameters. Safety is the highest priority.";
+
+    let result: string | null = null;
+
+    result = await callGemini("gemini-2.5-flash", sysMsg, userPrompt, 2048);
+    if (result) {
+      res.json({ success: true, result, model: "Gemini 2.5 Flash" });
+      return;
+    }
+    result = await callOpenAI(sysMsg, userPrompt, 2048);
+    if (result) {
+      res.json({ success: true, result, model: "GPT-4o Mini" });
+      return;
+    }
+    const offline = `[Offline Mode] AI server unavailable.\n\nManual plan required for: ${userPrompt.slice(0, 200)}\n\nPlease check your internet connection and API key configuration.`;
+    res.json({ success: true, result: offline, model: "Offline" });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "CNC plan generation failed";
+    res.status(500).json({ error: message });
+  }
+});
+
 export default router;

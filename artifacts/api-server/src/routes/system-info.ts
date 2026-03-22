@@ -223,4 +223,272 @@ router.get("/system/setup-check", async (_req: Request, res: Response) => {
   }
 });
 
+router.get("/system/hardware-full", async (_req: Request, res: Response) => {
+  try {
+    if (!si) {
+      const cpus = os.cpus();
+      res.json({
+        source: "os-fallback",
+        cpu: {
+          manufacturer: "Unknown",
+          brand: cpus[0]?.model ?? "Unknown",
+          cores: cpus.length,
+          physicalCores: Math.ceil(cpus.length / 2),
+          speed: cpus[0]?.speed ? cpus[0].speed / 1000 : 0,
+          speedMin: 0,
+          speedMax: cpus[0]?.speed ? cpus[0].speed / 1000 : 0,
+          coresLoad: cpus.map((c, i) => ({ core: i, load: Math.round((1 - c.times.idle / (c.times.user + c.times.nice + c.times.sys + c.times.idle + c.times.irq)) * 100) })),
+          temperature: null,
+        },
+        memory: {
+          total: os.totalmem(),
+          free: os.freemem(),
+          used: os.totalmem() - os.freemem(),
+          active: os.totalmem() - os.freemem(),
+          available: os.freemem(),
+          swapTotal: 0,
+          swapUsed: 0,
+          swapFree: 0,
+        },
+        gpu: [],
+        disk: [],
+        network: { interfaces: Object.keys(os.networkInterfaces()).length, isOnline: true },
+        os: { platform: os.platform(), distro: os.type(), release: os.release(), arch: os.arch(), hostname: os.hostname() },
+        battery: null,
+        processes: { all: 0, running: 0, blocked: 0 },
+        uptime: os.uptime(),
+      });
+      return;
+    }
+
+    const [cpuInfo, cpuLoad, cpuTemp, mem, gpuData, diskInfo, diskIO, netInfo, netStats, bat, proc, osInfo, bios, baseboard] = await Promise.allSettled([
+      si.cpu(),
+      si.currentLoad(),
+      si.cpuTemperature(),
+      si.mem(),
+      si.graphics(),
+      si.fsSize(),
+      si.disksIO(),
+      si.networkInterfaces(),
+      si.networkStats(),
+      si.battery(),
+      si.processes(),
+      si.osInfo(),
+      si.bios(),
+      si.baseboard(),
+    ]);
+
+    const val = <T>(r: PromiseSettledResult<T>, def: T): T => r.status === "fulfilled" ? r.value : def;
+
+    const cpuInfoV = val(cpuInfo, {} as any);
+    const cpuLoadV = val(cpuLoad, {} as any);
+    const cpuTempV = val(cpuTemp, {} as any);
+    const memV = val(mem, {} as any);
+    const gpuV = val(gpuData, { controllers: [], displays: [] } as any);
+    const diskV = val(diskInfo, [] as any[]);
+    const diskIOV = val(diskIO, {} as any);
+    const netV = val(netInfo, [] as any[]);
+    const netStatsV = val(netStats, [] as any[]);
+    const batV = val(bat, null);
+    const procV = val(proc, { all: 0, running: 0, blocked: 0 } as any);
+    const osV = val(osInfo, {} as any);
+    const biosV = val(bios, {} as any);
+    const bbV = val(baseboard, {} as any);
+
+    res.json({
+      source: "systeminformation",
+      cpu: {
+        manufacturer: cpuInfoV.manufacturer,
+        brand: cpuInfoV.brand,
+        cores: cpuInfoV.cores,
+        physicalCores: cpuInfoV.physicalCores,
+        speed: cpuInfoV.speed,
+        speedMin: cpuInfoV.speedMin,
+        speedMax: cpuInfoV.speedMax,
+        socket: cpuInfoV.socket,
+        cache: cpuInfoV.cache,
+        currentLoad: Math.round(cpuLoadV.currentLoad ?? 0),
+        coresLoad: (cpuLoadV.cpus ?? []).map((c: any, i: number) => ({ core: i, load: Math.round(c.load) })),
+        temperature: cpuTempV.main ?? null,
+        temperatureCores: cpuTempV.cores ?? [],
+      },
+      memory: {
+        total: memV.total,
+        free: memV.free,
+        used: memV.used,
+        active: memV.active,
+        available: memV.available,
+        swapTotal: memV.swaptotal,
+        swapUsed: memV.swapused,
+        swapFree: memV.swapfree,
+        buffcache: memV.buffcache,
+      },
+      gpu: (gpuV.controllers ?? []).map((g: any) => ({
+        model: g.model,
+        vendor: g.vendor,
+        vram: g.vram,
+        vramDynamic: g.vramDynamic,
+        bus: g.bus,
+        driver: g.driverVersion,
+        subDeviceId: g.subDeviceId,
+        fanSpeed: g.fanSpeed,
+        temperatureGpu: g.temperatureGpu,
+        memoryTotal: g.memoryTotal,
+        memoryUsed: g.memoryUsed,
+        memoryFree: g.memoryFree,
+        utilizationGpu: g.utilizationGpu,
+      })),
+      displays: (gpuV.displays ?? []).map((d: any) => ({
+        model: d.model,
+        vendor: d.vendor,
+        resolutionX: d.resolutionX,
+        resolutionY: d.resolutionY,
+        currentRefreshRate: d.currentRefreshRate,
+        connection: d.connection,
+        main: d.main,
+      })),
+      disk: (Array.isArray(diskV) ? diskV : []).map((d: any) => ({
+        fs: d.fs,
+        type: d.type,
+        size: d.size,
+        used: d.used,
+        available: d.available,
+        use: d.use,
+        mount: d.mount,
+      })),
+      diskIO: {
+        rIO: diskIOV.rIO,
+        wIO: diskIOV.wIO,
+        tIO: diskIOV.tIO,
+        rIO_sec: diskIOV.rIO_sec,
+        wIO_sec: diskIOV.wIO_sec,
+      },
+      network: {
+        interfaces: (Array.isArray(netV) ? netV : []).map((n: any) => ({
+          iface: n.iface,
+          ifaceName: n.ifaceName,
+          ip4: n.ip4,
+          ip6: n.ip6,
+          mac: n.mac,
+          type: n.type,
+          speed: n.speed,
+          dhcp: n.dhcp,
+          operstate: n.operstate,
+        })),
+        stats: (Array.isArray(netStatsV) ? netStatsV : []).map((s: any) => ({
+          iface: s.iface,
+          rx_bytes: s.rx_bytes,
+          tx_bytes: s.tx_bytes,
+          rx_sec: s.rx_sec,
+          tx_sec: s.tx_sec,
+          ms: s.ms,
+        })),
+      },
+      battery: batV ? {
+        hasBattery: batV.hasBattery,
+        percent: batV.percent,
+        isCharging: batV.isCharging,
+        acConnected: batV.acConnected,
+        timeRemaining: batV.timeRemaining,
+        voltage: batV.voltage,
+        designedCapacity: batV.designedCapacity,
+        maxCapacity: batV.maxCapacity,
+        currentCapacity: batV.currentCapacity,
+        capacityUnit: batV.capacityUnit,
+        manufacturer: batV.manufacturer,
+        model: batV.model,
+      } : null,
+      os: {
+        platform: osV.platform,
+        distro: osV.distro,
+        release: osV.release,
+        arch: osV.arch,
+        hostname: osV.hostname,
+        kernel: osV.kernel,
+        serial: osV.serial,
+        build: osV.build,
+        uefi: osV.uefi,
+      },
+      bios: {
+        vendor: biosV.vendor,
+        version: biosV.version,
+        releaseDate: biosV.releaseDate,
+        serial: biosV.serial,
+      },
+      baseboard: {
+        manufacturer: bbV.manufacturer,
+        model: bbV.model,
+        version: bbV.version,
+        serial: bbV.serial,
+        assetTag: bbV.assetTag,
+      },
+      processes: {
+        all: procV.all,
+        running: procV.running,
+        blocked: procV.blocked,
+        sleeping: procV.sleeping,
+      },
+      uptime: os.uptime(),
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Full hardware info failed";
+    res.status(500).json({ error: msg });
+  }
+});
+
+router.get("/system/performance", async (_req: Request, res: Response) => {
+  try {
+    const cpus = os.cpus();
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const appMem = process.memoryUsage();
+    const heapStats = v8.getHeapStatistics();
+
+    let cpuLoad: any = null;
+    let temps: any = null;
+    if (si) {
+      [cpuLoad, temps] = await Promise.allSettled([si.currentLoad(), si.cpuTemperature()]).then(r => r.map(x => x.status === "fulfilled" ? x.value : null));
+    }
+
+    const coreLoads = cpuLoad?.cpus?.map((c: any, i: number) => ({
+      core: i,
+      load: Math.round(c.load * 10) / 10,
+      loadUser: Math.round(c.load_user * 10) / 10,
+      loadSystem: Math.round(c.load_system * 10) / 10,
+    })) ?? cpus.map((c, i) => {
+      const total = c.times.user + c.times.nice + c.times.sys + c.times.idle + c.times.irq;
+      return { core: i, load: Math.round((1 - c.times.idle / total) * 100 * 10) / 10, loadUser: 0, loadSystem: 0 };
+    });
+
+    res.json({
+      timestamp: Date.now(),
+      cpu: {
+        model: cpus[0]?.model ?? "Unknown",
+        cores: cpus.length,
+        overallLoad: cpuLoad ? Math.round(cpuLoad.currentLoad * 10) / 10 : null,
+        coreLoads,
+        temperature: temps?.main ?? null,
+      },
+      memory: {
+        totalGB: Math.round(totalMem / (1024 ** 3) * 100) / 100,
+        usedGB: Math.round((totalMem - freeMem) / (1024 ** 3) * 100) / 100,
+        freeGB: Math.round(freeMem / (1024 ** 3) * 100) / 100,
+        usagePercent: Math.round((1 - freeMem / totalMem) * 100 * 10) / 10,
+      },
+      appMemory: {
+        heapUsedMB: Math.round(appMem.heapUsed / (1024 ** 2) * 10) / 10,
+        heapTotalMB: Math.round(appMem.heapTotal / (1024 ** 2) * 10) / 10,
+        rssMB: Math.round(appMem.rss / (1024 ** 2) * 10) / 10,
+        externalMB: Math.round(appMem.external / (1024 ** 2) * 10) / 10,
+        heapLimitMB: Math.round(heapStats.heap_size_limit / (1024 ** 2)),
+      },
+      workerPool: getWorkerPoolStats(),
+      uptime: Math.round(process.uptime()),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Performance check failed" });
+  }
+});
+
 export default router;

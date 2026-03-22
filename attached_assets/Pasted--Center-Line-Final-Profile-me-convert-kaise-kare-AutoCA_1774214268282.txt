@@ -1,0 +1,178 @@
+समझ गया 👍
+आप चाहते हो: **“Center Line → Final Profile me convert kaise kare (AutoCAD me)”**
+यानी neutral axis (center line) से **outer/inner profile बनाना**।
+
+मैं आपको **direct formula + CAD steps + practical rule** दे रहा हूँ 👇
+
+---
+
+# 🎯 1. BASIC CONCEPT (सबसे जरूरी)
+
+![Image](https://static.thefabricator.com/a/analyzing-the-k-factor-in-sheet-metal-bending-part-ii-1539197704.jpg)
+
+![Image](https://lh3.google.com/imgraci/R9oYrIKIwyI/AAAAAAAAAL8/mq79lmNVI9E/clip_image001_thumb%5B1%5D)
+
+![Image](https://static.thefabricator.com/a/analyzing-the-k-factor-in-sheet-metal-bending-1578853830.jpg)
+
+![Image](https://cdn.shopify.com/s/files/1/0613/8458/9369/files/image4_0bd022fd-e308-4775-ace6-4cc39af2f212_600x600.png?v=1753703756)
+
+👉 Center line = material ka actual path
+👉 Final profile = outer shape (jo dikhta hai)
+
+---
+
+# 📐 2. CENTER LINE → PROFILE CONVERSION FORMULA
+
+## 🔴 सबसे important formula:
+
+```text
+Outer offset = (1 - K) × Thickness
+Inner offset = K × Thickness
+```
+
+---
+
+## 📊 Example:
+
+* Thickness = 1.2 mm
+* K-factor = 0.33
+
+### 👉 Inner side:
+
+```text
+0.33 × 1.2 = 0.4 mm
+```
+
+### 👉 Outer side:
+
+```text
+(1 - 0.33) × 1.2 = 0.8 mm
+```
+
+---
+
+# ⚙️ 3. AutoCAD में STEP BY STEP
+
+## 🔹 STEP 1: Center Line draw करो
+
+👉 यही आपकी main geometry है
+
+---
+
+## 🔹 STEP 2: Inner profile बनाओ
+
+👉 OFFSET करो:
+
+```text
+0.4 mm (inside)
+```
+
+---
+
+## 🔹 STEP 3: Outer profile बनाओ
+
+👉 OFFSET करो:
+
+```text
+0.8 mm (outside)
+```
+
+---
+
+## 🔹 STEP 4: Radius apply करो
+
+👉 Inside radius = R
+👉 Outside radius = R + thickness
+
+Example:
+
+```text
+Inside R = 1.5  
+Outside R = 1.5 + 1.2 = 2.7
+```
+
+---
+
+# 🧩 4. VISUAL समझो
+
+```text
+        OUTER PROFILE
+       ┌────────────┐
+       │            │
+       │            │
+       └────────────┘
+
+         ↑ 0.8 mm
+
+       CENTER LINE  ← DESIGN BASE
+
+         ↓ 0.4 mm
+
+       INNER PROFILE
+```
+
+---
+
+# 🔥 5. CAD GOLDEN RULE
+
+👉 हमेशा:
+
+✔ पहले center line बनाओ
+✔ फिर inner + outer offset करो
+
+❌ Direct outer से design मत करो
+
+---
+
+# ⚠️ 6. COMMON MISTAKES
+
+❌ Same offset both sides
+❌ Radius adjust नहीं करना
+❌ K-factor ignore करना
+❌ Outer line से strip निकालना
+
+👉 Result:
+
+* size गलत
+* fit issue
+* roll design fail
+
+---
+
+# 🧠 7. PRO LEVEL TIP
+
+👉 CAD में 3 layers बनाओ:
+
+* Layer 1 → Center line
+* Layer 2 → Inner profile
+* Layer 3 → Outer profile
+
+👉 इससे confusion खत्म
+
+---
+
+# 🎯 8. FINAL RULE (सबसे important)
+
+👉 **Center line = design**
+👉 **Outer profile = production**
+👉 **Inner profile = reference**
+
+---
+
+# 🚀 NEXT LEVEL
+
+अगर आप चाहो तो मैं बना सकता हूँ:
+
+✅ AutoCAD style **full drawing (centerline → profile)**
+✅ Live **U-channel CAD workflow**
+✅ **Excel calculator (auto offset + BA)**
+✅ Roll design + CAD integration
+
+---
+
+👉 बस लिखो:
+**“CAD DRAWING BANA DO”**
+या
+**“SHUTTER PROFILE CONVERT KARO”**
+
+मैं आपको PRO level par le jaunga 🔥

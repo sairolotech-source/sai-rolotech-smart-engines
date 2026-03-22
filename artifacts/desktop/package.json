@@ -81,8 +81,7 @@
       "shortcutName": "SAI Sai Rolotech Smart Engines AI",
       "include": "installers/installer.nsh",
       "license": "installers/license.txt",
-      "installerLanguages": ["English"],
-      "language": "1033"
+      "language": 1033
     },
     "portable": {
       "artifactName": "SAI-Sai Rolotech Smart Engines-AI-Portable-${version}.exe"

@@ -52,6 +52,7 @@ const GuardrailReportGenerator = lazy(() => import("../components/cnc/GuardrailR
 const ExportHistoryPanel = lazy(() => import("../components/cnc/ExportHistoryPanel").then(m => ({ default: m.ExportHistoryPanel })));
 const AIChatbotsView = lazy(() => import("../components/cnc/AIChatbotsView").then(m => ({ default: m.AIChatbotsView })));
 const DrawingVisionView = lazy(() => import("../components/cnc/DrawingVisionView").then(m => ({ default: m.DrawingVisionView })));
+const SafetyPanelView = lazy(() => import("../components/cnc/SafetyPanelView").then(m => ({ default: m.SafetyPanelView })));
 const FormingSimulationView = lazy(() => import("../components/cnc/FormingSimulationView").then(m => ({ default: m.FormingSimulationView })));
 const SpringbackView = lazy(() => import("../components/cnc/SpringbackView").then(m => ({ default: m.SpringbackView })));
 const StripWidthView = lazy(() => import("../components/cnc/StripWidthView").then(m => ({ default: m.StripWidthView })));
@@ -133,7 +134,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "cage-forming": "formaxis-modules", "wire-rolling": "formaxis-modules",
   "rf-closed-section": "formaxis-modules", "formaxis-compare": "formaxis-modules", "sheet-metal": "formaxis-modules",
   "profile-scan": "quality", "roll-scanner": "quality", "roll-lifecycle": "quality", "cad-finder": "quality",
-  "drawing-vision": "ai", troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
+  "drawing-vision": "ai", "safety-panel": "ai", troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
   "master-designer": "ai", "admin-dashboard": "ai", "desktop-install": "ai", "real-mukabla": "ai",
   "fea-simulation": "ai", "gcode-verify": "ai", "advanced-cam": "ai", "erp-integration": "ai",
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
@@ -355,6 +356,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "roll-flower-designer", label: "Roll Flower Designer (COPRA RF-style)", icon: <Layers2 className="w-4 h-4" />, desc: "Multi-station forming flower, neutral axis, bend allowance, SVG export" },
         { id: "material-analyzer", label: "Material Stress-Strain Analyzer", icon: <TrendingUp className="w-4 h-4" />, desc: "σ-ε curves, FLD, power hardening law — 10 materials comparison" },
         { id: "drawing-vision", label: "Drawing Vision (Gemini Pro)", icon: <Eye className="w-4 h-4" />, desc: "Drawing image upload karein — Gemini 2.5 Pro dimensions, angles, profile type nikaale" },
+        { id: "safety-panel", label: "Safety Panel (Pre-Run + G-Code Check)", icon: <Shield className="w-4 h-4" />, desc: "Machine chalane se pehle checklist + TAP/NC file ka safety check — Delta 2X rules" },
       ],
     },
     {
@@ -392,6 +394,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
 
     switch (activeTab) {
       case "drawing-vision": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DrawingVisionView /></div></Suspense>;
+      case "safety-panel": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><SafetyPanelView /></div></Suspense>;
       case "ai-chatbots": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AIChatbotsView /></div></Suspense>;
       case "forming-sim": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FormingSimulationView /></div></Suspense>;
       case "springback": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><SpringbackView /></div></Suspense>;

@@ -12,6 +12,10 @@
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Create Desktop Shortcut"
 !define MUI_FINISHPAGE_SHOWREADME_FUNCTION createDesktopShortcut
 
+; ── Product Key Variables ──
+Var ProductKey
+Var KeyValid
+
 ; ── Pre-install function ──
 Function .onInit
   ; Check Windows version (require Windows 10 or higher)
@@ -21,6 +25,50 @@ Function .onInit
     MessageBox MB_OK|MB_ICONSTOP "Sai Rolotech Smart Engines requires Windows 10 (version 1809) or later.$\r$\nPlease upgrade your operating system."
     Abort
   win10ok:
+
+  ; ── Product Key / License Key Verification ──
+  keyentry:
+    nsDialogs::Create 1018
+    Pop $0
+
+    ${NSD_CreateLabel} 0 0 100% 40u "Please enter your Product Key to continue installation.$\r$\n$\r$\nFormat: XXXX-XXXX-XXXX-XXXX$\r$\nContact SAI Rolotech for your license key."
+    Pop $0
+
+    ${NSD_CreateLabel} 0 50u 80u 14u "Product Key:"
+    Pop $0
+
+    ${NSD_CreateText} 85u 48u 200u 14u ""
+    Pop $ProductKey
+
+    ${NSD_CreateLabel} 0 70u 100% 20u ""
+    Pop $KeyValid
+
+    nsDialogs::Show
+
+    ; Get entered key value
+    ${NSD_GetText} $ProductKey $1
+
+    ; Validate key - check against authorized keys
+    StrCmp $1 "" keyempty
+    StrCmp $1 "SAIR-2026-ROLL-FORM" keyok
+    StrCmp $1 "SAIR-2026-ENGI-NEER" keyok
+    StrCmp $1 "SAIR-2026-PREM-IUMS" keyok
+    StrCmp $1 "SAIR-PRO-2026-MSTR" keyok
+    StrCmp $1 "SAIR-DEMO-2026-TRIAL" keyok
+
+    ; Key didn't match any valid key
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Invalid Product Key!$\r$\n$\r$\nPlease enter a valid license key.$\r$\nContact SAI Rolotech for your product key.$\r$\n$\r$\nPhone: +91-XXXXXXXXXX$\r$\nEmail: support@sairolotech.com" IDRETRY keyentry
+    Abort
+
+  keyempty:
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Product Key is required!$\r$\n$\r$\nYou must enter a valid product key to install this software.$\r$\nContact SAI Rolotech for your license key." IDRETRY keyentry
+    Abort
+
+  keyok:
+    ; Save the product key in registry for future verification
+    WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "ProductKey" "$1"
+    WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "InstallDate" "$\r$\n"
+    WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "Version" "${VERSION}"
 
   ; ── Step 1: Kill all running instances ──
   nsExec::ExecToLog 'taskkill /F /IM "Sai Rolotech Smart Engines.exe" /T'

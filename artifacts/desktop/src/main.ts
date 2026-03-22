@@ -40,6 +40,15 @@ const API_PORT    = 3001;
 const IS_DEV      = process.env.NODE_ENV === "development" || !app.isPackaged;
 const IS_WIN      = process.platform === "win32";
 
+// ─── Valid License Keys ──────────────────────────────────────────────────────
+const VALID_LICENSE_KEYS = new Set([
+  "SAIR-2026-ROLL-FORM",
+  "SAIR-2026-ENGI-NEER",
+  "SAIR-2026-PREM-IUMS",
+  "SAIR-PRO-2026-MSTR",
+  "SAIR-DEMO-2026-TRIAL",
+]);
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 let mainWindow:     BrowserWindow | null = null;
@@ -806,6 +815,166 @@ function setupAutoUpdater(): void {
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
 
+// ─── License Key Verification ────────────────────────────────────────────────
+
+function getLicenseKeyPath(): string {
+  return path.join(app.getPath("userData"), "license-key.dat");
+}
+
+function getSavedLicenseKey(): string | null {
+  try {
+    const keyPath = getLicenseKeyPath();
+    if (fs.existsSync(keyPath)) {
+      const key = fs.readFileSync(keyPath, "utf8").trim();
+      return key || null;
+    }
+  } catch { /* ignore */ }
+
+  if (IS_WIN) {
+    try {
+      const { execSync } = require("child_process");
+      const result = execSync(
+        'reg query "HKCU\\Software\\SAI Rolotech Smart Engines" /v ProductKey',
+        { encoding: "utf8", windowsHide: true }
+      );
+      const match = result.match(/ProductKey\s+REG_SZ\s+(.+)/);
+      if (match) {
+        const key = match[1].trim();
+        saveLicenseKey(key);
+        return key;
+      }
+    } catch { /* no registry key */ }
+  }
+
+  return null;
+}
+
+function saveLicenseKey(key: string): void {
+  try {
+    fs.writeFileSync(getLicenseKeyPath(), key, "utf8");
+  } catch { /* ignore */ }
+}
+
+function isValidLicenseKey(key: string): boolean {
+  return VALID_LICENSE_KEYS.has(key.trim().toUpperCase());
+}
+
+async function verifyLicense(): Promise<boolean> {
+  if (IS_DEV) return true;
+
+  const savedKey = getSavedLicenseKey();
+  if (savedKey && isValidLicenseKey(savedKey)) {
+    console.log("[License] Valid license key found");
+    return true;
+  }
+
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    const promptWindow = new BrowserWindow({
+      width: 500,
+      height: 380,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      closable: true,
+      frame: true,
+      title: "SAI Rolotech — Product Activation",
+      backgroundColor: "#0a0a1a",
+      icon: getAssetPath("icon.ico"),
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    const remaining = maxAttempts - attempts;
+    const htmlContent = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+  body { margin:0; padding:30px; background:#0a0a1a; color:#e4e4e7; font-family:'Segoe UI',sans-serif; }
+  h2 { color:#f97316; margin:0 0 8px; font-size:18px; }
+  p { color:#a1a1aa; font-size:13px; margin:0 0 20px; line-height:1.5; }
+  label { display:block; color:#d4d4d8; font-size:13px; font-weight:600; margin-bottom:6px; }
+  input { width:100%; padding:12px; font-size:16px; letter-spacing:2px; text-align:center; text-transform:uppercase;
+    background:#1a1a2e; border:2px solid #27272a; border-radius:8px; color:#f97316; outline:none; box-sizing:border-box; }
+  input:focus { border-color:#f97316; box-shadow:0 0 12px rgba(249,115,22,0.2); }
+  button { width:100%; padding:12px; font-size:15px; font-weight:700; background:linear-gradient(135deg,#f97316,#d97706);
+    color:#fff; border:none; border-radius:8px; cursor:pointer; margin-top:16px; }
+  button:hover { opacity:0.9; }
+  .info { color:#71717a; font-size:11px; text-align:center; margin-top:16px; }
+  .error { color:#ef4444; font-size:12px; text-align:center; margin-top:8px; display:none; }
+  .attempts { color:#f59e0b; font-size:11px; text-align:center; margin-top:4px; }
+</style></head><body>
+  <h2>Product Activation Required</h2>
+  <p>Enter your Product Key to activate SAI Rolotech Smart Engines.<br>Contact SAI Rolotech if you don't have a key.</p>
+  <label>Product Key</label>
+  <input type="text" id="key" placeholder="XXXX-XXXX-XXXX-XXXX" autofocus>
+  <div class="error" id="err">Invalid Product Key. Please try again.</div>
+  <div class="attempts">Attempts remaining: ${remaining}</div>
+  <button onclick="activate()">Activate</button>
+  <div class="info">Email: support@sairolotech.com</div>
+  <script>
+    function activate() {
+      const key = document.getElementById('key').value.trim();
+      if (!key) { document.getElementById('err').style.display='block'; document.getElementById('err').textContent='Please enter a product key.'; return; }
+      document.title = 'KEY:' + key;
+    }
+    document.getElementById('key').addEventListener('keydown', function(e) { if (e.key === 'Enter') activate(); });
+  </script>
+</body></html>`;
+
+    promptWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+    promptWindow.setMenu(null);
+
+    const enteredKey = await new Promise<string | null>((resolve) => {
+      let resolved = false;
+
+      promptWindow.on("page-title-updated", (_e, title) => {
+        if (title.startsWith("KEY:")) {
+          const key = title.substring(4);
+          resolved = true;
+          promptWindow.close();
+          resolve(key);
+        }
+      });
+
+      promptWindow.on("closed", () => {
+        if (!resolved) resolve(null);
+      });
+    });
+
+    if (!enteredKey) {
+      return false;
+    }
+
+    if (isValidLicenseKey(enteredKey)) {
+      saveLicenseKey(enteredKey.trim().toUpperCase());
+      console.log("[License] Product activated successfully");
+      return true;
+    }
+
+    attempts++;
+    if (attempts < maxAttempts) {
+      dialog.showMessageBoxSync({
+        type: "warning",
+        title: "Invalid Product Key",
+        message: `The product key you entered is not valid.\n\nAttempts remaining: ${maxAttempts - attempts}\n\nPlease check your key and try again.`,
+        buttons: ["Try Again"],
+      });
+    }
+  }
+
+  dialog.showMessageBoxSync({
+    type: "error",
+    title: "Activation Failed",
+    message: "Maximum activation attempts exceeded.\n\nPlease contact SAI Rolotech for a valid product key.\n\nEmail: support@sairolotech.com",
+    buttons: ["Exit"],
+  });
+
+  return false;
+}
+
 app.whenReady().then(async () => {
   appIsReady = true;
 
@@ -814,6 +983,13 @@ app.whenReady().then(async () => {
 
   console.log(`[App] Starting ${APP_NAME} v${APP_VERSION}`);
   console.log(`[App] isDev=${IS_DEV}, platform=${process.platform}`);
+
+  // Verify license key before anything else
+  const licensed = await verifyLicense();
+  if (!licensed) {
+    app.quit();
+    return;
+  }
 
   // Start API server
   await startApiServer();

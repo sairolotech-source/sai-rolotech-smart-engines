@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from "react";
 import { useCncStore } from "../../store/useCncStore";
 import {
-  Ruler, Layers2, AlertTriangle, CheckCircle2, Info, ArrowRight, Calculator, BookOpen
+  Ruler, Layers2, AlertTriangle, CheckCircle2, Info, ArrowRight, Calculator, BookOpen, Cog
 } from "lucide-react";
 
-type SubTab = "od-gap" | "pass-compress" | "rules";
+type SubTab = "od-gap" | "pass-compress" | "station-rolls" | "rules";
 
 const MATERIAL_CLEARANCE: Record<string, { min: number; max: number; label: string }> = {
   GI:   { min: 0.05, max: 0.10, label: "GI / Galvanized" },
@@ -77,6 +77,150 @@ function compressPasses(passes12: number[], targetN: number): { station: number;
   return result;
 }
 
+interface StationRollData {
+  station: string;
+  name: string;
+  angle: string;
+  lowerDesc: string;
+  upperDesc: string;
+  designLogic: string;
+  sketchType: "flat" | "light" | "first-bend" | "mid" | "main" | "pre-close" | "close" | "calibrate";
+}
+
+const STATION_ROLL_DATA: StationRollData[] = [
+  {
+    station: "S1", name: "Entry / Trap Pass", angle: "0°",
+    lowerDesc: "Almost flat support surface. Beech me web support, side par halka locating shoulder / shallow groove.",
+    upperDesc: "Mostly flat ya very shallow matching land. Purpose: bend dena nahi, strip ko seat karna.",
+    designLogic: "Yeh station 'forming' se zyada centering ka hota hai. Entry guide + first pass trap milkar strip ko square rakhte hain. Agar yahan strip off-center ghusi, to aage sari line me problem snowball hogi.",
+    sketchType: "flat",
+  },
+  {
+    station: "S2", name: "Light Preform", angle: "10–15°",
+    lowerDesc: "Web seat flat rahegi. Dono edges par halka utha hua radius/ramp. Flange ko 10–15° start karne ke liye side pockets.",
+    upperDesc: "Edge ke upar se light touch dene wali contour. Poore bend ko crush nahi karegi — sirf strip ko 'invite' karegi ki edge uthe.",
+    designLogic: "Is station me edge ko bas jagao, force mat karo. Entry ke turant baad aggressive forming → wandering aur marking badhegi.",
+    sketchType: "light",
+  },
+  {
+    station: "S3", name: "First Real Bend", angle: "25–30°",
+    lowerDesc: "Web abhi bhi stable flat support par. Side contour ab deeper — flange angle 25–30° tak lane ke liye smooth radius.",
+    upperDesc: "Matching male contour jo edge ko niche se lower contour ke against guide kare. Contact line smooth honi chahiye, point contact nahi.",
+    designLogic: "Actual forming start. Upper-lower rolls ko aisa socho ki material ko pakad ke modne ke bajay flow karne de rahe ho.",
+    sketchType: "first-bend",
+  },
+  {
+    station: "S4", name: "Mid Forming", angle: "40–45°",
+    lowerDesc: "Side walls clearly shape dene lagenge. Web pocket defined hoga. Bend radius consistent rakho.",
+    upperDesc: "Lower ke opposite support. Edges ko bend line par support. Web par unnecessary pressure nahi.",
+    designLogic: "Common galti: web ko unnecessarily pinch kar dena → marks ya tracking issue. Focus bend line ke around support par hona chahiye.",
+    sketchType: "mid",
+  },
+  {
+    station: "S5", name: "Main Forming", angle: "55–65°",
+    lowerDesc: "Section shape close to channel dikhegi. Web floor fixed. Flanges ke liye deeper side groove.",
+    upperDesc: "Flange outer side ko support dene wala contour. Bend radius area me smooth wrap. Side relief rakho.",
+    designLogic: "Yahin se roll fight ya interference ka risk badhta hai. Contour mismatch ho to strip pull, marks aur twist aane lagte hain.",
+    sketchType: "main",
+  },
+  {
+    station: "S6", name: "Pre-Close Pass", angle: "75–82°",
+    lowerDesc: "Almost full channel support. Web pocket exact width ke paas. Near-vertical contour for flanges.",
+    upperDesc: "Flange outside ko controlled push. Top corners par relief zaroor. Sharp corner collision check zaroori.",
+    designLogic: "Critical station. Yahin flare, twist aur springback behavior clearly dekhne lagta hai. Alignment + bearing condition strongly affect karti hai.",
+    sketchType: "pre-close",
+  },
+  {
+    station: "S7", name: "Close / Slight Overbend", angle: "90–92°",
+    lowerDesc: "Final channel cavity ke very close. Web width almost final. Side walls final angle ke paas.",
+    upperDesc: "Matching contour jo flange ko 90° ya slight overbend 91–92° tak le ja sake. Contour crisp ho sakta hai, knife-edge bilkul nahi.",
+    designLogic: "Springback ko dekhte hue slight overbend useful. Stronger materials me springback zyada hoti hai — final angle running trial se set hota hai.",
+    sketchType: "close",
+  },
+  {
+    station: "S8", name: "Calibration / Sizing", angle: "90° (lock)",
+    lowerDesc: "Final cavity. Web width + corner radius lock. Side walls full support.",
+    upperDesc: "Final top restraint. Angle hold + squareness correction. Very controlled contact.",
+    designLogic: "Sirf 'last bend' mat samjho — ye SIZING station hai. Yahan part ki final width, straightness, twist correction aur repeatability lock hoti hai.",
+    sketchType: "calibrate",
+  },
+];
+
+const GOLDEN_RULES = [
+  { title: "1. Web ko stable rakho", desc: "Har station me web ke liye ek clear support philosophy honi chahiye. Web kabhi flat, kabhi floating, kabhi pinch me aa gaya → tracking + marks dono badhenge." },
+  { title: "2. Bend line ke paas support do", desc: "Forming ka target bend zone hai. Poore strip ko crush karne se quality improve nahi hoti — incremental = controlled local deformation." },
+  { title: "3. Side relief zaroor do", desc: "Jab flange close hota hai, upper-lower roll shoulders ke paas mechanical collision ka risk. CAD overlay me station-wise minimum clearance check karo." },
+  { title: "4. Early soft, late tight", desc: "S2–S3 me profile ko gently start karo. S6–S8 me contour closer aur more controlling ho sakta hai. Yehi smooth progression defects kam karta hai." },
+  { title: "5. S7 aur S8 ko alag kaam do", desc: "S7 = close / overbend. S8 = size / calibrate. Dono ko ek hi hard pass me combine karne se repeatability kharab ho sakti hai." },
+  { title: "6. Entry guides ko ignore mat karo", desc: "Agar entry guide weak hai to best rolls bhi stable product nahi denge. Proper roll forming ki shuruaat entry guide se hoti hai." },
+  { title: "7. Mill alignment check karo", desc: "Base level, shaft parallelism, shoulder alignment, entry table aur side units ki alignment — misalignment se twist, poor tracking repeated issues aate hain." },
+];
+
+function RollStationSketch({ type, w, h }: { type: StationRollData["sketchType"]; w: number; h: number }) {
+  const cx = w / 2;
+  const upperCy = h * 0.22;
+  const lowerCy = h * 0.68;
+  const rU = h * 0.14;
+  const rL = h * 0.16;
+  const stripY = h * 0.45;
+  const c = "#6366f1";
+  const cU = "#818cf8";
+  const cL = "#a78bfa";
+  const cStrip = "#f59e0b";
+
+  const flangeAngle = type === "flat" ? 0 : type === "light" ? 15 : type === "first-bend" ? 28 : type === "mid" ? 42 : type === "main" ? 60 : type === "pre-close" ? 78 : 90;
+  const webW = w * 0.28;
+  const flangeLen = h * 0.18;
+  const rad = (a: number) => (a * Math.PI) / 180;
+  const fDx = Math.sin(rad(flangeAngle)) * flangeLen;
+  const fDy = -Math.cos(rad(flangeAngle)) * flangeLen;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className="mx-auto">
+      <rect width={w} height={h} fill="#09090b" rx="4" />
+      <text x={cx} y={14} textAnchor="middle" fill="#71717a" fontSize="9" fontFamily="monospace">
+        {type === "flat" ? "Entry — flat" : type === "calibrate" ? "Final sizing fit" : `~${flangeAngle}° forming`}
+      </text>
+
+      <ellipse cx={cx} cy={upperCy} rx={rU * 1.3} ry={rU} fill="none" stroke={cU} strokeWidth="1.5" opacity="0.6" />
+      <text x={cx} y={upperCy + 3} textAnchor="middle" fill={cU} fontSize="8" fontFamily="monospace">Upper</text>
+
+      {type === "flat" ? (
+        <rect x={cx - webW} y={lowerCy - rL * 0.15} width={webW * 2} height={rL * 0.3} rx="2" fill="none" stroke={cL} strokeWidth="1.5" opacity="0.6" />
+      ) : type === "calibrate" || type === "close" ? (
+        <path d={`M${cx - webW * 0.7} ${lowerCy - flangeLen * 0.9} L${cx - webW * 0.7} ${lowerCy + rL * 0.15} L${cx + webW * 0.7} ${lowerCy + rL * 0.15} L${cx + webW * 0.7} ${lowerCy - flangeLen * 0.9}`}
+          fill="none" stroke={cL} strokeWidth="1.5" opacity="0.6" />
+      ) : (
+        <>
+          <line x1={cx - webW} y1={lowerCy} x2={cx + webW} y2={lowerCy} stroke={cL} strokeWidth="1.5" opacity="0.6" />
+          <line x1={cx - webW} y1={lowerCy} x2={cx - webW - fDx * 0.6} y2={lowerCy + fDy * 0.6} stroke={cL} strokeWidth="1.5" opacity="0.6" />
+          <line x1={cx + webW} y1={lowerCy} x2={cx + webW + fDx * 0.6} y2={lowerCy + fDy * 0.6} stroke={cL} strokeWidth="1.5" opacity="0.6" />
+        </>
+      )}
+      <text x={cx} y={lowerCy + rL * 0.45} textAnchor="middle" fill={cL} fontSize="8" fontFamily="monospace">Lower</text>
+
+      <line x1={cx - webW * 1.2} y1={stripY} x2={cx - webW} y2={stripY} stroke={cStrip} strokeWidth="1.8" strokeDasharray="3,2" />
+      <line x1={cx - webW} y1={stripY} x2={cx + webW} y2={stripY} stroke={cStrip} strokeWidth="1.8" />
+      <line x1={cx + webW} y1={stripY} x2={cx + webW * 1.2} y2={stripY} stroke={cStrip} strokeWidth="1.8" strokeDasharray="3,2" />
+      {flangeAngle > 5 && (
+        <>
+          <line x1={cx - webW} y1={stripY} x2={cx - webW - fDx * 0.55} y2={stripY + fDy * 0.55} stroke={cStrip} strokeWidth="1.8" />
+          <line x1={cx + webW} y1={stripY} x2={cx + webW + fDx * 0.55} y2={stripY + fDy * 0.55} stroke={cStrip} strokeWidth="1.8" />
+        </>
+      )}
+      <text x={cx} y={stripY - 5} textAnchor="middle" fill={cStrip} fontSize="7" fontFamily="monospace" opacity="0.7">strip</text>
+
+      <line x1={w - 25} y1={stripY + 4} x2={w - 25} y2={stripY + 4 + flangeLen * 0.5} stroke="#555" strokeWidth="0.8" />
+      {flangeAngle > 5 && (
+        <>
+          <line x1={w - 25} y1={stripY + 4} x2={w - 25 - fDx * 0.3} y2={stripY + 4 + fDy * 0.3} stroke={c} strokeWidth="0.8" />
+          <text x={w - 12} y={stripY + 14} fill="#888" fontSize="7" fontFamily="monospace">{flangeAngle}°</text>
+        </>
+      )}
+    </svg>
+  );
+}
+
 const Row = ({ label, value, unit, color }: { label: string; value: string; unit?: string; color?: string }) => (
   <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/30 last:border-0 hover:bg-zinc-800/10">
     <span className="text-[10px] text-zinc-400">{label}</span>
@@ -116,6 +260,7 @@ export function RollDesignSuite() {
   const tabs: { id: SubTab; label: string; icon: React.ReactNode }[] = [
     { id: "od-gap", label: "OD & Gap Designer", icon: <Ruler className="w-3.5 h-3.5" /> },
     { id: "pass-compress", label: "Pass Compressor", icon: <Layers2 className="w-3.5 h-3.5" /> },
+    { id: "station-rolls", label: "Station Roll Guide", icon: <Cog className="w-3.5 h-3.5" /> },
     { id: "rules", label: "Design Rules", icon: <BookOpen className="w-3.5 h-3.5" /> },
   ];
 
@@ -392,6 +537,108 @@ export function RollDesignSuite() {
                   <p className="text-[10px] text-zinc-400">{o.desc}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─── STATION ROLL GUIDE ─── */}
+        {subTab === "station-rolls" && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Info className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px] font-bold text-amber-300">C-Channel Example — Web 40mm, Flange 20+20mm, T=0.8mm, 8 Stations, Mild Steel</span>
+              </div>
+              <p className="text-[10px] text-zinc-400">
+                Har station me upper + lower rolls ka kaam milkar 3 cheeze karta hai: (1) Strip ko guide karna, (2) Shape ko thoda-thoda bend karna, (3) Final stations me angle + width lock karna.
+                Roll forming incremental process hai — ek hi pass me zyada hard bend = unstable.
+              </p>
+            </div>
+
+            {STATION_ROLL_DATA.map((sd) => (
+              <div key={sd.station} className="rounded-lg border border-zinc-800/60 bg-zinc-900/50 overflow-hidden">
+                <div className="px-3 py-2 bg-violet-500/10 border-b border-zinc-800/40 flex items-center gap-2">
+                  <span className="text-[12px] font-mono font-bold text-violet-300">{sd.station}</span>
+                  <span className="text-[11px] font-semibold text-zinc-200">{sd.name}</span>
+                  <span className="ml-auto text-[10px] font-mono text-cyan-400">{sd.angle}</span>
+                </div>
+                <div className="grid grid-cols-[180px_1fr] gap-0">
+                  <div className="p-2 border-r border-zinc-800/30 flex items-center justify-center bg-zinc-950/50">
+                    <RollStationSketch type={sd.sketchType} w={170} h={110} />
+                  </div>
+                  <div className="divide-y divide-zinc-800/30">
+                    <div className="px-3 py-2">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold">Lower Roll</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-300">{sd.lowerDesc}</p>
+                    </div>
+                    <div className="px-3 py-2">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold">Upper Roll</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-300">{sd.upperDesc}</p>
+                    </div>
+                    <div className="px-3 py-2 bg-zinc-800/10">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">Design Logic</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 italic">{sd.designLogic}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 overflow-hidden">
+              <div className="px-3 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px] font-bold text-amber-300">7 Golden Rules — Roll Contour Design</span>
+              </div>
+              <div className="divide-y divide-zinc-800/30">
+                {GOLDEN_RULES.map((rule, i) => (
+                  <div key={i} className="px-3 py-2">
+                    <div className="text-[11px] font-semibold text-zinc-200 mb-0.5">{rule.title}</div>
+                    <p className="text-[10px] text-zinc-400">{rule.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-[11px] font-bold text-red-300">Sabse Badi Practical Mistake</span>
+              </div>
+              <p className="text-[10px] text-zinc-300">
+                Final profile ko har station me copy karke bas thoda-thoda close karna → <span className="text-red-400 font-semibold">GALAT</span>.
+              </p>
+              <p className="text-[10px] text-zinc-400 mt-1">
+                Sahi approach: (1) Metal line socho (2) Support zones socho (3) Non-contact zones socho (4) Relief socho (5) Springback socho — warna roll ban jayega, line stable nahi chalegi.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/50 overflow-hidden">
+              <div className="px-3 py-2 bg-cyan-500/10 border-b border-zinc-800/40 flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[11px] font-bold text-zinc-200">CAD Workflow — AutoCAD Roll Design</span>
+              </div>
+              <div className="p-2 space-y-0.5">
+                {[
+                  "1. Final profile banao",
+                  "2. Flower progression nikalo",
+                  "3. Har station ka intermediate section banao",
+                  "4. Us section ke hisab se lower roll cavity socho",
+                  "5. Upper roll ko mating support contour do",
+                  "6. Side relief aur non-contact zones mark karo",
+                  "7. Station overlay karke interference check karo",
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1">
+                    <ArrowRight className="w-3 h-3 text-cyan-500 shrink-0" />
+                    <span className="text-[10px] text-zinc-300">{step}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

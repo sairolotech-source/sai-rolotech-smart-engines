@@ -7,6 +7,8 @@ import { PanelShimmer } from "../components/ShimmerLoader";
 import { toast } from "../hooks/use-toast";
 import { useAutoAIMode } from "../hooks/useAutoAIMode";
 import { AutoAIModePanel } from "../components/AutoAIModePanel";
+import { PersonalAIKeyModal } from "../components/PersonalAIKeyModal";
+import { usePersonalAIKey } from "../hooks/usePersonalAIKey";
 import {
   Settings, Flower, Wrench, FileCode2, AlertTriangle,
   Save, BookOpen, History, LogOut, ChevronDown, CheckCircle2, Cpu,
@@ -16,7 +18,7 @@ import {
   ArrowLeftRight, Database, Flame, ChevronRight, Layers, Brain, Download,
   Circle, Triangle, Wand2, Table, Minus, ScanLine, FolderTree,
   TrendingDown, TrendingUp, ShieldCheck, Shield, Hexagon, Trophy, PlayCircle, Layers2,
-  Gauge, Crosshair, Eye,
+  Gauge, Crosshair, Eye, Key,
 } from "lucide-react";
 
 const LeftPanel = lazy(() => import("../components/cnc/LeftPanel").then(m => ({ default: m.LeftPanel })));
@@ -195,6 +197,8 @@ export default function Home({ onBackToDashboard }: HomeProps) {
   const [showReport, setShowReport]           = useState(false);
   const [showGuardrailReport, setShowGuardrailReport] = useState(false);
   const [showExportHistory, setShowExportHistory] = useState(false);
+  const [showAIKeyModal, setShowAIKeyModal] = useState(false);
+  const { hasKey: hasPersonalKey } = usePersonalAIKey();
   const [activeCatId, setActiveCatId] = useState(() => TAB_TO_CAT[activeTab] ?? "design");
   // sectionModel is now driven from the store (persisted across sessions)
   const sectionModel = storeSectionModel;
@@ -576,6 +580,17 @@ export default function Home({ onBackToDashboard }: HomeProps) {
             </span>
           )}
           <button
+            onClick={() => setShowAIKeyModal(true)}
+            className="rt-status-badge cursor-pointer hover:brightness-125 transition-all"
+            title="Personal Gemini API Key — Replit ke baghair bhi AI use karo"
+            style={hasPersonalKey
+              ? { background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.2)", color: "#fbbf24" }
+              : { background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "#71717a" }}
+          >
+            <Key className="w-2.5 h-2.5" />
+            {hasPersonalKey ? "AI Key ✓" : "AI Key"}
+          </button>
+          <button
             onClick={() => setShowSectionSelector(true)}
             className="rt-status-badge cursor-pointer hover:brightness-125 transition-all"
             title="Switch AI section model"
@@ -793,6 +808,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       ══════════════════════════════════════════════════════ */}
       <Suspense fallback={null}>
         {showSaveProject && <SaveProjectModal onClose={() => setShowSaveProject(false)} />}
+        <PersonalAIKeyModal open={showAIKeyModal} onClose={() => setShowAIKeyModal(false)} />
         {showDrive && <GoogleDrivePanel onClose={() => setShowDrive(false)} />}
         {showSystemInfo && <SystemInfoPanel onClose={() => setShowSystemInfo(false)} />}
         {showReport && <DesignReportGenerator onClose={() => setShowReport(false)} />}

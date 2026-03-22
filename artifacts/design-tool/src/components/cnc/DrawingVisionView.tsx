@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
-import { Eye, Upload, FileImage, Loader2, CheckCircle2, AlertTriangle, X, Brain, Download, Copy } from "lucide-react";
-import { useApi } from "@/lib/api";
+import { Eye, Upload, FileImage, Loader2, CheckCircle2, AlertTriangle, X, Brain, Copy, Key } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { getPersonalGeminiKey } from "@/hooks/usePersonalAIKey";
 
 interface VisionResult {
   success: boolean;
@@ -54,29 +54,92 @@ export function DrawingVisionView() {
     if (f) handleFile(f);
   };
 
+  const analyzeViaServer = async (f: File, q: string): Promise<VisionResult> => {
+    const formData = new FormData();
+    formData.append("image", f);
+    if (q.trim()) formData.append("question", q.trim());
+    const token = localStorage.getItem("cnc_token") ?? "";
+    const res = await fetch("/api/drawing-vision/analyze", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json() as VisionResult & { error?: string };
+    if (!res.ok || !data.success) throw new Error(data.error ?? "Server analysis failed");
+    return data;
+  };
+
+  const analyzeViaBrowser = async (f: File, q: string): Promise<VisionResult> => {
+    const personalKey = getPersonalGeminiKey();
+    if (!personalKey) throw new Error("Koi API key nahi — pehle 'AI Key' button se apni Gemini key daalo");
+
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const result = (e.target?.result as string).split(",")[1];
+        if (result) resolve(result); else reject(new Error("File read failed"));
+      };
+      reader.onerror = () => reject(new Error("File read error"));
+      reader.readAsDataURL(f);
+    });
+
+    const prompt = q.trim() || `Analyze this engineering drawing and extract all technical specifications:
+- Profile type and name
+- All dimensions (mm)
+- Bend angles (degrees)
+- Inner radii (mm)
+- Material thickness (mm)
+- Tolerances
+- Any special notes
+Also identify: is this suitable for roll forming? How many stations approximately needed?`;
+
+    const body = {
+      system_instruction: { parts: [{ text: "You are a senior roll forming and CNC engineering expert. Analyze technical drawings and extract all specifications precisely." }] },
+      contents: [{ role: "user", parts: [{ inline_data: { mime_type: f.type, data: base64 } }, { text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+    };
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${personalKey}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini error ${res.status}: ${errText.slice(0, 150)}`);
+    }
+
+    const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+    const extractedData: Record<string, unknown> = {};
+    const thicknessMatch = text.match(/thickness[:\s]+([0-9.]+)\s*mm/i);
+    if (thicknessMatch) extractedData["thickness"] = parseFloat(thicknessMatch[1]!);
+    const angles: number[] = [];
+    for (const m of text.matchAll(/(\d+(?:\.\d+)?)\s*°/g)) angles.push(parseFloat(m[1]!));
+    if (angles.length) extractedData["bendAngles"] = angles;
+    const profileMatch = text.match(/(C-channel|Z-section|U-channel|hat section|angle|omega|sigma)/i);
+    if (profileMatch) extractedData["profileType"] = profileMatch[1];
+    const stationsMatch = text.match(/(\d+)\s*station/i);
+    if (stationsMatch) extractedData["estimatedStations"] = parseInt(stationsMatch[1]!);
+
+    return { success: true, analysis: text, extractedData, model: "Gemini 2.5 Pro Vision (Personal Key)", filename: f.name, fileSize: `${(f.size / 1024).toFixed(1)} KB` };
+  };
+
   const analyze = async () => {
     if (!file) return;
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-      if (question.trim()) formData.append("question", question.trim());
-
-      const token = localStorage.getItem("cnc_token") ?? "";
-      const res = await fetch("/api/drawing-vision/analyze", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      const data = await res.json() as VisionResult & { error?: string };
-      if (!res.ok || !data.success) {
-        throw new Error(data.error ?? "Analysis failed");
+      let data: VisionResult;
+      try {
+        data = await analyzeViaServer(file, question);
+      } catch {
+        data = await analyzeViaBrowser(file, question);
       }
       setResult(data);
-      toast({ title: "Analysis Complete", description: `Gemini 2.5 Pro ne drawing analyze kar li!` });
+      toast({ title: "Analysis Complete ✅", description: "Gemini 2.5 Pro ne drawing analyze kar li!" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Analysis failed";
       setError(msg);

@@ -18,7 +18,7 @@ import {
   ArrowLeftRight, Database, Flame, ChevronRight, Layers, Brain, Download,
   Circle, Triangle, Wand2, Table, Minus, ScanLine, FolderTree,
   TrendingDown, TrendingUp, ShieldCheck, Shield, Hexagon, Trophy, PlayCircle, Layers2,
-  Gauge, Crosshair, Eye, Key, Github,
+  Gauge, Crosshair, Eye, Key, Github, Bot,
 } from "lucide-react";
 
 const LeftPanel = lazy(() => import("../components/cnc/LeftPanel").then(m => ({ default: m.LeftPanel })));
@@ -32,6 +32,7 @@ const FlowerPatternCombined = lazy(() => import("../components/cnc/FlowerPattern
 const AutoCADEngineeringDrawing = lazy(() => import("../components/cnc/AutoCADEngineeringDrawing").then(m => ({ default: m.AutoCADEngineeringDrawing })));
 const MachineLoadCalculator = lazy(() => import("../components/cnc/MachineLoadCalculator").then(m => ({ default: m.MachineLoadCalculator })));
 const RollDataFileGenerator = lazy(() => import("../components/cnc/RollDataFileGenerator").then(m => ({ default: m.RollDataFileGenerator })));
+const BuddyCRMDashboard = lazy(() => import("../components/cnc/BuddyCRMDashboard").then(m => ({ default: m.BuddyCRMDashboard })));
 const DigitalTwinView = lazy(() => import("../components/cnc/DigitalTwinView").then(m => ({ default: m.DigitalTwinView })));
 const TurningView = lazy(() => import("../components/cnc/TurningView").then(m => ({ default: m.TurningView })));
 const GeometryEditPanel = lazy(() => import("../components/cnc/GeometryEditPanel").then(m => ({ default: m.GeometryEditPanel })));
@@ -149,7 +150,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
   "station-control": "ai", "rf-machine": "simulation",
   "validation-pipeline": "quality", "testing-engine": "quality", "machine-bom": "quality", "dimension-confirm": "design",
-  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-data-files": "manufacturing", "roll-export": "manufacturing",
+  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-data-files": "manufacturing", "roll-export": "manufacturing", "buddy-crm": "system",
   report: "project",
 };
 
@@ -354,6 +355,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "ai-chatbots", label: "5 Smart Experts", icon: <Cpu className="w-4 h-4" />, desc: "5 experts + quality check" },
         { id: "master-designer", label: "Master Designer", icon: <Brain className="w-4 h-4" />, desc: "50-year veteran AI chatbot with project context" },
         { id: "auto-backup", label: "Auto Backup (5 min)", icon: <Save className="w-4 h-4" />, desc: "Auto-save har 5 min — laptop band ho to bhi kuch nahi jayega" },
+        { id: "buddy-crm", label: "🤖 BUDDY CRM — AI Lead Manager", icon: <Bot className="w-4 h-4" />, desc: "AI-powered CRM: Lead tracking, WhatsApp bina API ke, BUDDY coordinator, analytics, scoring — sab ek jagah" },
         { id: "github-update", label: "GitHub Auto-Update (Pull / Push)", icon: <Github className="w-4 h-4" />, desc: "GitHub se latest code pull karo — ya Replit se GitHub pe push karo — auto-sync system" },
         { id: "demo-c-channel", label: "Demo C-Channel Program", icon: <Layers className="w-4 h-4" />, desc: "Complete C-channel — stations, rolls, bearings, motor, BOM" },
         { id: "rf-machine", label: "🏭 Roll Forming Machine (Animated)", icon: <Activity className="w-4 h-4" />, desc: "Live animated roll forming machine — 9 stations, spinning rollers, C-channel forming, cut-off press" },
@@ -494,6 +496,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "autocad-engineering-drawing": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoCADEngineeringDrawing /></div></Suspense>;
       case "machine-load-calc": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-y-auto animate-fade-slide-in"><MachineLoadCalculator /></div></Suspense>;
       case "roll-data-files": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollDataFileGenerator /></div></Suspense>;
+      case "buddy-crm": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><BuddyCRMDashboard /></div></Suspense>;
       case "twin": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DigitalTwinView /></div></Suspense>;
       case "gcode":
         return (

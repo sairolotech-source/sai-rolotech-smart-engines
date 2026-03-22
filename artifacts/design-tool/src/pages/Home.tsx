@@ -28,6 +28,7 @@ const ToolpathSimulator = lazy(() => import("../components/cnc/ToolpathSimulator
 const Troubleshooting = lazy(() => import("../components/cnc/Troubleshooting").then(m => ({ default: m.Troubleshooting })));
 const RollToolingView = lazy(() => import("../components/cnc/RollToolingView").then(m => ({ default: m.RollToolingView })));
 const FlowerPatternView = lazy(() => import("../components/cnc/FlowerPatternView").then(m => ({ default: m.FlowerPatternView })));
+const FlowerPatternCombined = lazy(() => import("../components/cnc/FlowerPatternCombined").then(m => ({ default: m.FlowerPatternCombined })));
 const DigitalTwinView = lazy(() => import("../components/cnc/DigitalTwinView").then(m => ({ default: m.DigitalTwinView })));
 const TurningView = lazy(() => import("../components/cnc/TurningView").then(m => ({ default: m.TurningView })));
 const GeometryEditPanel = lazy(() => import("../components/cnc/GeometryEditPanel").then(m => ({ default: m.GeometryEditPanel })));
@@ -145,7 +146,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
   "station-control": "ai", "rf-machine": "simulation",
   "validation-pipeline": "quality", "testing-engine": "quality", "machine-bom": "quality", "dimension-confirm": "design",
-  "flower-3d": "simulation", "roll-export": "manufacturing",
+  "flower-3d": "simulation", "flower-combined": "simulation", "roll-export": "manufacturing",
   report: "project",
 };
 
@@ -329,7 +330,8 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       tools: [
         { id: "twin", label: "Digital Twin", icon: <Monitor className="w-4 h-4" />, desc: "Machine simulation & visualization" },
         { id: "studio3d", label: "3D Studio", icon: <Box className="w-4 h-4" />, desc: "3D CAD + CAM + Smart" },
-        { id: "flower-3d", label: "3D Flower", icon: <Layers className="w-4 h-4" />, desc: "Station-by-station 3D flower animation" },
+        { id: "flower-combined", label: "Flower 2D + 3D (Combined)", icon: <Layers className="w-4 h-4" />, desc: "2D + 3D dono ek view mein — toggle ya side-by-side" },
+        { id: "flower-3d", label: "3D Flower (Only)", icon: <Box className="w-4 h-4" />, desc: "Station-by-station 3D flower animation only" },
         { id: "admin-dashboard", label: "Admin Pipeline", icon: <Monitor className="w-4 h-4" />, desc: "3D animated admin pipeline dashboard" },
       ],
     },
@@ -481,7 +483,8 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "troubleshoot": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><Troubleshooting /></div></Suspense>;
       case "offline-ai": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><OfflineAIView /></div></Suspense>;
       case "roll": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollToolingView /></div></Suspense>;
-      case "flower": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in" data-capture-id="power-pattern"><FlowerPatternView /></div></Suspense>;
+      case "flower": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in" data-capture-id="power-pattern"><FlowerPatternCombined /></div></Suspense>;
+      case "flower-combined": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FlowerPatternCombined /></div></Suspense>;
       case "twin": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DigitalTwinView /></div></Suspense>;
       case "gcode":
         return (

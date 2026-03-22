@@ -14,12 +14,13 @@
 
 import {
   app, BrowserWindow, Menu, Tray, dialog, ipcMain,
-  shell, nativeTheme, nativeImage, globalShortcut,
+  shell, nativeTheme, nativeImage, globalShortcut, net,
 } from "electron";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { spawn, ChildProcess } from "child_process";
+import * as crypto from "crypto";
+import { spawn, ChildProcess, execSync } from "child_process";
 import { autoUpdater } from "electron-updater";
 
 // ─── GPU Acceleration Flags ──────────────────────────────────────────────────
@@ -163,7 +164,7 @@ function _logCrash(detail: string): void {
 
 // ─── Browser Window ──────────────────────────────────────────────────────────
 
-function createMainWindow(): void {
+async function createMainWindow(): Promise<void> {
   const preloadPath = path.join(__dirname, "preload.js");
 
   // Restore window bounds from userData
@@ -206,7 +207,56 @@ function createMainWindow(): void {
     mainWindow.loadURL("http://localhost:5000");
     mainWindow.webContents.openDevTools({ mode: "detach" });
   } else {
-    mainWindow.loadURL(`http://localhost:${API_PORT}`);
+    const serverUrl = `http://localhost:${API_PORT}`;
+    const maxRetries = 10;
+    let loaded = false;
+
+    for (let i = 0; i < maxRetries && !loaded; i++) {
+      try {
+        const ok = await new Promise<boolean>((resolve) => {
+          const http = require("http");
+          const req = http.get(serverUrl, (res: any) => {
+            resolve(res.statusCode === 200);
+            res.resume();
+          });
+          req.on("error", () => resolve(false));
+          req.setTimeout(2000, () => { req.destroy(); resolve(false); });
+        });
+        if (ok) {
+          await mainWindow.loadURL(serverUrl);
+          loaded = true;
+          console.log(`[App] Frontend loaded from API server (attempt ${i + 1})`);
+        } else {
+          console.log(`[App] Waiting for API server... attempt ${i + 1}/${maxRetries}`);
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      } catch {
+        console.log(`[App] API server not ready, retrying... ${i + 1}/${maxRetries}`);
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+
+    if (!loaded) {
+      console.log("[App] API server unavailable — loading frontend from local files");
+      const indexPath = path.join(process.resourcesPath, "frontend", "index.html");
+      if (fs.existsSync(indexPath)) {
+        await mainWindow.loadFile(indexPath);
+      } else {
+        const errorHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+          body{margin:0;padding:40px;background:#070710;color:#e4e4e7;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;}
+          h1{color:#f97316;font-size:24px;margin-bottom:12px;}
+          p{color:#a1a1aa;font-size:14px;line-height:1.6;max-width:500px;}
+          code{background:#1a1a2e;padding:4px 8px;border-radius:4px;color:#f59e0b;font-size:12px;}
+          button{margin-top:20px;padding:12px 24px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;}
+          </style></head><body>
+          <h1>SAI Rolotech Smart Engines</h1>
+          <p>The application server could not start.<br>This may happen on first run — please try again.</p>
+          <p>If the problem persists, reinstall the application or contact:<br><code>support@sairolotech.com</code></p>
+          <button onclick="window.location.reload()">Retry</button>
+          </body></html>`;
+        await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`);
+      }
+    }
   }
 
   // ── Window events ──
@@ -820,22 +870,272 @@ function setupAutoUpdater(): void {
 
 // ─── License Key Verification ────────────────────────────────────────────────
 
+const DEMO_KEY = "SAIR-DEMO-2026-TRIAL";
+const DEMO_TRIAL_HOURS = 24;
+const ENCRYPTION_SECRET = "S41-R0L0T3CH-SM4RT-3NG1N3S-2026-X9K";
+const RUNTIME_CHECK_INTERVAL = 15 * 60 * 1000;
+let runtimeCheckTimer: ReturnType<typeof setInterval> | null = null;
+
 function getLicenseKeyPath(): string {
   return path.join(app.getPath("userData"), "license-key.dat");
 }
 
+function getTrialTimestampPath(): string {
+  return path.join(app.getPath("userData"), ".trial-ts");
+}
+
+function getHardwareIdPath(): string {
+  return path.join(app.getPath("userData"), ".hw-bind");
+}
+
+function getIntegrityPath(): string {
+  return path.join(app.getPath("userData"), ".integrity");
+}
+
+function encryptData(data: string): string {
+  const iv = crypto.randomBytes(16);
+  const key = crypto.scryptSync(ENCRYPTION_SECRET, "sai-salt-2026", 32);
+  const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+  let encrypted = cipher.update(data, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  return iv.toString("hex") + ":" + encrypted;
+}
+
+function decryptData(encrypted: string): string | null {
+  try {
+    const [ivHex, data] = encrypted.split(":");
+    if (!ivHex || !data) return null;
+    const iv = Buffer.from(ivHex, "hex");
+    const key = crypto.scryptSync(ENCRYPTION_SECRET, "sai-salt-2026", 32);
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+    let decrypted = decipher.update(data, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch {
+    return null;
+  }
+}
+
+function getHardwareId(): string {
+  const parts: string[] = [];
+  parts.push(os.hostname());
+  parts.push(os.platform());
+  parts.push(os.arch());
+  parts.push(String(os.cpus().length));
+  parts.push(os.cpus()[0]?.model ?? "unknown");
+  parts.push(String(os.totalmem()));
+  if (IS_WIN) {
+    try {
+      const serial = execSync('wmic baseboard get serialnumber', { encoding: "utf8", windowsHide: true });
+      parts.push(serial.replace(/\s+/g, "").replace("SerialNumber", ""));
+    } catch { /* ignore */ }
+    try {
+      const diskId = execSync('wmic diskdrive get serialnumber', { encoding: "utf8", windowsHide: true });
+      parts.push(diskId.replace(/\s+/g, "").replace("SerialNumber", ""));
+    } catch { /* ignore */ }
+    try {
+      const biosSerial = execSync('wmic bios get serialnumber', { encoding: "utf8", windowsHide: true });
+      parts.push(biosSerial.replace(/\s+/g, "").replace("SerialNumber", ""));
+    } catch { /* ignore */ }
+  }
+  const raw = parts.join("|");
+  return crypto.createHash("sha256").update(raw).digest("hex").substring(0, 32);
+}
+
+function verifyHardwareBinding(): boolean {
+  try {
+    const hwPath = getHardwareIdPath();
+    if (!fs.existsSync(hwPath)) return true;
+    const savedEncrypted = fs.readFileSync(hwPath, "utf8").trim();
+    const savedHwId = decryptData(savedEncrypted);
+    if (!savedHwId) return false;
+    const currentHwId = getHardwareId();
+    return savedHwId === currentHwId;
+  } catch {
+    return false;
+  }
+}
+
+function saveHardwareBinding(): void {
+  try {
+    const hwId = getHardwareId();
+    fs.writeFileSync(getHardwareIdPath(), encryptData(hwId), "utf8");
+  } catch { /* ignore */ }
+}
+
+function generateIntegrityHash(): string {
+  const exePath = app.getPath("exe");
+  const mainJsPath = IS_DEV ? __filename : path.join(app.getAppPath(), "dist", "main.js");
+  const parts: string[] = [];
+  parts.push(exePath);
+  parts.push(APP_VERSION);
+  try {
+    if (fs.existsSync(mainJsPath)) {
+      const stat = fs.statSync(mainJsPath);
+      parts.push(String(stat.size));
+      parts.push(String(stat.mtimeMs));
+    }
+  } catch { /* ignore */ }
+  return crypto.createHash("sha256").update(parts.join("|")).digest("hex");
+}
+
+function saveIntegrity(): void {
+  try {
+    const hash = generateIntegrityHash();
+    fs.writeFileSync(getIntegrityPath(), encryptData(hash), "utf8");
+  } catch { /* ignore */ }
+}
+
+function verifyIntegrity(): boolean {
+  try {
+    const intPath = getIntegrityPath();
+    if (!fs.existsSync(intPath)) return true;
+    const savedEncrypted = fs.readFileSync(intPath, "utf8").trim();
+    const savedHash = decryptData(savedEncrypted);
+    if (!savedHash) return false;
+    const currentHash = generateIntegrityHash();
+    return savedHash === currentHash;
+  } catch {
+    return false;
+  }
+}
+
+function saveLicenseEncrypted(key: string): void {
+  try {
+    const payload = JSON.stringify({
+      key: key,
+      hw: getHardwareId(),
+      ts: Date.now(),
+      v: APP_VERSION,
+    });
+    fs.writeFileSync(getLicenseKeyPath(), encryptData(payload), "utf8");
+  } catch { /* ignore */ }
+}
+
+function loadLicenseEncrypted(): { key: string; hw: string; ts: number } | null {
+  try {
+    const raw = fs.readFileSync(getLicenseKeyPath(), "utf8").trim();
+    if (raw.includes(":")) {
+      const decrypted = decryptData(raw);
+      if (!decrypted) return null;
+      return JSON.parse(decrypted);
+    }
+    return { key: raw, hw: getHardwareId(), ts: Date.now() };
+  } catch {
+    return null;
+  }
+}
+
+function startRuntimeLicenseCheck(): void {
+  if (runtimeCheckTimer) return;
+  runtimeCheckTimer = setInterval(() => {
+    console.log("[Security] Runtime license check...");
+    const licData = loadLicenseEncrypted();
+    if (!licData || !isValidLicenseKey(licData.key)) {
+      console.error("[Security] License tampered — shutting down");
+      dialog.showMessageBoxSync({
+        type: "error",
+        title: "License Error",
+        message: "License verification failed.\n\nThe application will now close.",
+        buttons: ["Exit"],
+      });
+      app.quit();
+      return;
+    }
+    if (licData.key === DEMO_KEY && isTrialExpired()) {
+      console.error("[Security] Demo trial expired during runtime");
+      nukeTrialData();
+      dialog.showMessageBoxSync({
+        type: "error",
+        title: "Demo Trial Expired",
+        message: "Your 24-hour demo trial has expired.\n\nAll demo data has been removed.\n\nContact: support@sairolotech.com",
+        buttons: ["Exit"],
+      });
+      app.quit();
+      return;
+    }
+    const currentHwId = getHardwareId();
+    if (licData.hw !== currentHwId) {
+      console.error("[Security] Hardware mismatch detected");
+      dialog.showMessageBoxSync({
+        type: "error",
+        title: "License Error",
+        message: "This license is not valid for this computer.\n\nPlease contact SAI Rolotech for a new license.\n\nEmail: support@sairolotech.com",
+        buttons: ["Exit"],
+      });
+      app.quit();
+      return;
+    }
+  }, RUNTIME_CHECK_INTERVAL);
+}
+
+function saveTrialTimestamp(): void {
+  try {
+    const ts = Date.now().toString(36) + "x" + Math.random().toString(36).slice(2, 6);
+    fs.writeFileSync(getTrialTimestampPath(), encryptData(ts), "utf8");
+  } catch { /* ignore */ }
+}
+
+function getTrialStartTime(): number | null {
+  try {
+    const raw = fs.readFileSync(getTrialTimestampPath(), "utf8").trim();
+    const decoded = decryptData(raw);
+    if (!decoded) return null;
+    const tsStr = decoded.split("x")[0];
+    return parseInt(tsStr, 36);
+  } catch {
+    return null;
+  }
+}
+
+function isTrialExpired(): boolean {
+  const startTime = getTrialStartTime();
+  if (!startTime) return false;
+  const elapsed = Date.now() - startTime;
+  return elapsed > DEMO_TRIAL_HOURS * 60 * 60 * 1000;
+}
+
+function nukeTrialData(): void {
+  try {
+    const userDataPath = app.getPath("userData");
+    const filesToDelete = [
+      getLicenseKeyPath(),
+      getTrialTimestampPath(),
+      getHardwareIdPath(),
+      getIntegrityPath(),
+      path.join(userDataPath, "window-bounds.json"),
+    ];
+    for (const f of filesToDelete) {
+      try { fs.unlinkSync(f); } catch { /* ignore */ }
+    }
+    const dirsToNuke = ["Local Storage", "Cache", "GPUCache", "Session Storage", "IndexedDB", "Code Cache"];
+    for (const dir of dirsToNuke) {
+      const fullPath = path.join(userDataPath, dir);
+      if (fs.existsSync(fullPath)) {
+        fs.rmSync(fullPath, { recursive: true, force: true });
+      }
+    }
+  } catch { /* ignore */ }
+}
+
 function getSavedLicenseKey(): string | null {
+  try {
+    const licData = loadLicenseEncrypted();
+    if (licData && licData.key) return licData.key;
+  } catch { /* ignore */ }
+
   try {
     const keyPath = getLicenseKeyPath();
     if (fs.existsSync(keyPath)) {
-      const key = fs.readFileSync(keyPath, "utf8").trim();
-      return key || null;
+      const raw = fs.readFileSync(keyPath, "utf8").trim();
+      if (!raw.includes(":")) {
+        return raw || null;
+      }
     }
   } catch { /* ignore */ }
 
   if (IS_WIN) {
     try {
-      const { execSync } = require("child_process");
       const result = execSync(
         'reg query "HKCU\\Software\\SAI Rolotech Smart Engines" /v ProductKey',
         { encoding: "utf8", windowsHide: true }
@@ -853,9 +1153,9 @@ function getSavedLicenseKey(): string | null {
 }
 
 function saveLicenseKey(key: string): void {
-  try {
-    fs.writeFileSync(getLicenseKeyPath(), key, "utf8");
-  } catch { /* ignore */ }
+  saveLicenseEncrypted(key);
+  saveHardwareBinding();
+  saveIntegrity();
 }
 
 function isValidLicenseKey(key: string): boolean {
@@ -867,7 +1167,44 @@ async function verifyLicense(): Promise<boolean> {
 
   const savedKey = getSavedLicenseKey();
   if (savedKey && isValidLicenseKey(savedKey)) {
+    if (!verifyHardwareBinding()) {
+      console.error("[Security] Hardware binding mismatch — license invalid for this machine");
+      dialog.showMessageBoxSync({
+        type: "error",
+        title: "License Error — Wrong Computer",
+        message: "This license key is registered to a different computer.\n\nEach license can only be used on the computer where it was first activated.\n\nContact SAI Rolotech for a new license.\nEmail: support@sairolotech.com",
+        buttons: ["Exit"],
+      });
+      return false;
+    }
+
+    if (!verifyIntegrity()) {
+      console.error("[Security] Integrity check failed — files may have been tampered with");
+      saveIntegrity();
+    }
+
+    if (savedKey.trim().toUpperCase() === DEMO_KEY) {
+      if (isTrialExpired()) {
+        console.log("[License] Demo trial expired — nuking data");
+        nukeTrialData();
+        dialog.showMessageBoxSync({
+          type: "error",
+          title: "Demo Trial Expired",
+          message: "Your 24-hour demo trial has expired.\n\nAll demo data has been removed.\n\nTo continue using SAI Rolotech Smart Engines, please purchase a full license.\n\nContact: support@sairolotech.com",
+          buttons: ["Exit"],
+        });
+        return false;
+      }
+      const startTime = getTrialStartTime();
+      if (startTime) {
+        const remaining = Math.max(0, DEMO_TRIAL_HOURS * 60 * 60 * 1000 - (Date.now() - startTime));
+        const hoursLeft = Math.floor(remaining / (60 * 60 * 1000));
+        const minsLeft = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+        console.log(`[License] Demo trial — ${hoursLeft}h ${minsLeft}m remaining`);
+      }
+    }
     console.log("[License] Valid license key found");
+    startRuntimeLicenseCheck();
     return true;
   }
 
@@ -952,7 +1289,12 @@ async function verifyLicense(): Promise<boolean> {
     }
 
     if (isValidLicenseKey(enteredKey)) {
-      saveLicenseKey(enteredKey.trim().toUpperCase());
+      const upperKey = enteredKey.trim().toUpperCase();
+      saveLicenseKey(upperKey);
+      if (upperKey === DEMO_KEY) {
+        saveTrialTimestamp();
+        console.log("[License] Demo trial activated — 24 hours starts now");
+      }
       console.log("[License] Product activated successfully");
       return true;
     }
@@ -999,7 +1341,7 @@ app.whenReady().then(async () => {
 
   // Create window
   buildAppMenu();
-  createMainWindow();
+  await createMainWindow();
   createTray();
   setupIPC();
 

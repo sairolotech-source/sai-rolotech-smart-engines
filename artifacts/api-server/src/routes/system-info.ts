@@ -1,21 +1,27 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import os from "os";
 import v8 from "v8";
-import si from "systeminformation";
 import { getWorkerPoolStats } from "../lib/workers/worker-pool";
+
+let si: any = null;
+try {
+  si = require("systeminformation");
+} catch {
+  console.warn("[system-info] systeminformation not available — using fallback");
+}
 
 const router: IRouter = Router();
 
 router.get("/system/info", async (_req: Request, res: Response) => {
   try {
-    const [cpu, mem, disk, battery, netIfaces, graphics] = await Promise.allSettled([
+    const [cpu, mem, disk, battery, netIfaces, graphics] = si ? await Promise.allSettled([
       si.currentLoad(),
       si.mem(),
       si.fsSize(),
       si.battery(),
       si.networkInterfaces(),
       si.graphics(),
-    ]);
+    ]) : Array(6).fill({ status: "rejected" as const, reason: "systeminformation not available" });
 
     const cpuLoad = cpu.status === "fulfilled" ? Math.round(cpu.value.currentLoad) : 0;
     const memVal = mem.status === "fulfilled" ? mem.value : null;

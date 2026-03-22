@@ -8,9 +8,6 @@
 ; ── Finish page ──
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Sai Rolotech Smart Engines.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch Sai Rolotech Smart Engines"
-!define MUI_FINISHPAGE_SHOWREADME ""
-!define MUI_FINISHPAGE_SHOWREADME_TEXT "Create Desktop Shortcut"
-!define MUI_FINISHPAGE_SHOWREADME_FUNCTION createDesktopShortcut
 
 ; ── Pre-install function ──
 Function .onInit

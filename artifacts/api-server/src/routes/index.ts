@@ -44,6 +44,6 @@ router.use(aiChatbotsRouter);
 router.use(toolLibraryRouter);
 router.use(materialsRouter);
 
-startAutoBackup(60);
+startAutoBackup(600);
 
 export default router;

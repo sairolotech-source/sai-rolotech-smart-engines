@@ -1,0 +1,1001 @@
+{
+  "generated": "2026-03-20T12:31:45.910Z",
+  "files": {
+    "artifacts/design-tool/src/App.tsx": {
+      "hash": "a705754ff7414d0a2de8eba8117718b6d63bb3f2c23c68ca98950ce1c7a17bfe",
+      "size": 3244
+    },
+    "artifacts/design-tool/src/components/AutoAIModePanel.tsx": {
+      "hash": "eb2379532a46a11233dcd2af3c53fecad5634309da6091d82c48070ae381a527",
+      "size": 5887
+    },
+    "artifacts/design-tool/src/components/ErrorBoundary.tsx": {
+      "hash": "cacb6075242782e4cc3935d51a53dbba716bf71bf13db4d4c6c30283bff7f482",
+      "size": 2223
+    },
+    "artifacts/design-tool/src/components/KeyboardShortcutOverlay.tsx": {
+      "hash": "e2a4be42a0c781234232cb63c039eb8f966adc3c0a0cbd9f2eebddbfc6599cbb",
+      "size": 4697
+    },
+    "artifacts/design-tool/src/components/ShimmerLoader.tsx": {
+      "hash": "a28479c9aec31e52d605375edbc4ee8a7978ecdd43e8324f5636bc10b7764804",
+      "size": 2965
+    },
+    "artifacts/design-tool/src/components/SplashScreen.tsx": {
+      "hash": "c87e365295aa3fe8547f460e91c4741959dc2d0af90c5b0b312500d745df5d83",
+      "size": 25433
+    },
+    "artifacts/design-tool/src/components/UpdateNotification.tsx": {
+      "hash": "1362e07405c52188399f037768a512c0310679c19cb4f2395d2c87a5d0acea52",
+      "size": 5717
+    },
+    "artifacts/design-tool/src/components/WelcomeRobot.tsx": {
+      "hash": "ff9224eb2af8f0704f3a0c3c4a7ad94c373301b2c3267c0b5be85058af2e029b",
+      "size": 10075
+    },
+    "artifacts/design-tool/src/components/assembly/AssemblyDesignView.tsx": {
+      "hash": "1cc465950c52ae736383e20ddce75c264c9ef6ee020300ec516d840f42d02136",
+      "size": 25708
+    },
+    "artifacts/design-tool/src/components/assembly/AssemblyViewport3D.tsx": {
+      "hash": "ea48cf353457f1d08bfc0981b6fee9b2673ae9dd8326307e00b00537aa6a1d23",
+      "size": 11622
+    },
+    "artifacts/design-tool/src/components/auth/ForgotPasswordPage.tsx": {
+      "hash": "cd79bdb0438c3d4061b8a198d1884e0be0afe96be12a886013780a84106d4a5c",
+      "size": 6411
+    },
+    "artifacts/design-tool/src/components/auth/LoginPage.tsx": {
+      "hash": "a6e5fb000c045139f6fa3f3254a74273499069096d642f716fee3ef45eda3b48",
+      "size": 18212
+    },
+    "artifacts/design-tool/src/components/backup/AutoBackupPanel.tsx": {
+      "hash": "efc116e627d01b23dbe96b6ad010b68db5b621cfbb48791d7c0b3be78b525704",
+      "size": 9938
+    },
+    "artifacts/design-tool/src/components/canvas/DesignCanvas.tsx": {
+      "hash": "23967596046f44f8a034dddc93a8e54f741322179281bb5b5b07c8a183d66a73",
+      "size": 13077
+    },
+    "artifacts/design-tool/src/components/cnc/AIChatbotsView.tsx": {
+      "hash": "4e15bfcb77a5abf8c40178e32acb494d4244b46c0b7e212ed5e8382afcea7e46",
+      "size": 22404
+    },
+    "artifacts/design-tool/src/components/cnc/AIDesignAnalyzer.tsx": {
+      "hash": "85b0dffbebd92f065d6f7e53492327f1e737cc587634b1340b1ced17be5b9bc8",
+      "size": 9185
+    },
+    "artifacts/design-tool/src/components/cnc/AIDesignScore.tsx": {
+      "hash": "80c2838d43c20cc020946916bdb48103bdf81cadb577c5eb9d76a8d077970755",
+      "size": 13763
+    },
+    "artifacts/design-tool/src/components/cnc/AIFlowerAdvisor.tsx": {
+      "hash": "5b7241084acf5a5ca31130ddaa56d91cd453024d3c0295b3d6a8441261293b54",
+      "size": 11511
+    },
+    "artifacts/design-tool/src/components/cnc/AIGcodeOptimizer.tsx": {
+      "hash": "cf0be6ed6b0038467605da6833139e95183cc1eed483f0382c02c1fdce433d9e",
+      "size": 9148
+    },
+    "artifacts/design-tool/src/components/cnc/AIToolRecommender.tsx": {
+      "hash": "fea61c5a10aa6a32c36bc51aeb5a87f9f13ca548a5ba74addf6f60f6f3b93873",
+      "size": 11697
+    },
+    "artifacts/design-tool/src/components/cnc/AccuracyBadge.tsx": {
+      "hash": "6ec0bbc288c79078511f463df68b7f0d5de7542cc1a90d97ab2d34fc56fe1d3e",
+      "size": 2088
+    },
+    "artifacts/design-tool/src/components/cnc/AccuracyMonitor.tsx": {
+      "hash": "a0f214a05446594a7073bf30888a035dea0c1c4bcd71e8b0643b9131593e4fb9",
+      "size": 17936
+    },
+    "artifacts/design-tool/src/components/cnc/AdaptiveToolpath.ts": {
+      "hash": "c820d23983e80ab4e288604862c25f2df317ab5f198add3d9717fc234458e26d",
+      "size": 10974
+    },
+    "artifacts/design-tool/src/components/cnc/AdminDashboard3D.tsx": {
+      "hash": "e0a8b1f627bb23197942017646390c41a9eeee6e84775f68112ec268d2eada4c",
+      "size": 26561
+    },
+    "artifacts/design-tool/src/components/cnc/AdvancedCAMView.tsx": {
+      "hash": "f69a359d8d35bedd1ee3271352102997282a639dc3ebfca74ab81deec9618fa3",
+      "size": 34945
+    },
+    "artifacts/design-tool/src/components/cnc/AssemblyCheckView.tsx": {
+      "hash": "8e67604881f4123976d6427c532192bffac3e02dcc8f97bc8a2ba5daa01383cf",
+      "size": 14252
+    },
+    "artifacts/design-tool/src/components/cnc/AssemblyDrawingView.tsx": {
+      "hash": "55d69669537c0ef7e8a80b0b219a915321c87d5169cc063fa3c7e10caa3c256d",
+      "size": 26898
+    },
+    "artifacts/design-tool/src/components/cnc/BomView.tsx": {
+      "hash": "6e534719120add07f2970b2dbac3323aea27bdd6ce352fbcd76756fb0dd65518",
+      "size": 17786
+    },
+    "artifacts/design-tool/src/components/cnc/CADFinderView.tsx": {
+      "hash": "843051322409f0af31fb17d8f5e074893ef03d8d0aac56cf22cb38a90fd2dcb7",
+      "size": 12071
+    },
+    "artifacts/design-tool/src/components/cnc/CageFormingView.tsx": {
+      "hash": "364664dde28766f3c08a19e136a89fe8116b51dfacbf6d5c90fca53961a6ba3a",
+      "size": 11626
+    },
+    "artifacts/design-tool/src/components/cnc/CamberPredictionView.tsx": {
+      "hash": "8ff95904480ff25a5fc2943812b1404ed2570d1ea15914f074f6f4010ce66b39",
+      "size": 15939
+    },
+    "artifacts/design-tool/src/components/cnc/CollisionEngine3D.ts": {
+      "hash": "5fe464e89d9e8cc6d9c5015759039750b8504aa93453c3ce146060f64e954d04",
+      "size": 13690
+    },
+    "artifacts/design-tool/src/components/cnc/CompletePackagePanel.tsx": {
+      "hash": "4807ce9b45e1d2f7612823424ff8c373e937dc37827b077b6a0606c96f0a360e",
+      "size": 49701
+    },
+    "artifacts/design-tool/src/components/cnc/CostEstimatorView.tsx": {
+      "hash": "1983422bde54af320c73b74f216335fc10b3e2c991c4547035891d71e32cfb1c",
+      "size": 16740
+    },
+    "artifacts/design-tool/src/components/cnc/CuttingEffects3D.tsx": {
+      "hash": "f4bcb024462feba7b0e2c9570857e8446bda095dc236e7d37fb87e30d49f4071",
+      "size": 9422
+    },
+    "artifacts/design-tool/src/components/cnc/DXFImportView.tsx": {
+      "hash": "7bd0ebbdc8e6c2cda4e76ac43b74aa27ef9d44877bf469174dd17135bd1477e4",
+      "size": 29304
+    },
+    "artifacts/design-tool/src/components/cnc/DesignHistory.tsx": {
+      "hash": "27a70384e4d036521c9a4005114688f49f6a35e408a433979417c8580af6bb3a",
+      "size": 8548
+    },
+    "artifacts/design-tool/src/components/cnc/DesignReportGenerator.tsx": {
+      "hash": "8d7da339df82b26634619cb31f45817224b61d60b44dcaa2f2f643fdcbfe7d47",
+      "size": 42972
+    },
+    "artifacts/design-tool/src/components/cnc/DesktopInstallView.tsx": {
+      "hash": "d445beb30f195e25f04c7995aa0d364395a8706f26378e40a07d3fab5c269e42",
+      "size": 24575
+    },
+    "artifacts/design-tool/src/components/cnc/DigitalTwinView.tsx": {
+      "hash": "d14c34029312b9515edaa8dae8ce471acfb72c5b2b9a18d7b0930fc1313bae57",
+      "size": 24720
+    },
+    "artifacts/design-tool/src/components/cnc/DimensionConfirmationPanel.tsx": {
+      "hash": "0578590a2302833443e5c942a7f2b04e82854de7968f8b8cb388c7da850965cb",
+      "size": 21020
+    },
+    "artifacts/design-tool/src/components/cnc/DownhillFormingView.tsx": {
+      "hash": "446d9a92e5447d2c7c6ddd623c40ded753e833b1807cce6084c3738055953bdd",
+      "size": 11966
+    },
+    "artifacts/design-tool/src/components/cnc/DrawingDiesView.tsx": {
+      "hash": "e2855d676753d97503333228458a6a8492c5bf8d7a95b3d23d53c5a48c7e43b9",
+      "size": 12834
+    },
+    "artifacts/design-tool/src/components/cnc/ERPIntegrationView.tsx": {
+      "hash": "0b520a5da5864238791dda9b83e9e4f7317e0db293cc1dab43d5f2a58921de9b",
+      "size": 35518
+    },
+    "artifacts/design-tool/src/components/cnc/ExportHistoryPanel.tsx": {
+      "hash": "7f5a9cb7dede732afdb75018caa1b790decd6681d1dc337b71961a8e61a16c92",
+      "size": 7277
+    },
+    "artifacts/design-tool/src/components/cnc/FEASimulationView.tsx": {
+      "hash": "bbddee236824ff038f74901f4f20073ac6ab6bb735e7d6dc4db3dbb2242ce170",
+      "size": 33042
+    },
+    "artifacts/design-tool/src/components/cnc/FactoryAIView.tsx": {
+      "hash": "5a3b1002909a0f729b8f7edd0a890c5fd0ce1c080bde59014b6e5ac2c288d207",
+      "size": 869
+    },
+    "artifacts/design-tool/src/components/cnc/FiveAxisCAMPanel.tsx": {
+      "hash": "258322780330ed959368a5e59befa2cf9d954fcad8351f994cc53eefc83918ee",
+      "size": 30609
+    },
+    "artifacts/design-tool/src/components/cnc/FiveAxisCollisionEngine.ts": {
+      "hash": "4319882eed7f1b73796164513f279254b56dc5c5fb84587e4f40d11c0a7e16ce",
+      "size": 14379
+    },
+    "artifacts/design-tool/src/components/cnc/FiveAxisPostProcessors.ts": {
+      "hash": "454fa05c86582bf0babbc9bd8b44ffa1a4f66e98c6881a0683401cf0080d0bc0",
+      "size": 11597
+    },
+    "artifacts/design-tool/src/components/cnc/FiveAxisToolpathEngine.ts": {
+      "hash": "65b66e74242e075532e971f91ff303783f768e48b5ac6a41e187d7e683615336",
+      "size": 17919
+    },
+    "artifacts/design-tool/src/components/cnc/FlowerPattern3DView.tsx": {
+      "hash": "8e339dd3bb80c80741f3b7611987ae20ccf013cecfd369d16fc0bf13a30e8c3b",
+      "size": 14445
+    },
+    "artifacts/design-tool/src/components/cnc/FlowerPatternValidator.tsx": {
+      "hash": "e63e315b5d020c88de55320d3dd0b0424b849ce09c267352a1880766e9ba8d02",
+      "size": 10801
+    },
+    "artifacts/design-tool/src/components/cnc/FlowerPatternView.tsx": {
+      "hash": "2f2230c64030654f0cd81e25bab135b07aec0bf511e669613bdfba8a84e41317",
+      "size": 27265
+    },
+    "artifacts/design-tool/src/components/cnc/FormAxisComparisonView.tsx": {
+      "hash": "07ec458a742f3cf1e50ae74007a3171554021435ea0ea5cf4df0952f35eadb75",
+      "size": 41804
+    },
+    "artifacts/design-tool/src/components/cnc/FormingEnergyView.tsx": {
+      "hash": "f6bcdfa926294a77fb24037c9a56e88fd045c9415131a9e610e787dc3b516765",
+      "size": 15936
+    },
+    "artifacts/design-tool/src/components/cnc/FormingSimulationView.tsx": {
+      "hash": "654ab387245ff68f1df1eb94ff83b505bb530c82e689c7c9d0aff0bd84e4ab12",
+      "size": 54565
+    },
+    "artifacts/design-tool/src/components/cnc/GCodeSimulatorView.tsx": {
+      "hash": "8c51e8d1b5116f62b75a3e11005f87c6518e68573deba21c9fabf28c0dbba0e8",
+      "size": 20557
+    },
+    "artifacts/design-tool/src/components/cnc/GCodeVerificationView.tsx": {
+      "hash": "55de0661be3df9dd07be195c2100680d05d7f6af389f6ff562f2f94b7f40bdb6",
+      "size": 32764
+    },
+    "artifacts/design-tool/src/components/cnc/GcodeStepVerifier.tsx": {
+      "hash": "462849e905dce002f95a6f21fdf819755153e0a104571a1c0afe54bcc2aaa893",
+      "size": 14257
+    },
+    "artifacts/design-tool/src/components/cnc/GearboxCalculator.tsx": {
+      "hash": "8359c0e741231810772741120956cb7e7dd8dd30a11d16a32ad519895315c7c7",
+      "size": 10587
+    },
+    "artifacts/design-tool/src/components/cnc/GeometryEditPanel.tsx": {
+      "hash": "897c946cc53d816c002d3a2a9975b337134c5d3368cfdb6f3b5ea66d2641c01f",
+      "size": 21820
+    },
+    "artifacts/design-tool/src/components/cnc/GoogleDrivePanel.tsx": {
+      "hash": "109adb3322e5413c808156770bc1a79c832e234328f559913045f315067242ba",
+      "size": 18295
+    },
+    "artifacts/design-tool/src/components/cnc/GuardrailReportGenerator.tsx": {
+      "hash": "3d4a4ba1158e2b5315206661c796ddb5dbe6f15b338c37df6dbed052affa1a19",
+      "size": 27354
+    },
+    "artifacts/design-tool/src/components/cnc/JobPackageExport.tsx": {
+      "hash": "c9215c2529ae6f3778d8983210d76dbe0698873fa8792e34b2a32318fe40728b",
+      "size": 32365
+    },
+    "artifacts/design-tool/src/components/cnc/LatheSimulator.tsx": {
+      "hash": "f933c467ba65307c3d96c9dfc5baf16ea01e53185b446d4cb58f76510dd5860f",
+      "size": 11960
+    },
+    "artifacts/design-tool/src/components/cnc/LatheSimulator3D.tsx": {
+      "hash": "f86c8a94c07fa84933bd1b0fe91a2332ec8c3c21b03e7aa1c9a9bf7aa21887d0",
+      "size": 35511
+    },
+    "artifacts/design-tool/src/components/cnc/LeftPanel.tsx": {
+      "hash": "de3e8b09556a4310c25f61a8fc9e4b74686549687e544972a2501c6170ead1f0",
+      "size": 88524
+    },
+    "artifacts/design-tool/src/components/cnc/LoadCalculator.tsx": {
+      "hash": "62badc9e650ffa2872276bffb565945615c8b4fe7e17040a7a4948dec213ef74",
+      "size": 18947
+    },
+    "artifacts/design-tool/src/components/cnc/MachineBOMPanel.tsx": {
+      "hash": "9430ffa43a7d84605ea6df59ea609513d758a8ce8a56d597e5d70309eaf5136f",
+      "size": 19242
+    },
+    "artifacts/design-tool/src/components/cnc/MachineSizingCalculator.tsx": {
+      "hash": "13e07e2ce90dd770a2a82ba4392a35dd1b50d28d1479b22957e8e88b085dacee",
+      "size": 11460
+    },
+    "artifacts/design-tool/src/components/cnc/MasterDesignerChatbot.tsx": {
+      "hash": "86d95988c733f9806f625d85d7698c89ff31a68b262e51f00f5289cd8a0e2521",
+      "size": 15055
+    },
+    "artifacts/design-tool/src/components/cnc/MaterialAnalyzerView.tsx": {
+      "hash": "8f4ce36a3a8a33665ba6282298c0797d8605ed272a81ccb6fc744ef7d75648bb",
+      "size": 22243
+    },
+    "artifacts/design-tool/src/components/cnc/MaterialDatabaseView.tsx": {
+      "hash": "ba45b5d9f372e7740c3132bffd956fd403282a89cd59376af48ecfe99fc8d845",
+      "size": 17981
+    },
+    "artifacts/design-tool/src/components/cnc/MillingGcodeGenerator.ts": {
+      "hash": "57ff09af52b0b2f02183d9a11bf00381b35442b6ae14445bad47a44de5bee021",
+      "size": 42973
+    },
+    "artifacts/design-tool/src/components/cnc/MillingOperationsView.tsx": {
+      "hash": "9a590d7d9d85de618a9365e571f0cf27859513aaf0a47bf71fffea21bb102330",
+      "size": 48396
+    },
+    "artifacts/design-tool/src/components/cnc/MillingSimulator3D.tsx": {
+      "hash": "bb3d919dfedda8634572e2aef518187f37d4d2cef65e471c30e794fdbc1a0b24",
+      "size": 46195
+    },
+    "artifacts/design-tool/src/components/cnc/MillingToolAssembly.tsx": {
+      "hash": "e7a7336ca81b1cdcf4e7cb746af6a0857cc8b829d5cfe12e1e892166d12af2aa",
+      "size": 7514
+    },
+    "artifacts/design-tool/src/components/cnc/MillingToolpathPreview.tsx": {
+      "hash": "e524d09f5b1eb2aa31d942162d3427006f05d0f4013794da93acd271694c2522",
+      "size": 6919
+    },
+    "artifacts/design-tool/src/components/cnc/MultiAxisTurning.ts": {
+      "hash": "265b37116052aea7d1e74fba27fabd2d4bb4303d5dabab679fcb0839519b3bfa",
+      "size": 15159
+    },
+    "artifacts/design-tool/src/components/cnc/OfflineAIView.tsx": {
+      "hash": "670c941739422180e8840353b8cf92cc8c5f8b1e71322ab283033d97e46262b0",
+      "size": 38872
+    },
+    "artifacts/design-tool/src/components/cnc/ProfileCanvas.tsx": {
+      "hash": "83850b5444be68868f8ee7c317457ce1c33cba4ea98dbedc9ea8f925ecc799cd",
+      "size": 13917
+    },
+    "artifacts/design-tool/src/components/cnc/ProfileLibrary.tsx": {
+      "hash": "97c9da66111af7afaf986ba3243e845ecd1276b7f1fe0a90bcdc4ffe70532773",
+      "size": 22120
+    },
+    "artifacts/design-tool/src/components/cnc/ProfileScanView.tsx": {
+      "hash": "c06ce66ba10022a4d57c6480f63441d9a89c729d58cb8771885971f93646b038",
+      "size": 12845
+    },
+    "artifacts/design-tool/src/components/cnc/RFClosedSectionView.tsx": {
+      "hash": "ff9f1af8587016a5031c0fe2ae802a9cec14eb0f19e4d56349fd22e5f9cb3e68",
+      "size": 26345
+    },
+    "artifacts/design-tool/src/components/cnc/RFDTMView.tsx": {
+      "hash": "c82f1de27010903b2607d99e1b61966dcec523bd3e836cad0ec88f1be909d99d",
+      "size": 15510
+    },
+    "artifacts/design-tool/src/components/cnc/RFSpreadsheetView.tsx": {
+      "hash": "080e5e936d2d6897725c6b98daa6895a68132d8401c9f7c5ce318ca931d94b57",
+      "size": 12388
+    },
+    "artifacts/design-tool/src/components/cnc/RFTrapezeView.tsx": {
+      "hash": "545e991209a4b277d7d24a9f5def19229344714ce4d7c5e221fd0f36a63d0175",
+      "size": 12757
+    },
+    "artifacts/design-tool/src/components/cnc/RFTubesView.tsx": {
+      "hash": "aad2fa60dd88f8f61db9610edd7e45449a2af9d89e1380ea9e48a7b850f8feb9",
+      "size": 19812
+    },
+    "artifacts/design-tool/src/components/cnc/RealMukablaView.tsx": {
+      "hash": "d2638553a8aca2792d50d0e22e1d41eb5eb5d04835e8e0e9137e6db65d7d87bc",
+      "size": 35058
+    },
+    "artifacts/design-tool/src/components/cnc/RightPanel.tsx": {
+      "hash": "17798a8b3f2dc7c86a0631474cd2647456dd41eeb7173ae3fc549e4e023b1825",
+      "size": 15392
+    },
+    "artifacts/design-tool/src/components/cnc/RollFlowerDesignerView.tsx": {
+      "hash": "226b03d2d852b423417a25c92a097de7f7632560f3cbeb18ad29eb098e0a4f12",
+      "size": 23102
+    },
+    "artifacts/design-tool/src/components/cnc/RollGapView.tsx": {
+      "hash": "3f95eed3eb1bd833dc447023fb0113f2cfdcf42bfbcc9b9d86e8107ae74a5578",
+      "size": 12020
+    },
+    "artifacts/design-tool/src/components/cnc/RollLifecycleView.tsx": {
+      "hash": "cd12bc12f205b9b4867b2a0b92a26f74c2213b5f80e95338b79f66ad8c250689",
+      "size": 12705
+    },
+    "artifacts/design-tool/src/components/cnc/RollScannerView.tsx": {
+      "hash": "26dac1f011f7eaa264fa5e3f1b92e6a80ae64cc884efb3f3b51304b76d723825",
+      "size": 12356
+    },
+    "artifacts/design-tool/src/components/cnc/RollToolingExportPanel.tsx": {
+      "hash": "1a1bd4963f08442c85c11eec1430f053bde36d9709bb672ec2e28594dbfae8ef",
+      "size": 15446
+    },
+    "artifacts/design-tool/src/components/cnc/RollToolingView.tsx": {
+      "hash": "631acdebad6860c1d5ba6ffe1f6c0436ca03c7c40628e7a246c2c4983220103a",
+      "size": 99312
+    },
+    "artifacts/design-tool/src/components/cnc/STEPImporter.ts": {
+      "hash": "01b0f9dcb5344dee0c120696b911d2a046e4cae058fcb5f2a0646954e3ef7afb",
+      "size": 8868
+    },
+    "artifacts/design-tool/src/components/cnc/SaveProjectModal.tsx": {
+      "hash": "a2300561f849b352d3e1116959400036a7748ee6c1d79d7c8297254216b01baa",
+      "size": 17557
+    },
+    "artifacts/design-tool/src/components/cnc/SectionModelSelector.tsx": {
+      "hash": "f635d88fa4743a4609418a6be2a60eef7607bc4b3b583455d319a0197b63445d",
+      "size": 7570
+    },
+    "artifacts/design-tool/src/components/cnc/SetupSheetGenerator.tsx": {
+      "hash": "26e366438727fc86d43882918aea9c104d68ecafeec23e6a1b4063625f3a4a1f",
+      "size": 12472
+    },
+    "artifacts/design-tool/src/components/cnc/SheetMetalView.tsx": {
+      "hash": "7d6362061a682d93e60209a1abbae3dd188b025071fe097d80af27bf7aa8f6c3",
+      "size": 30777
+    },
+    "artifacts/design-tool/src/components/cnc/SmartRollsView.tsx": {
+      "hash": "0138241d58832ce8e55cc4270e5dd60a2c1ffbbaff85541a45929b79616ec33f",
+      "size": 16037
+    },
+    "artifacts/design-tool/src/components/cnc/SmartToolSelector.tsx": {
+      "hash": "623b270d8012099f9f1a79123c25f2a435fd7420dff6191aeb31c63363904d04",
+      "size": 18983
+    },
+    "artifacts/design-tool/src/components/cnc/SpecificationSheet.tsx": {
+      "hash": "60b5414106273b1f0a9215400d4d03c2de3820740b8fda03ff60ad40de092fcb",
+      "size": 26016
+    },
+    "artifacts/design-tool/src/components/cnc/SpringbackView.tsx": {
+      "hash": "8fb29fd5bde4727803bb9cae9804025561e9f6ce424e74cc26488525764f7730",
+      "size": 15282
+    },
+    "artifacts/design-tool/src/components/cnc/StationToleranceChecker.tsx": {
+      "hash": "851304958fcf83e2ff02a661763656f521fc5d9413ffc1f0a77c69b520ce6021",
+      "size": 9975
+    },
+    "artifacts/design-tool/src/components/cnc/StripWidthCalculator.tsx": {
+      "hash": "77de9d560fb5d5d40e6490cb566ec2143b16d7b8b708bdec846ff54ac4e5cd58",
+      "size": 12712
+    },
+    "artifacts/design-tool/src/components/cnc/StripWidthView.tsx": {
+      "hash": "ce919ac842595f6591a16aa74b027a940fdbe4ac0c34f14152a0b168a483b160",
+      "size": 12516
+    },
+    "artifacts/design-tool/src/components/cnc/SurfaceFinishOverlay.ts": {
+      "hash": "60e685590045225e5fb5e96012934db5114acd6fb66b3f34d92747d1574d9eb8",
+      "size": 4028
+    },
+    "artifacts/design-tool/src/components/cnc/SystemInfoPanel.tsx": {
+      "hash": "ca70498ed97e76c31232ec2dbef9aeab7d64d6aa1bcd9f4809e7cef9abb5be21",
+      "size": 12841
+    },
+    "artifacts/design-tool/src/components/cnc/TestingEngineView.tsx": {
+      "hash": "b3d3988329c532908410e60dc2a0341d42425b49caa8989a929301100a399bc6",
+      "size": 21695
+    },
+    "artifacts/design-tool/src/components/cnc/ToolLibraryView.tsx": {
+      "hash": "906e0db7245442371a6e7281406ee3bfd377e559eb5a88d9aa00f1743ac0d930",
+      "size": 39621
+    },
+    "artifacts/design-tool/src/components/cnc/ToolpathSimulator.tsx": {
+      "hash": "eaaf672eb4526ac933eb05fef0643e367697f99c074e75bd3633f10abe64c0ff",
+      "size": 6896
+    },
+    "artifacts/design-tool/src/components/cnc/Troubleshooting.tsx": {
+      "hash": "c59dbc590716280754394885d3c2842ff92584f2f13347220e835831815078d0",
+      "size": 58172
+    },
+    "artifacts/design-tool/src/components/cnc/TurnAxisCAMOperationsView.tsx": {
+      "hash": "cc184e3e850d52f7ea79186c612661830eb42c3699cf0aea72b871480f758a8d",
+      "size": 79121
+    },
+    "artifacts/design-tool/src/components/cnc/TurnerSimulation.tsx": {
+      "hash": "3aa469edf78a7d9ead302d4c78f38bbec621d82a2ce05ab41a5af9de5db414d2",
+      "size": 26912
+    },
+    "artifacts/design-tool/src/components/cnc/TurningView.tsx": {
+      "hash": "7b616194aa1bb1f7339a90f37df7f8e6949f567a11c2aad12f77e74b5c8e019f",
+      "size": 62538
+    },
+    "artifacts/design-tool/src/components/cnc/ValidationPipelinePanel.tsx": {
+      "hash": "83138bf5066597bf9d211d0e8f4e42a1e064dc985f97dfc22eea0910c61d3523",
+      "size": 27527
+    },
+    "artifacts/design-tool/src/components/cnc/WireRollingView.tsx": {
+      "hash": "6264947794ad5a51462aa47499c34c31fefe9fb612b06f0d7b4cd769c3ba6315",
+      "size": 12883
+    },
+    "artifacts/design-tool/src/components/cnc/WizardMode.tsx": {
+      "hash": "3382ecc9b5b3042f2f2a6033aa9b230bdade2bb690a383b24ab2570aa3ed1714",
+      "size": 54637
+    },
+    "artifacts/design-tool/src/components/demo/DemoCChannelPanel.tsx": {
+      "hash": "f4c558dde753c63f8d650b03af14c6e97597a1985f32097c1632019095b125fb",
+      "size": 25521
+    },
+    "artifacts/design-tool/src/components/manual-drawing/BlockSystem.ts": {
+      "hash": "5f04f90cd197a16bb002a50150c7fc241d672a20eca2754c6a2f41064eafbfcf",
+      "size": 7462
+    },
+    "artifacts/design-tool/src/components/manual-drawing/DimensionStyles.ts": {
+      "hash": "a86738c1ebafc528e1ef0dab3f1be1b60ea980d0d541c7b3e4366b0841a3fa89",
+      "size": 10223
+    },
+    "artifacts/design-tool/src/components/manual-drawing/EditingCommands.ts": {
+      "hash": "abd54e87e85ba66f4685d1202ea31cbfa75402a83e2bc1b94e53beefe00d228d",
+      "size": 12960
+    },
+    "artifacts/design-tool/src/components/manual-drawing/HatchEngine.ts": {
+      "hash": "cba5be5e74fefa018f28548242bc22a113e8b96c2b4f1c9a6da344a4ed109c10",
+      "size": 7581
+    },
+    "artifacts/design-tool/src/components/manual-drawing/ManualDrawingEngine.ts": {
+      "hash": "61799fc13282bb5c23843e792ef9c5ce3cf552ce24c0e92c1bf38b72b054869e",
+      "size": 11412
+    },
+    "artifacts/design-tool/src/components/manual-drawing/ManualDrawingView.tsx": {
+      "hash": "8dacb5723fd5a3c879b6a806f948d1e398497372158095a0e0cb400392ab3439",
+      "size": 160930
+    },
+    "artifacts/design-tool/src/components/manual-drawing/PrintLayout.ts": {
+      "hash": "7f00fe5ae09849e5eb2e4e9ab41adda69f20e980adfda5f83b21055ea57bb9d2",
+      "size": 12890
+    },
+    "artifacts/design-tool/src/components/manual-drawing/TextStyles.ts": {
+      "hash": "7b21bec6cd11a4fa19fc6c93f1221c6974de67cb63fb4d4113ce520c6fea4467",
+      "size": 4262
+    },
+    "artifacts/design-tool/src/components/panels/LeftToolbar.tsx": {
+      "hash": "82966f6b5920d5d4be659bd9eb1e4d37870a409fc8daf0f3257a7cb8f22b942e",
+      "size": 6069
+    },
+    "artifacts/design-tool/src/components/panels/RightProperties.tsx": {
+      "hash": "91c084b0eb82671f780c48e1cd6559b3555491b03ed52f750827839f45910349",
+      "size": 10891
+    },
+    "artifacts/design-tool/src/components/panels/TopBar.tsx": {
+      "hash": "43643577b41e240c8dc29714f25a13fb728ebf5cd1c4714fd2de2c39760c0cf0",
+      "size": 5364
+    },
+    "artifacts/design-tool/src/components/setup/SystemSetupPanel.tsx": {
+      "hash": "769c357b89da028fd32120185843c795d6933108b6808b77bf82e165abc2f32a",
+      "size": 26316
+    },
+    "artifacts/design-tool/src/components/station-control/StationControlPanel.tsx": {
+      "hash": "14fdcfbc3d979ab59707543f7d51fbea96cd027ef86c61dfb4cd24cde4107f35",
+      "size": 21022
+    },
+    "artifacts/design-tool/src/components/studio3d/AIChatPanel.tsx": {
+      "hash": "b36635b5a30f8d7af6537de204158156ebc3df59fe4fc039de6ddf1275a7400d",
+      "size": 9204
+    },
+    "artifacts/design-tool/src/components/studio3d/CAMPanel.tsx": {
+      "hash": "2d96a1b66bee0c8c31ad04ee17ca4c9cd285c998bc606c62631b0d893e623d05",
+      "size": 7550
+    },
+    "artifacts/design-tool/src/components/studio3d/FeatureTree.tsx": {
+      "hash": "f88b819916c2ae8f642f63db7073a855bb9ab3332baec2c2533547f0f285d214",
+      "size": 5748
+    },
+    "artifacts/design-tool/src/components/studio3d/PropertiesPanel.tsx": {
+      "hash": "bd5023ae772dcd46d8ab7b48d86e2b53f375c56ee2b8d1478a36874323b90469",
+      "size": 4579
+    },
+    "artifacts/design-tool/src/components/studio3d/RollFormingViewport3D.tsx": {
+      "hash": "4b7477348544deac37c7f627234c5a21d090f9767a3032fafe9f27dde2d427b0",
+      "size": 30392
+    },
+    "artifacts/design-tool/src/components/studio3d/SceneTree.tsx": {
+      "hash": "d2d7d4f0f196b27113aeda9abdd4776006025a51ce693c730f177b0dd6c0c0c3",
+      "size": 3475
+    },
+    "artifacts/design-tool/src/components/studio3d/SketchCanvas.tsx": {
+      "hash": "b682b5b40a74c6d24f1da096a031736190e5f01199b22d0d603757d2935ba98d",
+      "size": 9039
+    },
+    "artifacts/design-tool/src/components/studio3d/SolidModelingEngine.ts": {
+      "hash": "6c9e9bc35f483c8ff73fa08c0901983192b849b2fb9ddae0215d2bf28a8b1d33",
+      "size": 34028
+    },
+    "artifacts/design-tool/src/components/studio3d/SolidModelingPanel.tsx": {
+      "hash": "fbe5a7425532d2ab8b340b4a4ddd406e11b6b4ebc14bf82664e65377f7aee12d",
+      "size": 12358
+    },
+    "artifacts/design-tool/src/components/studio3d/Studio3DView.tsx": {
+      "hash": "75a4408f20a38035dcf5cc99f5ba6d14d2f1de2e5334d16ad6fd9a10d26ed734",
+      "size": 13374
+    },
+    "artifacts/design-tool/src/components/studio3d/Viewport3D.tsx": {
+      "hash": "2ce53baa1f852ecf49c3c21d6519d6f798a2aacc0f8bb33bf0593ec6e7a6fbb0",
+      "size": 17744
+    },
+    "artifacts/design-tool/src/components/studio3d/use3DStudioStore.ts": {
+      "hash": "01bb529a3e4daa93fe28c7e45dd8b09a5cab9c0308aa2c1cf6dd71235c660dce",
+      "size": 22755
+    },
+    "artifacts/design-tool/src/components/ui/accordion.tsx": {
+      "hash": "dcbfb3243a26096fc3e5f54039ccb5c4c23d9bb79a4d5846b4be75bf912f07d9",
+      "size": 2001
+    },
+    "artifacts/design-tool/src/components/ui/alert-dialog.tsx": {
+      "hash": "311bede35f785d7b1ecd7398986757e26409d1049352a94ccf83586b8603c92d",
+      "size": 4419
+    },
+    "artifacts/design-tool/src/components/ui/alert.tsx": {
+      "hash": "5950ac01377e7eedc94b00eb3fee678745e4cc1a72b5343867f0733d07db6660",
+      "size": 1598
+    },
+    "artifacts/design-tool/src/components/ui/aspect-ratio.tsx": {
+      "hash": "08b0aa0b05efc573c7d63363c03e83d4b101bfeb54140764e96ddea30659cfcc",
+      "size": 140
+    },
+    "artifacts/design-tool/src/components/ui/avatar.tsx": {
+      "hash": "e78b35ed76c67d8ff50603fbe0dfa4fe600097bd860d89e65beea3e16683dad8",
+      "size": 1419
+    },
+    "artifacts/design-tool/src/components/ui/badge.tsx": {
+      "hash": "0564174ab513773e924dda521ce205535b05c7df9842e331ebbb59dd8b86022d",
+      "size": 1163
+    },
+    "artifacts/design-tool/src/components/ui/breadcrumb.tsx": {
+      "hash": "c3d3dcb0d82fc5e91d8830bac7fead905686fe876f1f42c3ed872bb0a6b6584e",
+      "size": 2712
+    },
+    "artifacts/design-tool/src/components/ui/button-group.tsx": {
+      "hash": "e3716d270e9ef6457b5cd29464ae00194abc8093c08ebf726c9204d7a69231d9",
+      "size": 2209
+    },
+    "artifacts/design-tool/src/components/ui/button.tsx": {
+      "hash": "f772e739cf48478f112358ce46904ea454d1d303901fc4703002eabe9e126556",
+      "size": 1929
+    },
+    "artifacts/design-tool/src/components/ui/calendar.tsx": {
+      "hash": "787a19c855cf2b826942d25440b63150c45094154c6a40e95abdb4109298b8b4",
+      "size": 7569
+    },
+    "artifacts/design-tool/src/components/ui/card.tsx": {
+      "hash": "525c4bb2c051987be64df0e92e1d90174912b219bf541e24ffbc4a3406de49e8",
+      "size": 1828
+    },
+    "artifacts/design-tool/src/components/ui/carousel.tsx": {
+      "hash": "5a4ff73c804e86c873382da80c453f1399006326ef042fb984c24162ec86666e",
+      "size": 6210
+    },
+    "artifacts/design-tool/src/components/ui/chart.tsx": {
+      "hash": "b40d1236f168c746b228adec6bc4e9d196ea362a7910878f161d3c359a013b89",
+      "size": 10763
+    },
+    "artifacts/design-tool/src/components/ui/checkbox.tsx": {
+      "hash": "ac389a574651c8bedffc10f80674c5fc2f02ab81291a5f4ad9c587d1f775fdce",
+      "size": 1031
+    },
+    "artifacts/design-tool/src/components/ui/collapsible.tsx": {
+      "hash": "f4cdd104de29928bfcd40b865c7d08eed9157a537fbb8b5e6d0921f02b63cc04",
+      "size": 329
+    },
+    "artifacts/design-tool/src/components/ui/color-picker.tsx": {
+      "hash": "82ff67e8b976a6c40080561d128c4f5c13d58f2af154336a42d9c060eae4f572",
+      "size": 1132
+    },
+    "artifacts/design-tool/src/components/ui/input.tsx": {
+      "hash": "99c822694b3300c276e2ef3e7ef951eb5e8b9686077532d4300cd3968b1f3d70",
+      "size": 823
+    },
+    "artifacts/design-tool/src/components/ui/scroll-area.tsx": {
+      "hash": "3ab145b849cfb87351c2f461de91693793b6b3120bdcb59c7fd328f55543a818",
+      "size": 1641
+    },
+    "artifacts/design-tool/src/components/ui/separator.tsx": {
+      "hash": "1d635737a6e99be9a7b6f95a3ebd838afe695a3d9f94ab88e834f30ccda169ee",
+      "size": 755
+    },
+    "artifacts/design-tool/src/components/ui/slider.tsx": {
+      "hash": "66ad365a51964cd6637866d2bc2e09310190a4bc76e62ae7e1105a7a4277393f",
+      "size": 1076
+    },
+    "artifacts/design-tool/src/components/ui/table.tsx": {
+      "hash": "a4a6972c2d47d465d7f02c1dc4a6cbfeda7a97e46479c1b0cebdaf26bf9b497a",
+      "size": 2859
+    },
+    "artifacts/design-tool/src/components/ui/toast.tsx": {
+      "hash": "aa9108c9316c1aa6a475c57ac1e87389991a5ea3e921b8bda53729fd4c426f90",
+      "size": 4844
+    },
+    "artifacts/design-tool/src/components/ui/toaster.tsx": {
+      "hash": "1348f1a1f9820e2f1394b93cecc156a7e22f03636ab9270753985549aae2be74",
+      "size": 772
+    },
+    "artifacts/design-tool/src/components/ui/tooltip.tsx": {
+      "hash": "ce6afa34fb9dae51053a863b4c3f7c6e55f3da23b00149f31a8e4402bc963be0",
+      "size": 1267
+    },
+    "artifacts/design-tool/src/components/ultra-dashboard/AIChatPanel.tsx": {
+      "hash": "e3ee774dc0c984eae019b20d5640d1cc6eee7e74c4731df5da0c82551975c680",
+      "size": 10123
+    },
+    "artifacts/design-tool/src/components/ultra-dashboard/FileManagerPanel.tsx": {
+      "hash": "923f5917b5b810e3d4ae110d342b25ff404e0e311830aa08c460fb2e4d6c301a",
+      "size": 13039
+    },
+    "artifacts/design-tool/src/components/ultra-dashboard/HardwareMonitorPanel.tsx": {
+      "hash": "e0c154c6bce2afd94796ee39f85f6ccf38d8c5b89ca96e32dffdd889ad78b2ef",
+      "size": 11733
+    },
+    "artifacts/design-tool/src/components/ultra-dashboard/OfflineAIPanel.tsx": {
+      "hash": "597900d24fd045b708a1d0bf7725510c96c1123640674b6bbe4cf1cbc2b69a60",
+      "size": 14541
+    },
+    "artifacts/design-tool/src/components/ultra-dashboard/SettingsPanel.tsx": {
+      "hash": "785ec3e128f0d093746cc5e733fc8782de574d58983d8039d2142b206f70072c",
+      "size": 10983
+    },
+    "artifacts/design-tool/src/components/ultra-dashboard/SystemInfoPanel.tsx": {
+      "hash": "34fc506c8fd20a08badf08a69a7f89f9d92c0ea1ca7ebb7b1807f87ceb19e418",
+      "size": 8611
+    },
+    "artifacts/design-tool/src/components/ultra-dashboard/UltraDashboard.tsx": {
+      "hash": "825ee0817aad09eebe2a31fa5e47632121ad5b18880b4105b8b7b584c7a6961a",
+      "size": 5556
+    },
+    "artifacts/design-tool/src/hooks/use-keyboard-shortcuts.ts": {
+      "hash": "28c04012d77be4071b41099fc3bbcdad42af600377e8bda7fead922cf5fe6bb9",
+      "size": 1642
+    },
+    "artifacts/design-tool/src/hooks/use-mobile.tsx": {
+      "hash": "ad0936f84f1df79d3697bfbff9c18f8ad58431c1cbaf2359c6a853b0fcc9f28b",
+      "size": 565
+    },
+    "artifacts/design-tool/src/hooks/use-toast.ts": {
+      "hash": "5aab0623ee24bddf9420c259a23a06996292e38ea70eccbac2715516f6d01a0b",
+      "size": 3895
+    },
+    "artifacts/design-tool/src/hooks/useAccuracyScoring.ts": {
+      "hash": "df225acbe046b742647e8223dd8b33f95391a05455094355302d34bd0bcebda3",
+      "size": 4552
+    },
+    "artifacts/design-tool/src/hooks/useAutoAIMode.ts": {
+      "hash": "07d36b0fcb4801b5d2bea29727def08663399458290a8e27dfa23580c2e8d732",
+      "size": 16237
+    },
+    "artifacts/design-tool/src/hooks/useDesignHistory.ts": {
+      "hash": "ac589e9047f8f9e943a04133fd7035d5b5a4e0475656613184bb85471ab02561",
+      "size": 1891
+    },
+    "artifacts/design-tool/src/hooks/useHardwareEngine.ts": {
+      "hash": "2060c1c511a72229df607ea17973f2588588b99f9abbdfde9ff3a2f00f0b1db1",
+      "size": 2047
+    },
+    "artifacts/design-tool/src/hooks/useNetworkStatus.ts": {
+      "hash": "5a7e76278e1c8c0922afcf41c0ff127265a20b890a592b7327d1b4b269924207",
+      "size": 1597
+    },
+    "artifacts/design-tool/src/hooks/useWebLLM.ts": {
+      "hash": "eac050c15c2cc13b388efe6f92ff5328e538a377166f75427fe9d225e8b9ec80",
+      "size": 25214
+    },
+    "artifacts/design-tool/src/index.css": {
+      "hash": "0bb2dce21df02fb8b387548354d6c4f0e19e823bd69be88d59ac2e924ecf37b4",
+      "size": 27817
+    },
+    "artifacts/design-tool/src/lib/api.ts": {
+      "hash": "4e7cd2665801a303d7ba03c201652418b9a30422d81b15ca51cda52cbdfa02ab",
+      "size": 13456
+    },
+    "artifacts/design-tool/src/lib/auth-fetch.ts": {
+      "hash": "bf65cdc0148c194e5bc3dfb95ede694372d17bb92e82c1e6f41c709c2e1bfa4b",
+      "size": 482
+    },
+    "artifacts/design-tool/src/lib/auto-backup.ts": {
+      "hash": "99cd3e4f3f3dbad0605097745c4e17de4bc05fcf1bf3752299b535193178dc7d",
+      "size": 5928
+    },
+    "artifacts/design-tool/src/lib/domain-system-prompt.ts": {
+      "hash": "7c6258b4b17e57752c7adcdbf8803e0f543e152a07e5fe70b5ec4eea6b8dda78",
+      "size": 31927
+    },
+    "artifacts/design-tool/src/lib/engineering-scale.ts": {
+      "hash": "99c198e3c3a733aa8f41814a40c7d53561238d251c1ba0214e2a38b23ed057dc",
+      "size": 4022
+    },
+    "artifacts/design-tool/src/lib/firebase.ts": {
+      "hash": "cb79e10204d187d9136b03287581f5eaf463eb6e71498cb031dd1b1cce64c38c",
+      "size": 1021
+    },
+    "artifacts/design-tool/src/lib/gcode-split.ts": {
+      "hash": "5d8cb7e8c28ae57d21c2da5b8f67cfce2c431fb14039f68ba856219e145005d3",
+      "size": 5659
+    },
+    "artifacts/design-tool/src/lib/gpu-compute-pipeline.ts": {
+      "hash": "66591fe693c834b2cd8a4d59c79e47e23f082def18d029974963815b4574c5ca",
+      "size": 17169
+    },
+    "artifacts/design-tool/src/lib/gpu-tier.ts": {
+      "hash": "50841f6dcf63125cf0e2f84750f812a1cdecd00694207ad14feb9d12700b935a",
+      "size": 12539
+    },
+    "artifacts/design-tool/src/lib/hardware-engine.ts": {
+      "hash": "1435196555702cdfb3a83e6c74572ef9f9d8adc15455904fa201d2e066aee89d",
+      "size": 21885
+    },
+    "artifacts/design-tool/src/lib/offline-ai-kb-expanded.ts": {
+      "hash": "819761c5765fa9303e3108e2e489d3778d68a6040b484df4b74bdc720c38a549",
+      "size": 33784
+    },
+    "artifacts/design-tool/src/lib/post-processors.ts": {
+      "hash": "0dea01a72a1799d7609dae2c33716efa4240bc0c2b2336cff748f7823739740a",
+      "size": 10868
+    },
+    "artifacts/design-tool/src/lib/roll-dxf.ts": {
+      "hash": "4f99846d76d8068602efa4663a6682f45f059d2df20ba30ce3c3c6483d8b0c92",
+      "size": 11590
+    },
+    "artifacts/design-tool/src/lib/sw-download-manager.ts": {
+      "hash": "0939330de0cd130642a88854004c20b7c03324a737a203c223c828d33ad1422b",
+      "size": 2481
+    },
+    "artifacts/design-tool/src/lib/testing-engine.ts": {
+      "hash": "f26d38d8b237851054ee9e71de4d2c845a83ea93390009b774ab47bac5c093e4",
+      "size": 60895
+    },
+    "artifacts/design-tool/src/lib/toast.ts": {
+      "hash": "b82836b94a2fb08f382fb9fc4b89dd22008b9fd8ed0a8cb88d4d35fbfc18aa15",
+      "size": 455
+    },
+    "artifacts/design-tool/src/lib/utils.ts": {
+      "hash": "4acbc7165a8d54738ff62b51414e772c08fe78434e524e6d8770180d3ba2925f",
+      "size": 169
+    },
+    "artifacts/design-tool/src/main.tsx": {
+      "hash": "29946f51942fba11605c7595fd82b50b0d7e50148e0194fd356dacbc958f18ec",
+      "size": 157
+    },
+    "artifacts/design-tool/src/pages/Dashboard.tsx": {
+      "hash": "c88fd8da5d0e3756699b4a1a8e571638a2acaba3d7e60135c5858ef416084608",
+      "size": 15117
+    },
+    "artifacts/design-tool/src/pages/Home.tsx": {
+      "hash": "152b57c1e94b1440eb7d3b039b7edef9cd50a0594c13eac0cb1402889f8d66e3",
+      "size": 64172
+    },
+    "artifacts/design-tool/src/pages/LandingPage.tsx": {
+      "hash": "96f4aca36a9dd6e05d5846e470011d1ea93e66bcc663235ddb51a63dbb96544d",
+      "size": 33562
+    },
+    "artifacts/design-tool/src/pages/not-found.tsx": {
+      "hash": "718a41bd05a163d1db32480aba013f5fe754894e656b6542a8e4b302275b172e",
+      "size": 711
+    },
+    "artifacts/design-tool/src/store/useAssemblyStore.ts": {
+      "hash": "b8e0653a1d08184c73b92799eb12d18353555d61a5577532016363f6a9cc7443",
+      "size": 20418
+    },
+    "artifacts/design-tool/src/store/useAuthStore.ts": {
+      "hash": "55ac9f3811ea56cd5a4e8559cb3fafc575e31ee670e43e04b02541608e5de1a5",
+      "size": 6509
+    },
+    "artifacts/design-tool/src/store/useCncStore.ts": {
+      "hash": "b1635ad01db2ab4ff66e024ee9d3462774b669815cfbeea668ecd5cd03cd95b1",
+      "size": 36204
+    },
+    "artifacts/design-tool/src/store/useDesignStore.ts": {
+      "hash": "9cc7e863aba415cf888a3eeb298672a3488d285be7c1b4a49005d190e901223c",
+      "size": 5992
+    },
+    "artifacts/api-server/src/index.ts": {
+      "hash": "9f38e058a8506d8ee26a38c1279677bb1cf327c931759dabb94157eaabb2e1e0",
+      "size": 717
+    },
+    "artifacts/api-server/src/lib/cloud-connectors.ts": {
+      "hash": "53238df1207b19cab45bbd3f2332837f0fb83e0942f0140f66e536b360b49577",
+      "size": 1288
+    },
+    "artifacts/api-server/src/lib/dxf-parser-util.ts": {
+      "hash": "564f1bc50da5ff75813582e0509624d82bca1fd1ad014ecadf362fc30ece5514",
+      "size": 5482
+    },
+    "artifacts/api-server/src/lib/gcode-generator.ts": {
+      "hash": "ec98cd558f2f7b93132ab92f5aa82e7cf9858738c1f575d7d25663045dd8d20c",
+      "size": 3903
+    },
+    "artifacts/api-server/src/lib/job-folder-structure.ts": {
+      "hash": "e57dae7cea1180fb7c328b218e250ff61ba3d882b73a96557d3ac2b50ed77b45",
+      "size": 1340
+    },
+    "artifacts/api-server/src/lib/offline-ai-engine.ts": {
+      "hash": "32af7c3d661a65d7d200e1e2bb816aed3a6cd5f68aa612ced82ecb0bfc328388",
+      "size": 5684
+    },
+    "artifacts/api-server/src/lib/offline-knowledge-base.ts": {
+      "hash": "a6ade2a45a21a6a5bd27e5b08d4704657f7d9062afd7ecc59225c5511e0d05da",
+      "size": 3811
+    },
+    "artifacts/api-server/src/lib/power-pattern.ts": {
+      "hash": "8d47045afed6d05b94c065bb2233d0169aff9ff7b72963a85a3893364ddc7377",
+      "size": 3494
+    },
+    "artifacts/api-server/src/lib/reference-parser.ts": {
+      "hash": "ba071a6d474247edef62720604e7fb80fa9752ceb38b5a32abdccb2740a4150d",
+      "size": 2427
+    },
+    "artifacts/api-server/src/lib/roll-tooling.ts": {
+      "hash": "2b85c76c0eb3d00fe755847d43ecfb269a3367053810f21eb8a1437d908cc594",
+      "size": 4762
+    },
+    "artifacts/api-server/src/lib/workers/worker-pool.ts": {
+      "hash": "51755c3168017ba0fa8acead14a91b55995430e4ffd0630e137ae05ee1aabc5d",
+      "size": 511
+    },
+    "artifacts/api-server/src/middleware/auth.ts": {
+      "hash": "6b95cbf7357e4a4283d14833b1036eb9f4abbd7ff0e93f9e142e2bc31db04b27",
+      "size": 1522
+    },
+    "artifacts/api-server/src/routes/accuracy.ts": {
+      "hash": "3229a0e03da5e4f984516335218c008933289d117949a81d6c06c2225bd1a3ab",
+      "size": 3018
+    },
+    "artifacts/api-server/src/routes/ai-analysis.ts": {
+      "hash": "0bcfc8d3e4fd1189da005d119af78353eb48f69f3ffde18f13a65e64fd65f35d",
+      "size": 3887
+    },
+    "artifacts/api-server/src/routes/ai-chat.ts": {
+      "hash": "496a91cf29c15dfbcc9761f4736eb59322056c60e5dd6ec3376f9b7333080206",
+      "size": 8181
+    },
+    "artifacts/api-server/src/routes/ai-chatbots.ts": {
+      "hash": "40137d9f2f3516450745d85db3284d2d9375183fdd0af6cf4070adfc673559db",
+      "size": 34110
+    },
+    "artifacts/api-server/src/routes/ai-diagnose.ts": {
+      "hash": "8647bd218073ecd25a9a69974820716d0c6d6643f7e64b8fbabcf8aab7d8285c",
+      "size": 1792
+    },
+    "artifacts/api-server/src/routes/auth.ts": {
+      "hash": "d310bfdaea4e4515bb4bd1b9794758596804ebdb1dffd0e7b0356b1c927f7674",
+      "size": 391
+    },
+    "artifacts/api-server/src/routes/backup.ts": {
+      "hash": "6fcf2fa6e7502caf7b3e4c2c2db89f45e317abad084817df7c052d8bd8de5348",
+      "size": 3014
+    },
+    "artifacts/api-server/src/routes/drive.ts": {
+      "hash": "920bb62466862be725dba1e111f580b0ae3512e4cfb7fa9f6b553ebfdd6d31cb",
+      "size": 18912
+    },
+    "artifacts/api-server/src/routes/dxf.ts": {
+      "hash": "96c1bf6bbd085ad089e69dd5eb694b4fc8b03c41d77b86e5175bcc944142e64f",
+      "size": 4268
+    },
+    "artifacts/api-server/src/routes/file-manager.ts": {
+      "hash": "fa989b0ad86175d511ba72cdd9c1cefdce839294b06e20f05d23daf8a8360c0c",
+      "size": 12932
+    },
+    "artifacts/api-server/src/routes/flower.ts": {
+      "hash": "c46c642670f6bea878511300a3d88566ccc5a3730bd1816136f7ed751d9aaf3c",
+      "size": 8268
+    },
+    "artifacts/api-server/src/routes/gcode.ts": {
+      "hash": "a36944f3bafb77f5f81649200fb95c1ec4a3f7a38e1c3ee24ddb497e41d047f2",
+      "size": 13780
+    },
+    "artifacts/api-server/src/routes/health.ts": {
+      "hash": "0386ceddb4ff4bff220af72ca38a62191ad95a2f41fd619df3bb9ceffce03db2",
+      "size": 288
+    },
+    "artifacts/api-server/src/routes/index.ts": {
+      "hash": "6d979467765be925690f131a81369905606b9d0ff58d6db68c3a8b48912fa980",
+      "size": 1493
+    },
+    "artifacts/api-server/src/routes/materials.ts": {
+      "hash": "25397504ea074c3eb80674899f4923aa42fc680f004edbee12ea4a5307f016db",
+      "size": 23635
+    },
+    "artifacts/api-server/src/routes/projects.ts": {
+      "hash": "280901c98006a274e910478cc095903391d5bac4fbba435142193faaa3c4d703",
+      "size": 4380
+    },
+    "artifacts/api-server/src/routes/roll-tooling.ts": {
+      "hash": "36c27de009bc4199ade6838a11e776c5858656dc7ffd73331b65fa12028adfd4",
+      "size": 20253
+    },
+    "artifacts/api-server/src/routes/system-info.ts": {
+      "hash": "df4f766de23c0d1f2b6e7fb6c5e80c3666a4c8662eb85c115f2c06d28f6500f0",
+      "size": 7208
+    },
+    "artifacts/api-server/src/routes/tool-library.ts": {
+      "hash": "e25e66cd7edfc5717826f42f48399f598a23254c8df3cced924201f98ccdd411",
+      "size": 14751
+    },
+    "lib/db/src/index.ts": {
+      "hash": "fc285bc83108137ba57c4c2774a35053e3c25fda1292c3d7a16a57d43dd9679c",
+      "size": 416
+    },
+    "lib/db/src/schema/index.ts": {
+      "hash": "cc6cfde6a47d2994d3b99196b24a58ebe2933e7bf6554b69c1acf944e223a87f",
+      "size": 63
+    },
+    "lib/db/src/schema/rf-projects.ts": {
+      "hash": "39405762e8c8b69f16f246378aaf372458241a0298eda8d8826f708eab433f82",
+      "size": 2364
+    },
+    "lib/db/src/schema/tool-library.ts": {
+      "hash": "89e1c0b36e01bd720714b6c643d681c4dcc85a155d0d752c971ca2123928ae87",
+      "size": 3983
+    }
+  }
+}

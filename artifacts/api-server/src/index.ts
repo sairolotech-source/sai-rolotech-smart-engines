@@ -83,7 +83,7 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`[api-server] listening on http://0.0.0.0:${PORT} [${IS_PRODUCTION ? "production" : "development"}]`);
 });
 
-if (IS_PRODUCTION && PORT !== 5000) {
+if (IS_PRODUCTION && PORT !== 5000 && !process.env.ELECTRON) {
   const fallback = app.listen(5000, "0.0.0.0", () => {
     console.log(`[api-server] also listening on http://0.0.0.0:5000 [webview-fallback]`);
   });

@@ -77,70 +77,67 @@ function getAssetPath(filename: string): string {
 // ─── API Server ──────────────────────────────────────────────────────────────
 
 function startApiServer(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const serverScript = IS_DEV
-      ? path.join(__dirname, "..", "..", "api-server", "src", "index.ts")
-      : path.join(process.resourcesPath, "api-server", "index.cjs");
+  return new Promise((resolve) => {
+    if (IS_DEV) {
+      const serverScript = path.join(__dirname, "..", "..", "api-server", "src", "index.ts");
+      const cmd = "tsx";
+      const args = [serverScript];
+      const env = { ...process.env, NODE_ENV: "production", PORT: String(API_PORT), ELECTRON: "1" };
 
-    const cmd  = IS_DEV ? "tsx" : process.execPath;
-    const args = IS_DEV ? [serverScript] : [serverScript];
-    const env  = {
-      ...process.env,
-      NODE_ENV: "production",
-      PORT: String(API_PORT),
-      ELECTRON: "1",
-      ...(IS_DEV ? {} : {
-        ELECTRON_RUN_AS_NODE: "1",
-        FRONTEND_DIST: path.join(process.resourcesPath, "frontend"),
-      }),
-    };
+      console.log(`[API] Starting dev server: ${cmd} ${serverScript}`);
+      apiProcess = spawn(cmd, args, { env, stdio: ["ignore", "pipe", "pipe"], detached: false, windowsHide: true });
 
-    console.log(`[API] Starting server: ${cmd} ${serverScript}`);
+      const timeout = setTimeout(() => { if (!apiReady) { console.error("[API] Timeout"); resolve(); } }, 8000);
+      apiProcess.stdout?.on("data", (data: Buffer) => {
+        const msg = data.toString();
+        console.log(`[API] ${msg.trim()}`);
+        if (msg.includes("listening") || msg.includes(String(API_PORT))) { clearTimeout(timeout); apiReady = true; resolve(); }
+      });
+      apiProcess.stderr?.on("data", (data: Buffer) => {
+        const msg = data.toString();
+        if (!msg.includes("DeprecationWarning") && !msg.includes("ExperimentalWarning")) console.error(`[API ERR] ${msg.trim()}`);
+      });
+      apiProcess.on("error", (err) => { console.error("[API] Spawn error:", err); clearTimeout(timeout); resolve(); });
+      apiProcess.on("exit", (code) => { console.log(`[API] Exited with code ${code}`); });
+    } else {
+      const serverScript = path.join(process.resourcesPath, "api-server", "index.cjs");
+      console.log(`[API] Loading server in-process: ${serverScript}`);
 
-    apiProcess = spawn(cmd, args, {
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: false,
-      windowsHide: true,
-    });
+      process.env.NODE_ENV = "production";
+      process.env.PORT = String(API_PORT);
+      process.env.ELECTRON = "1";
+      process.env.FRONTEND_DIST = path.join(process.resourcesPath, "frontend");
 
-    const timeout = setTimeout(() => {
-      if (!apiReady) {
-        console.error("[API] Timeout starting server");
-        resolve(); // Continue anyway — app still works offline
-      }
-    }, 8000);
-
-    apiProcess.stdout?.on("data", (data: Buffer) => {
-      const msg = data.toString();
-      console.log(`[API] ${msg.trim()}`);
-      if (msg.includes("listening") || msg.includes("Server") || msg.includes(String(API_PORT))) {
-        clearTimeout(timeout);
-        apiReady = true;
+      try {
+        require(serverScript);
+        console.log("[API] Server module loaded — waiting for port...");
+        const checkReady = (attempt: number) => {
+          const http = require("http");
+          const req = http.get(`http://localhost:${API_PORT}`, (res: any) => {
+            res.resume();
+            if (res.statusCode === 200) {
+              apiReady = true;
+              console.log(`[API] Server ready on port ${API_PORT}`);
+              resolve();
+            } else if (attempt < 20) {
+              setTimeout(() => checkReady(attempt + 1), 500);
+            } else {
+              console.error("[API] Server responded but not 200");
+              resolve();
+            }
+          });
+          req.on("error", () => {
+            if (attempt < 20) setTimeout(() => checkReady(attempt + 1), 500);
+            else { console.error("[API] Server never became ready"); resolve(); }
+          });
+          req.setTimeout(1000, () => { req.destroy(); });
+        };
+        setTimeout(() => checkReady(0), 300);
+      } catch (err) {
+        console.error("[API] Failed to load server module:", err);
         resolve();
       }
-    });
-
-    apiProcess.stderr?.on("data", (data: Buffer) => {
-      const msg = data.toString();
-      if (!msg.includes("DeprecationWarning") && !msg.includes("ExperimentalWarning")) {
-        console.error(`[API ERR] ${msg.trim()}`);
-      }
-    });
-
-    apiProcess.on("error", (err) => {
-      console.error("[API] Spawn error:", err);
-      clearTimeout(timeout);
-      resolve(); // Graceful fallback
-    });
-
-    apiProcess.on("exit", (code) => {
-      console.log(`[API] Process exited with code ${code}`);
-      if (!isQuitting && mainWindow) {
-        // Restart API if it crashes
-        setTimeout(() => startApiServer(), 2000);
-      }
-    });
+    }
   });
 }
 

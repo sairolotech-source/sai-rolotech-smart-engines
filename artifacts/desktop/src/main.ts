@@ -202,8 +202,7 @@ function createMainWindow(): void {
     mainWindow.loadURL("http://localhost:5000");
     mainWindow.webContents.openDevTools({ mode: "detach" });
   } else {
-    const indexPath = path.join(process.resourcesPath, "frontend", "index.html");
-    mainWindow.loadFile(indexPath);
+    mainWindow.loadURL(`http://localhost:${API_PORT}`);
   }
 
   // ── Window events ──

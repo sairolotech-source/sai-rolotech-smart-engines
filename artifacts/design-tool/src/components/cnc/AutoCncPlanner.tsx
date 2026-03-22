@@ -153,6 +153,18 @@ const SAFETY_LOCKS = [
     check: "Start at 10–20% → gradually increase after 1st pass confirmed OK",
     color: "emerald",
   },
+  {
+    num: "6", title: "VMID / Machine Definition Correct",
+    desc: "SolidCAM ka VMID (Virtual Machine ID) bilkul correct machine se match hona chahiye. Galat VMID = wrong limits, wrong simulation = crash at machine.",
+    check: "Machine Definition file → controller type, spindle limits, axis travel — sab verify karo before toolpath calculate",
+    color: "cyan",
+  },
+  {
+    num: "7", title: "First-Piece Inspection (FAI)",
+    desc: "Pehli part machining ke baad hamesha CMM ya vernier se dimension check karo. Production start karne se pehle FAI pass hona zaroori hai.",
+    check: "First part: measure all critical dims → compare drawing → sign-off → phir production chalao",
+    color: "violet",
+  },
 ];
 
 const RISK_MATRIX = [
@@ -165,7 +177,55 @@ const RISK_MATRIX = [
 /* ─── Prompt Pack ─────────────────────────────────────────────────────────── */
 const PROMPT_TEMPLATES = [
   {
-    name: "Master CNC Planner Prompt",
+    name: "Fixed Format Process Planner (BEST — SolidCAM ke liye)",
+    prompt: `You are a CNC process planner working with SolidCAM.
+
+Machine: [VMC / CNC Lathe]
+Controller: [Fanuc / Delta 2X / Siemens]
+Material: [EN8 / MS / Aluminum / SS / EN31]
+
+Available tools (STANDARD — use ONLY these numbers):
+T1  Face Mill 50mm
+T2  End Mill 12mm 4-flute
+T3  End Mill 6mm 4-flute
+T4  Center Drill / Spot Drill 90deg
+T5  Drill [DIA]mm
+T6  Chamfer Mill 45deg
+
+Part description: [DESCRIBE PART / FEATURES]
+
+Give output in this EXACT format only:
+
+SETUP_1:
+- Workholding: [vise / chuck / fixture / soft jaw]
+- WCS (Datum): [location — bottom-left / chuck face / etc]
+- Stock size: [L x W x H or OD x Length]
+- Risks: [collision points, thin walls, overhang]
+
+OPERATIONS:
+1. [Operation name] | Tool T? | Purpose | Safe depth / stepdown notes
+2. [Operation name] | Tool T? | Stepdown | Stepover
+3. [Operation name] | Tool T? | Finish allowance
+4. [Operation name] | Tool T? | Peck yes/no | Depth
+5. [Operation name] | Tool T? | Notes
+
+CUTTING_NOTES:
+- RPM range: [min–max]
+- Feed range: [min–max mm/min or mm/rev]
+- Coolant: [ON / OFF / Air blast]
+- Entry style: [helical / ramp / tangential]
+- Thin wall warning: [yes/no — location]
+
+FINAL_CHECK:
+- Clamp collision risk: [low/medium/high — details]
+- Tool reach risk: [ok / potential issue]
+- Retract risk: [ok / check area]
+- Datum check: [how to verify zero]
+
+IMPORTANT: Do NOT generate G-code. Do NOT suggest M-codes. Do NOT assume offsets or home positions. SolidCAM will generate G-code from this plan using the correct postprocessor. Your job is PLANNING only.`,
+  },
+  {
+    name: "Master CNC Planner Prompt (General)",
     prompt: `You are a senior CNC machining expert.
 Machine: [MACHINE_TYPE] ([CONTROLLER])
 Material: [MATERIAL]
@@ -899,6 +959,63 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
                   <span className="text-[10px] text-zinc-300">{r}</span>
                 </div>
               ))}
+            </div>
+
+            {/* SolidCAM Actual Sequence */}
+            <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 overflow-hidden">
+              <div className="px-3 py-2 bg-cyan-500/10 border-b border-cyan-500/20">
+                <span className="text-[11px] font-bold text-cyan-300">SolidCAM Actual Sequence (7 Steps — Ye order mat todna)</span>
+              </div>
+              {[
+                { step: "1", act: "CAM-Part banao", note: "Model attach karo, WCS set karo, stock define karo" },
+                { step: "2", act: "Machine select karo", note: "Correct machine definition — controller type + spindle limits + axis travel" },
+                { step: "3", act: "Postprocessor .gpp choose karo", note: "Controller se exact match — Delta 2X, Fanuc, Siemens — VERIFY karo" },
+                { step: "4", act: "Toolpath calculate karo", note: "Calculate hone ke baad hi G-code possible hai — skip nahi kar sakte" },
+                { step: "5", act: "SolidCAM Simulation chalao", note: "Toolpath simulation — collision, gouge, clearance check" },
+                { step: "6", act: "Machine Simulation chalao", note: "Tool + holder + clamp + fixture — full machine model ke saath" },
+                { step: "7", act: "G-code generate karo", note: "Post karo → controller pe load karo → dry run → production" },
+              ].map((s) => (
+                <div key={s.step} className="flex items-start gap-3 px-3 py-2 border-b border-zinc-800/20 last:border-0 hover:bg-zinc-800/10">
+                  <span className="w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-[10px] font-bold text-cyan-300 shrink-0 mt-0.5">{s.step}</span>
+                  <div>
+                    <div className="text-[11px] font-semibold text-zinc-200">{s.act}</div>
+                    <div className="text-[9px] text-zinc-500 mt-0.5">{s.note}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* AI Boundaries */}
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 overflow-hidden">
+              <div className="px-3 py-2 bg-amber-500/10 border-b border-amber-500/20">
+                <span className="text-[11px] font-bold text-amber-300">AI ko kab rokna hai — Ye kaam AI se mat karvao</span>
+              </div>
+              <div className="px-3 py-2 border-b border-zinc-800/20">
+                <p className="text-[9px] text-zinc-500 mb-2">In cheezoon mein AI ke paas final authority kabhi nahi honi chahiye:</p>
+                {[
+                  { item: "Direct raw G-code — unknown machine ke liye", why: "Controller-specific codes alag hote hain — crash guaranteed" },
+                  { item: "M-codes guess karna", why: "M6 tool change ka bhi har controller mein alag behavior ho sakta hai" },
+                  { item: "Home positions assume karna", why: "Machine ka G28 / reference point alag ho sakta hai" },
+                  { item: "Probing cycle invent karna", why: "Probe cycles machine + controller specific hoti hain" },
+                  { item: "Work offsets assume karna (G54/G55/etc)", why: "Operator ne jo set kiya woh AI nahi jaanta" },
+                ].map((b, i) => (
+                  <div key={i} className="flex items-start gap-2 py-1.5 border-b border-zinc-800/20 last:border-0">
+                    <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-semibold text-zinc-200">{b.item}</div>
+                      <div className="text-[9px] text-zinc-500">{b.why}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="px-3 py-2 bg-emerald-500/10">
+                <div className="text-[10px] font-bold text-emerald-300 mb-1">✓ Powerful + Safe Formula</div>
+                <div className="flex flex-wrap gap-1 text-[9px]">
+                  {["AI planning kare", "SolidCAM machining kare", "Simulation verify kare", "Postprocessor translate kare", "Operator approve kare"].map((f, i) => (
+                    <span key={i} className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">{f}</span>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <button onClick={() => setSafetyChecked({})}

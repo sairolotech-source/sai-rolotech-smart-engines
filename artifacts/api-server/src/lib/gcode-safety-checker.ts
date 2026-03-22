@@ -62,6 +62,13 @@ export const SOLIDCAM_REFERENCE = {
   roughType: "Smooth",
   finishMethod: "ISO-Turning",
   gearRange: "Gear#1 (0-5000rpm, 15kW)",
+  toolkit: [
+    { tool: 2, type: "Profile", insert: "VNMG 060108", radius: 0.8, holder: "Ext. Turning", clamping: "C", shape: "V (35deg)", leadAngle: "A (90deg)", icDia: "06 (3.97mm)", thickness: "01 (1.59mm)", cutDir: "R", shank: "25×25mm" },
+    { tool: 4, type: "Groove", insert: "—", radius: 0, holder: "Ext. Grooving", clamping: "—", shape: "—", leadAngle: "—", icDia: "—", thickness: "—", cutDir: "—", shank: "—" },
+    { tool: 6, type: "Profile", insert: "VNMG 160402", radius: 0.2, holder: "Ext. Turning", clamping: "C", shape: "V (35deg)", leadAngle: "J (93deg)", icDia: "16 (9.52mm)", thickness: "04 (4.76mm)", cutDir: "R", shank: "25×25mm" },
+    { tool: 8, type: "Profile", insert: "VNMG 060108", radius: 0.8, holder: "Ext. Turning", clamping: "C", shape: "V (35deg)", leadAngle: "A (90deg)", icDia: "06 (3.97mm)", thickness: "01 (1.59mm)", cutDir: "R", shank: "25×25mm" },
+    { tool: 10, type: "Profile", insert: "V 35° R0.2", radius: 0.2, holder: "Ext. Grooving", clamping: "C", shape: "V (35deg)", leadAngle: "L (95deg)", icDia: "16 (9.52mm)", thickness: "04 (4.76mm)", cutDir: "L", shank: "25×25mm" },
+  ],
 };
 
 function parseNumber(token: string): number | null {

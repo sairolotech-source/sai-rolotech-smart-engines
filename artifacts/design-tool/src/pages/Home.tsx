@@ -16,7 +16,7 @@ import {
   ArrowLeftRight, Database, Flame, ChevronRight, Layers, Brain, Download,
   Circle, Triangle, Wand2, Table, Minus, ScanLine, FolderTree,
   TrendingDown, TrendingUp, ShieldCheck, Shield, Hexagon, Trophy, PlayCircle, Layers2,
-  Gauge, Crosshair,
+  Gauge, Crosshair, Eye,
 } from "lucide-react";
 
 const LeftPanel = lazy(() => import("../components/cnc/LeftPanel").then(m => ({ default: m.LeftPanel })));
@@ -49,6 +49,7 @@ const DesignReportGenerator = lazy(() => import("../components/cnc/DesignReportG
 const GuardrailReportGenerator = lazy(() => import("../components/cnc/GuardrailReportGenerator").then(m => ({ default: m.GuardrailReportGenerator })));
 const ExportHistoryPanel = lazy(() => import("../components/cnc/ExportHistoryPanel").then(m => ({ default: m.ExportHistoryPanel })));
 const AIChatbotsView = lazy(() => import("../components/cnc/AIChatbotsView").then(m => ({ default: m.AIChatbotsView })));
+const DrawingVisionView = lazy(() => import("../components/cnc/DrawingVisionView").then(m => ({ default: m.DrawingVisionView })));
 const FormingSimulationView = lazy(() => import("../components/cnc/FormingSimulationView").then(m => ({ default: m.FormingSimulationView })));
 const SpringbackView = lazy(() => import("../components/cnc/SpringbackView").then(m => ({ default: m.SpringbackView })));
 const StripWidthView = lazy(() => import("../components/cnc/StripWidthView").then(m => ({ default: m.StripWidthView })));
@@ -130,7 +131,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "cage-forming": "formaxis-modules", "wire-rolling": "formaxis-modules",
   "rf-closed-section": "formaxis-modules", "formaxis-compare": "formaxis-modules", "sheet-metal": "formaxis-modules",
   "profile-scan": "quality", "roll-scanner": "quality", "roll-lifecycle": "quality", "cad-finder": "quality",
-  troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
+  "drawing-vision": "ai", troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
   "master-designer": "ai", "admin-dashboard": "ai", "desktop-install": "ai", "real-mukabla": "ai",
   "fea-simulation": "ai", "gcode-verify": "ai", "advanced-cam": "ai", "erp-integration": "ai",
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
@@ -349,6 +350,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "gcode-simulator", label: "G-Code Toolpath Simulator", icon: <PlayCircle className="w-4 h-4" />, desc: "Animated XZ turning simulation — rapid/cut color, speed control" },
         { id: "roll-flower-designer", label: "Roll Flower Designer (COPRA RF-style)", icon: <Layers2 className="w-4 h-4" />, desc: "Multi-station forming flower, neutral axis, bend allowance, SVG export" },
         { id: "material-analyzer", label: "Material Stress-Strain Analyzer", icon: <TrendingUp className="w-4 h-4" />, desc: "σ-ε curves, FLD, power hardening law — 10 materials comparison" },
+        { id: "drawing-vision", label: "Drawing Vision (Gemini Pro)", icon: <Eye className="w-4 h-4" />, desc: "Drawing image upload karein — Gemini 2.5 Pro dimensions, angles, profile type nikaale" },
       ],
     },
     {
@@ -385,6 +387,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
     }
 
     switch (activeTab) {
+      case "drawing-vision": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DrawingVisionView /></div></Suspense>;
       case "ai-chatbots": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AIChatbotsView /></div></Suspense>;
       case "forming-sim": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FormingSimulationView /></div></Suspense>;
       case "springback": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><SpringbackView /></div></Suspense>;

@@ -18,6 +18,7 @@ import aiAnalysisRouter from "./ai-analysis";
 import aiChatbotsRouter from "./ai-chatbots";
 import toolLibraryRouter from "./tool-library";
 import materialsRouter from "./materials";
+import drawingVisionRouter from "./drawing-vision";
 import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
@@ -43,6 +44,7 @@ router.use(aiAnalysisRouter);
 router.use(aiChatbotsRouter);
 router.use(toolLibraryRouter);
 router.use(materialsRouter);
+router.use(drawingVisionRouter);
 
 startAutoBackup(600);
 

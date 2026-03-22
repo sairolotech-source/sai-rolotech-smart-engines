@@ -31,6 +31,7 @@ const FlowerPatternView = lazy(() => import("../components/cnc/FlowerPatternView
 const FlowerPatternCombined = lazy(() => import("../components/cnc/FlowerPatternCombined").then(m => ({ default: m.FlowerPatternCombined })));
 const AutoCADEngineeringDrawing = lazy(() => import("../components/cnc/AutoCADEngineeringDrawing").then(m => ({ default: m.AutoCADEngineeringDrawing })));
 const MachineLoadCalculator = lazy(() => import("../components/cnc/MachineLoadCalculator").then(m => ({ default: m.MachineLoadCalculator })));
+const RollDataFileGenerator = lazy(() => import("../components/cnc/RollDataFileGenerator").then(m => ({ default: m.RollDataFileGenerator })));
 const DigitalTwinView = lazy(() => import("../components/cnc/DigitalTwinView").then(m => ({ default: m.DigitalTwinView })));
 const TurningView = lazy(() => import("../components/cnc/TurningView").then(m => ({ default: m.TurningView })));
 const GeometryEditPanel = lazy(() => import("../components/cnc/GeometryEditPanel").then(m => ({ default: m.GeometryEditPanel })));
@@ -148,7 +149,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
   "station-control": "ai", "rf-machine": "simulation",
   "validation-pipeline": "quality", "testing-engine": "quality", "machine-bom": "quality", "dimension-confirm": "design",
-  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-export": "manufacturing",
+  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-data-files": "manufacturing", "roll-export": "manufacturing",
   report: "project",
 };
 
@@ -279,7 +280,8 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "tool-library" as AppTab, label: "Tool Library", icon: <Wrench className="w-4 h-4" />, desc: "Persistent CNC tool & holder inventory" },
         { id: "load-calc", label: "Load Calculator", icon: <Zap className="w-4 h-4" />, desc: "Bending force, motor power, torque" },
         { id: "machine-load-calc", label: "Machine Load — Motor HP + Gear + Bearing", icon: <Activity className="w-4 h-4" />, desc: "Forming force → Motor HP → Gear Ratio → Bearing Number → Shaft check — complete engineering report" },
-        { id: "roll-export", label: "Roll Export", icon: <Download className="w-4 h-4" />, desc: "Copra RF / SolidWorks / SolidCAM export" },
+        { id: "roll-data-files", label: "Roll Data Files (Per Station SVG)", icon: <FileText className="w-4 h-4" />, desc: "Har station ke liye alag SVG file — UP roll / Strip profile / DN roll — ZIP mein download" },
+        { id: "roll-export", label: "Roll Export (Copra / SolidWorks)", icon: <Download className="w-4 h-4" />, desc: "Copra RF / SolidWorks / SolidCAM export" },
       ],
     },
     {
@@ -491,6 +493,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "flower-combined": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FlowerPatternCombined /></div></Suspense>;
       case "autocad-engineering-drawing": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoCADEngineeringDrawing /></div></Suspense>;
       case "machine-load-calc": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-y-auto animate-fade-slide-in"><MachineLoadCalculator /></div></Suspense>;
+      case "roll-data-files": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollDataFileGenerator /></div></Suspense>;
       case "twin": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DigitalTwinView /></div></Suspense>;
       case "gcode":
         return (

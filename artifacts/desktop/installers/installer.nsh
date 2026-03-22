@@ -12,10 +12,6 @@
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Create Desktop Shortcut"
 !define MUI_FINISHPAGE_SHOWREADME_FUNCTION createDesktopShortcut
 
-; ── Product Key Variables ──
-Var ProductKey
-Var KeyValid
-
 ; ── Pre-install function ──
 Function .onInit
   ; Check Windows version (require Windows 10 or higher)
@@ -27,48 +23,71 @@ Function .onInit
   win10ok:
 
   ; ── Product Key / License Key Verification ──
+  ; Check if already activated (registry)
+  ReadRegStr $1 HKCU "Software\SAI Rolotech Smart Engines" "ProductKey"
+  StrCmp $1 "SAIR-2026-ROLL-FORM" keyalreadyok
+  StrCmp $1 "SAIR-2026-ENGI-NEER" keyalreadyok
+  StrCmp $1 "SAIR-2026-PREM-IUMS" keyalreadyok
+  StrCmp $1 "SAIR-PRO-2026-MSTR" keyalreadyok
+  StrCmp $1 "SAIR-DEMO-2026-TRIAL" keyalreadyok
+
+  ; Not activated — ask for product key
   keyentry:
-    nsDialogs::Create 1018
-    Pop $0
+    MessageBox MB_OK|MB_ICONINFORMATION "Product Key Required$\r$\n$\r$\nYou need a valid Product Key to install this software.$\r$\nFormat: XXXX-XXXX-XXXX-XXXX$\r$\n$\r$\nContact SAI Rolotech for your license key.$\r$\nEmail: support@sairolotech.com"
 
-    ${NSD_CreateLabel} 0 0 100% 40u "Please enter your Product Key to continue installation.$\r$\n$\r$\nFormat: XXXX-XXXX-XXXX-XXXX$\r$\nContact SAI Rolotech for your license key."
-    Pop $0
+    ; Use InputBox via System plugin
+    System::Call 'user32::MessageBoxW(i $HWNDPARENT, w "Enter your Product Key in the next dialog.", w "SAI Rolotech — Activation", i 0x40)'
 
-    ${NSD_CreateLabel} 0 50u 80u 14u "Product Key:"
-    Pop $0
+    ; Simple approach: write a VBS script to show InputBox and read result
+    FileOpen $0 "$TEMP\sai-key-input.vbs" w
+    FileWrite $0 'key = InputBox("Enter your Product Key:" & vbCrLf & vbCrLf & "Format: XXXX-XXXX-XXXX-XXXX" & vbCrLf & "Contact SAI Rolotech for your key." & vbCrLf & "Email: support@sairolotech.com", "SAI Rolotech — Product Activation", "")$\r$\n'
+    FileWrite $0 'If key = "" Then$\r$\n'
+    FileWrite $0 '  WScript.Quit 1$\r$\n'
+    FileWrite $0 'End If$\r$\n'
+    FileWrite $0 'Set fso = CreateObject("Scripting.FileSystemObject")$\r$\n'
+    FileWrite $0 'Set f = fso.CreateTextFile("$TEMP\sai-product-key.txt", True)$\r$\n'
+    FileWrite $0 'f.Write UCase(Trim(key))$\r$\n'
+    FileWrite $0 'f.Close$\r$\n'
+    FileClose $0
 
-    ${NSD_CreateText} 85u 48u 200u 14u ""
-    Pop $ProductKey
+    nsExec::ExecToLog 'wscript.exe "$TEMP\sai-key-input.vbs"'
+    Pop $2
 
-    ${NSD_CreateLabel} 0 70u 100% 20u ""
-    Pop $KeyValid
+    ; Check if user cancelled (exit code 1)
+    StrCmp $2 "error" keycancelled
+    IntCmp $2 1 keycancelled
 
-    nsDialogs::Show
+    ; Read the key from temp file
+    FileOpen $0 "$TEMP\sai-product-key.txt" r
+    FileRead $0 $1
+    FileClose $0
+    Delete "$TEMP\sai-product-key.txt"
+    Delete "$TEMP\sai-key-input.vbs"
 
-    ; Get entered key value
-    ${NSD_GetText} $ProductKey $1
-
-    ; Validate key - check against authorized keys
-    StrCmp $1 "" keyempty
+    ; Validate key
+    StrCmp $1 "" keycancelled
     StrCmp $1 "SAIR-2026-ROLL-FORM" keyok
     StrCmp $1 "SAIR-2026-ENGI-NEER" keyok
     StrCmp $1 "SAIR-2026-PREM-IUMS" keyok
     StrCmp $1 "SAIR-PRO-2026-MSTR" keyok
     StrCmp $1 "SAIR-DEMO-2026-TRIAL" keyok
 
-    ; Key didn't match any valid key
-    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Invalid Product Key!$\r$\n$\r$\nPlease enter a valid license key.$\r$\nContact SAI Rolotech for your product key.$\r$\n$\r$\nPhone: +91-XXXXXXXXXX$\r$\nEmail: support@sairolotech.com" IDRETRY keyentry
+    ; Invalid key
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Invalid Product Key!$\r$\n$\r$\nThe key you entered is not valid.$\r$\nPlease check your key and try again.$\r$\n$\r$\nContact SAI Rolotech for a valid key.$\r$\nEmail: support@sairolotech.com" IDRETRY keyentry
     Abort
 
-  keyempty:
-    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Product Key is required!$\r$\n$\r$\nYou must enter a valid product key to install this software.$\r$\nContact SAI Rolotech for your license key." IDRETRY keyentry
+  keycancelled:
+    Delete "$TEMP\sai-product-key.txt"
+    Delete "$TEMP\sai-key-input.vbs"
+    MessageBox MB_OK|MB_ICONSTOP "Installation cancelled.$\r$\nA valid Product Key is required to install this software."
     Abort
 
   keyok:
-    ; Save the product key in registry for future verification
+    ; Save the product key in registry
     WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "ProductKey" "$1"
-    WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "InstallDate" "$\r$\n"
     WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "Version" "${VERSION}"
+
+  keyalreadyok:
 
   ; ── Step 1: Kill all running instances ──
   nsExec::ExecToLog 'taskkill /F /IM "Sai Rolotech Smart Engines.exe" /T'

@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
-type PlanTab = "planner" | "templates" | "safety" | "prompt-pack";
+type PlanTab = "planner" | "tool-library" | "templates" | "safety" | "prompt-pack";
 
 interface MachinePlan {
   setupPlan: string[];
@@ -239,6 +239,112 @@ Advise on SolidCAM setup:
   },
 ];
 
+/* ─── Standard Tool Library ─────────────────────────────────────────────── */
+const TOOL_LIBRARIES: {
+  machine: string; note: string;
+  tools: { num: string; type: string; size: string; insert?: string; coating: string; use: string; rpm: string; feed: string; coolant: string }[];
+}[] = [
+  {
+    machine: "Delta 2X CNC Lathe (Primary)",
+    note: "Yeh tool numbers HAMESHA same rakho — har job mein same T numbers. AI ko bhi yahi list do.",
+    tools: [
+      { num: "T0208", type: "VNMG 060108 Insert — Roughing", size: "Shank 25×25mm", insert: "VNMG 060108 R0.8", coating: "TiAlN (MS/SS)", use: "OD Rough Turning", rpm: "G96 S200 / G92 S500 max", feed: "F0.175 mm/rev", coolant: "ON" },
+      { num: "T0404", type: "Grooving / Parting", size: "Shank 25×25mm, Width 3mm", insert: "3mm Grooving", coating: "TiN", use: "Groove / Neck / Relief / Parting", rpm: "G96 S150", feed: "F0.05 mm/rev", coolant: "ON" },
+      { num: "T0606", type: "VNMG 160402 Insert — Finishing", size: "Shank 25×25mm", insert: "VNMG 160402 R0.2", coating: "TiAlN (MS/SS)", use: "OD Finish + Contour", rpm: "G96 S225", feed: "F0.08 mm/rev", coolant: "ON" },
+      { num: "T0808", type: "Heavy Rough Turning", size: "Shank 25×25mm", insert: "CNMG 120412 R1.2", coating: "TiAlN", use: "Heavy stock removal (large blanks)", rpm: "G96 S150", feed: "F0.25 mm/rev", coolant: "ON" },
+      { num: "T1010", type: "Detail / Fine Groove R0.2", size: "Shank 25×25mm", insert: "2mm R0.2", coating: "TiN", use: "Fine groove / chamfer / neck detail", rpm: "G96 S180", feed: "F0.04 mm/rev", coolant: "ON" },
+    ],
+  },
+  {
+    machine: "VMC Milling (Fanuc / Siemens)",
+    note: "Standard T numbers — same har job. Geometry select → template apply → 80% kaam khatam.",
+    tools: [
+      { num: "T01", type: "Face Mill Ø50–63mm", size: "Ø50 or 63mm, 5–6 insert", coating: "TiAlN", use: "Face milling — top surface flat karna", rpm: "2000–3000", feed: "F600–1000 mm/min", coolant: "ON" },
+      { num: "T02", type: "End Mill Ø12mm 4-flute", size: "Ø12mm", coating: "TiAlN", use: "Pocket roughing + profile rough", rpm: "3500–4500", feed: "F500–700 mm/min", coolant: "ON" },
+      { num: "T03", type: "End Mill Ø8mm 4-flute", size: "Ø8mm", coating: "TiAlN", use: "Pocket / profile finish + small features", rpm: "4500–5500", feed: "F300–500 mm/min", coolant: "ON" },
+      { num: "T04", type: "Drill Ø6mm (or per drawing)", size: "Ø6–16mm (standard)", coating: "TiN", use: "Hole drilling (through / blind)", rpm: "1500–2500", feed: "F80–150 mm/min", coolant: "ON" },
+      { num: "T05", type: "Chamfer Mill 45°", size: "Ø12mm 45°", coating: "TiN", use: "Edge chamfer + deburr", rpm: "2000–3000", feed: "F200–400 mm/min", coolant: "OFF (air)" },
+      { num: "T06", type: "Boring Bar (if holes > Ø20)", size: "Ø20–80mm range", coating: "Uncoated / CBN", use: "Precision bore — post drilling", rpm: "800–2000", feed: "F0.05–0.12 mm/rev", coolant: "ON" },
+      { num: "T07", type: "Thread Mill / Tap M6–M20", size: "M6 / M8 / M10 standard", coating: "TiN", use: "Thread cutting in holes", rpm: "500–1500", feed: "Per pitch", coolant: "ON" },
+    ],
+  },
+];
+
+const SOLIDCAM_TEMPLATE_CONFIGS: {
+  name: string; color: string; desc: string;
+  settings: { key: string; value: string; note: string }[];
+  sequence: string[];
+}[] = [
+  {
+    name: "Roughing Template",
+    color: "red",
+    desc: "Maximum stock removal — conservative stepdown, large stepover",
+    settings: [
+      { key: "Operation Type", value: "Profile / Pocket 3D Rough", note: "SolidCAM → Profile operation" },
+      { key: "Step Down (DOC)", value: "0.75 mm (MS) / 1.5 mm (Alum)", note: "Conservative — no chatter" },
+      { key: "Step Over", value: "50% of tool dia", note: "Ø12 tool → 6mm stepover" },
+      { key: "Feed Rate", value: "F0.175 mm/rev (Lathe) / F600 (VMC)", note: "Rough feed — not finish speed" },
+      { key: "Clearance Plane", value: "Z+50mm above part top", note: "NEVER low — crash risk" },
+      { key: "Finish Stock (X)", value: "0.6 mm radial", note: "Leave for finish pass" },
+      { key: "Finish Stock (Z)", value: "0.2 mm axial", note: "Leave for finish pass" },
+      { key: "Entry Type", value: "Helical / Ramp (no plunge)", note: "Plunge = tool break risk" },
+      { key: "Coolant", value: "ON (mandatory)", note: "Heat = insert life down" },
+    ],
+    sequence: ["Geometry select karo", "Tool T0208 / T02 assign karo", "Template apply karo", "Stepdown verify karo", "Simulate karo"],
+  },
+  {
+    name: "Finishing Template",
+    color: "emerald",
+    desc: "Final dimension + surface finish — minimum DOC, slow feed",
+    settings: [
+      { key: "Operation Type", value: "ISO-Turning Finish / Profile Finish", note: "SolidCAM → ISO-Turning for lathe" },
+      { key: "Step Down (DOC)", value: "0.1 mm (MS) / 0.2 mm (Alum)", note: "Very light — Ra finish ke liye" },
+      { key: "Step Over", value: "10–15% of tool dia", note: "Scallop height control" },
+      { key: "Feed Rate", value: "F0.08 mm/rev (Lathe) / F300 (VMC)", note: "Slow = better Ra" },
+      { key: "Clearance Plane", value: "Z+50mm (same as rough)", note: "Consistent with roughing setup" },
+      { key: "RPM", value: "G96 S225 (lathe CSS) / RPM 5000 (VMC)", note: "Higher speed = better finish" },
+      { key: "Entry Type", value: "Tangential approach", note: "Gradual entry — no witness mark" },
+      { key: "Coolant", value: "ON — high pressure preferred", note: "Chip evacuation critical" },
+      { key: "Retreat", value: "0.2 mm overtravel", note: "Clean end point, no drag" },
+    ],
+    sequence: ["Rough done + verified karo", "Tool T0606 / T03 assign karo", "Same geometry select karo", "Finish template apply karo", "Dimension check karo after"],
+  },
+  {
+    name: "Pocket Template",
+    color: "violet",
+    desc: "Closed pocket milling — floor + walls — HSM preferred",
+    settings: [
+      { key: "Operation Type", value: "SolidCAM Pocket Operation", note: "Select closed chain boundary" },
+      { key: "Step Down (DOC)", value: "3 mm rough / 0.2 mm finish", note: "Aluminium: DOC 5mm rough" },
+      { key: "Step Over", value: "40–50% rough, 5% finish", note: "Finish: 0.5mm for Ra control" },
+      { key: "Feed Rate", value: "F600 rough / F400 finish mm/min", note: "Per VMC recommendation" },
+      { key: "Clearance Plane", value: "Z+30mm above part", note: "Must clear all clamps" },
+      { key: "Floor Finish", value: "0.2 mm last pass only", note: "Single finish pass = best Ra" },
+      { key: "Wall Finish", value: "0.2 mm radial leave in rough", note: "Finish pass removes it" },
+      { key: "Corner Strategy", value: "Corner Rounding ON", note: "Sharp corner = tool break" },
+      { key: "Entry", value: "Helical into pocket center", note: "NO direct Z plunge" },
+    ],
+    sequence: ["Pocket boundary select karo", "Tool T02 rough / T03 finish", "Rough template → simulate", "Finish template apply karo", "Probe check after floor"],
+  },
+  {
+    name: "Drilling Template",
+    color: "amber",
+    desc: "Hole drilling — peck cycle for deep holes — all sizes",
+    settings: [
+      { key: "Operation Type", value: "Drilling / G83 Peck Cycle", note: "Deep holes: peck = chip break" },
+      { key: "Peck Depth", value: "3× drill dia per peck", note: "Ø6 drill → 18mm peck" },
+      { key: "Feed Rate", value: "F0.12–0.18 mm/rev", note: "Dia 6mm: F120 mm/min" },
+      { key: "RPM", value: "2000 (Ø6) / 1200 (Ø12)", note: "Smaller dia = higher RPM" },
+      { key: "Clearance Plane", value: "Z+10mm above part top", note: "Drilling: 10mm enough" },
+      { key: "Retract", value: "R-plane = Z+5mm above hole", note: "Peck cycle retract point" },
+      { key: "Dwell", value: "0.2 sec at bottom", note: "Clean hole bottom" },
+      { key: "Spot Drill First", value: "YES — Ø10mm 90° spot", note: "Accuracy + no walking" },
+      { key: "Coolant", value: "Flood ON / or through-coolant", note: "Heat = drill breakage" },
+    ],
+    sequence: ["Hole positions select karo", "Spot drill T05 pehle", "Drill T04 assign karo", "Peck template apply karo", "Measure dia + depth after"],
+  },
+];
+
 /* ─── AI Planner using Gemini ──────────────────────────────────────────────── */
 async function callGemini(prompt: string): Promise<string> {
   const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY
@@ -276,8 +382,12 @@ export function AutoCncPlanner() {
   const [expandedPrompt, setExpandedPrompt] = useState<number | null>(null);
   const responseRef = useRef<HTMLDivElement>(null);
 
+  const [selectedLibMachine, setSelectedLibMachine] = useState(0);
+  const [selectedTplCfg, setSelectedTplCfg] = useState(0);
+
   const TABS = [
     { id: "planner" as PlanTab, label: "AI Process Planner", icon: <Cpu className="w-3.5 h-3.5" /> },
+    { id: "tool-library" as PlanTab, label: "Tool Library", icon: <Wrench className="w-3.5 h-3.5" /> },
     { id: "templates" as PlanTab, label: "SolidCAM Templates", icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: "safety" as PlanTab, label: "Safety System", icon: <Shield className="w-3.5 h-3.5" /> },
     { id: "prompt-pack" as PlanTab, label: "AI Prompt Pack", icon: <Zap className="w-3.5 h-3.5" /> },
@@ -462,6 +572,165 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── TOOL LIBRARY ── */}
+        {tab === "tool-library" && (
+          <div className="space-y-4">
+            {/* Workflow Diagram */}
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+              <div className="text-[10px] font-bold text-emerald-300 mb-2">Factory Level Automation Flow</div>
+              <div className="flex items-center gap-1 flex-wrap text-[10px] font-mono">
+                {["Drawing/CAD", "→", "AI Plan", "→", "SolidCAM", "→", "Post Processor", "→", "Simulation", "→", "Machine"].map((item, i) => (
+                  <span key={i} className={item === "→" ? "text-zinc-600" : "px-2 py-1 rounded bg-zinc-800/60 border border-zinc-700/40 text-zinc-200 font-semibold"}>
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[9px] text-zinc-500 mt-2">
+                Rule: Har step complete hone ke baad hi next step jaao. Skip = crash risk.
+              </p>
+            </div>
+
+            {/* Machine Selector */}
+            <div className="flex gap-2">
+              {TOOL_LIBRARIES.map((lib, i) => (
+                <button key={i} onClick={() => setSelectedLibMachine(i)}
+                  className={`flex-1 text-left p-2.5 rounded-lg border text-[10px] font-semibold transition-all ${
+                    selectedLibMachine === i
+                      ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-300"
+                      : "border-zinc-800/60 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700"
+                  }`}>
+                  {lib.machine}
+                </button>
+              ))}
+            </div>
+
+            {/* Note */}
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 flex items-start gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-[10px] text-amber-300">{TOOL_LIBRARIES[selectedLibMachine].note}</p>
+            </div>
+
+            {/* Tool Table */}
+            <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/50 overflow-hidden">
+              <div className="px-3 py-2 bg-zinc-800/30 border-b border-zinc-800/40 flex items-center gap-2">
+                <Wrench className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[11px] font-bold text-zinc-200">Standard Tool Numbers — {TOOL_LIBRARIES[selectedLibMachine].machine}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[10px]">
+                  <thead>
+                    <tr className="bg-zinc-800/30 text-zinc-500 text-[9px]">
+                      <th className="px-2 py-2 text-left w-16">T#</th>
+                      <th className="px-2 py-2 text-left">Type / Insert</th>
+                      <th className="px-2 py-2 text-left">Coating</th>
+                      <th className="px-2 py-2 text-left">Use</th>
+                      <th className="px-2 py-2 text-left">RPM / Speed</th>
+                      <th className="px-2 py-2 text-left">Feed</th>
+                      <th className="px-2 py-2 text-left w-16">Coolant</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/30">
+                    {TOOL_LIBRARIES[selectedLibMachine].tools.map((t, i) => (
+                      <tr key={i} className="hover:bg-zinc-800/20">
+                        <td className="px-2 py-2 font-mono font-bold text-violet-300">{t.num}</td>
+                        <td className="px-2 py-2">
+                          <div className="text-zinc-200 font-semibold">{t.type}</div>
+                          {t.insert && <div className="text-zinc-500 text-[9px]">{t.insert} — {t.size}</div>}
+                          {!t.insert && <div className="text-zinc-500 text-[9px]">{t.size}</div>}
+                        </td>
+                        <td className="px-2 py-2 text-zinc-400">{t.coating}</td>
+                        <td className="px-2 py-2 text-zinc-300">{t.use}</td>
+                        <td className="px-2 py-2 font-mono text-amber-300">{t.rpm}</td>
+                        <td className="px-2 py-2 font-mono text-cyan-300">{t.feed}</td>
+                        <td className="px-2 py-2">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${t.coolant === "ON" ? "bg-blue-500/20 text-blue-300" : "bg-zinc-700/40 text-zinc-400"}`}>
+                            {t.coolant}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* SolidCAM Template Configs */}
+            <div className="text-[11px] font-bold text-zinc-300 mt-2">SolidCAM Operation Template Configs</div>
+            <div className="grid grid-cols-2 gap-2">
+              {SOLIDCAM_TEMPLATE_CONFIGS.map((cfg, i) => (
+                <button key={i} onClick={() => setSelectedTplCfg(i)}
+                  className={`text-left p-2.5 rounded-lg border transition-all ${
+                    selectedTplCfg === i
+                      ? `border-${cfg.color}-500/50 bg-${cfg.color}-500/10`
+                      : "border-zinc-800/60 bg-zinc-900/40 hover:border-zinc-700"
+                  }`}>
+                  <div className={`text-[11px] font-semibold ${selectedTplCfg === i ? `text-${cfg.color}-300` : "text-zinc-200"}`}>{cfg.name}</div>
+                  <div className="text-[9px] text-zinc-500 mt-0.5">{cfg.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {(() => {
+              const cfg = SOLIDCAM_TEMPLATE_CONFIGS[selectedTplCfg];
+              return (
+                <div className="space-y-3">
+                  <div className={`rounded-lg border border-${cfg.color}-500/20 bg-${cfg.color}-500/5 overflow-hidden`}>
+                    <div className={`px-3 py-2 bg-${cfg.color}-500/10 border-b border-${cfg.color}-500/20`}>
+                      <span className={`text-[11px] font-bold text-${cfg.color}-300`}>{cfg.name} — Parameter Settings</span>
+                    </div>
+                    <table className="w-full text-[10px]">
+                      <thead>
+                        <tr className="bg-zinc-800/20 text-zinc-500 text-[9px]">
+                          <th className="px-3 py-1.5 text-left w-36">Parameter</th>
+                          <th className="px-3 py-1.5 text-left w-40">Value</th>
+                          <th className="px-3 py-1.5 text-left">Note / Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/30">
+                        {cfg.settings.map((s, si) => (
+                          <tr key={si} className="hover:bg-zinc-800/20">
+                            <td className="px-3 py-1.5 font-semibold text-zinc-300">{s.key}</td>
+                            <td className="px-3 py-1.5 font-mono font-bold text-amber-300">{s.value}</td>
+                            <td className="px-3 py-1.5 text-zinc-500">{s.note}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className={`rounded-lg border border-${cfg.color}-500/20 bg-${cfg.color}-500/5 p-3`}>
+                    <div className={`text-[10px] font-bold text-${cfg.color}-300 mb-2`}>Apply Sequence (SolidCAM me step-by-step)</div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {cfg.sequence.map((step, si) => (
+                        <React.Fragment key={si}>
+                          <span className="text-[10px] px-2 py-1 rounded bg-zinc-800/60 border border-zinc-700/40 text-zinc-200">{si + 1}. {step}</span>
+                          {si < cfg.sequence.length - 1 && <ChevronRight className="w-3 h-3 text-zinc-600 shrink-0" />}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Rule Box */}
+            <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
+              <div className="text-[10px] font-bold text-violet-300 mb-2">Golden Rule — Automation Ka Secret</div>
+              <div className="space-y-1">
+                {[
+                  "Same Tool Numbers → har job mein same T numbers use karo → confusion zero",
+                  "AI ko Tool Library do → AI same numbers mein plan deta hai → SolidCAM auto-link",
+                  "Template pehle set karo → geometry baad mein select karo → 80% kaam 1 click",
+                  "Simulate hamesha → Crash pehle screen pe, machine pe kabhi nahi",
+                ].map((r, i) => (
+                  <div key={i} className="flex items-start gap-2 text-[10px] text-zinc-300">
+                    <span className="text-violet-400 font-bold shrink-0">✓</span> {r}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

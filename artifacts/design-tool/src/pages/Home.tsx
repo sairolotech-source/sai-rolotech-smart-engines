@@ -29,6 +29,7 @@ const Troubleshooting = lazy(() => import("../components/cnc/Troubleshooting").t
 const RollToolingView = lazy(() => import("../components/cnc/RollToolingView").then(m => ({ default: m.RollToolingView })));
 const FlowerPatternView = lazy(() => import("../components/cnc/FlowerPatternView").then(m => ({ default: m.FlowerPatternView })));
 const FlowerPatternCombined = lazy(() => import("../components/cnc/FlowerPatternCombined").then(m => ({ default: m.FlowerPatternCombined })));
+const AutoCADEngineeringDrawing = lazy(() => import("../components/cnc/AutoCADEngineeringDrawing").then(m => ({ default: m.AutoCADEngineeringDrawing })));
 const DigitalTwinView = lazy(() => import("../components/cnc/DigitalTwinView").then(m => ({ default: m.DigitalTwinView })));
 const TurningView = lazy(() => import("../components/cnc/TurningView").then(m => ({ default: m.TurningView })));
 const GeometryEditPanel = lazy(() => import("../components/cnc/GeometryEditPanel").then(m => ({ default: m.GeometryEditPanel })));
@@ -146,7 +147,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
   "station-control": "ai", "rf-machine": "simulation",
   "validation-pipeline": "quality", "testing-engine": "quality", "machine-bom": "quality", "dimension-confirm": "design",
-  "flower-3d": "simulation", "flower-combined": "simulation", "roll-export": "manufacturing",
+  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "roll-export": "manufacturing",
   report: "project",
 };
 
@@ -247,6 +248,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "setup", label: "Setup", icon: <Settings className="w-4 h-4" />, desc: "Profile & machine configuration" },
         { id: "dimension-confirm", label: "Dim Confirm", icon: <Ruler className="w-4 h-4" />, desc: "Auto-extracted DXF dimension review & override" },
         { id: "manual-drawing", label: "AutoCAD Draw", icon: <PenLine className="w-4 h-4" />, desc: "LINE, CIRCLE, ARC, POLYLINE drawing" },
+        { id: "autocad-engineering-drawing", label: "AutoCAD Engineering Drawing (Full + Dims)", icon: <Ruler className="w-4 h-4" />, desc: "Professional A3 sheet — auto dimensions, title block, DXF/PNG export" },
         { id: "flower", label: "Power Pattern", icon: <Flower className="w-4 h-4" />, desc: "Multi-pass forming sequence" },
         { id: "roll", label: "Roll Tooling", icon: <Wrench className="w-4 h-4" />, desc: "CNC roll design & manufacturing" },
         { id: "smart-rolls", label: "SmartRolls", icon: <Wand2 className="w-4 h-4" />, desc: "Auto-generate roll designs from profile" },
@@ -485,6 +487,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "roll": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollToolingView /></div></Suspense>;
       case "flower": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in" data-capture-id="power-pattern"><FlowerPatternCombined /></div></Suspense>;
       case "flower-combined": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FlowerPatternCombined /></div></Suspense>;
+      case "autocad-engineering-drawing": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoCADEngineeringDrawing /></div></Suspense>;
       case "twin": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DigitalTwinView /></div></Suspense>;
       case "gcode":
         return (

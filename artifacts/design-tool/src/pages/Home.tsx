@@ -56,6 +56,7 @@ const SafetyPanelView = lazy(() => import("../components/cnc/SafetyPanelView").t
 const RollDesignSuite = lazy(() => import("../components/cnc/RollDesignSuite").then(m => ({ default: m.RollDesignSuite })));
 const RollKnowledgeHub = lazy(() => import("../components/cnc/RollKnowledgeHub").then(m => ({ default: m.RollKnowledgeHub })));
 const AutoProfileConverter = lazy(() => import("../components/cnc/AutoProfileConverter").then(m => ({ default: m.AutoProfileConverter })));
+const AutoCncPlanner = lazy(() => import("../components/cnc/AutoCncPlanner").then(m => ({ default: m.AutoCncPlanner })));
 const FormingSimulationView = lazy(() => import("../components/cnc/FormingSimulationView").then(m => ({ default: m.FormingSimulationView })));
 const SpringbackView = lazy(() => import("../components/cnc/SpringbackView").then(m => ({ default: m.SpringbackView })));
 const StripWidthView = lazy(() => import("../components/cnc/StripWidthView").then(m => ({ default: m.StripWidthView })));
@@ -137,7 +138,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "cage-forming": "formaxis-modules", "wire-rolling": "formaxis-modules",
   "rf-closed-section": "formaxis-modules", "formaxis-compare": "formaxis-modules", "sheet-metal": "formaxis-modules",
   "profile-scan": "quality", "roll-scanner": "quality", "roll-lifecycle": "quality", "cad-finder": "quality",
-  "drawing-vision": "ai", "safety-panel": "ai", "roll-design-suite": "ai", "roll-knowledge-hub": "ai", "auto-profile-converter": "ai", troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
+  "drawing-vision": "ai", "safety-panel": "ai", "roll-design-suite": "ai", "roll-knowledge-hub": "ai", "auto-profile-converter": "ai", "auto-cnc-planner": "ai", troubleshoot: "ai", factory: "ai", ultra: "ai", wizard: "ai", "ai-chatbots": "ai", "offline-ai": "ai",
   "master-designer": "ai", "admin-dashboard": "ai", "desktop-install": "ai", "real-mukabla": "ai",
   "fea-simulation": "ai", "gcode-verify": "ai", "advanced-cam": "ai", "erp-integration": "ai",
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
@@ -363,6 +364,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "roll-design-suite", label: "Roll Design Suite (OD, Gap, Pass Compressor)", icon: <Layers2 className="w-4 h-4" />, desc: "Roll OD calculator, gap designer, bend allowance, 12→8 pass compressor — industry rules" },
         { id: "roll-knowledge-hub", label: "Roll Knowledge Hub (Line Flow, Defects, 27 Rules)", icon: <BookOpen className="w-4 h-4" />, desc: "Coil line flow → flower pattern → manufacturing → defects database → 27 master rules — full reference" },
         { id: "auto-profile-converter", label: "Auto Profile Converter (Center Line → Inner/Outer)", icon: <Layers2 className="w-4 h-4" />, desc: "Segments define karo → K-factor se inner/outer profile auto-generate, flat strip width calculate, SVG export" },
+        { id: "auto-cnc-planner", label: "Auto CNC AI System (AI + SolidCAM + Safety)", icon: <Cpu className="w-4 h-4" />, desc: "AI se machining plan generate karo → SolidCAM templates → 5 safety locks → AI prompt pack — full automation" },
       ],
     },
     {
@@ -404,6 +406,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "roll-design-suite": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollDesignSuite /></div></Suspense>;
       case "roll-knowledge-hub": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollKnowledgeHub /></div></Suspense>;
       case "auto-profile-converter": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoProfileConverter /></div></Suspense>;
+      case "auto-cnc-planner": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoCncPlanner /></div></Suspense>;
       case "ai-chatbots": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AIChatbotsView /></div></Suspense>;
       case "forming-sim": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FormingSimulationView /></div></Suspense>;
       case "springback": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><SpringbackView /></div></Suspense>;

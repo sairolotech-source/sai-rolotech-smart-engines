@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1774157360577-u",
+    "role": "user",
+    "content": "Setup tab mein pehle kya karna chahiye?",
+    "timestamp": "2026-03-22T05:29:20.577Z",
+    "mode": "offline"
+  },
+  {
+    "id": "1774157360577-a",
+    "role": "assistant",
+    "content": "**SAI Rolotech AI — Offline Mode**\n\nAapka sawaal samajh mein nahi aaya ya topic offline KB mein nahi hai.\n\n**Available Offline Topics (26):**\n1. G71/G70 roughing+finishing cycle\n2. G75 grooving\n3. G76 threading\n4. G96/G97 spindle speed\n5. Strip width calculation\n6. Flower pattern design\n7. Springback compensation\n8. Station count\n9. Roll OD design\n10. Shaft diameter\n11. Bearing L10 life (ISO 281)\n12. Roll blank raw size\n13. Roll material (D2/H13)\n14. Heat treatment\n15. Defect diagnosis\n16. Forming force & motor kW\n17. Keyway DIN 6885\n18. Gearbox selection\n19. Quality tolerances DIN EN 10162\n20. Maintenance schedule\n21. Line speed / production rate\n22. Delta CNC 2X\n23. Cutting parameters (RPM/MRR/Ra/Tc)\n24. Insert selection by material\n25. Boring bar setup\n26. CNC program structure\n\n**Try asking about:**\n- \"G71 cycle kaise likhte hain?\" \n- \"SS 304 ke liye springback kitna?\"\n- \"C-channel ka strip width calculate karo 200×75×20mm t=2mm\"\n- \"Roll OD kya hona chahiye?\"\n- \"Bearing L10 life formula?\"\n- \"D2 steel ka heat treatment?\"\n\n**For complex queries:** Switch to Online mode (internet required) for AI-powered detailed answers.",
+    "timestamp": "2026-03-22T05:29:20.577Z",
+    "mode": "offline"
+  }
+]

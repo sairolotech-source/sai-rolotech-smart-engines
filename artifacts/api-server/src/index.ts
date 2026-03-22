@@ -14,6 +14,10 @@ const PORT = process.env["PORT"]
   : 8080;
 
 const FRONTEND_DIST = (() => {
+  if (process.env["FRONTEND_DIST"] && existsSync(path.join(process.env["FRONTEND_DIST"], "index.html"))) {
+    console.log("[server] FRONTEND_DIST (env):", process.env["FRONTEND_DIST"], "| index.html: found");
+    return process.env["FRONTEND_DIST"];
+  }
   const SELF_DIR = path.dirname(path.resolve(process.argv[1] ?? ""));
   const candidates = [
     path.resolve(SELF_DIR, "public"),

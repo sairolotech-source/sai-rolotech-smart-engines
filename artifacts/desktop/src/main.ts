@@ -88,6 +88,10 @@ function startApiServer(): Promise<void> {
       NODE_ENV: "production",
       PORT: String(API_PORT),
       ELECTRON: "1",
+      ...(IS_DEV ? {} : {
+        ELECTRON_RUN_AS_NODE: "1",
+        FRONTEND_DIST: path.join(process.resourcesPath, "frontend"),
+      }),
     };
 
     console.log(`[API] Starting server: ${cmd} ${serverScript}`);

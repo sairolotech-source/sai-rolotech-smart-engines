@@ -5,6 +5,7 @@ import {
   Calculator, BookOpen, Layers, Box, RefreshCw, Code2, Cpu,
   StopCircle, ChevronDown, ChevronUp, Copy, FileCode, Hash,
   Wrench, Circle, Target, Gauge, Shield, AlertCircle,
+  PenLine, Compass, Plus, Trash2, ArrowRightLeft, CornerRightDown,
 } from "lucide-react";
 import { LatheSimulator3D, type LatheToolMove } from "./LatheSimulator3D";
 import { runFullPreFlightCheck, type WorkpieceGeometry, type ToolGeometry } from "./CollisionEngine3D";
@@ -12,7 +13,7 @@ import { runFullPreFlightCheck, type WorkpieceGeometry, type ToolGeometry } from
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type Controller = "fanuc" | "siemens" | "haas" | "mazak" | "mitsubishi" | "delta";
-type SimPanel = "reference" | "turret" | "calculator" | "verify";
+type SimPanel = "reference" | "turret" | "calculator" | "verify" | "arc-calc" | "simcam" | "profiles";
 type Material = "GI" | "CR" | "HR" | "SS" | "AL" | "MS" | "CAST_IRON" | "TI";
 
 interface ToolSlot {
@@ -328,6 +329,402 @@ const MATERIAL_DATA: Record<Material, { label: string; vc: number; f: number; do
   TI:         { label: "Titanium",          vc: 50,  f: 0.08, doc: 0.8 },
 };
 
+// ─── Arc Calculator Math ─────────────────────────────────────────────────────
+interface ArcResult {
+  I: number; K: number; R: number;
+  centerXr: number; centerZ: number;
+  gcodeLine: string; valid: boolean; error?: string;
+}
+function computeArcIK(x1d: number, z1: number, x2d: number, z2: number, R: number, dir: "G02" | "G03"): ArcResult {
+  const x1r = x1d / 2, x2r = x2d / 2;
+  const dx = x2r - x1r, dz = z2 - z1;
+  const chord2 = dx * dx + dz * dz;
+  const chord = Math.sqrt(chord2);
+  if (chord < 1e-10) return { I: 0, K: 0, R, centerXr: x1r, centerZ: z1, gcodeLine: "", valid: false, error: "Start and end points are the same" };
+  if (chord / 2 > R) return { I: 0, K: 0, R, centerXr: x1r, centerZ: z1, gcodeLine: "", valid: false, error: `R=${R} too small for chord=${chord.toFixed(3)}` };
+  const h = Math.sqrt(R * R - (chord / 2) * (chord / 2));
+  const midXr = (x1r + x2r) / 2, midZ = (z1 + z2) / 2;
+  const perpXn = -dz / chord, perpZn = dx / chord;
+  // G02 = CW → center is to the right of travel direction
+  // G03 = CCW → center is to the left
+  const sign = dir === "G02" ? 1 : -1;
+  const cXr = midXr + sign * h * perpXn;
+  const cZ  = midZ  + sign * h * perpZn;
+  const I = parseFloat((cXr - x1r).toFixed(4));
+  const K = parseFloat((cZ  - z1 ).toFixed(4));
+  const gcodeLine = `${dir} X${x2d.toFixed(3)} Z${z2.toFixed(3)} I${I.toFixed(4)} K${K.toFixed(4)} F0.15`;
+  return { I, K, R, centerXr: cXr, centerZ: cZ, gcodeLine, valid: true };
+}
+
+// ─── SimCam Profile Point ────────────────────────────────────────────────────
+interface SimCamPoint { id: number; X: number; Z: number; type: "G01" | "G00"; }
+let simCamIdCounter = 0;
+function makeSimCamPoint(X: number, Z: number, type: "G01" | "G00" = "G01"): SimCamPoint {
+  return { id: ++simCamIdCounter, X, Z, type };
+}
+const DEFAULT_SIMCAM_PROFILE: SimCamPoint[] = [
+  makeSimCamPoint(0,    0,   "G01"),
+  makeSimCamPoint(30,   0,   "G01"),
+  makeSimCamPoint(30,  -2,   "G01"),
+  makeSimCamPoint(40,  -2,   "G01"),
+  makeSimCamPoint(40, -40,   "G01"),
+  makeSimCamPoint(60, -45,   "G01"),
+  makeSimCamPoint(60, -90,   "G01"),
+];
+function generateSimCamGCode(points: SimCamPoint[], stockDia: number, feedRough: number, feedFinish: number, spindle: number): string {
+  if (points.length < 2) return "; Add at least 2 points";
+  const pStart = 80, pEnd = pStart + points.length * 10;
+  const lines: string[] = [
+    `%\nO0100 (SIMCAM AUTO-PROGRAM - SAI ROLOTECH)`,
+    `(STOCK: ⌀${stockDia}mm | FINISH PROFILE: ${points.length} POINTS)`,
+    `N10 G21 G18 G40 G99`,
+    `N20 G28 U0. W0.`,
+    `N30 T0101 (OD ROUGH - CNMG)`,
+    `N40 G96 S${spindle} M03`,
+    `N50 G00 X${(stockDia + 4).toFixed(1)} Z2.0 M08`,
+    `N60 G71 U2.0 R0.5 (ROUGH TURNING CYCLE)`,
+    `N70 G71 P${pStart} Q${pEnd} U0.4 W0.1 F${feedRough.toFixed(2)}`,
+  ];
+  points.forEach((pt, i) => {
+    const n = pStart + i * 10;
+    lines.push(`N${n} ${pt.type} X${pt.X.toFixed(3)} Z${pt.Z.toFixed(3)}${i === 0 ? ` (START)` : i === points.length - 1 ? ` (END)` : ""}`);
+  });
+  lines.push(
+    `N${pEnd} G01 X${(points[points.length - 1].X + 2).toFixed(3)}`,
+    `N${pEnd + 10} G28 U0. W0.`,
+    `N${pEnd + 20} T0202 (OD FINISH - DCMT)`,
+    `N${pEnd + 30} G96 S${Math.round(spindle * 1.4)} M03`,
+    `N${pEnd + 40} G00 X${(stockDia + 4).toFixed(1)} Z2.0`,
+    `N${pEnd + 50} G70 P${pStart} Q${pEnd} F${feedFinish.toFixed(2)} (FINISH PASS)`,
+    `N${pEnd + 60} G28 U0. W0.`,
+    `N${pEnd + 70} M09`,
+    `N${pEnd + 80} M30\n%`
+  );
+  return lines.join("\n");
+}
+
+// ─── Standard Profiles Gallery ───────────────────────────────────────────────
+
+interface ProfileDimension {
+  key: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+}
+
+interface StandardProfile {
+  id: string;
+  name: string;
+  nameHi: string;
+  category: "roller" | "structural" | "custom";
+  icon: string;
+  dims: ProfileDimension[];
+  getPoints: (dims: Record<string, number>) => SimCamPoint[];
+}
+
+const PROFILES_STORAGE_KEY = "sai-rolotech-saved-profiles-v1";
+
+function loadSavedProfiles(): { name: string; dims: Record<string, number>; baseId: string; timestamp: number }[] {
+  try {
+    const raw = localStorage.getItem(PROFILES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveSavedProfiles(profiles: { name: string; dims: Record<string, number>; baseId: string; timestamp: number }[]): void {
+  try { localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles)); } catch {}
+}
+
+const STANDARD_PROFILES: StandardProfile[] = [
+  {
+    id: "step-roller", name: "Step Roller", nameHi: "स्टेप रोलर", category: "roller", icon: "⬛",
+    dims: [
+      { key: "od", label: "OD (बड़ा Ø)", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "id", label: "ID (छोटा Ø)", value: 50, min: 10, max: 280, step: 0.5, unit: "mm" },
+      { key: "len1", label: "Step 1 Length", value: 40, min: 5, max: 200, step: 0.5, unit: "mm" },
+      { key: "len2", label: "Step 2 Length", value: 60, min: 5, max: 200, step: 0.5, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.id - d.chamfer * 2, 0, "G01"),
+      makeSimCamPoint(d.id, -d.chamfer, "G01"), makeSimCamPoint(d.id, -d.len1, "G01"),
+      makeSimCamPoint(d.od - d.chamfer * 2, -d.len1, "G01"),
+      makeSimCamPoint(d.od, -(d.len1 + d.chamfer), "G01"),
+      makeSimCamPoint(d.od, -(d.len1 + d.len2), "G01"),
+    ],
+  },
+  {
+    id: "taper-roller", name: "Taper Roller", nameHi: "टेपर रोलर", category: "roller", icon: "📐",
+    dims: [
+      { key: "od1", label: "OD Start", value: 60, min: 10, max: 300, step: 0.5, unit: "mm" },
+      { key: "od2", label: "OD End", value: 80, min: 10, max: 300, step: 0.5, unit: "mm" },
+      { key: "length", label: "Length", value: 100, min: 10, max: 300, step: 1, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.od1 - d.chamfer * 2, 0, "G01"),
+      makeSimCamPoint(d.od1, -d.chamfer, "G01"),
+      makeSimCamPoint(d.od2, -d.length, "G01"),
+    ],
+  },
+  {
+    id: "groove-roller", name: "Groove Roller", nameHi: "ग्रूव रोलर", category: "roller", icon: "🔘",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "grooveD", label: "Groove Depth", value: 8, min: 1, max: 50, step: 0.5, unit: "mm" },
+      { key: "grooveW", label: "Groove Width", value: 12, min: 2, max: 50, step: 0.5, unit: "mm" },
+      { key: "groovePos", label: "Groove Position", value: 40, min: 5, max: 250, step: 1, unit: "mm" },
+      { key: "length", label: "Total Length", value: 100, min: 20, max: 300, step: 1, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.od - d.chamfer * 2, 0, "G01"),
+      makeSimCamPoint(d.od, -d.chamfer, "G01"), makeSimCamPoint(d.od, -d.groovePos, "G01"),
+      makeSimCamPoint(d.od - d.grooveD * 2, -d.groovePos, "G01"),
+      makeSimCamPoint(d.od - d.grooveD * 2, -(d.groovePos + d.grooveW), "G01"),
+      makeSimCamPoint(d.od, -(d.groovePos + d.grooveW), "G01"),
+      makeSimCamPoint(d.od, -d.length, "G01"),
+    ],
+  },
+  {
+    id: "radius-roller", name: "Radius / Crowned", nameHi: "रेडियस / क्राउन्ड", category: "roller", icon: "🌙",
+    dims: [
+      { key: "od", label: "OD Center", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "crown", label: "Crown Height", value: 3, min: 0.5, max: 20, step: 0.5, unit: "mm" },
+      { key: "length", label: "Length", value: 80, min: 10, max: 300, step: 1, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => {
+      const pts: SimCamPoint[] = [makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.od - d.crown * 2 - d.chamfer * 2, 0, "G01"), makeSimCamPoint(d.od - d.crown * 2, -d.chamfer, "G01")];
+      const steps = 8;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const z = -d.chamfer - t * (d.length - d.chamfer * 2);
+        const bulge = d.crown * Math.sin(t * Math.PI);
+        pts.push(makeSimCamPoint(d.od - d.crown * 2 + bulge * 2, z, "G01"));
+      }
+      pts.push(makeSimCamPoint(d.od - d.crown * 2, -d.length, "G01"));
+      return pts;
+    },
+  },
+  {
+    id: "v-groove", name: "V-Groove Roller", nameHi: "V-ग्रूव रोलर", category: "roller", icon: "✌️",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "vDepth", label: "V Depth", value: 10, min: 2, max: 40, step: 0.5, unit: "mm" },
+      { key: "vAngle", label: "V Angle (°)", value: 60, min: 20, max: 120, step: 5, unit: "°" },
+      { key: "vPos", label: "V Position", value: 40, min: 5, max: 250, step: 1, unit: "mm" },
+      { key: "length", label: "Total Length", value: 100, min: 20, max: 300, step: 1, unit: "mm" },
+    ],
+    getPoints: (d) => {
+      const halfAngleRad = (d.vAngle / 2) * Math.PI / 180;
+      const halfWidth = d.vDepth * Math.tan(halfAngleRad);
+      return [
+        makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.od, 0, "G01"),
+        makeSimCamPoint(d.od, -d.vPos + halfWidth, "G01"),
+        makeSimCamPoint(d.od - d.vDepth * 2, -d.vPos, "G01"),
+        makeSimCamPoint(d.od, -d.vPos - halfWidth, "G01"),
+        makeSimCamPoint(d.od, -d.length, "G01"),
+      ];
+    },
+  },
+  {
+    id: "multi-step", name: "Multi-Step Shaft", nameHi: "मल्टी-स्टेप शाफ्ट", category: "structural", icon: "📊",
+    dims: [
+      { key: "d1", label: "Ø1 (smallest)", value: 30, min: 5, max: 200, step: 0.5, unit: "mm" },
+      { key: "d2", label: "Ø2 (middle)", value: 50, min: 10, max: 250, step: 0.5, unit: "mm" },
+      { key: "d3", label: "Ø3 (largest)", value: 70, min: 15, max: 300, step: 0.5, unit: "mm" },
+      { key: "l1", label: "Length 1", value: 25, min: 3, max: 150, step: 1, unit: "mm" },
+      { key: "l2", label: "Length 2", value: 35, min: 3, max: 150, step: 1, unit: "mm" },
+      { key: "l3", label: "Length 3", value: 40, min: 3, max: 150, step: 1, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 1, min: 0, max: 5, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.d1 - d.chamfer * 2, 0, "G01"),
+      makeSimCamPoint(d.d1, -d.chamfer, "G01"), makeSimCamPoint(d.d1, -d.l1, "G01"),
+      makeSimCamPoint(d.d2, -d.l1, "G01"), makeSimCamPoint(d.d2, -(d.l1 + d.l2), "G01"),
+      makeSimCamPoint(d.d3, -(d.l1 + d.l2), "G01"), makeSimCamPoint(d.d3, -(d.l1 + d.l2 + d.l3), "G01"),
+    ],
+  },
+  {
+    id: "bore-profile", name: "Bore / Bushing", nameHi: "बोर / बुशिंग", category: "structural", icon: "⭕",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "bore", label: "Bore ID", value: 40, min: 5, max: 280, step: 0.5, unit: "mm" },
+      { key: "length", label: "Length", value: 60, min: 5, max: 200, step: 1, unit: "mm" },
+      { key: "chamferOD", label: "Chamfer OD", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+      { key: "chamferID", label: "Chamfer ID", value: 1.5, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(d.bore + d.chamferID * 2, 0, "G01"),
+      makeSimCamPoint(d.bore, -d.chamferID, "G01"),
+      makeSimCamPoint(d.bore, -d.length + d.chamferID, "G01"),
+      makeSimCamPoint(d.bore + d.chamferID * 2, -d.length, "G01"),
+      makeSimCamPoint(d.od - d.chamferOD * 2, -d.length, "G01"),
+      makeSimCamPoint(d.od, -d.length + d.chamferOD, "G01"),
+      makeSimCamPoint(d.od, -d.chamferOD, "G01"),
+      makeSimCamPoint(d.od - d.chamferOD * 2, 0, "G01"),
+    ],
+  },
+  {
+    id: "thread-shaft", name: "Thread Shaft", nameHi: "थ्रेड शाफ्ट", category: "structural", icon: "🔩",
+    dims: [
+      { key: "majorD", label: "Major Ø", value: 50, min: 10, max: 200, step: 0.5, unit: "mm" },
+      { key: "minorD", label: "Minor Ø (root)", value: 43, min: 5, max: 190, step: 0.5, unit: "mm" },
+      { key: "threadLen", label: "Thread Length", value: 40, min: 5, max: 200, step: 1, unit: "mm" },
+      { key: "bodyD", label: "Body Ø", value: 60, min: 15, max: 300, step: 0.5, unit: "mm" },
+      { key: "bodyLen", label: "Body Length", value: 50, min: 5, max: 200, step: 1, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"),
+      makeSimCamPoint(d.minorD - d.chamfer * 2, 0, "G01"),
+      makeSimCamPoint(d.minorD, -d.chamfer, "G01"),
+      makeSimCamPoint(d.majorD, -d.chamfer - 2, "G01"),
+      makeSimCamPoint(d.majorD, -d.threadLen, "G01"),
+      makeSimCamPoint(d.bodyD, -d.threadLen, "G01"),
+      makeSimCamPoint(d.bodyD, -(d.threadLen + d.bodyLen), "G01"),
+    ],
+  },
+  {
+    id: "contour-roller", name: "Contour Roller (D-Type)", nameHi: "कन्टूर रोलर (D-टाइप)", category: "roller", icon: "🔄",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "neckD", label: "Neck Ø", value: 50, min: 10, max: 250, step: 0.5, unit: "mm" },
+      { key: "neckLen", label: "Neck Length", value: 15, min: 2, max: 50, step: 0.5, unit: "mm" },
+      { key: "contourLen", label: "Contour Length", value: 60, min: 10, max: 200, step: 1, unit: "mm" },
+      { key: "shoulderLen", label: "Shoulder Length", value: 15, min: 2, max: 50, step: 1, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"),
+      makeSimCamPoint(d.neckD - d.chamfer * 2, 0, "G01"),
+      makeSimCamPoint(d.neckD, -d.chamfer, "G01"),
+      makeSimCamPoint(d.neckD, -d.neckLen, "G01"),
+      makeSimCamPoint(d.od, -(d.neckLen + d.chamfer), "G01"),
+      makeSimCamPoint(d.od, -(d.neckLen + d.contourLen), "G01"),
+      makeSimCamPoint(d.neckD, -(d.neckLen + d.contourLen + d.chamfer), "G01"),
+      makeSimCamPoint(d.neckD, -(d.neckLen + d.contourLen + d.shoulderLen), "G01"),
+    ],
+  },
+  {
+    id: "simple-od", name: "Simple OD Turning", nameHi: "सिंपल OD टर्निंग", category: "structural", icon: "🔵",
+    dims: [
+      { key: "od", label: "OD", value: 60, min: 10, max: 300, step: 0.5, unit: "mm" },
+      { key: "length", label: "Length", value: 80, min: 5, max: 300, step: 1, unit: "mm" },
+      { key: "chamfer", label: "Chamfer", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"),
+      makeSimCamPoint(d.od - d.chamfer * 2, 0, "G01"),
+      makeSimCamPoint(d.od, -d.chamfer, "G01"),
+      makeSimCamPoint(d.od, -d.length, "G01"),
+    ],
+  },
+  {
+    id: "double-groove", name: "Double Groove Roller", nameHi: "डबल ग्रूव रोलर", category: "roller", icon: "🔗",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "gd", label: "Groove Depth", value: 6, min: 1, max: 30, step: 0.5, unit: "mm" },
+      { key: "gw", label: "Groove Width", value: 8, min: 2, max: 30, step: 0.5, unit: "mm" },
+      { key: "gap", label: "Gap Between", value: 20, min: 5, max: 100, step: 1, unit: "mm" },
+      { key: "pos1", label: "1st Groove Pos", value: 25, min: 5, max: 200, step: 1, unit: "mm" },
+      { key: "length", label: "Total Length", value: 100, min: 20, max: 300, step: 1, unit: "mm" },
+    ],
+    getPoints: (d) => {
+      const p2 = d.pos1 + d.gw + d.gap;
+      return [
+        makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.od, 0, "G01"),
+        makeSimCamPoint(d.od, -d.pos1, "G01"),
+        makeSimCamPoint(d.od - d.gd * 2, -d.pos1, "G01"),
+        makeSimCamPoint(d.od - d.gd * 2, -(d.pos1 + d.gw), "G01"),
+        makeSimCamPoint(d.od, -(d.pos1 + d.gw), "G01"),
+        makeSimCamPoint(d.od, -p2, "G01"),
+        makeSimCamPoint(d.od - d.gd * 2, -p2, "G01"),
+        makeSimCamPoint(d.od - d.gd * 2, -(p2 + d.gw), "G01"),
+        makeSimCamPoint(d.od, -(p2 + d.gw), "G01"),
+        makeSimCamPoint(d.od, -d.length, "G01"),
+      ];
+    },
+  },
+  {
+    id: "shoulder-roller", name: "Shoulder Roller", nameHi: "शोल्डर रोलर", category: "roller", icon: "🔲",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "shoulderD", label: "Shoulder Ø", value: 65, min: 10, max: 280, step: 0.5, unit: "mm" },
+      { key: "shoulderW", label: "Shoulder Width", value: 15, min: 2, max: 50, step: 0.5, unit: "mm" },
+      { key: "bodyLen", label: "Body Length", value: 60, min: 5, max: 250, step: 1, unit: "mm" },
+      { key: "radius", label: "Fillet Radius", value: 3, min: 0, max: 15, step: 0.5, unit: "mm" },
+    ],
+    getPoints: (d) => [
+      makeSimCamPoint(0, 0, "G01"), makeSimCamPoint(d.shoulderD, 0, "G01"),
+      makeSimCamPoint(d.shoulderD, -d.shoulderW, "G01"),
+      makeSimCamPoint(d.od, -(d.shoulderW + d.radius), "G01"),
+      makeSimCamPoint(d.od, -(d.shoulderW + d.bodyLen), "G01"),
+    ],
+  },
+  {
+    id: "angle-profile", name: "Angle Profile (L)", nameHi: "एंगल प्रोफाइल (L)", category: "roller", icon: "📏",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "legH", label: "Leg Height (vertical)", value: 25, min: 3, max: 100, step: 0.5, unit: "mm" },
+      { key: "legW", label: "Leg Width (horizontal)", value: 25, min: 3, max: 100, step: 0.5, unit: "mm" },
+      { key: "thickness", label: "Thickness", value: 4, min: 1, max: 20, step: 0.5, unit: "mm" },
+      { key: "radius", label: "Inside Radius", value: 3, min: 0.5, max: 15, step: 0.5, unit: "mm" },
+      { key: "length", label: "Total Length", value: 80, min: 10, max: 300, step: 1, unit: "mm" },
+    ],
+    getPoints: (d) => {
+      const baseD = d.od - d.legH * 2;
+      return [
+        makeSimCamPoint(0, 0, "G01"),
+        makeSimCamPoint(baseD, 0, "G01"),
+        makeSimCamPoint(baseD, -d.legW, "G01"),
+        makeSimCamPoint(baseD + d.thickness * 2, -d.legW, "G01"),
+        makeSimCamPoint(baseD + d.thickness * 2, -(d.thickness + d.radius), "G01"),
+        makeSimCamPoint(baseD + (d.thickness + d.radius) * 2, -d.thickness, "G01"),
+        makeSimCamPoint(d.od, -d.thickness, "G01"),
+        makeSimCamPoint(d.od, 0, "G01"),
+        makeSimCamPoint(d.od, -d.length, "G01"),
+      ];
+    },
+  },
+  {
+    id: "v-type-profile", name: "V-Type Profile", nameHi: "V-टाइप प्रोफाइल", category: "roller", icon: "🔻",
+    dims: [
+      { key: "od", label: "OD", value: 80, min: 20, max: 300, step: 0.5, unit: "mm" },
+      { key: "vDepth", label: "V Depth", value: 15, min: 2, max: 60, step: 0.5, unit: "mm" },
+      { key: "vAngle", label: "V Angle (°)", value: 90, min: 30, max: 150, step: 5, unit: "°" },
+      { key: "tipRadius", label: "Tip Radius", value: 2, min: 0, max: 10, step: 0.5, unit: "mm" },
+      { key: "flatTop", label: "Flat Top Width", value: 8, min: 0, max: 50, step: 0.5, unit: "mm" },
+      { key: "vPos", label: "V Center Position", value: 40, min: 5, max: 250, step: 1, unit: "mm" },
+      { key: "length", label: "Total Length", value: 80, min: 10, max: 300, step: 1, unit: "mm" },
+    ],
+    getPoints: (d) => {
+      const halfAngleRad = (d.vAngle / 2) * Math.PI / 180;
+      const halfWidth = d.vDepth * Math.tan(halfAngleRad);
+      const bottomD = d.od - d.vDepth * 2;
+      const tipR = d.tipRadius;
+      const tipOffsetZ = tipR * Math.tan(halfAngleRad / 2);
+      const tipOffsetX = tipR * (1 - Math.cos(halfAngleRad)) * 2;
+      return [
+        makeSimCamPoint(0, 0, "G01"),
+        makeSimCamPoint(d.od, 0, "G01"),
+        makeSimCamPoint(d.od, -(d.vPos - halfWidth - d.flatTop / 2), "G01"),
+        makeSimCamPoint(d.od, -(d.vPos - halfWidth), "G01"),
+        makeSimCamPoint(bottomD + tipOffsetX, -(d.vPos - tipOffsetZ), "G01"),
+        makeSimCamPoint(bottomD, -d.vPos, "G01"),
+        makeSimCamPoint(bottomD + tipOffsetX, -(d.vPos + tipOffsetZ), "G01"),
+        makeSimCamPoint(d.od, -(d.vPos + halfWidth), "G01"),
+        makeSimCamPoint(d.od, -(d.vPos + halfWidth + d.flatTop / 2), "G01"),
+        makeSimCamPoint(d.od, -d.length, "G01"),
+      ];
+    },
+  },
+];
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function ProLatheSimulator() {
@@ -352,6 +749,82 @@ export function ProLatheSimulator() {
   const [editorCollapsed, setEditorCollapsed] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [highlightedLine, setHighlightedLine] = useState(0);
+
+  // ── Arc Calculator State ────────────────────────────────────────────────
+  const [arcX1, setArcX1] = useState(40);
+  const [arcZ1, setArcZ1] = useState(0);
+  const [arcX2, setArcX2] = useState(60);
+  const [arcZ2, setArcZ2] = useState(-15);
+  const [arcR,  setArcR]  = useState(20);
+  const [arcDir, setArcDir] = useState<"G02"|"G03">("G02");
+  const [polarR,     setPolarR]     = useState(50);
+  const [polarTheta, setPolarTheta] = useState(45);
+  const [polarMode,  setPolarMode]  = useState<"toXZ"|"toRT">("toXZ");
+  const [polarX,     setPolarX]     = useState(35.355);
+  const [polarZ,     setPolarZ]     = useState(-35.355);
+
+  // ── SimCam Profile Builder State ────────────────────────────────────────
+  const [simCamPoints, setSimCamPoints]       = useState<SimCamPoint[]>(DEFAULT_SIMCAM_PROFILE);
+  const [simCamFeedRough, setSimCamFeedRough] = useState(0.25);
+  const [simCamFeedFin,   setSimCamFeedFin]   = useState(0.10);
+  const [simCamSpindle,   setSimCamSpindle]   = useState(180);
+  const [simCamGenerated, setSimCamGenerated] = useState("");
+
+  // ── Standard Profiles Gallery State ────────────────────────────────────
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [profileDims, setProfileDims]             = useState<Record<string, number>>({});
+  const [profileConfirmed, setProfileConfirmed]   = useState(false);
+  const [profileGenerated, setProfileGenerated]   = useState("");
+  const [savedProfiles, setSavedProfiles]         = useState(() => loadSavedProfiles());
+  const [profileSaveName, setProfileSaveName]     = useState("");
+
+  const selectedProfile = useMemo(() => STANDARD_PROFILES.find(p => p.id === selectedProfileId), [selectedProfileId]);
+
+  const handleSelectProfile = useCallback((profile: StandardProfile) => {
+    setSelectedProfileId(profile.id);
+    const dims: Record<string, number> = {};
+    profile.dims.forEach(d => { dims[d.key] = d.value; });
+    setProfileDims(dims);
+    setProfileConfirmed(false);
+    setProfileGenerated("");
+    setProfileSaveName("");
+  }, []);
+
+  const handleLoadSavedProfile = useCallback((saved: { name: string; dims: Record<string, number>; baseId: string }) => {
+    const base = STANDARD_PROFILES.find(p => p.id === saved.baseId);
+    if (!base) return;
+    setSelectedProfileId(base.id);
+    setProfileDims({ ...saved.dims });
+    setProfileConfirmed(false);
+    setProfileGenerated("");
+    setProfileSaveName(saved.name);
+  }, []);
+
+  const handleConfirmProfile = useCallback(() => {
+    setProfileConfirmed(true);
+  }, []);
+
+  const handleGenerateProfileGCode = useCallback(() => {
+    if (!selectedProfile) return;
+    const pts = selectedProfile.getPoints(profileDims);
+    const maxOD = Math.max(...pts.map(p => p.X), 10);
+    const code = generateSimCamGCode(pts, maxOD + 4, simCamFeedRough, simCamFeedFin, simCamSpindle);
+    setProfileGenerated(code);
+  }, [selectedProfile, profileDims, simCamFeedRough, simCamFeedFin, simCamSpindle]);
+
+  const handleSaveProfile = useCallback(() => {
+    if (!selectedProfileId || !profileSaveName.trim()) return;
+    const entry = { name: profileSaveName.trim(), dims: { ...profileDims }, baseId: selectedProfileId, timestamp: Date.now() };
+    const updated = [entry, ...savedProfiles.filter(s => s.name !== entry.name)].slice(0, 50);
+    setSavedProfiles(updated);
+    saveSavedProfiles(updated);
+  }, [selectedProfileId, profileDims, profileSaveName, savedProfiles]);
+
+  const handleDeleteSavedProfile = useCallback((name: string) => {
+    const updated = savedProfiles.filter(s => s.name !== name);
+    setSavedProfiles(updated);
+    saveSavedProfiles(updated);
+  }, [savedProfiles]);
 
   const { blocks, moves, alarms } = useMemo(() => parseLatheGCode(gcodeText), [gcodeText]);
 
@@ -434,6 +907,21 @@ export function ProLatheSimulator() {
     const q = refSearch.toLowerCase();
     return GCODE_REF.filter(r => !q || r.code.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q));
   }, [refSearch]);
+
+  const arcResult = useMemo(() => computeArcIK(arcX1, arcZ1, arcX2, arcZ2, arcR, arcDir), [arcX1, arcZ1, arcX2, arcZ2, arcR, arcDir]);
+
+  const polarResult = useMemo((): { X?: number; Z?: number; R?: number; Theta?: number } => {
+    if (polarMode === "toXZ") {
+      const xr = polarR * Math.cos((polarTheta * Math.PI) / 180);
+      const z  = polarR * Math.sin((polarTheta * Math.PI) / 180);
+      return { X: parseFloat((xr * 2).toFixed(4)), Z: parseFloat((-z).toFixed(4)) };
+    } else {
+      const xr = polarX / 2, zv = -polarZ;
+      const r  = Math.sqrt(xr * xr + zv * zv);
+      const th = Math.atan2(zv, xr) * 180 / Math.PI;
+      return { R: parseFloat(r.toFixed(4)), Theta: parseFloat(th.toFixed(4)) };
+    }
+  }, [polarMode, polarR, polarTheta, polarX, polarZ]);
 
   const lineCount = gcodeText.split("\n").length;
 
@@ -639,10 +1127,13 @@ export function ProLatheSimulator() {
           {/* Right panel tab bar */}
           <div className="flex border-b border-white/[0.06] flex-shrink-0">
             {([
-              { id: "turret",     icon: <Layers className="w-3 h-3" />,     label: "Turret" },
-              { id: "calculator", icon: <Calculator className="w-3 h-3" />, label: "Calc" },
-              { id: "reference",  icon: <BookOpen className="w-3 h-3" />,   label: "Ref" },
-              { id: "verify",     icon: <Shield className="w-3 h-3" />,     label: "Verify" },
+              { id: "profiles",   icon: <Box className="w-3 h-3" />,          label: "Profiles" },
+              { id: "turret",     icon: <Layers className="w-3 h-3" />,      label: "Turret" },
+              { id: "calculator", icon: <Calculator className="w-3 h-3" />,  label: "Calc" },
+              { id: "arc-calc",   icon: <Compass className="w-3 h-3" />,     label: "Arc" },
+              { id: "simcam",     icon: <PenLine className="w-3 h-3" />,     label: "SimCam" },
+              { id: "reference",  icon: <BookOpen className="w-3 h-3" />,    label: "Ref" },
+              { id: "verify",     icon: <Shield className="w-3 h-3" />,      label: "Verify" },
             ] as { id: SimPanel; icon: React.ReactNode; label: string }[]).map(tab => (
               <button key={tab.id}
                 onClick={() => setRightPanel(tab.id)}
@@ -653,6 +1144,215 @@ export function ProLatheSimulator() {
               </button>
             ))}
           </div>
+
+          {/* ── Standard Profiles Gallery Panel ────────────────── */}
+          {rightPanel === "profiles" && (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {!selectedProfile ? (
+                <>
+                  <div className="px-3 pt-3 pb-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Box className="w-4 h-4 text-orange-400" />
+                      <span className="text-[11px] font-semibold text-zinc-300">Standard Profiles</span>
+                    </div>
+                    <div className="text-[9px] text-zinc-600">Select → Edit Size → Confirm → Generate Program</div>
+                  </div>
+
+                  {savedProfiles.length > 0 && (
+                    <div className="px-3 pb-2 flex-shrink-0">
+                      <div className="text-[9px] uppercase tracking-widest text-amber-500/60 font-bold mb-1">Saved Profiles</div>
+                      <div className="space-y-1 max-h-28 overflow-y-auto">
+                        {savedProfiles.map(sp => (
+                          <div key={sp.name} className="flex items-center gap-1.5 group">
+                            <button
+                              onClick={() => handleLoadSavedProfile(sp)}
+                              className="flex-1 text-left px-2 py-1 rounded bg-amber-900/10 border border-amber-500/15 text-[9px] text-amber-300 hover:bg-amber-900/20 truncate"
+                            >
+                              {sp.name}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSavedProfile(sp.name)}
+                              className="opacity-0 group-hover:opacity-100 text-zinc-700 hover:text-red-400 transition-all"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex-1 overflow-y-auto px-3 pb-3">
+                    <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold mb-2">Roller Profiles</div>
+                    <div className="grid grid-cols-2 gap-1.5 mb-3">
+                      {STANDARD_PROFILES.filter(p => p.category === "roller").map(profile => (
+                        <button
+                          key={profile.id}
+                          onClick={() => handleSelectProfile(profile)}
+                          className="flex flex-col items-center gap-1 p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] hover:border-orange-500/30 hover:bg-orange-900/10 transition-all text-center"
+                        >
+                          <span className="text-base">{profile.icon}</span>
+                          <span className="text-[8px] text-zinc-400 leading-tight">{profile.name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold mb-2">Structural / Shaft</div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {STANDARD_PROFILES.filter(p => p.category === "structural").map(profile => (
+                        <button
+                          key={profile.id}
+                          onClick={() => handleSelectProfile(profile)}
+                          className="flex flex-col items-center gap-1 p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] hover:border-cyan-500/30 hover:bg-cyan-900/10 transition-all text-center"
+                        >
+                          <span className="text-base">{profile.icon}</span>
+                          <span className="text-[8px] text-zinc-400 leading-tight">{profile.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="px-3 pt-3 pb-2 flex-shrink-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{selectedProfile.icon}</span>
+                        <span className="text-[11px] font-semibold text-zinc-300">{selectedProfile.name}</span>
+                      </div>
+                      <button onClick={() => { setSelectedProfileId(null); setProfileConfirmed(false); setProfileGenerated(""); }}
+                        className="text-[9px] text-zinc-600 hover:text-zinc-300 px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/[0.06]">
+                        ← Back
+                      </button>
+                    </div>
+                    <div className="text-[9px] text-zinc-600">{selectedProfile.nameHi}</div>
+                  </div>
+
+                  <div className="px-3 pb-2 flex-shrink-0">
+                    <div className="bg-[#040608] border border-white/[0.06] rounded-lg p-1" style={{ height: 80 }}>
+                      {(() => {
+                        const pts = selectedProfile.getPoints(profileDims);
+                        if (pts.length < 2) return <div className="flex items-center justify-center h-full text-zinc-700 text-[9px]">No preview</div>;
+                        const xs = pts.map(p => p.X), zs = pts.map(p => p.Z);
+                        const minX = Math.min(...xs, 0), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs, 0);
+                        const rangeX = maxX - minX || 1, rangeZ = maxZ - minZ || 1;
+                        const pad = 8, W = 250, H = 68;
+                        const sx = (x: number) => pad + (x - minX) / rangeX * (W - 2 * pad);
+                        const sz = (z: number) => H - pad - (z - minZ) / rangeZ * (H - 2 * pad);
+                        const polyPts = pts.map(p => `${sx(p.X).toFixed(1)},${sz(p.Z).toFixed(1)}`).join(" ");
+                        const mirrorPts = pts.map(p => `${sx(-p.X + maxX + minX).toFixed(1)},${sz(p.Z).toFixed(1)}`).join(" ");
+                        return (
+                          <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
+                            <polyline points={polyPts} fill="none" stroke="#22d3ee" strokeWidth={1.5} />
+                            <polyline points={mirrorPts} fill="none" stroke="#22d3ee" strokeWidth={0.5} strokeDasharray="2,2" opacity={0.3} />
+                            {pts.map((p, i) => (
+                              <circle key={i} cx={sx(p.X)} cy={sz(p.Z)} r={2} fill={profileConfirmed ? "#22c55e" : "#f97316"} />
+                            ))}
+                          </svg>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto px-3 space-y-2">
+                    <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold">Dimensions — Edit Size</div>
+                    {selectedProfile.dims.map(dim => (
+                      <label key={dim.key} className="block">
+                        <div className="flex justify-between mb-0.5">
+                          <span className="text-[9px] text-zinc-500">{dim.label}</span>
+                          <span className="text-[8px] text-zinc-700">{dim.min}–{dim.max} {dim.unit}</span>
+                        </div>
+                        <input
+                          type="number"
+                          step={dim.step}
+                          min={dim.min}
+                          max={dim.max}
+                          value={profileDims[dim.key] ?? dim.value}
+                          onChange={e => {
+                            const v = parseFloat(e.target.value) || dim.value;
+                            setProfileDims(prev => ({ ...prev, [dim.key]: v }));
+                            setProfileConfirmed(false);
+                            setProfileGenerated("");
+                          }}
+                          className={`w-full h-7 px-2 rounded-lg bg-white/[0.03] border text-[11px] font-mono focus:outline-none transition-all ${
+                            profileConfirmed
+                              ? "border-emerald-500/30 text-emerald-300 focus:border-emerald-500/50"
+                              : "border-white/[0.08] text-orange-300 focus:border-orange-500/40"
+                          }`}
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="px-3 py-2 border-t border-white/[0.06] flex-shrink-0 space-y-2">
+                    {!profileConfirmed ? (
+                      <button
+                        onClick={handleConfirmProfile}
+                        className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-orange-600/15 border border-orange-500/25 text-[10px] font-bold text-orange-300 hover:bg-orange-600/25 transition-all"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" /> Confirm Size
+                      </button>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-1.5 text-emerald-400 text-[9px]">
+                          <CheckCircle className="w-3 h-3" />
+                          <span className="font-bold">Size Confirmed</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleGenerateProfileGCode}
+                            className="flex-1 flex items-center justify-center gap-1 h-7 rounded-lg bg-emerald-600/15 border border-emerald-500/25 text-[10px] text-emerald-300 hover:bg-emerald-600/25 transition-all"
+                          >
+                            <Code2 className="w-3 h-3" /> Generate
+                          </button>
+                          <button
+                            onClick={() => { setProfileConfirmed(false); setProfileGenerated(""); }}
+                            className="h-7 px-2 rounded-lg bg-white/[0.02] border border-white/[0.07] text-zinc-500 hover:text-zinc-300 transition-all"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="Profile name..."
+                            value={profileSaveName}
+                            onChange={e => setProfileSaveName(e.target.value)}
+                            className="flex-1 h-6 px-2 rounded bg-white/[0.03] border border-white/[0.08] text-[9px] text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-amber-500/30"
+                          />
+                          <button
+                            onClick={handleSaveProfile}
+                            disabled={!profileSaveName.trim()}
+                            className="h-6 px-2 rounded bg-amber-600/15 border border-amber-500/25 text-[9px] text-amber-300 hover:bg-amber-600/25 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                          >
+                            Save
+                          </button>
+                        </div>
+
+                        {profileGenerated && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] text-zinc-600">Generated Program</span>
+                              <button
+                                onClick={() => { setGcodeText(profileGenerated); setProfileGenerated(""); }}
+                                className="text-[9px] text-orange-400 hover:text-orange-300 flex items-center gap-1"
+                              >
+                                <ArrowRightLeft className="w-2.5 h-2.5" /> Insert into Editor
+                              </button>
+                            </div>
+                            <div className="bg-[#040608] rounded-lg p-2 max-h-28 overflow-y-auto">
+                              <pre className="text-[8px] font-mono text-emerald-300 leading-relaxed whitespace-pre-wrap">{profileGenerated}</pre>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* ── Turret Panel ─────────────────────────────────── */}
           {rightPanel === "turret" && (
@@ -962,6 +1662,300 @@ G28 U0. W0.`}
               )}
             </div>
           )}
+
+          {/* ── Arc Calculator ─────────────────────────────────── */}
+          {rightPanel === "arc-calc" && (
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              <div className="flex items-center gap-2">
+                <Compass className="w-4 h-4 text-cyan-400" />
+                <span className="text-[11px] font-semibold text-zinc-300">Arc Calculator  (G02/G03)</span>
+              </div>
+
+              {/* Direction selector */}
+              <div className="flex gap-2">
+                {(["G02","G03"] as const).map(d => (
+                  <button key={d}
+                    onClick={() => setArcDir(d)}
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${arcDir === d ? "bg-cyan-600/20 border-cyan-500 text-cyan-300" : "bg-white/[0.02] border-white/[0.07] text-zinc-500 hover:text-zinc-300"}`}
+                  >
+                    {d} {d === "G02" ? "↻ CW" : "↺ CCW"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Inputs */}
+              <div className="space-y-2">
+                <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold">Start Point</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[{label:"X1 Ø (dia)", val:arcX1, set:setArcX1}, {label:"Z1 (mm)", val:arcZ1, set:setArcZ1}].map(f => (
+                    <label key={f.label} className="block">
+                      <span className="text-[9px] text-zinc-500 mb-0.5 block">{f.label}</span>
+                      <input type="number" step={0.001} value={f.val}
+                        onChange={e => f.set(parseFloat(e.target.value)||0)}
+                        className="w-full h-7 px-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-cyan-300 font-mono focus:outline-none focus:border-cyan-500/40" />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold pt-1">End Point</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[{label:"X2 Ø (dia)", val:arcX2, set:setArcX2}, {label:"Z2 (mm)", val:arcZ2, set:setArcZ2}].map(f => (
+                    <label key={f.label} className="block">
+                      <span className="text-[9px] text-zinc-500 mb-0.5 block">{f.label}</span>
+                      <input type="number" step={0.001} value={f.val}
+                        onChange={e => f.set(parseFloat(e.target.value)||0)}
+                        className="w-full h-7 px-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-orange-300 font-mono focus:outline-none focus:border-orange-500/40" />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold pt-1">Arc Radius</div>
+                <input type="number" step={0.001} min={0.001} value={arcR}
+                  onChange={e => setArcR(parseFloat(e.target.value)||1)}
+                  className="w-full h-7 px-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-purple-300 font-mono focus:outline-none focus:border-purple-500/40" />
+              </div>
+
+              {/* Result */}
+              <div className={`rounded-xl border p-3 space-y-2 ${arcResult.valid ? "border-cyan-500/20 bg-cyan-900/5" : "border-red-500/20 bg-red-900/5"}`}>
+                {arcResult.valid ? (
+                  <>
+                    <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold">Computed Values</div>
+                    {[
+                      {label:"I  (X center offset, radius)", val: arcResult.I.toFixed(4)+" mm", color:"text-cyan-400"},
+                      {label:"K  (Z center offset)", val: arcResult.K.toFixed(4)+" mm", color:"text-orange-400"},
+                      {label:"Chord length", val: (Math.sqrt(Math.pow((arcX2-arcX1)/2,2)+Math.pow(arcZ2-arcZ1,2))).toFixed(4)+" mm", color:"text-zinc-400"},
+                      {label:"Arc direction", val: arcDir==="G02"?"CW (G02)":"CCW (G03)", color:"text-purple-400"},
+                    ].map(r => (
+                      <div key={r.label} className="flex justify-between items-center">
+                        <span className="text-[9px] text-zinc-500">{r.label}</span>
+                        <span className={`text-[10px] font-bold font-mono tabular-nums ${r.color}`}>{r.val}</span>
+                      </div>
+                    ))}
+                    <div className="bg-[#040608] rounded-lg p-2 mt-2">
+                      <div className="text-[9px] text-zinc-600 mb-1">G-Code Line  (click to insert)</div>
+                      <button
+                        onClick={() => setGcodeText(prev => prev + "\n" + arcResult.gcodeLine)}
+                        className="text-[10px] font-mono text-emerald-300 hover:text-emerald-200 text-left w-full break-all hover:underline"
+                      >
+                        {arcResult.gcodeLine}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-red-400">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-[10px]">{arcResult.error}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Polar Coordinate Calculator */}
+              <div className="border-t border-white/[0.06] pt-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-[11px] font-semibold text-zinc-300">Polar ↔ Cartesian</span>
+                </div>
+
+                <div className="flex gap-2">
+                  {([{id:"toXZ",label:"r,θ → X,Z"},{id:"toRT",label:"X,Z → r,θ"}] as const).map(m => (
+                    <button key={m.id}
+                      onClick={() => setPolarMode(m.id)}
+                      className={`flex-1 py-1 rounded text-[9px] font-bold border transition-all ${polarMode === m.id ? "bg-purple-600/20 border-purple-500 text-purple-300" : "bg-white/[0.02] border-white/[0.07] text-zinc-500 hover:text-zinc-300"}`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                {polarMode === "toXZ" ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="text-[9px] text-zinc-500 mb-0.5 block">Radius r (mm)</span>
+                        <input type="number" step={0.001} min={0} value={polarR} onChange={e => setPolarR(parseFloat(e.target.value)||0)}
+                          className="w-full h-7 px-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-purple-300 font-mono focus:outline-none" />
+                      </label>
+                      <label className="block">
+                        <span className="text-[9px] text-zinc-500 mb-0.5 block">Angle θ (deg)</span>
+                        <input type="number" step={0.1} value={polarTheta} onChange={e => setPolarTheta(parseFloat(e.target.value)||0)}
+                          className="w-full h-7 px-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-purple-300 font-mono focus:outline-none" />
+                      </label>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-2.5 space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-[10px] text-zinc-500">X (dia)</span>
+                        <span className="text-[11px] font-mono font-bold text-cyan-400">{polarResult.X?.toFixed(4)} mm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[10px] text-zinc-500">Z</span>
+                        <span className="text-[11px] font-mono font-bold text-orange-400">{polarResult.Z?.toFixed(4)} mm</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="text-[9px] text-zinc-500 mb-0.5 block">X Ø (dia, mm)</span>
+                        <input type="number" step={0.001} value={polarX} onChange={e => setPolarX(parseFloat(e.target.value)||0)}
+                          className="w-full h-7 px-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-cyan-300 font-mono focus:outline-none" />
+                      </label>
+                      <label className="block">
+                        <span className="text-[9px] text-zinc-500 mb-0.5 block">Z (mm)</span>
+                        <input type="number" step={0.001} value={polarZ} onChange={e => setPolarZ(parseFloat(e.target.value)||0)}
+                          className="w-full h-7 px-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-cyan-300 font-mono focus:outline-none" />
+                      </label>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-2.5 space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-[10px] text-zinc-500">Radius r</span>
+                        <span className="text-[11px] font-mono font-bold text-purple-400">{polarResult.R?.toFixed(4)} mm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[10px] text-zinc-500">Angle θ</span>
+                        <span className="text-[11px] font-mono font-bold text-pink-400">{polarResult.Theta?.toFixed(4)} °</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── SimCam Profile Builder ──────────────────────────── */}
+          {rightPanel === "simcam" && (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="px-3 pt-3 pb-2 flex-shrink-0 space-y-2">
+                <div className="flex items-center gap-2">
+                  <PenLine className="w-4 h-4 text-emerald-400" />
+                  <span className="text-[11px] font-semibold text-zinc-300">SimCam Profile Builder</span>
+                </div>
+                <div className="text-[9px] text-zinc-600">Define turning profile → auto-generate G71+G70 program</div>
+              </div>
+
+              {/* Profile params */}
+              <div className="px-3 pb-2 flex-shrink-0 grid grid-cols-3 gap-2">
+                <label className="block">
+                  <span className="text-[9px] text-zinc-500 mb-0.5 block">Feed Rough</span>
+                  <input type="number" step={0.01} min={0.01} value={simCamFeedRough} onChange={e => setSimCamFeedRough(parseFloat(e.target.value)||0.25)}
+                    className="w-full h-6 px-1.5 rounded bg-white/[0.03] border border-white/[0.08] text-[10px] text-zinc-300 font-mono focus:outline-none" />
+                </label>
+                <label className="block">
+                  <span className="text-[9px] text-zinc-500 mb-0.5 block">Feed Finish</span>
+                  <input type="number" step={0.01} min={0.01} value={simCamFeedFin} onChange={e => setSimCamFeedFin(parseFloat(e.target.value)||0.10)}
+                    className="w-full h-6 px-1.5 rounded bg-white/[0.03] border border-white/[0.08] text-[10px] text-zinc-300 font-mono focus:outline-none" />
+                </label>
+                <label className="block">
+                  <span className="text-[9px] text-zinc-500 mb-0.5 block">Spindle RPM</span>
+                  <input type="number" step={10} min={50} value={simCamSpindle} onChange={e => setSimCamSpindle(parseInt(e.target.value)||180)}
+                    className="w-full h-6 px-1.5 rounded bg-white/[0.03] border border-white/[0.08] text-[10px] text-zinc-300 font-mono focus:outline-none" />
+                </label>
+              </div>
+
+              {/* SVG profile preview */}
+              <div className="px-3 pb-2 flex-shrink-0">
+                <div className="bg-[#040608] border border-white/[0.06] rounded-lg p-1" style={{height:90}}>
+                  {(() => {
+                    if (simCamPoints.length < 2) return <div className="flex items-center justify-center h-full text-zinc-700 text-[9px]">Add points</div>;
+                    const xs = simCamPoints.map(p=>p.X), zs = simCamPoints.map(p=>p.Z);
+                    const minX=Math.min(...xs,0), maxX=Math.max(...xs), minZ=Math.min(...zs), maxZ=Math.max(...zs,0);
+                    const rangeX=maxX-minX||1, rangeZ=maxZ-minZ||1;
+                    const pad=6, W=254, H=78;
+                    const sx=(x:number)=>pad+(x-minX)/rangeX*(W-2*pad);
+                    const sz=(z:number)=>H-pad-(z-minZ)/rangeZ*(H-2*pad);
+                    const pts = simCamPoints.map(p=>`${sx(p.X).toFixed(1)},${sz(p.Z).toFixed(1)}`).join(" ");
+                    return (
+                      <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
+                        <polyline points={pts} fill="none" stroke="#22d3ee" strokeWidth={1.5} />
+                        {simCamPoints.map(p=>(
+                          <circle key={p.id} cx={sx(p.X)} cy={sz(p.Z)} r={2.5} fill="#f97316" />
+                        ))}
+                      </svg>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Point table */}
+              <div className="flex-1 overflow-y-auto px-2">
+                <div className="flex items-center justify-between px-1 mb-1">
+                  <span className="text-[9px] text-zinc-600 uppercase tracking-wider font-bold">Profile Points</span>
+                  <button
+                    onClick={() => setSimCamPoints(prev => [...prev, makeSimCamPoint(
+                      prev.length > 0 ? prev[prev.length-1].X : 0,
+                      prev.length > 0 ? prev[prev.length-1].Z - 10 : 0
+                    )])}
+                    className="flex items-center gap-1 text-[9px] text-emerald-400 hover:text-emerald-300 px-1.5 py-0.5 rounded bg-emerald-900/10 border border-emerald-500/20"
+                  >
+                    <Plus className="w-2.5 h-2.5" /> Add
+                  </button>
+                </div>
+
+                {/* Header */}
+                <div className="grid grid-cols-[24px_1fr_1fr_28px] gap-1 px-1 mb-0.5">
+                  {["#","X Ø","Z",""].map(h=><div key={h} className="text-[8px] text-zinc-700 font-bold uppercase">{h}</div>)}
+                </div>
+
+                {simCamPoints.map((pt, i) => (
+                  <div key={pt.id} className="grid grid-cols-[24px_1fr_1fr_28px] gap-1 px-1 mb-0.5 items-center">
+                    <span className="text-[9px] text-zinc-700 font-mono">{i+1}</span>
+                    <input type="number" step={0.001} value={pt.X}
+                      onChange={e => setSimCamPoints(prev => prev.map(p => p.id === pt.id ? {...p, X: parseFloat(e.target.value)||0} : p))}
+                      className="h-6 px-1.5 rounded bg-white/[0.03] border border-white/[0.06] text-[10px] text-cyan-300 font-mono focus:outline-none focus:border-cyan-500/30 w-full" />
+                    <input type="number" step={0.001} value={pt.Z}
+                      onChange={e => setSimCamPoints(prev => prev.map(p => p.id === pt.id ? {...p, Z: parseFloat(e.target.value)||0} : p))}
+                      className="h-6 px-1.5 rounded bg-white/[0.03] border border-white/[0.06] text-[10px] text-orange-300 font-mono focus:outline-none focus:border-orange-500/30 w-full" />
+                    <button onClick={() => setSimCamPoints(prev => prev.filter(p => p.id !== pt.id))}
+                      className="flex items-center justify-center text-zinc-700 hover:text-red-400 transition-colors">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {simCamPoints.length === 0 && (
+                  <div className="text-center py-4 text-zinc-700 text-[10px]">No points — click Add to start</div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="px-3 py-2 border-t border-white/[0.06] flex-shrink-0 space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const code = generateSimCamGCode(simCamPoints, stockDia, simCamFeedRough, simCamFeedFin, simCamSpindle);
+                      setSimCamGenerated(code);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-lg bg-emerald-600/15 border border-emerald-500/25 text-[10px] text-emerald-300 hover:bg-emerald-600/25 transition-all"
+                  >
+                    <CornerRightDown className="w-3 h-3" /> Generate G-Code
+                  </button>
+                  <button
+                    onClick={() => setSimCamPoints(DEFAULT_SIMCAM_PROFILE.map(p => ({...p, id: ++simCamIdCounter})))}
+                    className="h-7 px-2 rounded-lg bg-white/[0.02] border border-white/[0.07] text-zinc-500 hover:text-zinc-300 transition-all"
+                    title="Reset to default profile"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                </div>
+                {simCamGenerated && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] text-zinc-600">Generated Program</span>
+                      <button
+                        onClick={() => { setGcodeText(simCamGenerated); setSimCamGenerated(""); }}
+                        className="text-[9px] text-orange-400 hover:text-orange-300 flex items-center gap-1"
+                      >
+                        <ArrowRightLeft className="w-2.5 h-2.5" /> Insert into Editor
+                      </button>
+                    </div>
+                    <div className="bg-[#040608] rounded-lg p-2 max-h-32 overflow-y-auto">
+                      <pre className="text-[8px] font-mono text-emerald-300 leading-relaxed whitespace-pre-wrap">{simCamGenerated}</pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

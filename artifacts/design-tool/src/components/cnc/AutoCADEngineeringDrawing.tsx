@@ -71,12 +71,9 @@ function getBounds(segs: Segment[]): { minX: number; maxX: number; minY: number;
   return { minX, maxX, minY, maxY, w: maxX - minX, h: maxY - minY };
 }
 
-function deg(rad: number) { return rad * 180 / Math.PI; }
-function rad(d: number) { return d * Math.PI / 180; }
 
 function fmt(v: number, dec = 2) { return v.toFixed(dec); }
 
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
 // ─── Auto-dimension generator ─────────────────────────────────────────────────
 
@@ -399,7 +396,6 @@ function renderDrawing(
         const offPx = offset * autoScale * zoom;
 
         let dx1: number, dy1: number, dx2: number, dy2: number;
-        let lx1: number, ly1: number, lx2: number, ly2: number;
         let textX: number, textY: number, textAngle = 0;
 
         if (axis === "h") {
@@ -528,6 +524,9 @@ function generateDXF(segs: Segment[], dims: Dimension[], projectInfo: { name: st
   });
   lines.push(h(0, "ENDTAB"), h(0, "ENDSEC"));
 
+  lines.push(h(0, "SECTION"), h(2, "BLOCKS"));
+  lines.push(h(0, "ENDSEC"));
+
   lines.push(h(0, "SECTION"), h(2, "ENTITIES"));
 
   // Geometry entities
@@ -644,7 +643,6 @@ export function AutoCADEngineeringDrawing() {
 
   useEffect(() => { draw(); }, [draw]);
 
-  // Resize observer
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -660,7 +658,18 @@ export function AutoCADEngineeringDrawing() {
     canvas.width = r.width;
     canvas.height = r.height;
     draw();
-    return () => ro.disconnect();
+
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 0.87;
+      setState(p => ({ ...p, zoom: Math.min(Math.max(p.zoom * factor, 0.2), 20) }));
+    };
+    container.addEventListener("wheel", wheelHandler, { passive: false });
+
+    return () => {
+      ro.disconnect();
+      container.removeEventListener("wheel", wheelHandler);
+    };
   }, [draw]);
 
   // Mouse events
@@ -678,11 +687,6 @@ export function AutoCADEngineeringDrawing() {
   };
   const handleMouseUp = () => { setIsPanning(false); panStart.current = null; };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 0.87;
-    setState(p => ({ ...p, zoom: Math.min(Math.max(p.zoom * factor, 0.2), 20) }));
-  };
 
   // Fit to screen
   const fitToScreen = useCallback(() => {
@@ -740,19 +744,19 @@ export function AutoCADEngineeringDrawing() {
           </select>
 
           {/* Toggles */}
-          {[
-            { key: "showGrid", icon: <Grid className="w-3 h-3" />, label: "Grid", color: "violet" },
-            { key: "showDims", icon: <Ruler className="w-3 h-3" />, label: "Dims", color: "blue" },
-            { key: "showCenterLines", icon: <Layers className="w-3 h-3" />, label: "CL", color: "green" },
-            { key: "showTitleBlock", icon: <FileText className="w-3 h-3" />, label: "Title", color: "amber" },
-          ].map(({ key, icon, label, color }) => {
-            const active = state[key as keyof DrawState] as boolean;
+          {([
+            { key: "showGrid" as const, icon: <Grid className="w-3 h-3" />, label: "Grid", activeClass: "bg-violet-500/20 border-violet-500/40 text-violet-300" },
+            { key: "showDims" as const, icon: <Ruler className="w-3 h-3" />, label: "Dims", activeClass: "bg-blue-500/20 border-blue-500/40 text-blue-300" },
+            { key: "showCenterLines" as const, icon: <Layers className="w-3 h-3" />, label: "CL", activeClass: "bg-green-500/20 border-green-500/40 text-green-300" },
+            { key: "showTitleBlock" as const, icon: <FileText className="w-3 h-3" />, label: "Title", activeClass: "bg-amber-500/20 border-amber-500/40 text-amber-300" },
+          ] as const).map(({ key, icon, label, activeClass }) => {
+            const active = state[key] as boolean;
             return (
               <button key={key}
-                onClick={() => setState(p => ({ ...p, [key]: !p[key as keyof DrawState] }))}
+                onClick={() => setState(p => ({ ...p, [key]: !p[key] }))}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold transition-all ${
                   active
-                    ? `bg-${color}-500/20 border-${color}-500/40 text-${color}-300`
+                    ? activeClass
                     : "bg-zinc-800/40 border-zinc-700/40 text-zinc-500"
                 }`}
               >
@@ -852,7 +856,6 @@ export function AutoCADEngineeringDrawing() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       >
         <canvas ref={canvasRef} className="w-full h-full" />
       </div>

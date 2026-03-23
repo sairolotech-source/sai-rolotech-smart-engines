@@ -355,7 +355,7 @@ export function SolidModelingPanel() {
             onClick={() => setActiveTool(tool.id)}
             className={`px-2 py-1 rounded text-[10px] font-medium border transition-all ${
               activeTool === tool.id
-                ? `bg-${tool.color}-500/20 border-${tool.color}-500/30 text-${tool.color}-300`
+                ? ""
                 : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:text-zinc-300"
             }`}
             style={

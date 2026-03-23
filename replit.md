@@ -57,6 +57,17 @@ Har session mein user yeh code likhta hai — sab rules activate ho jate hain.
     - `pnpm run dev` now works from root
     - Starts both api-server and design-tool
 
+11. **Tailwind Dynamic Class Bug — COMPLETE FIX (All Files)**
+    - Replaced ALL dynamic `bg-${color}`, `text-${color}`, `border-${color}` patterns with static class maps
+    - Files fixed: AutoCADEngineeringDrawing, AutoCncPlanner, BuddyCRMDashboard, GitHubUpdatePanel, RollDesignSuite, RollKnowledgeHub, WizardMode, DemoCChannelPanel, SolidModelingPanel
+    - AutoCncPlanner uses centralized `TW_COLOR` map for all color lookups
+    - Zero dynamic Tailwind interpolations remaining in codebase
+
+12. **AutoCAD DXF Export — BLOCKS Section Added**
+    - DXF now includes BLOCKS section (required by some AutoCAD versions)
+    - Wheel zoom uses `{ passive: false }` event listener (no more console warning)
+    - Removed unused `deg()`, `rad()`, `handleWheel` functions
+
 ### Previous Session Features (SAVE POINT)
 1. **🤖 BUDDY CRM** (`buddy-crm` tab, System section)
    - AI-powered CRM with 5 agents: BUDDY (coordinator), Lead Scout, WA Bot, Qualifier, Analytics

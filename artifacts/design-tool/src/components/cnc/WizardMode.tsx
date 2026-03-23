@@ -1065,13 +1065,21 @@ function StepExport({ onBack }: { onBack: () => void }) {
           { label: "Total Rolls", value: rollTooling.length * 2, icon: <Wrench className="w-4 h-4" />, color: "text-orange-400" },
           { label: "G-Code Files", value: gcodeOutputs.length, icon: <FileCode2 className="w-4 h-4" />, color: "text-purple-400" },
           { label: "Material", value: materialType, icon: <FileText className="w-4 h-4" />, color: "text-emerald-400" },
-        ].map(({ label, value, icon, color }) => (
-          <div key={label} className={`rt-card p-3 text-center border-${color.replace("text-", "")}/20`}>
+        ].map(({ label, value, icon, color }) => {
+          const borderMap: Record<string, string> = {
+            "text-blue-400": "border-blue-400/20",
+            "text-orange-400": "border-orange-400/20",
+            "text-purple-400": "border-purple-400/20",
+            "text-emerald-400": "border-emerald-400/20",
+          };
+          return (
+          <div key={label} className={`rt-card p-3 text-center ${borderMap[color] || ""}`}>
             <div className={`${color} flex justify-center mb-1`}>{icon}</div>
             <div className={`text-lg font-bold font-mono ${color}`}>{value}</div>
             <div className="text-[10px] text-zinc-500 mt-0.5">{label}</div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <QAChecklist

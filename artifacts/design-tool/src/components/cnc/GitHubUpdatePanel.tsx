@@ -486,13 +486,13 @@ export function GitHubUpdatePanel() {
             <span className="text-[10px] font-bold text-zinc-400">GitHub Auto-Update Kaise Use Karo</span>
           </div>
           {[
-            { step: "1", text: "GitHub pe code push kiya → Replit mein \"GitHub se Latest Pull Karo\" button dabao", color: "emerald" },
-            { step: "2", text: "Pull complete hone ke baad → Workflow \"Restart\" karo → Naye changes live ho jayenge", color: "amber" },
-            { step: "3", text: "Replit mein code change kiya → Commit message likho → \"GitHub pe Push Karo\" dabao", color: "violet" },
-            { step: "4", text: "Auto-Check ON karo → Har minute GitHub check hoga → Agar update ho to banner dikhayi dega", color: "cyan" },
+            { step: "1", text: "GitHub pe code push kiya → Replit mein \"GitHub se Latest Pull Karo\" button dabao", cls: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" },
+            { step: "2", text: "Pull complete hone ke baad → Workflow \"Restart\" karo → Naye changes live ho jayenge", cls: "bg-amber-500/20 border-amber-500/30 text-amber-400" },
+            { step: "3", text: "Replit mein code change kiya → Commit message likho → \"GitHub pe Push Karo\" dabao", cls: "bg-violet-500/20 border-violet-500/30 text-violet-400" },
+            { step: "4", text: "Auto-Check ON karo → Har minute GitHub check hoga → Agar update ho to banner dikhayi dega", cls: "bg-cyan-500/20 border-cyan-500/30 text-cyan-400" },
           ].map(item => (
             <div key={item.step} className="flex items-start gap-2 px-3 py-2 border-b border-zinc-800/20 last:border-0">
-              <span className={`w-5 h-5 rounded-full bg-${item.color}-500/20 border border-${item.color}-500/30 flex items-center justify-center text-[9px] font-bold text-${item.color}-400 shrink-0 mt-0.5`}>{item.step}</span>
+              <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5 ${item.cls}`}>{item.step}</span>
               <span className="text-[10px] text-zinc-300">{item.text}</span>
             </div>
           ))}

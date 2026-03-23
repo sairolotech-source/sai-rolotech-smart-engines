@@ -195,14 +195,14 @@ function OverviewTab() {
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: "Profile", value: DEMO_PROFILE.name, color: "amber" },
-          { label: "Material", value: "GI Z180 / IS 277", color: "cyan" },
-          { label: "Strip Width", value: "402 mm", color: "green" },
-          { label: "Stations", value: "12 nos", color: "purple" },
+          { label: "Profile", value: DEMO_PROFILE.name, cls: "text-amber-400" },
+          { label: "Material", value: "GI Z180 / IS 277", cls: "text-cyan-400" },
+          { label: "Strip Width", value: "402 mm", cls: "text-green-400" },
+          { label: "Stations", value: "12 nos", cls: "text-purple-400" },
         ].map((item, i) => (
           <div key={i} className="bg-[#12131f] border border-white/5 rounded-xl p-4 text-center">
             <p className="text-zinc-500 text-xs mb-1">{item.label}</p>
-            <p className={`text-lg font-bold text-${item.color}-400`}>{item.value}</p>
+            <p className={`text-lg font-bold ${item.cls}`}>{item.value}</p>
           </div>
         ))}
       </div>

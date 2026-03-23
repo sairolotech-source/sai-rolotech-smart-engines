@@ -724,10 +724,18 @@ export function RollDesignSuite() {
                   "Heavy profile → shaft 70–90mm dia",
                 ],
               },
-            ].map(section => (
+            ].map(section => {
+              const sectionClasses: Record<string, { bg: string; text: string }> = {
+                emerald: { bg: "bg-emerald-500/10", text: "text-emerald-300" },
+                amber: { bg: "bg-amber-500/10", text: "text-amber-300" },
+                red: { bg: "bg-red-500/10", text: "text-red-300" },
+                violet: { bg: "bg-violet-500/10", text: "text-violet-300" },
+              };
+              const sc = sectionClasses[section.color] || sectionClasses.violet;
+              return (
               <div key={section.title} className="rounded-lg border border-zinc-800/60 bg-zinc-900/50 overflow-hidden">
-                <div className={`px-3 py-2 border-b border-zinc-800/40 bg-${section.color}-500/10`}>
-                  <span className={`text-[11px] font-bold text-${section.color}-300`}>{section.title}</span>
+                <div className={`px-3 py-2 border-b border-zinc-800/40 ${sc.bg}`}>
+                  <span className={`text-[11px] font-bold ${sc.text}`}>{section.title}</span>
                 </div>
                 <div className="p-2 grid grid-cols-1 gap-0.5">
                   {section.rules.map((r, i) => (
@@ -738,7 +746,8 @@ export function RollDesignSuite() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

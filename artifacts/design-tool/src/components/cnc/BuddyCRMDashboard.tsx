@@ -687,14 +687,14 @@ export function BuddyCRMDashboard() {
             {/* KPI cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { label: "Total Leads",    value: analytics.total,       unit: "",  color: "blue",   icon: "👥" },
-                { label: "Hot Leads 🔥",   value: analytics.hot,         unit: "",  color: "amber",  icon: "🔥" },
-                { label: "Won Deals",      value: analytics.wonCount,    unit: "",  color: "green",  icon: "✅" },
-                { label: "Conversion",     value: analytics.convRate,    unit: "%", color: "violet", icon: "📈" },
+                { label: "Total Leads",    value: analytics.total,       unit: "",  icon: "👥", bgClass: "bg-blue-500/10 border-blue-500/20", valClass: "text-blue-300" },
+                { label: "Hot Leads 🔥",   value: analytics.hot,         unit: "",  icon: "🔥", bgClass: "bg-amber-500/10 border-amber-500/20", valClass: "text-amber-300" },
+                { label: "Won Deals",      value: analytics.wonCount,    unit: "",  icon: "✅", bgClass: "bg-green-500/10 border-green-500/20", valClass: "text-green-300" },
+                { label: "Conversion",     value: analytics.convRate,    unit: "%", icon: "📈", bgClass: "bg-violet-500/10 border-violet-500/20", valClass: "text-violet-300" },
               ].map(k => (
-                <div key={k.label} className={`rounded-xl border p-3 text-center bg-${k.color}-500/8 border-${k.color}-500/20`}>
+                <div key={k.label} className={`rounded-xl border p-3 text-center ${k.bgClass}`}>
                   <div className="text-xl mb-0.5">{k.icon}</div>
-                  <div className={`text-2xl font-black text-${k.color}-300`}>{k.value}{k.unit}</div>
+                  <div className={`text-2xl font-black ${k.valClass}`}>{k.value}{k.unit}</div>
                   <div className="text-[9px] text-zinc-500">{k.label}</div>
                 </div>
               ))}

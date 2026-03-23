@@ -141,6 +141,16 @@ const MASTER_RULES = [
 
 /* ─── SUB-COMPONENTS ────────────────────────────────────────────────────── */
 
+const EXPAND_BG: Record<string, string> = {
+  violet: "bg-violet-500/10",
+  amber: "bg-amber-500/10",
+  emerald: "bg-emerald-500/10",
+  red: "bg-red-500/10",
+  blue: "bg-blue-500/10",
+  cyan: "bg-cyan-500/10",
+  zinc: "bg-zinc-500/10",
+};
+
 function Expandable({ title, children, defaultOpen = false, color = "violet" }: {
   title: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; color?: string;
 }) {
@@ -148,7 +158,7 @@ function Expandable({ title, children, defaultOpen = false, color = "violet" }: 
   return (
     <div className="border border-zinc-800/60 rounded-lg overflow-hidden">
       <button onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800/20 transition-colors bg-${color}-500/10`}>
+        className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800/20 transition-colors ${EXPAND_BG[color] || EXPAND_BG.violet}`}>
         {open ? <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
         <span className="text-[11px] font-semibold text-zinc-200 flex-1">{title}</span>
       </button>

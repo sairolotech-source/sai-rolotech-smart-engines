@@ -4,6 +4,14 @@ import {
   Copy, Download, RotateCcw, Zap, Info, Loader2, BookOpen
 } from "lucide-react";
 
+const TW_COLOR: Record<string, { border50: string; bg5: string; bg10: string; border20: string; border30: string; text300: string; text400: string; text500: string }> = {
+  red:     { border50: "border-red-500/50",     bg5: "bg-red-500/5",     bg10: "bg-red-500/10",     border20: "border-red-500/20",     border30: "border-red-500/30",     text300: "text-red-300",     text400: "text-red-400",     text500: "text-red-500" },
+  amber:   { border50: "border-amber-500/50",   bg5: "bg-amber-500/5",   bg10: "bg-amber-500/10",   border20: "border-amber-500/20",   border30: "border-amber-500/30",   text300: "text-amber-300",   text400: "text-amber-400",   text500: "text-amber-500" },
+  emerald: { border50: "border-emerald-500/50", bg5: "bg-emerald-500/5", bg10: "bg-emerald-500/10", border20: "border-emerald-500/20", border30: "border-emerald-500/30", text300: "text-emerald-300", text400: "text-emerald-400", text500: "text-emerald-500" },
+  violet:  { border50: "border-violet-500/50",  bg5: "bg-violet-500/5",  bg10: "bg-violet-500/10",  border20: "border-violet-500/20",  border30: "border-violet-500/30",  text300: "text-violet-300",  text400: "text-violet-400",  text500: "text-violet-500" },
+  cyan:    { border50: "border-cyan-500/50",     bg5: "bg-cyan-500/5",     bg10: "bg-cyan-500/10",     border20: "border-cyan-500/20",     border30: "border-cyan-500/30",     text300: "text-cyan-300",     text400: "text-cyan-400",     text500: "text-cyan-500" },
+};
+
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 type PlanTab = "planner" | "tool-library" | "templates" | "safety" | "prompt-pack";
 
@@ -722,26 +730,30 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
             {/* SolidCAM Template Configs */}
             <div className="text-[11px] font-bold text-zinc-300 mt-2">SolidCAM Operation Template Configs</div>
             <div className="grid grid-cols-2 gap-2">
-              {SOLIDCAM_TEMPLATE_CONFIGS.map((cfg, i) => (
+              {SOLIDCAM_TEMPLATE_CONFIGS.map((cfg, i) => {
+                const tw = TW_COLOR[cfg.color] || TW_COLOR.violet;
+                return (
                 <button key={i} onClick={() => setSelectedTplCfg(i)}
                   className={`text-left p-2.5 rounded-lg border transition-all ${
                     selectedTplCfg === i
-                      ? `border-${cfg.color}-500/50 bg-${cfg.color}-500/10`
+                      ? `${tw.border50} ${tw.bg10}`
                       : "border-zinc-800/60 bg-zinc-900/40 hover:border-zinc-700"
                   }`}>
-                  <div className={`text-[11px] font-semibold ${selectedTplCfg === i ? `text-${cfg.color}-300` : "text-zinc-200"}`}>{cfg.name}</div>
+                  <div className={`text-[11px] font-semibold ${selectedTplCfg === i ? tw.text300 : "text-zinc-200"}`}>{cfg.name}</div>
                   <div className="text-[9px] text-zinc-500 mt-0.5">{cfg.desc}</div>
                 </button>
-              ))}
+                );
+              })}
             </div>
 
             {(() => {
               const cfg = SOLIDCAM_TEMPLATE_CONFIGS[selectedTplCfg];
+              const tw = TW_COLOR[cfg.color] || TW_COLOR.violet;
               return (
                 <div className="space-y-3">
-                  <div className={`rounded-lg border border-${cfg.color}-500/20 bg-${cfg.color}-500/5 overflow-hidden`}>
-                    <div className={`px-3 py-2 bg-${cfg.color}-500/10 border-b border-${cfg.color}-500/20`}>
-                      <span className={`text-[11px] font-bold text-${cfg.color}-300`}>{cfg.name} — Parameter Settings</span>
+                  <div className={`rounded-lg border ${tw.border20} ${tw.bg5} overflow-hidden`}>
+                    <div className={`px-3 py-2 ${tw.bg10} border-b ${tw.border20}`}>
+                      <span className={`text-[11px] font-bold ${tw.text300}`}>{cfg.name} — Parameter Settings</span>
                     </div>
                     <table className="w-full text-[10px]">
                       <thead>
@@ -762,8 +774,8 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
                       </tbody>
                     </table>
                   </div>
-                  <div className={`rounded-lg border border-${cfg.color}-500/20 bg-${cfg.color}-500/5 p-3`}>
-                    <div className={`text-[10px] font-bold text-${cfg.color}-300 mb-2`}>Apply Sequence (SolidCAM me step-by-step)</div>
+                  <div className={`rounded-lg border ${tw.border20} ${tw.bg5} p-3`}>
+                    <div className={`text-[10px] font-bold ${tw.text300} mb-2`}>Apply Sequence (SolidCAM me step-by-step)</div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {cfg.sequence.map((step, si) => (
                         <React.Fragment key={si}>
@@ -880,18 +892,18 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
                 </div>
 
                 {[
-                  { title: "Feeds & Speeds", data: selectedTemplate.feedsAndSpeeds, color: "amber" },
-                  { title: "Risk Points", data: selectedTemplate.riskPoints, color: "red" },
-                  { title: "SolidCAM Hints", data: selectedTemplate.solidCamHints, color: "violet" },
-                  { title: "Safety Notes", data: selectedTemplate.safetyNotes, color: "emerald" },
+                  { title: "Feeds & Speeds", data: selectedTemplate.feedsAndSpeeds, tw: TW_COLOR.amber },
+                  { title: "Risk Points", data: selectedTemplate.riskPoints, tw: TW_COLOR.red },
+                  { title: "SolidCAM Hints", data: selectedTemplate.solidCamHints, tw: TW_COLOR.violet },
+                  { title: "Safety Notes", data: selectedTemplate.safetyNotes, tw: TW_COLOR.emerald },
                 ].map(section => (
-                  <div key={section.title} className={`rounded-lg border border-${section.color}-500/20 bg-${section.color}-500/5 overflow-hidden`}>
-                    <div className={`px-3 py-2 bg-${section.color}-500/10 border-b border-${section.color}-500/20`}>
-                      <span className={`text-[11px] font-bold text-${section.color}-300`}>{section.title}</span>
+                  <div key={section.title} className={`rounded-lg border ${section.tw.border20} ${section.tw.bg5} overflow-hidden`}>
+                    <div className={`px-3 py-2 ${section.tw.bg10} border-b ${section.tw.border20}`}>
+                      <span className={`text-[11px] font-bold ${section.tw.text300}`}>{section.title}</span>
                     </div>
                     {section.data.map((d, i) => (
                       <div key={i} className="flex items-start gap-2 px-3 py-1.5 border-b border-zinc-800/20 last:border-0">
-                        <span className={`text-${section.color}-500 mt-0.5 shrink-0`}>›</span>
+                        <span className={`${section.tw.text500} mt-0.5 shrink-0`}>›</span>
                         <span className="text-[10px] text-zinc-300">{d}</span>
                       </div>
                     ))}
@@ -916,18 +928,20 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
               </div>
             </div>
 
-            {SAFETY_LOCKS.map(lock => (
+            {SAFETY_LOCKS.map(lock => {
+              const tw = TW_COLOR[lock.color] || TW_COLOR.violet;
+              return (
               <div key={lock.num} className={`rounded-lg border overflow-hidden transition-all ${
-                safetyChecked[lock.num] ? "border-emerald-500/30 bg-emerald-500/5" : `border-${lock.color}-500/30 bg-${lock.color}-500/5`
+                safetyChecked[lock.num] ? "border-emerald-500/30 bg-emerald-500/5" : `${tw.border30} ${tw.bg5}`
               }`}>
                 <div className={`flex items-start gap-3 px-3 py-3 cursor-pointer`}
                   onClick={() => setSafetyChecked(prev => ({ ...prev, [lock.num]: !prev[lock.num] }))}>
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 border-2 transition-all ${
-                    safetyChecked[lock.num] ? "bg-emerald-500 border-emerald-400" : `border-${lock.color}-500/50 bg-transparent`
+                    safetyChecked[lock.num] ? "bg-emerald-500 border-emerald-400" : `${tw.border50} bg-transparent`
                   }`}>
                     {safetyChecked[lock.num]
                       ? <CheckCircle2 className="w-4 h-4 text-white" />
-                      : <span className={`text-[11px] font-bold text-${lock.color}-400`}>{lock.num}</span>}
+                      : <span className={`text-[11px] font-bold ${tw.text400}`}>{lock.num}</span>}
                   </div>
                   <div className="flex-1">
                     <div className={`text-[12px] font-bold mb-1 ${safetyChecked[lock.num] ? "text-emerald-300 line-through opacity-60" : "text-zinc-200"}`}>
@@ -941,7 +955,8 @@ Priority: SAFETY FIRST. Use conservative parameters. If ${controller} is Delta 2
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <div className="rounded-lg border border-red-500/20 bg-red-500/5 overflow-hidden">
               <div className="px-3 py-2 bg-red-500/10 border-b border-red-500/20">

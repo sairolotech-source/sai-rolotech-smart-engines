@@ -121,13 +121,15 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   }
 }
 
+interface PersonalGeminiKeyEntry { id: string; key: string; label: string }
+
 async function callInternetFallback(
   message: string,
   history: ConversationEntry[],
   style: string,
   language: string,
-  personalGeminiKey?: string,
-): Promise<string | null> {
+  personalGeminiKeys: PersonalGeminiKeyEntry[],
+): Promise<{ text: string | null; failedKeyIds: string[] }> {
   const systemPrompt = `You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing.
 Response style: ${style}. Language: ${language}.
 Be accurate, concise when asked to be concise, detailed when asked for detail.
@@ -139,18 +141,35 @@ ${SAI_CONFIDENTIALITY_RULES}`;
     { role: "user", content: message },
   ];
 
-  const providers: { key: string | undefined; url: string; model: string; label: string }[] = [];
+  const failedKeyIds: string[] = [];
 
-  if (personalGeminiKey) {
-    providers.push({
-      key: personalGeminiKey,
-      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      model: "gemini-3-pro-preview",
-      label: "Personal Gemini 3.0",
-    });
+  for (const entry of personalGeminiKeys) {
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${entry.key}` },
+        body: JSON.stringify({ model: "gemini-2.0-flash", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        console.log(`[AI Fallback] Personal key "${entry.label}" failed (${res.status}) — switching to next`);
+        failedKeyIds.push(entry.id);
+        continue;
+      }
+      const data = await res.json() as { choices: { message: { content: string } }[] };
+      const text = data.choices?.[0]?.message?.content;
+      if (text) {
+        console.log(`[AI Fallback] Responded via Personal Gemini key "${entry.label}"`);
+        return { text, failedKeyIds };
+      }
+      failedKeyIds.push(entry.id);
+    } catch {
+      console.log(`[AI Fallback] Personal key "${entry.label}" error — switching to next`);
+      failedKeyIds.push(entry.id);
+    }
   }
 
-  providers.push(
+  const staticProviders = [
     {
       key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"],
       url: "https://openrouter.ai/api/v1/chat/completions",
@@ -163,9 +182,9 @@ ${SAI_CONFIDENTIALITY_RULES}`;
       model: "Meta-Llama-3.3-70B-Instruct",
       label: "SambaNova Llama 70B",
     },
-  );
+  ];
 
-  for (const p of providers) {
+  for (const p of staticProviders) {
     if (!p.key) continue;
     try {
       const res = await fetch(p.url, {
@@ -177,21 +196,21 @@ ${SAI_CONFIDENTIALITY_RULES}`;
       if (!res.ok) { console.log(`[AI Fallback] ${p.label} failed (${res.status})`); continue; }
       const data = await res.json() as { choices: { message: { content: string } }[] };
       const text = data.choices?.[0]?.message?.content;
-      if (text) { console.log(`[AI Fallback] Responded via ${p.label}`); return text; }
-    } catch (e) { console.log(`[AI Fallback] ${p.label} error:`, e); continue; }
+      if (text) { console.log(`[AI Fallback] Responded via ${p.label}`); return { text, failedKeyIds }; }
+    } catch { console.log(`[AI Fallback] ${p.label} error`); continue; }
   }
-  return null;
+  return { text: null, failedKeyIds };
 }
 
 const router: IRouter = Router();
 
 router.post("/ai/chat", async (req: Request, res: Response) => {
   try {
-    const { message, forceOffline, history, personalGeminiKey } = req.body as {
+    const { message, forceOffline, history, personalGeminiKeys } = req.body as {
       message: string;
       forceOffline?: boolean;
       history?: ConversationEntry[];
-      personalGeminiKey?: string;
+      personalGeminiKeys?: PersonalGeminiKeyEntry[];
     };
     if (!message?.trim()) {
       res.status(400).json({ error: "message required" });
@@ -206,8 +225,12 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
     let responseText: string;
     let mode: "online" | "offline";
 
+    const keys = personalGeminiKeys ?? [];
+    let failedKeyIds: string[] = [];
+
     if (isOffline) {
-      const fallback = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, personalGeminiKey);
+      const { text: fallback, failedKeyIds: fk } = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, keys);
+      failedKeyIds = fk;
       if (fallback) {
         responseText = fallback;
         mode = "online";
@@ -220,7 +243,8 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
         responseText = await onlineResponse(message, contextHistory, settings.responseStyle, settings.language);
         mode = "online";
       } catch {
-        const fallback = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, personalGeminiKey);
+        const { text: fallback, failedKeyIds: fk } = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, keys);
+        failedKeyIds = fk;
         if (fallback) {
           responseText = fallback;
           mode = "online";
@@ -257,6 +281,7 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
       mode,
       userEntry,
       assistantEntry,
+      failedKeyIds: failedKeyIds.length > 0 ? failedKeyIds : undefined,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Chat failed";

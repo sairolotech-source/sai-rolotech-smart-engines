@@ -74,6 +74,21 @@ export function getActiveKeyLabel(): string {
   return active?.label ?? "";
 }
 
+export function getAllKeysForFallback(): { id: string; key: string; label: string }[] {
+  const keys = loadKeys();
+  const activeId = loadActiveId();
+  const active = keys.find(k => k.id === activeId && !k.failed);
+  const rest = keys.filter(k => k.id !== activeId && !k.failed);
+  const ordered = active ? [active, ...rest] : rest;
+  return ordered.map(k => ({ id: k.id, key: k.key, label: k.label }));
+}
+
+export function markKeyFailedById(id: string) {
+  markKeyFailed(id);
+  const keys = loadKeys().filter(k => !k.failed);
+  if (keys.length > 0) saveActiveId(keys[0]!.id);
+}
+
 export function usePersonalAIKey() {
   const [keys, setKeys] = useState<SavedKey[]>(() => loadKeys());
   const [activeId, setActiveIdState] = useState<string>(() => {

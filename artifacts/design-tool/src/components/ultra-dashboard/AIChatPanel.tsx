@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, Trash2, Bot, User, Wifi, WifiOff, Loader2, Brain } from "lucide-react";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { authFetch, getApiUrl } from "../../lib/auth-fetch";
-import { getPersonalGeminiKey } from "../../hooks/usePersonalAIKey";
+import { getAllKeysForFallback, markKeyFailedById } from "../../hooks/usePersonalAIKey";
 
 interface ChatMessage {
   id: string;
@@ -110,10 +110,21 @@ export function AIChatPanel() {
         body: JSON.stringify({
           message: text,
           forceOffline: forceOffline || !network.isOnline,
-          personalGeminiKey: getPersonalGeminiKey() || undefined,
+          personalGeminiKeys: getAllKeysForFallback(),
         }),
       });
-      const data = await r.json() as { response: string; mode: string; assistantEntry: ChatMessage };
+      const data = await r.json() as {
+        response: string;
+        mode: string;
+        assistantEntry: ChatMessage;
+        failedKeyIds?: string[];
+      };
+
+      if (data.failedKeyIds?.length) {
+        for (const id of data.failedKeyIds) {
+          markKeyFailedById(id);
+        }
+      }
 
       const assistantMsg: ChatMessage = {
         id: data.assistantEntry?.id ?? `${Date.now()}-a`,

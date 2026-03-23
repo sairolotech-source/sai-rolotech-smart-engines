@@ -89,7 +89,7 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   ];
 
   try {
-    const model = aiProvider === "gemini" ? "gemini-2.5-flash" : "gpt-5-mini";
+    const model = aiProvider === "gemini" ? "gemini-2.5-pro" : "gpt-5-mini";
     const response = await openai.chat.completions.create({
       model,
       messages,

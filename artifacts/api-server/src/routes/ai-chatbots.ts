@@ -18,43 +18,43 @@ function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
     gemini: {
       key: process.env["AI_INTEGRATIONS_GEMINI_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"] ?? "https://generativelanguage.googleapis.com"}/v1beta/openai/chat/completions`,
-      model: "gemini-2.5-flash",
-      maxTokens: 1024,
+      model: "gemini-2.5-pro",
+      maxTokens: 4096,
       format: "openai",
     },
     anthropic: {
       key: process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"] ?? "https://api.anthropic.com"}/v1/messages`,
-      model: "claude-haiku-4-5",
-      maxTokens: 1024,
+      model: "claude-opus-4-5",
+      maxTokens: 4096,
       format: "anthropic",
     },
     openrouter: {
       key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`,
-      model: "meta-llama/llama-3.1-8b-instruct:free",
-      maxTokens: 1024,
+      model: "deepseek/deepseek-r1:free",
+      maxTokens: 4096,
       format: "openai",
     },
     sambanova: {
       key: process.env["SAMBANOVA_API_KEY"],
       url: "https://api.sambanova.ai/v1/chat/completions",
-      model: "Meta-Llama-3.1-8B-Instruct",
-      maxTokens: 1024,
+      model: "Meta-Llama-3.3-70B-Instruct",
+      maxTokens: 4096,
       format: "openai",
     },
     kimi: {
       key: process.env["KIMI_API_KEY"],
       url: "https://api.moonshot.cn/v1/chat/completions",
-      model: "moonshot-v1-8k",
-      maxTokens: 1024,
+      model: "moonshot-v1-32k",
+      maxTokens: 4096,
       format: "openai",
     },
     nvidia: {
       key: process.env["NVIDIA_NGC_API_KEY"],
       url: "https://integrate.api.nvidia.com/v1/chat/completions",
-      model: "meta/llama-3.1-8b-instruct",
-      maxTokens: 1024,
+      model: "meta/llama-3.3-70b-instruct",
+      maxTokens: 4096,
       format: "openai",
     },
   };
@@ -115,6 +115,24 @@ async function callExternalAI(
   } catch {
     return null;
   }
+}
+
+const FALLBACK_CHAIN: AIProvider[] = ["gemini", "sambanova", "openrouter"];
+
+async function callWithFallback(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  preferredProvider?: AIProvider,
+): Promise<{ result: string | null; usedProvider: AIProvider | "offline" }> {
+  const chain: AIProvider[] = preferredProvider
+    ? [preferredProvider, ...FALLBACK_CHAIN.filter(p => p !== preferredProvider)]
+    : FALLBACK_CHAIN;
+
+  for (const provider of chain) {
+    const result = await callExternalAI(provider, systemPrompt, messages);
+    if (result) return { result, usedProvider: provider };
+  }
+  return { result: null, usedProvider: "offline" };
 }
 
 const router: IRouter = Router();
@@ -307,12 +325,12 @@ async function getOnlineExpertResponse(
   chatMessages.push({ role: "user", content: message });
 
   const providerChain: { provider: AIProvider; label: string }[] = [
-    { provider: "gemini", label: "gemini-flash" },
-    { provider: "anthropic", label: "claude-haiku" },
-    { provider: "openrouter", label: "openrouter-llama" },
-    { provider: "sambanova", label: "sambanova-llama" },
-    { provider: "kimi", label: "kimi-moonshot" },
-    { provider: "nvidia", label: "nvidia-llama-3.1" },
+    { provider: "gemini", label: "gemini-2.5-pro" },
+    { provider: "sambanova", label: "sambanova-llama-70b" },
+    { provider: "openrouter", label: "deepseek-r1" },
+    { provider: "anthropic", label: "claude-opus" },
+    { provider: "kimi", label: "kimi-moonshot-32k" },
+    { provider: "nvidia", label: "nvidia-llama-70b" },
   ];
 
   for (const { provider, label } of providerChain) {
@@ -329,7 +347,7 @@ async function getOnlineExpertResponse(
       { role: "user", content: message },
     ];
 
-    const model = aiProvider === "gemini" ? "gemini-2.5-flash" : "gpt-5-mini";
+    const model = aiProvider === "gemini" ? "gemini-2.5-pro" : "gpt-5-mini";
     const response = await openai.chat.completions.create({
       model,
       messages,
@@ -696,7 +714,7 @@ When answering:
     const msgs = (history || []).slice(-8).map(m => ({ role: m.role, content: m.content }));
     msgs.push({ role: "user", content: message });
 
-    const providers: AIProvider[] = ["gemini", "anthropic", "openrouter", "sambanova"];
+    const providers: AIProvider[] = ["gemini", "sambanova", "openrouter", "anthropic"];
     let response: string | null = null;
     let usedProvider = "offline-engine";
 

@@ -362,9 +362,18 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
     let pushRes;
     if (ghToken) {
       const authUrl = `https://x-access-token:${ghToken}@github.com/${GITHUB_REPO}.git`;
-      await runGit(`remote set-url origin "${authUrl}"`);
-      pushRes = await runGit("push origin main");
-      await runGit(`remote set-url origin https://github.com/${GITHUB_REPO}.git`);
+      pushRes = await new Promise<{ stdout: string; stderr: string; ok: boolean }>((resolve) => {
+        const cmd = [
+          `git -C "${REPO_ROOT}"`,
+          `-c core.askpass=`,
+          `-c credential.helper=`,
+          `push "${authUrl}" HEAD:main`,
+        ].join(" ");
+        exec(cmd, { timeout: 30000 }, (err, stdout, stderr) => {
+          if (err) resolve({ stdout: stdout?.trim() ?? "", stderr: stderr?.trim() ?? err.message, ok: false });
+          else resolve({ stdout: stdout?.trim() ?? "", stderr: stderr?.trim() ?? "", ok: true });
+        });
+      });
     } else {
       pushRes = await runGit("push origin main");
     }

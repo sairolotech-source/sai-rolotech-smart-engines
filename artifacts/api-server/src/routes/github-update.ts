@@ -357,9 +357,17 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
     }
 
     logAuto(`GitHub pe ${aheadCount} unpushed commit(s) push ho rahe hain...`, "info");
-    const pushRes = await runGit("push origin main");
+
+    const ghToken = process.env["GITHUB_PERSONAL_ACCESS_TOKEN"] || process.env["GITHUB_TOKEN"] || "";
+    let pushRes;
+    if (ghToken) {
+      const authUrl = `https://${ghToken}@github.com/${GITHUB_REPO}.git`;
+      pushRes = await runGit(`push "${authUrl}" HEAD:main`);
+    } else {
+      pushRes = await runGit("push origin main");
+    }
     if (!pushRes.ok) {
-      res.status(500).json({ ok: false, error: `Push failed: ${pushRes.stderr}`, hint: "GitHub token/access check karo" });
+      res.status(500).json({ ok: false, error: `Push failed: ${pushRes.stderr}`, hint: "GitHub token check karo" });
       return;
     }
 

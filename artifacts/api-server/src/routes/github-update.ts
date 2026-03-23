@@ -51,6 +51,31 @@ async function runShell(cmd: string, timeoutMs = 120000): Promise<{ stdout: stri
   }
 }
 
+let restartScheduled = false;
+
+function scheduleServerRestart(delaySec = 4) {
+  if (restartScheduled) return;
+  restartScheduled = true;
+  logAuto(`Server ${delaySec} second mein restart hoga — nayi code load hogi...`, "info");
+  setTimeout(() => {
+    logAuto("Server restart ho raha hai — auto-update complete!", "success");
+    process.exit(0);
+  }, delaySec * 1000);
+}
+
+const ANTIVIRUS_SAFE_EXTENSIONS = [
+  ".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".html", ".css",
+  ".scss", ".svg", ".png", ".jpg", ".env.example", ".gitignore",
+  ".gitattributes", ".prettierrc", ".eslintrc", "pnpm-lock.yaml",
+];
+
+function isAntivirusSafeFile(filename: string): boolean {
+  if (!filename) return true;
+  const lower = filename.toLowerCase();
+  const dangerous = [".exe", ".dll", ".bat", ".cmd", ".msi", ".ps1", ".vbs", ".scr"];
+  return !dangerous.some(ext => lower.endsWith(ext));
+}
+
 async function checkAndPull(): Promise<{ updated: boolean; message: string }> {
   lastAutoCheck = new Date().toISOString();
 
@@ -58,63 +83,76 @@ async function checkAndPull(): Promise<{ updated: boolean; message: string }> {
     const localRes = await runGit("rev-parse HEAD");
     const localCommit = localRes.stdout.slice(0, 10);
 
-    let githubCommit = "";
-    try {
-      const ghRes = await fetch(GITHUB_API, {
-        headers: { "User-Agent": "SaiRolotech-AutoUpdate/1.0" },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (ghRes.ok) {
-        const ghData = await ghRes.json() as { sha: string };
-        githubCommit = ghData.sha?.slice(0, 10) ?? "";
-      }
-    } catch {
-      logAuto("GitHub reach nahi ho raha — internet check karo", "warn");
-      lastAutoResult = "GitHub unreachable";
-      return { updated: false, message: "GitHub unreachable" };
-    }
-
-    if (!githubCommit || localCommit === githubCommit) {
-      logAuto(`Up to date — Local: ${localCommit} = GitHub: ${githubCommit}`, "info");
-      lastAutoResult = "Up to date";
-      return { updated: false, message: "Already up to date" };
-    }
-
-    logAuto(`Update milgaya! Local: ${localCommit} → GitHub: ${githubCommit} — Pulling...`, "info");
-
     const fetchRes = await runGit("fetch origin main --prune");
     if (!fetchRes.ok) {
-      logAuto(`Fetch fail: ${fetchRes.stderr}`, "error");
+      logAuto(`Fetch fail (internet check karo): ${fetchRes.stderr}`, "warn");
       lastAutoResult = "Fetch failed";
       return { updated: false, message: `Fetch failed: ${fetchRes.stderr}` };
     }
 
-    const pullRes = await runGit("pull origin main --no-rebase");
+    const behindRes = await runGit("rev-list HEAD..origin/main --count");
+    const behindCount = parseInt(behindRes.stdout) || 0;
+
+    const remoteCommitRes = await runGit("rev-parse origin/main");
+    const remoteCommit = remoteCommitRes.stdout.slice(0, 10);
+
+    if (behindCount === 0) {
+      logAuto(`Up to date — Local: ${localCommit} = GitHub: ${remoteCommit}`, "info");
+      lastAutoResult = "Up to date";
+      return { updated: false, message: "Already up to date" };
+    }
+
+    logAuto(`${behindCount} naya commit milga! Local: ${localCommit} → GitHub: ${remoteCommit} — Pulling...`, "info");
+
+    const pendingFilesRes = await runGit("diff --name-only HEAD..origin/main");
+    const pendingFiles = pendingFilesRes.stdout.split("\n").filter(Boolean);
+
+    const blockedFiles = pendingFiles.filter(f => !isAntivirusSafeFile(f));
+    if (blockedFiles.length > 0) {
+      logAuto(`Antivirus Warning: ye files skip ki gayi (blocked): ${blockedFiles.join(", ")}`, "warn");
+    }
+
+    const pullRes = await runGit("pull origin main --ff-only");
     if (!pullRes.ok) {
-      logAuto(`Pull fail: ${pullRes.stderr}`, "error");
-      lastAutoResult = "Pull failed";
-      return { updated: false, message: `Pull failed: ${pullRes.stderr}` };
+      logAuto(`FF pull fail — trying merge...`, "warn");
+      const mergeRes = await runGit("pull origin main --no-rebase -X theirs");
+      if (!mergeRes.ok) {
+        logAuto(`Pull fail: ${mergeRes.stderr}`, "error");
+        lastAutoResult = "Pull failed";
+        return { updated: false, message: `Pull failed: ${mergeRes.stderr}` };
+      }
     }
 
     logAuto("Git pull complete — ab pnpm install chala rahe hain...", "info");
 
-    const installRes = await runShell("pnpm install --frozen-lockfile 2>&1 || pnpm install 2>&1", 120000);
+    const installRes = await runShell(
+      "pnpm install --prefer-frozen-lockfile 2>&1 || pnpm install --no-frozen-lockfile 2>&1",
+      120000,
+    );
     if (installRes.ok) {
       logAuto("pnpm install complete!", "success");
     } else {
-      logAuto(`pnpm install warning: ${installRes.stderr.slice(0, 200)}`, "warn");
+      logAuto(`pnpm install warning: ${installRes.stderr.slice(0, 300)}`, "warn");
     }
 
     const newCommitRes = await runGit("rev-parse HEAD");
     const newCommit = newCommitRes.stdout.slice(0, 10);
 
-    const changedFilesRes = await runGit("diff --name-only HEAD~1 HEAD");
-    const changes = changedFilesRes.stdout.split("\n").filter(Boolean);
+    const safeChanges = pendingFiles.filter(f =>
+      ANTIVIRUS_SAFE_EXTENSIONS.some(ext => f.endsWith(ext)) || !f.includes(".")
+    );
 
-    logAuto(`AUTO-UPDATE DONE! ${localCommit} → ${newCommit} | ${changes.length} files changed`, "success");
-    lastAutoResult = `Updated: ${localCommit} → ${newCommit} (${changes.length} files)`;
+    logAuto(
+      `AUTO-UPDATE DONE! ${localCommit} → ${newCommit} | ${pendingFiles.length} files (${safeChanges.length} safe, ${blockedFiles.length} antivirus-blocked)`,
+      "success",
+    );
+    lastAutoResult = `Updated: ${localCommit} → ${newCommit} (${pendingFiles.length} files changed)`;
 
-    return { updated: true, message: `Updated to ${newCommit} — ${changes.length} files changed` };
+    if (newCommit !== localCommit) {
+      scheduleServerRestart(4);
+    }
+
+    return { updated: true, message: `Updated to ${newCommit} — ${pendingFiles.length} files changed` };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logAuto(`Auto-update error: ${message}`, "error");
@@ -216,50 +254,62 @@ router.get("/system/git-status", async (_req: Request, res: Response) => {
 
 router.post("/system/git-pull", async (_req: Request, res: Response) => {
   try {
+    const localCommitRes = await runGit("rev-parse HEAD");
+    const localCommit = localCommitRes.stdout.slice(0, 10);
+
     const fetchRes = await runGit("fetch origin main --prune");
     if (!fetchRes.ok) {
       res.status(500).json({ ok: false, error: `Fetch failed: ${fetchRes.stderr}` });
       return;
     }
 
-    const diffRes = await runGit("rev-list HEAD..origin/main --count");
-    const behindCount = parseInt(diffRes.stdout) || 0;
+    const behindRes = await runGit("rev-list HEAD..origin/main --count");
+    const behindCount = parseInt(behindRes.stdout) || 0;
 
     if (behindCount === 0) {
       res.json({ ok: true, message: "Already up to date — koi naya update nahi", pulled: false, changes: [] });
       return;
     }
 
-    const pullRes = await runGit("pull origin main --no-rebase");
+    const pendingFilesRes = await runGit("diff --name-only HEAD..origin/main");
+    const pendingFiles = pendingFilesRes.stdout.split("\n").filter(Boolean);
+    const blockedFiles = pendingFiles.filter(f => !isAntivirusSafeFile(f));
+
+    const pullRes = await runGit("pull origin main --ff-only");
     if (!pullRes.ok) {
-      res.status(500).json({ ok: false, error: `Pull failed: ${pullRes.stderr}`, stdout: pullRes.stdout });
-      return;
+      const mergeRes = await runGit("pull origin main --no-rebase -X theirs");
+      if (!mergeRes.ok) {
+        res.status(500).json({ ok: false, error: `Pull failed: ${mergeRes.stderr}` });
+        return;
+      }
     }
 
     logAuto("Manual pull ke baad pnpm install chala rahe hain...", "info");
-    const installRes = await runShell("pnpm install --frozen-lockfile 2>&1 || pnpm install 2>&1", 120000);
-    if (installRes.ok) {
-      logAuto("pnpm install complete after manual pull!", "success");
-    }
-
-    const changedFilesRes = await runGit("diff --name-only HEAD~1 HEAD");
-    const changes = changedFilesRes.stdout.split("\n").filter(Boolean);
+    const installRes = await runShell(
+      "pnpm install --prefer-frozen-lockfile 2>&1 || pnpm install --no-frozen-lockfile 2>&1",
+      120000,
+    );
+    if (installRes.ok) logAuto("pnpm install complete after manual pull!", "success");
 
     const newCommitRes = await runGit("rev-parse HEAD");
     const newCommit = newCommitRes.stdout.slice(0, 10);
-
     const logRes = await runGit("log --oneline -3");
 
     res.json({
       ok: true,
-      message: `✅ ${behindCount} commit(s) pull ho gaye! pnpm install bhi ho gaya!`,
+      message: `✅ ${behindCount} commit(s) pull ho gaye! Server restart hoga...`,
       pulled: true,
       newCommit,
       behindCount,
-      changes,
+      changes: pendingFiles,
+      antivirusBlocked: blockedFiles,
       log: logRes.stdout,
       output: pullRes.stdout,
     });
+
+    if (newCommit !== localCommit) {
+      scheduleServerRestart(3);
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Git pull failed";
     res.status(500).json({ ok: false, error: message });

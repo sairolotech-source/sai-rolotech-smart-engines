@@ -57,7 +57,17 @@ Har session mein user yeh code likhta hai — sab rules activate ho jate hain.
     - `pnpm run dev` now works from root
     - Starts both api-server and design-tool
 
-11. **Tailwind Dynamic Class Bug — COMPLETE FIX (All Files)**
+11. **Demo Download Page** (`/download` route — PUBLIC, no login needed)
+    - Professional download page with ZIP download link (GitHub repo)
+    - 4-step install guide (Hindi), system requirements, feature list
+    - WhatsApp + Email share buttons built-in
+    - "Copy Link" button for easy sharing
+    - FAQ section with common questions
+    - Landing Page pe "Demo Download Karo" button added
+    - File: `artifacts/design-tool/src/pages/DemoDownloadPage.tsx`
+    - Route: `/download` (accessible without login)
+
+12. **Tailwind Dynamic Class Bug — COMPLETE FIX (All Files)**
     - Replaced ALL dynamic `bg-${color}`, `text-${color}`, `border-${color}` patterns with static class maps
     - Files fixed: AutoCADEngineeringDrawing, AutoCncPlanner, BuddyCRMDashboard, GitHubUpdatePanel, RollDesignSuite, RollKnowledgeHub, WizardMode, DemoCChannelPanel, SolidModelingPanel
     - AutoCncPlanner uses centralized `TW_COLOR` map for all color lookups

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Cog, Layers, Cpu, ArrowRight, CheckCircle2,
   Zap, Shield, BarChart3, Box, FileCode2,
-  ChevronRight, Star, Sparkles, GitBranch, Scissors, Bot, Wrench, Monitor,
+  ChevronRight, Star, Sparkles, GitBranch, Scissors, Bot, Wrench, Monitor, Download,
 } from "lucide-react";
 import DemoVideo from "@/pages/DemoVideo";
 
@@ -430,6 +430,15 @@ export function LandingPage({ onGetStarted }: Props) {
           >
             Software Ki Poori Jaankari
             <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+          </a>
+          <a
+            href="/download"
+            className="group flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#d4d4d8", backdropFilter: "blur(12px)" }}
+          >
+            <Monitor className="w-4 h-4" style={{ color: "#34d399" }} />
+            Demo Download Karo
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </a>
         </div>
 

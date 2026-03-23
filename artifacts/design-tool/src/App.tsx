@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useRoute } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import { LandingPage } from "@/pages/LandingPage";
 import { Dashboard } from "@/pages/Dashboard";
 import DemoVideo from "@/pages/DemoVideo";
+import DemoDownloadPage from "@/pages/DemoDownloadPage";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -114,8 +115,14 @@ function AuthGate() {
     // 4. User login is handled by LandingPage/LoginPage — no auto-login
   }, []);
 
+  const [isDownloadPage] = useRoute("/download");
+
   if (!initialized || !splashDone) {
     return <SplashScreen3D onComplete={handleSplashComplete} />;
+  }
+
+  if (isDownloadPage) {
+    return <DemoDownloadPage />;
   }
 
   if (!user) {

@@ -4,6 +4,7 @@ import { rateLimit } from "express-rate-limit";
 import path from "path";
 import { existsSync, readFileSync } from "fs";
 import apiRouter from "./routes/index.js";
+import { SAI_ERROR_BRAND } from "./lib/ai-confidentiality";
 
 const IS_PRODUCTION = process.env["NODE_ENV"] === "production";
 
@@ -60,6 +61,15 @@ app.use((req, _res, next) => {
 });
 
 app.use("/api", apiRouter);
+
+app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(`[${SAI_ERROR_BRAND.prefix}] Server Error:`, err.message);
+  res.status(500).json({
+    error: SAI_ERROR_BRAND.serverError,
+    brand: SAI_ERROR_BRAND.prefix,
+    timestamp: new Date().toISOString(),
+  });
+});
 
 {
   const indexHtmlPath = path.join(FRONTEND_DIST, "index.html");

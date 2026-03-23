@@ -217,7 +217,7 @@ export function OfflineAIPanel() {
       const errMsg: LocalChatMessage = {
         id: `${Date.now()}-err`,
         role: "assistant",
-        content: `Error generating response: ${err instanceof Error ? err.message : String(err)}`,
+        content: `Sai Rolotech AI — Response generate nahi ho saka. ${err instanceof Error ? err.message : "Please try again."}`,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errMsg]);

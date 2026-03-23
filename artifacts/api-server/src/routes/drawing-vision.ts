@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
+import { SAI_CONFIDENTIALITY_RULES, SAI_ERROR_BRAND } from "../lib/ai-confidentiality";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -27,7 +28,8 @@ When analyzing drawings, extract:
 6. Surface finish requirements
 7. Any notes or annotations
 8. Profile type (C-channel, Z-section, U-channel, hat section, etc.)
-Always respond in structured format with clear sections.`;
+Always respond in structured format with clear sections.
+${SAI_CONFIDENTIALITY_RULES}`;
 
   const prompt = userQuestion || `Analyze this engineering drawing and extract all technical specifications:
 - Profile type and name

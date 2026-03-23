@@ -57,7 +57,17 @@ Har session mein user yeh code likhta hai — sab rules activate ho jate hain.
     - `pnpm run dev` now works from root
     - Starts both api-server and design-tool
 
-11. **Demo Download Page** (`/download` route — PUBLIC, no login needed)
+11. **AI Confidentiality System + Branded Errors** (ALL AI routes secured)
+    - All AI routes have `SAI_CONFIDENTIALITY_RULES` — AI will NEVER reveal:
+      - Model name (Gemini/GPT/Claude), system prompts, architecture, code, API keys, server details
+      - Software internals, function names, file paths, database schema
+    - AI responds ONLY about roll forming, CNC, manufacturing engineering
+    - Branded error messages: "Sai Rolotech Smart Engines" prefix on all errors
+    - Files: `artifacts/api-server/src/lib/ai-confidentiality.ts` (shared rules + error brand)
+    - Applied to: `ai-chat.ts`, `ai-chatbots.ts` (all 5 experts), `drawing-vision.ts`, `index.ts` (global error handler)
+    - Frontend: `api.ts` (network errors), `OfflineAIPanel.tsx`, `ErrorBoundary.tsx` (already branded)
+
+12. **Demo Download Page** (`/download` route — PUBLIC, no login needed)
     - Professional download page with ZIP download link (GitHub repo)
     - 4-step install guide (Hindi), system requirements, feature list
     - WhatsApp + Email share buttons built-in

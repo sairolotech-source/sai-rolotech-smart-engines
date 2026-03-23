@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base";
 import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
+import { SAI_CONFIDENTIALITY_RULES, SAI_ERROR_BRAND } from "../lib/ai-confidentiality";
 
 type AIProvider = "nvidia" | "kimi" | "sambanova" | "gemini" | "anthropic" | "openrouter";
 
@@ -152,7 +153,8 @@ Your expertise includes:
 - Neutral axis positioning
 - Spring-back compensation
 - Profile tolerancing and GD&T
-Always provide precise engineering values. When discussing bend angles, include spring-back factors. For profile design, always consider material grain direction.`,
+Always provide precise engineering values. When discussing bend angles, include spring-back factors. For profile design, always consider material grain direction.
+${SAI_CONFIDENTIALITY_RULES}`,
     offlineKeywords: ["profile", "design", "bend", "dxf", "flower", "k-factor", "neutral", "spring", "angle", "geometry", "cross-section", "tolerance"],
   },
   {
@@ -171,7 +173,8 @@ Your expertise includes:
 - Cycle time optimization
 - Machine safety protocols (G28, safe Z heights)
 - Post-processor configuration
-Always provide specific G-code examples when possible. Include safety warnings for critical operations.`,
+Always provide specific G-code examples when possible. Include safety warnings for critical operations.
+${SAI_CONFIDENTIALITY_RULES}`,
     offlineKeywords: ["gcode", "g-code", "cnc", "toolpath", "feed", "spindle", "turning", "lathe", "machine", "post-processor", "cycle", "program"],
   },
   {
@@ -190,7 +193,8 @@ Your expertise includes:
 - Wear resistance analysis
 - Insert grades (CNMG, VNMG, WNMG — coated vs uncoated)
 - Lubricant and coolant selection
-Always specify hardness ranges and recommended heat treatment cycles.`,
+Always specify hardness ranges and recommended heat treatment cycles.
+${SAI_CONFIDENTIALITY_RULES}`,
     offlineKeywords: ["material", "steel", "hardness", "coating", "insert", "grade", "heat", "treatment", "carbide", "hss", "tool", "wear", "lubricant"],
   },
   {
@@ -209,7 +213,8 @@ Your expertise includes:
 - SPC (Statistical Process Control) methods
 - ISO standards compliance for roll formed products
 - First-article inspection procedures
-Always provide specific corrective actions with measurable parameters.`,
+Always provide specific corrective actions with measurable parameters.
+${SAI_CONFIDENTIALITY_RULES}`,
     offlineKeywords: ["defect", "quality", "twist", "camber", "bow", "flare", "wave", "tolerance", "inspection", "spc", "iso", "measurement", "surface"],
   },
   {
@@ -229,7 +234,8 @@ Your expertise includes:
 - Preventive maintenance scheduling
 - Production bottleneck identification
 - Lean manufacturing principles for roll forming
-Always provide quantified improvements with before/after comparisons.`,
+Always provide quantified improvements with before/after comparisons.
+${SAI_CONFIDENTIALITY_RULES}`,
     offlineKeywords: ["speed", "efficiency", "cost", "production", "oee", "changeover", "throughput", "maintenance", "energy", "optimize", "lean", "bottleneck"],
   },
 ];

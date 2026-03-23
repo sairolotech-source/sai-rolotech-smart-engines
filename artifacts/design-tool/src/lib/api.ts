@@ -102,9 +102,9 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
     return res;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new OfflineError("Server response timeout — network slow ya offline hai. Local data se kaam chalayein.");
+      throw new OfflineError("Sai Rolotech Server — Response timeout. Network slow ya offline hai. Local data se kaam chalayein.");
     }
-    throw new OfflineError("Network unavailable — app offline mode mein hai. Internet connect hone par data sync ho jayega.");
+    throw new OfflineError("Sai Rolotech Server — Network unavailable. App offline mode mein hai. Internet connect hone par data sync ho jayega.");
   }
 }
 

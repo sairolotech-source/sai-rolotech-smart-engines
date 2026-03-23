@@ -41,7 +41,7 @@ const API_PORT    = 3001;
 const IS_DEV      = process.env.NODE_ENV === "development" || !app.isPackaged;
 const IS_WIN      = process.platform === "win32";
 
-// ─── Valid License Keys ──────────────────────────────────────────────────────
+// ─── Valid License Keys (offline fallback) ───────────────────────────────────
 const VALID_LICENSE_KEYS = new Set([
   "SAIR-2026-ROLL-FORM",
   "SAIR-2026-ENGI-NEER",
@@ -49,6 +49,10 @@ const VALID_LICENSE_KEYS = new Set([
   "SAIR-PRO-2026-MSTR",
   "SAIR-DEMO-2026-TRIAL",
 ]);
+
+// ─── Admin Server URL ────────────────────────────────────────────────────────
+const ADMIN_SERVER_URL = "https://sairolotech.com";
+const OFFLINE_GRACE_DAYS = 7;
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -1025,8 +1029,34 @@ function loadLicenseEncrypted(): { key: string; hw: string; ts: number } | null 
 
 function startRuntimeLicenseCheck(): void {
   if (runtimeCheckTimer) return;
-  runtimeCheckTimer = setInterval(() => {
+  runtimeCheckTimer = setInterval(async () => {
     console.log("[Security] Runtime license check...");
+    const hwId = getHardwareId();
+
+    // Check new token-based activation first
+    const activation = loadActivation();
+    if (activation && activation.token && activation.hwId === hwId) {
+      if (!activation.token.startsWith("OFFLINE-")) {
+        const result = await verifyTokenOnline(activation.token, hwId);
+        if (result && result.blocked) {
+          dialog.showMessageBoxSync({
+            type: "error",
+            title: "Access Blocked",
+            message: `Aapka access admin ne band kar diya hai.\n\n${result.reason || ""}\n\nContact: support@sairolotech.com`,
+            buttons: ["Exit"],
+          });
+          app.quit();
+          return;
+        }
+        if (result && result.active) {
+          activation.lastVerifiedAt = new Date().toISOString();
+          saveActivation(activation);
+        }
+      }
+      return; // Token-based check done
+    }
+
+    // Legacy key check
     const licData = loadLicenseEncrypted();
     if (!licData || !isValidLicenseKey(licData.key)) {
       console.error("[Security] License tampered — shutting down");
@@ -1040,28 +1070,14 @@ function startRuntimeLicenseCheck(): void {
       return;
     }
     if (licData.key === DEMO_KEY && isTrialExpired()) {
-      console.error("[Security] Demo trial expired during runtime");
       nukeTrialData();
       dialog.showMessageBoxSync({
         type: "error",
         title: "Demo Trial Expired",
-        message: "Your 24-hour demo trial has expired.\n\nAll demo data has been removed.\n\nContact: support@sairolotech.com",
+        message: "Your 24-hour demo trial has expired.\n\nContact: support@sairolotech.com",
         buttons: ["Exit"],
       });
       app.quit();
-      return;
-    }
-    const currentHwId = getHardwareId();
-    if (licData.hw !== currentHwId) {
-      console.error("[Security] Hardware mismatch detected");
-      dialog.showMessageBoxSync({
-        type: "error",
-        title: "License Error",
-        message: "This license is not valid for this computer.\n\nPlease contact SAI Rolotech for a new license.\n\nEmail: support@sairolotech.com",
-        buttons: ["Exit"],
-      });
-      app.quit();
-      return;
     }
   }, RUNTIME_CHECK_INTERVAL);
 }
@@ -1159,161 +1175,374 @@ function isValidLicenseKey(key: string): boolean {
   return VALID_LICENSE_KEYS.has(key.trim().toUpperCase());
 }
 
+// ─── Activation Token System (new — replaces repeated key prompts) ────────────
+
+interface ActivationData {
+  token: string;
+  hwId: string;
+  name: string;
+  registeredAt: string;
+  lastVerifiedAt: string;
+}
+
+function getActivationPath(): string {
+  return path.join(app.getPath("userData"), "activation.dat");
+}
+
+function saveActivation(data: ActivationData): void {
+  const payload = encryptData(JSON.stringify(data));
+  fs.writeFileSync(getActivationPath(), payload, "utf8");
+}
+
+function loadActivation(): ActivationData | null {
+  try {
+    const actPath = getActivationPath();
+    if (!fs.existsSync(actPath)) return null;
+    const raw = fs.readFileSync(actPath, "utf8").trim();
+    const decrypted = decryptData(raw);
+    if (!decrypted) return null;
+    return JSON.parse(decrypted) as ActivationData;
+  } catch {
+    return null;
+  }
+}
+
+async function verifyTokenOnline(token: string, hwId: string): Promise<{ active: boolean; blocked?: boolean; reason?: string; name?: string } | null> {
+  try {
+    const http = require("http") as typeof import("http");
+    const https = require("https") as typeof import("https");
+    const url = new URL(`${ADMIN_SERVER_URL}/api/license/verify?token=${encodeURIComponent(token)}&hwId=${encodeURIComponent(hwId)}`);
+    const mod = url.protocol === "https:" ? https : http;
+
+    return await new Promise((resolve) => {
+      const req = mod.get(url.toString(), { timeout: 8000 }, (res) => {
+        let data = "";
+        res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+        res.on("end", () => {
+          try { resolve(JSON.parse(data) as { active: boolean; blocked?: boolean; reason?: string; name?: string }); }
+          catch { resolve(null); }
+        });
+      });
+      req.on("error", () => resolve(null));
+      req.on("timeout", () => { req.destroy(); resolve(null); });
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function registerOnline(payload: {
+  key: string; name: string; mobile: string; hwId: string;
+  systemInfo: Record<string, string>;
+}): Promise<{ ok: boolean; token?: string; message?: string; error?: string; blocked?: boolean } | null> {
+  try {
+    const https = require("https") as typeof import("https");
+    const http = require("http") as typeof import("http");
+    const body = JSON.stringify(payload);
+    const url = new URL(`${ADMIN_SERVER_URL}/api/license/register`);
+    const mod = url.protocol === "https:" ? https : http;
+    const options = {
+      hostname: url.hostname,
+      port: url.port || (url.protocol === "https:" ? 443 : 80),
+      path: url.pathname,
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+      timeout: 12000,
+    };
+
+    return await new Promise((resolve) => {
+      const req = mod.request(options, (res: import("http").IncomingMessage) => {
+        let data = "";
+        res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+        res.on("end", () => {
+          try { resolve(JSON.parse(data) as { ok: boolean; token?: string; message?: string; error?: string; blocked?: boolean }); }
+          catch { resolve(null); }
+        });
+      });
+      req.on("error", () => resolve(null));
+      req.on("timeout", () => { req.destroy(); resolve(null); });
+      req.write(body);
+      req.end();
+    });
+  } catch {
+    return null;
+  }
+}
+
+function getSystemInfoForRegistration(): Record<string, string> {
+  const cpus = os.cpus();
+  return {
+    hostname: os.hostname(),
+    platform: os.platform(),
+    arch: os.arch(),
+    os: os.release(),
+    cpu: cpus[0]?.model ?? "Unknown",
+    cores: String(cpus.length),
+    ram: `${Math.round(os.totalmem() / (1024 ** 3))}GB`,
+    appVersion: APP_VERSION,
+  };
+}
+
+async function showRegistrationForm(prefilledKey?: string): Promise<{ name: string; mobile: string; key: string } | null> {
+  const win = new BrowserWindow({
+    width: 480, height: 520,
+    resizable: false, minimizable: false, maximizable: false, closable: true,
+    frame: true, title: "SAI Rolotech — Software Registration",
+    backgroundColor: "#0a0a1a", icon: getAssetPath("icon.ico"),
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+  win.setMenu(null);
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+  *{box-sizing:border-box;}
+  body{margin:0;padding:28px 32px;background:#0a0a1a;color:#e4e4e7;font-family:'Segoe UI',sans-serif;}
+  h2{color:#f97316;margin:0 0 4px;font-size:18px;font-weight:700;}
+  .sub{color:#71717a;font-size:12px;margin:0 0 22px;}
+  label{display:block;color:#d4d4d8;font-size:12px;font-weight:600;margin:0 0 5px;}
+  input{width:100%;padding:11px 13px;font-size:14px;background:#1a1a2e;border:2px solid #27272a;
+    border-radius:8px;color:#e4e4e7;outline:none;margin-bottom:14px;transition:border .2s;}
+  input:focus{border-color:#f97316;}
+  #key{letter-spacing:2px;text-transform:uppercase;color:#f59e0b;font-size:15px;text-align:center;}
+  #msg{min-height:22px;font-size:12px;text-align:center;margin-bottom:10px;color:#ef4444;}
+  #msg.ok{color:#4ade80;}
+  button{width:100%;padding:12px;font-size:15px;font-weight:700;
+    background:linear-gradient(135deg,#f97316,#d97706);color:#fff;border:none;
+    border-radius:8px;cursor:pointer;transition:opacity .2s;}
+  button:disabled{opacity:.5;cursor:wait;}
+  .foot{color:#52525b;font-size:11px;text-align:center;margin-top:14px;}
+  .req{color:#ef4444;}
+</style></head><body>
+  <h2>✦ Software Registration</h2>
+  <p class="sub">SAI Rolotech Smart Engines — Pehli baar apni details daalo</p>
+  <label>Aapka Naam <span class="req">*</span></label>
+  <input type="text" id="name" placeholder="Poora naam" autocomplete="off">
+  <label>Mobile Number <span class="req">*</span></label>
+  <input type="tel" id="mobile" placeholder="+92 300 0000000" autocomplete="off">
+  <label>License Key <span class="req">*</span></label>
+  <input type="text" id="key" placeholder="SAIR-XXXX-XXXX-XXXX" value="${prefilledKey || ""}" autocomplete="off">
+  <div id="msg"></div>
+  <button id="btn" onclick="submit()">Register &amp; Activate</button>
+  <div class="foot">support@sairolotech.com | www.sairolotech.com</div>
+  <script>
+    function msg(txt, ok) {
+      var el = document.getElementById('msg');
+      el.textContent = txt; el.className = ok ? 'ok' : '';
+    }
+    function submit() {
+      var n=document.getElementById('name').value.trim();
+      var m=document.getElementById('mobile').value.trim();
+      var k=document.getElementById('key').value.trim().toUpperCase();
+      if(!n){msg('Naam zarori hai');return;}
+      if(!m||m.length<7){msg('Sahi mobile number daalo');return;}
+      if(!k){msg('License key zarori hai');return;}
+      document.getElementById('btn').disabled=true;
+      msg('Registering...', true);
+      document.title = 'REG:' + JSON.stringify({name:n,mobile:m,key:k});
+    }
+    document.addEventListener('keydown',function(e){if(e.key==='Enter')submit();});
+    document.getElementById('name').focus();
+  </script>
+</body></html>`;
+
+  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    win.on("page-title-updated", (_e, title) => {
+      if (title.startsWith("REG:")) {
+        try {
+          const data = JSON.parse(title.slice(4)) as { name: string; mobile: string; key: string };
+          resolved = true;
+          win.close();
+          resolve(data);
+        } catch { /* ignore */ }
+      }
+    });
+    win.on("closed", () => { if (!resolved) resolve(null); });
+  });
+}
+
 async function verifyLicense(): Promise<boolean> {
   if (IS_DEV) return true;
 
-  const savedKey = getSavedLicenseKey();
-  if (savedKey && isValidLicenseKey(savedKey)) {
-    if (!verifyHardwareBinding()) {
-      console.error("[Security] Hardware binding mismatch — license invalid for this machine");
+  const hwId = getHardwareId();
+
+  // ── Step 1: Check new token-based activation ──────────────────────────────
+  const activation = loadActivation();
+  if (activation && activation.token && activation.hwId === hwId) {
+    console.log("[License] Activation token found — verifying online...");
+
+    const result = await verifyTokenOnline(activation.token, hwId);
+
+    if (result === null) {
+      // Server unreachable — check grace period
+      const lastVerified = new Date(activation.lastVerifiedAt).getTime();
+      const daysSince = (Date.now() - lastVerified) / (1000 * 60 * 60 * 24);
+      if (daysSince <= OFFLINE_GRACE_DAYS) {
+        console.log(`[License] Offline — grace period active (${daysSince.toFixed(1)} days since last verify)`);
+        startRuntimeLicenseCheck();
+        return true;
+      } else {
+        dialog.showMessageBoxSync({
+          type: "error",
+          title: "License Verification Failed",
+          message: `${OFFLINE_GRACE_DAYS} din se server se connect nahi ho raha.\n\nInternet check karein aur dobara try karein.\n\nSupport: support@sairolotech.com`,
+          buttons: ["Exit"],
+        });
+        return false;
+      }
+    }
+
+    if (result.blocked) {
       dialog.showMessageBoxSync({
         type: "error",
-        title: "License Error — Wrong Computer",
-        message: "This license key is registered to a different computer.\n\nEach license can only be used on the computer where it was first activated.\n\nContact SAI Rolotech for a new license.\nEmail: support@sairolotech.com",
+        title: "Access Blocked",
+        message: `Aapka software access admin ne band kar diya hai.\n\n${result.reason || ""}\n\nContact: support@sairolotech.com`,
         buttons: ["Exit"],
       });
       return false;
     }
 
-    if (!verifyIntegrity()) {
-      console.error("[Security] Integrity check failed — files may have been tampered with");
-      saveIntegrity();
+    if (!result.active) {
+      console.log("[License] Token invalid — need re-registration");
+      // Fall through to registration
+    } else {
+      // Update lastVerifiedAt
+      activation.lastVerifiedAt = new Date().toISOString();
+      saveActivation(activation);
+      console.log(`[License] Verified OK — Welcome ${activation.name}`);
+      startRuntimeLicenseCheck();
+      return true;
     }
+  }
 
-    if (savedKey.trim().toUpperCase() === DEMO_KEY) {
-      if (isTrialExpired()) {
-        console.log("[License] Demo trial expired — nuking data");
-        nukeTrialData();
-        dialog.showMessageBoxSync({
-          type: "error",
-          title: "Demo Trial Expired",
-          message: "Your 24-hour demo trial has expired.\n\nAll demo data has been removed.\n\nTo continue using SAI Rolotech Smart Engines, please purchase a full license.\n\nContact: support@sairolotech.com",
-          buttons: ["Exit"],
-        });
-        return false;
-      }
-      const startTime = getTrialStartTime();
-      if (startTime) {
-        const remaining = Math.max(0, DEMO_TRIAL_HOURS * 60 * 60 * 1000 - (Date.now() - startTime));
-        const hoursLeft = Math.floor(remaining / (60 * 60 * 1000));
-        const minsLeft = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-        console.log(`[License] Demo trial — ${hoursLeft}h ${minsLeft}m remaining`);
-      }
-    }
-    console.log("[License] Valid license key found");
+  // ── Step 2: Check old license key for migration ────────────────────────────
+  const oldKey = getSavedLicenseKey();
+  if (oldKey && isValidLicenseKey(oldKey) && verifyHardwareBinding()) {
+    console.log("[License] Old license key found — auto-migrating to token system");
+    // Silently use the old key for now (will get token on next registration attempt)
     startRuntimeLicenseCheck();
     return true;
   }
 
+  // ── Step 3: Show Registration Form ────────────────────────────────────────
   let attempts = 0;
   const maxAttempts = 3;
 
   while (attempts < maxAttempts) {
-    const promptWindow = new BrowserWindow({
-      width: 500,
-      height: 380,
-      resizable: false,
-      minimizable: false,
-      maximizable: false,
-      closable: true,
-      frame: true,
-      title: "SAI Rolotech — Product Activation",
-      backgroundColor: "#0a0a1a",
-      icon: getAssetPath("icon.ico"),
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    });
+    const formData = await showRegistrationForm();
 
-    const remaining = maxAttempts - attempts;
-    const htmlContent = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><style>
-  body { margin:0; padding:30px; background:#0a0a1a; color:#e4e4e7; font-family:'Segoe UI',sans-serif; }
-  h2 { color:#f97316; margin:0 0 8px; font-size:18px; }
-  p { color:#a1a1aa; font-size:13px; margin:0 0 20px; line-height:1.5; }
-  label { display:block; color:#d4d4d8; font-size:13px; font-weight:600; margin-bottom:6px; }
-  input { width:100%; padding:12px; font-size:16px; letter-spacing:2px; text-align:center; text-transform:uppercase;
-    background:#1a1a2e; border:2px solid #27272a; border-radius:8px; color:#f97316; outline:none; box-sizing:border-box; }
-  input:focus { border-color:#f97316; box-shadow:0 0 12px rgba(249,115,22,0.2); }
-  button { width:100%; padding:12px; font-size:15px; font-weight:700; background:linear-gradient(135deg,#f97316,#d97706);
-    color:#fff; border:none; border-radius:8px; cursor:pointer; margin-top:16px; }
-  button:hover { opacity:0.9; }
-  .info { color:#71717a; font-size:11px; text-align:center; margin-top:16px; }
-  .error { color:#ef4444; font-size:12px; text-align:center; margin-top:8px; display:none; }
-  .attempts { color:#f59e0b; font-size:11px; text-align:center; margin-top:4px; }
-</style></head><body>
-  <h2>Product Activation Required</h2>
-  <p>Enter your Product Key to activate SAI Rolotech Smart Engines.<br>Contact SAI Rolotech if you don't have a key.</p>
-  <label>Product Key</label>
-  <input type="text" id="key" placeholder="XXXX-XXXX-XXXX-XXXX" autofocus>
-  <div class="error" id="err">Invalid Product Key. Please try again.</div>
-  <div class="attempts">Attempts remaining: ${remaining}</div>
-  <button onclick="activate()">Activate</button>
-  <div class="info">Email: support@sairolotech.com</div>
-  <script>
-    function activate() {
-      const key = document.getElementById('key').value.trim();
-      if (!key) { document.getElementById('err').style.display='block'; document.getElementById('err').textContent='Please enter a product key.'; return; }
-      document.title = 'KEY:' + key;
-    }
-    document.getElementById('key').addEventListener('keydown', function(e) { if (e.key === 'Enter') activate(); });
-  </script>
-</body></html>`;
-
-    promptWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
-    promptWindow.setMenu(null);
-
-    const enteredKey = await new Promise<string | null>((resolve) => {
-      let resolved = false;
-
-      promptWindow.on("page-title-updated", (_e, title) => {
-        if (title.startsWith("KEY:")) {
-          const key = title.substring(4);
-          resolved = true;
-          promptWindow.close();
-          resolve(key);
-        }
-      });
-
-      promptWindow.on("closed", () => {
-        if (!resolved) resolve(null);
-      });
-    });
-
-    if (!enteredKey) {
+    if (!formData) {
+      // User closed the window
       return false;
     }
 
-    if (isValidLicenseKey(enteredKey)) {
-      const upperKey = enteredKey.trim().toUpperCase();
-      saveLicenseKey(upperKey);
-      if (upperKey === DEMO_KEY) {
-        saveTrialTimestamp();
-        console.log("[License] Demo trial activated — 24 hours starts now");
+    const { name, mobile, key } = formData;
+    const systemInfo = getSystemInfoForRegistration();
+
+    // Show "Registering..." message
+    const loadingWin = new BrowserWindow({
+      width: 360, height: 160, resizable: false, frame: false,
+      backgroundColor: "#0a0a1a", alwaysOnTop: true, icon: getAssetPath("icon.ico"),
+      webPreferences: { nodeIntegration: false, contextIsolation: true },
+    });
+    loadingWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(
+      `<html><body style="margin:0;background:#0a0a1a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:'Segoe UI',sans-serif;color:#f97316;font-size:16px;font-weight:600;">
+        ⟳ Server se verify ho raha hai...
+      </body></html>`
+    )});
+    loadingWin.setMenu(null);
+
+    // Call server
+    const result = await registerOnline({ key, name, mobile, hwId, systemInfo });
+    try { loadingWin.close(); } catch {}
+
+    if (result === null) {
+      // Server unreachable — check key locally
+      if (isValidLicenseKey(key)) {
+        const upperKey = key.trim().toUpperCase();
+        saveLicenseKey(upperKey);
+        // Save partial activation (offline)
+        const partialActivation: ActivationData = {
+          token: `OFFLINE-${hwId.slice(0, 8)}`,
+          hwId,
+          name,
+          registeredAt: new Date().toISOString(),
+          lastVerifiedAt: new Date().toISOString(),
+        };
+        saveActivation(partialActivation);
+        dialog.showMessageBoxSync({
+          type: "info",
+          title: "Activation (Offline)",
+          message: `Welcome ${name}!\n\nSoftware activate ho gaya (offline mode).\nInternet hone par server se automatically register hoga.`,
+          buttons: ["Start"],
+        });
+        startRuntimeLicenseCheck();
+        return true;
+      } else {
+        dialog.showMessageBoxSync({
+          type: "error",
+          title: "Invalid License Key",
+          message: "License key galat hai aur server se bhi connect nahi ho saka.\n\nSahi key daalo ya internet check karo.",
+          buttons: ["Try Again"],
+        });
+        attempts++;
+        continue;
       }
-      console.log("[License] Product activated successfully");
-      return true;
     }
 
-    attempts++;
-    if (attempts < maxAttempts) {
+    if (result.blocked) {
+      dialog.showMessageBoxSync({
+        type: "error",
+        title: "Access Blocked",
+        message: `Aapka access admin ne band kar diya hai.\n\n${result.error || ""}\n\nContact: support@sairolotech.com`,
+        buttons: ["Exit"],
+      });
+      return false;
+    }
+
+    if (!result.ok || !result.token) {
       dialog.showMessageBoxSync({
         type: "warning",
-        title: "Invalid Product Key",
-        message: `The product key you entered is not valid.\n\nAttempts remaining: ${maxAttempts - attempts}\n\nPlease check your key and try again.`,
+        title: "Registration Failed",
+        message: `${result.error || result.message || "Registration nahi ho saka."}\n\nAttempts remaining: ${maxAttempts - attempts - 1}`,
         buttons: ["Try Again"],
       });
+      attempts++;
+      continue;
     }
+
+    // Success! Save activation data
+    const newActivation: ActivationData = {
+      token: result.token,
+      hwId,
+      name,
+      registeredAt: new Date().toISOString(),
+      lastVerifiedAt: new Date().toISOString(),
+    };
+    saveActivation(newActivation);
+    saveLicenseKey(key.trim().toUpperCase());
+    saveHardwareBinding();
+
+    dialog.showMessageBoxSync({
+      type: "info",
+      title: "Registration Successful!",
+      message: `Welcome ${name}!\n\n${result.message || "Software successfully activate ho gaya!"}\n\nAb update ke baad dobara key nahi maanga jaayega.`,
+      buttons: ["Start SAI Rolotech"],
+    });
+
+    console.log(`[License] Registered & activated: ${name} | ${mobile}`);
+    startRuntimeLicenseCheck();
+    return true;
   }
 
   dialog.showMessageBoxSync({
     type: "error",
     title: "Activation Failed",
-    message: "Maximum activation attempts exceeded.\n\nPlease contact SAI Rolotech for a valid product key.\n\nEmail: support@sairolotech.com",
+    message: "Maximum attempts exceeded.\n\nContact: support@sairolotech.com",
     buttons: ["Exit"],
   });
-
   return false;
 }
 

@@ -9,6 +9,7 @@ import { LandingPage } from "@/pages/LandingPage";
 import { Dashboard } from "@/pages/Dashboard";
 import DemoVideo from "@/pages/DemoVideo";
 import DemoDownloadPage from "@/pages/DemoDownloadPage";
+import AdminPanel from "@/pages/AdminPanel";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -116,6 +117,11 @@ function AuthGate() {
   }, []);
 
   const [isDownloadPage] = useRoute("/download");
+  const [isAdminPage] = useRoute("/admin");
+
+  if (isAdminPage) {
+    return <AdminPanel />;
+  }
 
   if (!initialized || !splashDone) {
     return <SplashScreen3D onComplete={handleSplashComplete} />;

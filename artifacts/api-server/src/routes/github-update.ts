@@ -337,6 +337,12 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
     const { message: commitMsg } = req.body as { message?: string };
     const msg = commitMsg?.trim() || `SAI Rolotech update: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
 
+    // Clean up stale git lock files before any git operation
+    const gitLockPath = path.join(REPO_ROOT, ".git", "index.lock");
+    if (fs.existsSync(gitLockPath)) {
+      try { fs.unlinkSync(gitLockPath); logAuto("Stale git index.lock removed", "info"); } catch {}
+    }
+
     await runGit(`config user.email "sairolotech@gmail.com"`);
     await runGit(`config user.name "SAI Rolotech"`);
 

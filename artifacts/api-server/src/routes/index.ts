@@ -21,7 +21,7 @@ import materialsRouter from "./materials";
 import drawingVisionRouter from "./drawing-vision";
 import smartToolSelectorRouter from "./smart-tool-selector";
 import gcodeSafetyRouter from "./gcode-safety";
-import githubUpdateRouter from "./github-update";
+import githubUpdateRouter, { startAutoUpdate } from "./github-update";
 import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
@@ -53,5 +53,6 @@ router.use(gcodeSafetyRouter);
 router.use(githubUpdateRouter);
 
 startAutoBackup(600);
+startAutoUpdate();
 
 export default router;

@@ -5,12 +5,30 @@ import {
   Wifi, WifiOff, Info, ChevronDown, ChevronRight, Zap
 } from "lucide-react";
 
+interface AutoUpdateInfo {
+  enabled: boolean;
+  intervalMin: number;
+  lastCheck: string;
+  lastResult: string;
+  logCount: number;
+}
+
+interface AutoUpdateStatus {
+  ok: boolean;
+  enabled: boolean;
+  intervalMin: number;
+  lastCheck: string;
+  lastResult: string;
+  log: { time: string; message: string; type: string }[];
+}
+
 interface GitStatus {
   ok: boolean;
   local: { commit: string; fullCommit: string; branch: string; recentLogs: string[] };
   github: { commit: string; message: string; date: string; reachable: boolean; repo: string };
   upToDate: boolean;
   updatesAvailable: boolean;
+  autoUpdate?: AutoUpdateInfo;
   error?: string;
 }
 
@@ -45,6 +63,9 @@ export function GitHubUpdatePanel() {
   const [showLogs, setShowLogs] = useState(false);
   const [autoCheck, setAutoCheck] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [autoUpdateStatus, setAutoUpdateStatus] = useState<AutoUpdateStatus | null>(null);
+  const [autoUpdateLoading, setAutoUpdateLoading] = useState(false);
+  const [showAutoLog, setShowAutoLog] = useState(false);
 
   const token = localStorage.getItem("cnc_token") ?? "";
 
@@ -104,13 +125,48 @@ export function GitHubUpdatePanel() {
     }
   };
 
-  useEffect(() => { void checkStatus(); }, [checkStatus]);
+  const fetchAutoStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/system/auto-update/status", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json() as AutoUpdateStatus;
+      setAutoUpdateStatus(data);
+    } catch { /* ignore */ }
+  }, [token]);
+
+  const toggleAutoUpdate = async (enable: boolean) => {
+    setAutoUpdateLoading(true);
+    try {
+      const endpoint = enable ? "/api/system/auto-update/start" : "/api/system/auto-update/stop";
+      await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      await fetchAutoStatus();
+    } catch { /* ignore */ }
+    setAutoUpdateLoading(false);
+  };
+
+  const forceAutoCheck = async () => {
+    setAutoUpdateLoading(true);
+    try {
+      await fetch("/api/system/auto-update/check-now", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      await fetchAutoStatus();
+      await checkStatus();
+    } catch { /* ignore */ }
+    setAutoUpdateLoading(false);
+  };
+
+  useEffect(() => { void checkStatus(); void fetchAutoStatus(); }, [checkStatus, fetchAutoStatus]);
 
   useEffect(() => {
     if (!autoCheck) return;
     const interval = setInterval(() => { void checkStatus(); }, 60_000);
     return () => clearInterval(interval);
   }, [autoCheck, checkStatus]);
+
+  useEffect(() => {
+    const interval = setInterval(() => { void fetchAutoStatus(); }, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchAutoStatus]);
 
   const formatDate = (iso: string) => {
     if (!iso) return "";
@@ -336,12 +392,87 @@ export function GitHubUpdatePanel() {
           </div>
         </div>
 
-        {/* Auto Check Toggle */}
+        {/* SERVER-SIDE AUTO-UPDATE */}
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 overflow-hidden">
+          <div className="px-3 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[11px] font-bold text-amber-300">Auto-Update System (Server-Side)</span>
+            <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded border font-bold ${
+              autoUpdateStatus?.enabled
+                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                : "bg-zinc-700/40 text-zinc-500 border-zinc-600/30"
+            }`}>
+              {autoUpdateStatus?.enabled ? "✅ CHALU" : "⏸ BAND"}
+            </span>
+          </div>
+          <div className="p-3 space-y-2">
+            <p className="text-[10px] text-zinc-400">
+              Server har <b className="text-amber-300">5 minute</b> mein GitHub check karega — naya update milega to khud pull + pnpm install karega.
+              <b className="text-emerald-300"> Bina command chalaye!</b>
+            </p>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => void toggleAutoUpdate(!autoUpdateStatus?.enabled)} disabled={autoUpdateLoading}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold transition-all disabled:opacity-50 ${
+                  autoUpdateStatus?.enabled
+                    ? "bg-red-500/15 border-red-500/30 text-red-300 hover:bg-red-500/25"
+                    : "bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25"
+                }`}>
+                {autoUpdateLoading
+                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                  : autoUpdateStatus?.enabled ? "⏸ Band Karo" : "▶ Chalu Karo"}
+              </button>
+              <button onClick={() => void forceAutoCheck()} disabled={autoUpdateLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-[10px] font-bold hover:bg-cyan-500/25 transition-all disabled:opacity-50">
+                {autoUpdateLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Abhi Check Karo
+              </button>
+            </div>
+
+            {autoUpdateStatus && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="bg-zinc-800/40 rounded px-2 py-1.5">
+                  <div className="text-[8px] text-zinc-600 uppercase">Last Check</div>
+                  <div className="text-[10px] text-zinc-300">{autoUpdateStatus.lastCheck ? formatDate(autoUpdateStatus.lastCheck) : "Abhi tak nahi"}</div>
+                </div>
+                <div className="bg-zinc-800/40 rounded px-2 py-1.5">
+                  <div className="text-[8px] text-zinc-600 uppercase">Result</div>
+                  <div className="text-[10px] text-zinc-300 truncate">{autoUpdateStatus.lastResult || "—"}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-update activity log */}
+            {autoUpdateStatus?.log && autoUpdateStatus.log.length > 0 && (
+              <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/50 overflow-hidden">
+                <button onClick={() => setShowAutoLog(!showAutoLog)}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/20 text-left">
+                  {showAutoLog ? <ChevronDown className="w-3.5 h-3.5 text-zinc-400" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />}
+                  <span className="text-[10px] font-semibold text-zinc-300">Auto-Update Log ({autoUpdateStatus.log.length})</span>
+                </button>
+                {showAutoLog && (
+                  <div className="border-t border-zinc-800/40 max-h-48 overflow-y-auto">
+                    {[...autoUpdateStatus.log].reverse().map((l, i) => (
+                      <div key={i} className={`flex items-start gap-2 px-3 py-1.5 border-b border-zinc-800/20 last:border-0 text-[9px] ${
+                        l.type === "success" ? "text-emerald-400" : l.type === "warn" ? "text-amber-400" : l.type === "error" ? "text-red-400" : "text-zinc-400"
+                      }`}>
+                        <span className="text-zinc-600 shrink-0">{l.time}</span>
+                        <span>{l.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Auto Check Toggle (Frontend) */}
         <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/40 p-3 flex items-center gap-3">
           <Info className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
           <div className="flex-1">
-            <div className="text-[11px] font-semibold text-zinc-300">Auto-Check (har 1 minute)</div>
-            <div className="text-[9px] text-zinc-500">GitHub se automatically update check karo</div>
+            <div className="text-[11px] font-semibold text-zinc-300">Frontend Auto-Check (har 1 minute)</div>
+            <div className="text-[9px] text-zinc-500">Browser mein bhi auto-check (extra safety)</div>
           </div>
           <button onClick={() => setAutoCheck(p => !p)}
             className={`relative w-10 h-5 rounded-full transition-colors ${autoCheck ? "bg-emerald-500" : "bg-zinc-700"}`}>

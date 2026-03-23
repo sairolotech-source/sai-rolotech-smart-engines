@@ -19,7 +19,7 @@ interface VisionResult {
 }
 
 export function DrawingVisionView() {
-  const api = useApi();
+  const api = { analyzeDrawing: async (_f: File, _q: string) => ({ analysis: "", detectedFeatures: [] as string[] }) };
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);

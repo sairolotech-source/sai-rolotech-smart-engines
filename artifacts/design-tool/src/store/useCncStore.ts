@@ -373,10 +373,10 @@ export interface StandPitchResult {
 }
 
 export interface RollToolingResult {
-  stationId?: string;
-  stationIndex?: number;
-  stationNumber?: number;
-  label?: string;
+  stationId: string;
+  stationIndex: number;
+  stationNumber: number;
+  label: string;
   upperRollOD: number;
   upperRollID: number;
   upperRollWidth: number;
@@ -396,7 +396,7 @@ export interface RollToolingResult {
   bearing?: BearingSpec;
   rollODCalc?: RollODCalcResult;
   standPitch?: StandPitchResult;
-  rollProfile?: RollProfile;
+  rollProfile: RollProfile;
   behavior?: RollBehavior;
   mfgSpec?: ManufacturingSpec;
   camPlan?: CamPlan;

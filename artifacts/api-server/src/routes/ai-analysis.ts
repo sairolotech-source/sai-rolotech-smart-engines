@@ -136,7 +136,7 @@ Check for syntax errors, efficiency, and safety. Reference DIN 66025 where appli
   }
 });
 
-router.post("/ai/quality-check", async (req: Request, res: Response) => {
+router.post("/ai/quality-check", async (req: Request, res: Response): Promise<void> => {
   try {
     const { profile, stations, tooling, gcode, material, thickness } =
       req.body as Record<string, unknown>;
@@ -185,7 +185,7 @@ G-Code lines: ${gcode ? (Array.isArray(gcode) ? gcode.length : "present") : "not
             status: (["pass", "warn", "fail"].includes(e.status) ? e.status : "pass") as "pass" | "warn" | "fail",
           }));
           const overallScore = parsed.overallScore ?? Math.round(experts.reduce((s, e) => s + e.score, 0) / (experts.length || 1));
-          return res.json({
+          res.json({
             success: true,
             overallScore,
             grade: parsed.grade ?? (overallScore >= 95 ? "S+" : overallScore >= 85 ? "A" : overallScore >= 75 ? "B" : "C"),
@@ -194,6 +194,7 @@ G-Code lines: ${gcode ? (Array.isArray(gcode) ? gcode.length : "present") : "not
             aiSource,
             timestamp: new Date().toISOString(),
           });
+          return;
         }
       } catch {
       }

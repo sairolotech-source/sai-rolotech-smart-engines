@@ -100,7 +100,7 @@ export function CostEstimatorView() {
       materialCostPerMeter: totalMaterialPerMeter,
       totalMaterialCost,
       numStations,
-      rollCostPer: totalPerRollPair,
+      rollCostPer: totalToolingCost / numStations,
       totalToolingCost,
       totalFixtureCost,
       productionHours,

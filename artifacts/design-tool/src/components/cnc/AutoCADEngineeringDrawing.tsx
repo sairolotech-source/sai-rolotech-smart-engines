@@ -441,7 +441,7 @@ function renderDrawing(
         ctx.restore();
 
       } else if (dim.type === "radius") {
-        const { cx: cxMM, cy: cyMM } = profileToMM(dim.cx, dim.cy);
+        const { mx: cxMM, my: cyMM } = profileToMM(dim.cx, dim.cy);
         const { cx: ccx, cy: ccy } = toCanvas(cxMM, cyMM);
         const rPx = dim.r * autoScale * zoom;
         const ang = dim.angle * Math.PI / 180;
@@ -537,7 +537,7 @@ function generateDXF(segs: Segment[], dims: Dimension[], projectInfo: { name: st
         h(11, seg.endX.toFixed(4)), h(21, seg.endY.toFixed(4)), h(31, 0));
     } else if (seg.type === "arc" && seg.centerX !== undefined) {
       lines.push(h(0, "ARC"), h(8, "GEOMETRY"),
-        h(10, seg.centerX.toFixed(4)), h(20, seg.centerY.toFixed(4)), h(30, 0),
+        h(10, seg.centerX!.toFixed(4)), h(20, seg.centerY!.toFixed(4)), h(30, 0),
         h(40, (seg.radius || 0).toFixed(4)),
         h(50, (seg.startAngle || 0).toFixed(4)),
         h(51, (seg.endAngle || 360).toFixed(4)));
@@ -575,7 +575,7 @@ export function AutoCADEngineeringDrawing() {
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
 
-  const { stations, profile } = useCncStore();
+  const { stations, geometry: profile } = useCncStore();
 
   const [state, setState] = useState<DrawState>({
     zoom: 2.5,

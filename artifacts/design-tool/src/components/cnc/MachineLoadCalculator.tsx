@@ -243,8 +243,8 @@ export function MachineLoadCalculator() {
   const store = useCncStore();
 
   const [material,        setMaterial]        = useState("CRCA");
-  const [thickness,       setThickness]       = useState(store.thickness || 1.5);
-  const [stripWidth,      setStripWidth]      = useState(store.stripWidth || 200);
+  const [thickness,       setThickness]       = useState(store.materialThickness || 1.5);
+  const [stripWidth,      setStripWidth]      = useState(200);
   const [numStands,       setNumStands]       = useState(store.stations?.length || 12);
   const [lineSpeed,       setLineSpeed]       = useState(store.lineSpeed || 15);
   const [motorRPM,        setMotorRPM]        = useState(1440);

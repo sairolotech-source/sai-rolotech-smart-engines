@@ -34,112 +34,52 @@ router.post("/generate-gcode", (req: Request<unknown, unknown, GenerateGcodeBody
 
     const flowerResult = generateFlowerPattern(geometry, stations, prefix);
 
-    const baseConfig = config?.controllerType === "delta_2x" ? getDelta2XConfig() : getDefaultConfig();
+    const baseConfig = (config as Record<string, unknown>)?.controller === "Delta 2X" ||
+      (config as Record<string, unknown>)?.controllerType === "delta_2x"
+      ? getDelta2XConfig() : getDefaultConfig();
     let gcodeConfig: GcodeConfig = { ...baseConfig };
 
     if (config) {
+      const c = config as Record<string, unknown>;
       gcodeConfig = {
         ...gcodeConfig,
-        feedRate: config.feedRate ?? gcodeConfig.feedRate,
-        feedUnit: config.feedUnit ?? gcodeConfig.feedUnit,
-        spindleSpeed: config.spindleSpeed ?? gcodeConfig.spindleSpeed,
-        spindleMode: config.spindleMode ?? gcodeConfig.spindleMode,
-        maxSpindleSpeed: config.maxSpindleSpeed ?? gcodeConfig.maxSpindleSpeed,
-        spindleDirection: config.spindleDirection ?? gcodeConfig.spindleDirection,
-        workOffset: config.workOffset ?? gcodeConfig.workOffset,
-        safeZ: config.safeZ ?? gcodeConfig.safeZ,
-        safeX: config.safeX ?? gcodeConfig.safeX,
-        cutDepth: config.cutDepth ?? gcodeConfig.cutDepth,
-        coordinateFormat: config.coordinateFormat ?? gcodeConfig.coordinateFormat,
-        decimalPrecision: config.decimalPrecision ?? gcodeConfig.decimalPrecision,
-        coolant: config.coolant ?? gcodeConfig.coolant,
-        xDiameterMode: config.xDiameterMode ?? gcodeConfig.xDiameterMode,
-        programNumber: config.programNumber ?? gcodeConfig.programNumber,
-        useG28: config.useG28 ?? gcodeConfig.useG28,
+        controller: (c.controller as string) ?? gcodeConfig.controller,
+        spindleDirection: (c.spindleDirection as GcodeConfig["spindleDirection"]) ?? gcodeConfig.spindleDirection,
+        useCSS: (c.useCSS as boolean) ?? gcodeConfig.useCSS,
+        useDwell: (c.useDwell as boolean) ?? gcodeConfig.useDwell,
+        useCoolant: (c.useCoolant as boolean) ?? gcodeConfig.useCoolant,
+        roughingRpm: (c.roughingRpm as number) ?? (c.spindleSpeed as number) ?? gcodeConfig.roughingRpm,
+        finishingRpm: (c.finishingRpm as number) ?? (c.maxSpindleSpeed as number) ?? gcodeConfig.finishingRpm,
+        roughingSpeed: (c.roughingSpeed as number) ?? gcodeConfig.roughingSpeed,
+        finishingSpeed: (c.finishingSpeed as number) ?? gcodeConfig.finishingSpeed,
+        roughingFeed: (c.roughingFeed as number) ?? (c.feedRate as number) ?? gcodeConfig.roughingFeed,
+        finishingFeed: (c.finishingFeed as number) ?? gcodeConfig.finishingFeed,
+        roughingDepth: (c.roughingDepth as number) ?? (c.cutDepth as number) ?? gcodeConfig.roughingDepth,
+        finishingDepth: (c.finishingDepth as number) ?? gcodeConfig.finishingDepth,
+        safeZ: (c.safeZ as number) ?? gcodeConfig.safeZ,
+        toolNumber: (c.toolNumber as number) ?? gcodeConfig.toolNumber,
+        material: (c.material as string) ?? gcodeConfig.material,
+        maxRpm: (c.maxRpm as number) ?? gcodeConfig.maxRpm,
+        programNumber: (c.programNumber as number) ?? gcodeConfig.programNumber,
       };
 
-      if (config.tools && Array.isArray(config.tools) && config.tools.length > 0) {
-        gcodeConfig.tools = config.tools;
+      const extra = c as Record<string, unknown>;
+      for (const key of Object.keys(extra)) {
+        if (key in gcodeConfig) continue;
+        (gcodeConfig as unknown as Record<string, unknown>)[key] = extra[key];
       }
-      if (config.customHeader) gcodeConfig.customHeader = config.customHeader;
-      if (config.customFooter) gcodeConfig.customFooter = config.customFooter;
-      if (config.arcFormat) gcodeConfig.arcFormat = config.arcFormat;
-      if (config.endOfBlockChar !== undefined) gcodeConfig.endOfBlockChar = config.endOfBlockChar;
-      if (config.safetyBlock !== undefined) gcodeConfig.safetyBlock = config.safetyBlock;
-      if (config.toolFormat) gcodeConfig.toolFormat = config.toolFormat;
-      if (config.lineNumberFormat !== undefined) gcodeConfig.lineNumberFormat = config.lineNumberFormat;
-      if (config.programNumberFormat !== undefined) gcodeConfig.programNumberFormat = config.programNumberFormat;
-      if (config.toolChangeSequence) gcodeConfig.toolChangeSequence = config.toolChangeSequence;
-      if (config.arcChordError !== undefined) gcodeConfig.arcChordError = config.arcChordError;
-      if (config.arcSubSegments !== undefined) gcodeConfig.arcSubSegments = config.arcSubSegments;
-      if (config.verifyNoseRadiusComp !== undefined) gcodeConfig.verifyNoseRadiusComp = config.verifyNoseRadiusComp;
-      if (config.controllerType) gcodeConfig.controllerType = config.controllerType;
-      if (config.materialType) gcodeConfig.materialType = config.materialType;
-      if (config.operationType) gcodeConfig.operationType = config.operationType;
-      if (config.enableFeedRamping !== undefined) gcodeConfig.enableFeedRamping = config.enableFeedRamping;
-      if (config.feedRampAngleThreshold !== undefined) gcodeConfig.feedRampAngleThreshold = config.feedRampAngleThreshold;
-      if (config.feedRampFactor !== undefined) gcodeConfig.feedRampFactor = config.feedRampFactor;
-      if (config.enableDwellInsertion !== undefined) gcodeConfig.enableDwellInsertion = config.enableDwellInsertion;
-      if (config.dwellTime !== undefined) gcodeConfig.dwellTime = config.dwellTime;
-      if (config.enableRestMachining !== undefined) gcodeConfig.enableRestMachining = config.enableRestMachining;
-      if (config.roughingStockAllowance !== undefined) gcodeConfig.roughingStockAllowance = config.roughingStockAllowance;
-      if (config.enableGrooveCycle !== undefined) gcodeConfig.enableGrooveCycle = config.enableGrooveCycle;
-      if (config.grooveDepth !== undefined) gcodeConfig.grooveDepth = config.grooveDepth;
-      if (config.grooveWidth !== undefined) gcodeConfig.grooveWidth = config.grooveWidth;
-      if (config.groovePeckDepth !== undefined) gcodeConfig.groovePeckDepth = config.groovePeckDepth;
-      if (config.enableG71Cycle !== undefined) gcodeConfig.enableG71Cycle = config.enableG71Cycle;
-      if (config.g71DepthOfCut !== undefined) gcodeConfig.g71DepthOfCut = config.g71DepthOfCut;
-      if (config.g71RetractAmount !== undefined) gcodeConfig.g71RetractAmount = config.g71RetractAmount;
-      if (config.enableToolpathOptimization !== undefined) gcodeConfig.enableToolpathOptimization = config.enableToolpathOptimization;
-      if (config.rapidTraverseRate !== undefined) gcodeConfig.rapidTraverseRate = config.rapidTraverseRate;
-      if (config.accelerationRate !== undefined) gcodeConfig.accelerationRate = config.accelerationRate;
-      if (config.maxAcceleration !== undefined) gcodeConfig.maxAcceleration = config.maxAcceleration;
-      if (config.exactStopMode !== undefined) gcodeConfig.exactStopMode = config.exactStopMode;
-      if (config.toolChangeTime !== undefined) gcodeConfig.toolChangeTime = config.toolChangeTime;
-      if (config.workpieceDiameter !== undefined) gcodeConfig.workpieceDiameter = config.workpieceDiameter;
     }
 
     if (machineProfile) {
-      gcodeConfig.coordinateFormat = machineProfile.coordinateFormat ?? gcodeConfig.coordinateFormat;
-      gcodeConfig.decimalPrecision = machineProfile.decimalPrecision ?? gcodeConfig.decimalPrecision;
-      gcodeConfig.feedRate = machineProfile.feedRate ?? gcodeConfig.feedRate;
-      gcodeConfig.feedUnit = machineProfile.feedUnit ?? gcodeConfig.feedUnit;
-      gcodeConfig.spindleSpeed = machineProfile.spindleSpeed ?? gcodeConfig.spindleSpeed;
-      gcodeConfig.maxSpindleSpeed = machineProfile.maxSpindleSpeed ?? gcodeConfig.maxSpindleSpeed;
-      gcodeConfig.spindleMode = machineProfile.spindleMode ?? gcodeConfig.spindleMode;
-      gcodeConfig.spindleDirection = machineProfile.spindleDirection ?? gcodeConfig.spindleDirection;
-      gcodeConfig.workOffset = machineProfile.workOffset ?? gcodeConfig.workOffset;
-      gcodeConfig.coolant = machineProfile.coolant ?? gcodeConfig.coolant;
-      gcodeConfig.xDiameterMode = machineProfile.xDiameterMode ?? gcodeConfig.xDiameterMode;
-      gcodeConfig.useG28 = machineProfile.useG28 ?? gcodeConfig.useG28;
-      if (machineProfile.maxAcceleration !== undefined) gcodeConfig.maxAcceleration = machineProfile.maxAcceleration;
-      if (machineProfile.exactStopMode !== undefined) gcodeConfig.exactStopMode = machineProfile.exactStopMode;
-      if (machineProfile.headerLines && machineProfile.headerLines.length > 0) {
-        gcodeConfig.customHeader = machineProfile.headerLines;
-      }
-      if (machineProfile.footerLines && machineProfile.footerLines.length > 0) {
-        gcodeConfig.customFooter = machineProfile.footerLines;
-      }
-      if (machineProfile.arcFormat) {
-        gcodeConfig.arcFormat = machineProfile.arcFormat;
-      }
-      if (machineProfile.endOfBlockChar) {
-        gcodeConfig.endOfBlockChar = machineProfile.endOfBlockChar;
-      }
-      if (machineProfile.safetyBlock) {
-        gcodeConfig.safetyBlock = machineProfile.safetyBlock;
-      }
-      if (machineProfile.toolFormat) {
-        gcodeConfig.toolFormat = machineProfile.toolFormat;
-      }
-      if (machineProfile.lineNumberFormat) {
-        gcodeConfig.lineNumberFormat = machineProfile.lineNumberFormat;
-      }
-      if (machineProfile.programNumberFormat) {
-        gcodeConfig.programNumberFormat = machineProfile.programNumberFormat;
-      }
-      if (machineProfile.toolChangeSequence && machineProfile.toolChangeSequence.length > 0) {
-        gcodeConfig.toolChangeSequence = machineProfile.toolChangeSequence;
+      const mp = machineProfile as unknown as Record<string, unknown>;
+      if (mp.spindleDirection) gcodeConfig.spindleDirection = mp.spindleDirection as GcodeConfig["spindleDirection"];
+      if (typeof mp.maxRpm === "number") gcodeConfig.maxRpm = mp.maxRpm;
+      if (typeof mp.safeZ === "number") gcodeConfig.safeZ = mp.safeZ;
+      if (typeof mp.programNumber === "number") gcodeConfig.programNumber = mp.programNumber;
+      for (const key of Object.keys(mp)) {
+        if (!(key in gcodeConfig)) {
+          (gcodeConfig as unknown as Record<string, unknown>)[key] = mp[key];
+        }
       }
     }
 

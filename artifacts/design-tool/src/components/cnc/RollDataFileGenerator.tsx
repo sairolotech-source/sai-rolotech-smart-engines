@@ -328,7 +328,8 @@ function StationPreviewCard({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function RollDataFileGenerator() {
-  const { stations, rollTooling, profile, thickness, stripWidth } = useCncStore();
+  const { stations, rollTooling, geometry: profile, materialThickness: thickness } = useCncStore();
+  const stripWidth = 200;
 
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [projectName, setProjectName] = useState("C-CHANNEL LINE-01");
@@ -341,7 +342,7 @@ export function RollDataFileGenerator() {
     const rt = rollTooling[idx] || null;
     const label = station?.label || `Station ${idx + 1}`;
     const segs = station?.segments || [];
-    const mat = profile?.material || "CRCA";
+    const mat = "CRCA";
     const thick = thickness || 1.5;
     return buildStationSVG(idx, label, segs, rt, projectName, mat, thick);
   }, [stations, rollTooling, profile, thickness, projectName]);

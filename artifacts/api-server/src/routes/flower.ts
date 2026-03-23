@@ -169,7 +169,7 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
     const sectionType = openSectionType || "C-Section";
 
     // Generate base flower pattern
-    const result = generateFlowerPattern(geometry, stations, prefix, matType, matThickness, sectionType);
+    const result = generateFlowerPattern(geometry, stations, prefix, matType, matThickness);
 
     // Apply model-specific rules
     let processedStations = result.stations;

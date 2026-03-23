@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { CheckSquare, Square, AlertTriangle, CheckCircle, RotateCcw, Printer } from "lucide-react";
+import { CheckSquare, Square, AlertTriangle, CheckCircle, RotateCcw, Printer, ChevronDown, ChevronRight } from "lucide-react";
 
 interface CheckItem {
   id: string;

@@ -20,9 +20,11 @@ function downloadFile(content: string, filename: string) {
 // Pure data → SVG string builder (exported for PDF report use)
 export function buildShaftElevationSVGString(rollTooling: RollToolingResult[], side: "upper" | "lower"): string {
   if (rollTooling.length === 0) return "";
+  const firstWithProfile = rollTooling.find(rt => rt.rollProfile);
+  if (!firstWithProfile?.rollProfile) return "";
   const rollColor = side === "upper" ? UPPER_COLOR : LOWER_COLOR;
   const SCALE = 1.2;
-  const shaftDia = rollTooling[0].rollProfile.shaftDiameter;
+  const shaftDia = firstWithProfile.rollProfile.shaftDiameter;
   const bearingW = 30;
   const nutW = 18;
   const endGap = 15;
@@ -37,6 +39,7 @@ export function buildShaftElevationSVGString(rollTooling: RollToolingResult[], s
   for (let i = 0; i < rollTooling.length; i++) {
     const rt = rollTooling[i];
     const rp = rt.rollProfile;
+    if (!rp) continue;
     const spec = rt.mfgSpec;
     const rollNum = side === "upper" ? rp.upperRollNumber : rp.lowerRollNumber;
     if (rp.sideCollar) {
@@ -109,12 +112,13 @@ function ShaftElevationSVG({
   side: "upper" | "lower";
 }) {
   if (rollTooling.length === 0) return null;
+  const firstWithProfile = rollTooling.find(rt => rt.rollProfile);
+  if (!firstWithProfile?.rollProfile) return null;
 
   const SCALE = 1.2; // px per mm
-  const shaftDia = rollTooling[0].rollProfile.shaftDiameter;
+  const shaftDia = firstWithProfile.rollProfile.shaftDiameter;
   const rollColor = side === "upper" ? UPPER_COLOR : LOWER_COLOR;
 
-  // Build shaft layout from left bearing to right bearing
   const bearingW = 30;
   const nutW = 18;
   const endGap = 15;
@@ -123,17 +127,17 @@ function ShaftElevationSVG({
   type ShaftPart = {
     type: "roll" | "spacer" | "bearing" | "nut" | "shaft" | "collar";
     label: string;
-    width: number; // mm
-    OD: number;    // mm
+    width: number;
+    OD: number;
     color: string;
-    x: number;     // px from left
+    x: number;
   };
 
   const parts: ShaftPart[] = [];
   const totalShaftLen = rollTooling.reduce((s, rt) => {
     const rp = rt.rollProfile;
     const spec = rt.mfgSpec;
-    return s + rp.rollWidth + (spec ? spec.spacerThickness : 10);
+    return s + (rp ? rp.rollWidth : 0) + (spec ? spec.spacerThickness : 10);
   }, 0) + 2 * (bearingW + nutW + endGap + 20);
 
   // Left bearing + nut
@@ -143,10 +147,10 @@ function ShaftElevationSVG({
   for (let i = 0; i < rollTooling.length; i++) {
     const rt = rollTooling[i];
     const rp = rt.rollProfile;
+    if (!rp) continue;
     const spec = rt.mfgSpec;
     const rollNum = side === "upper" ? rp.upperRollNumber : rp.lowerRollNumber;
 
-    // Left collar (if present)
     if (rp.sideCollar) {
       const colW = rp.sideCollar.width;
       const colOD = rp.sideCollar.OD;
@@ -329,6 +333,7 @@ function StationEndViewSVG({
   rt: RollToolingResult;
 }) {
   const rp = rt.rollProfile;
+  if (!rp) return null;
   const SCALE = 1.8;
   const maxOD = rp.rollDiameter * SCALE;
   const svgSize = maxOD + 80;
@@ -395,7 +400,7 @@ export function AssemblyDrawingView({ rollTooling }: { rollTooling: RollToolingR
   }
 
   const rt = rollTooling[selectedStation] ?? rollTooling[0];
-  const rp = rt.rollProfile;
+  const rp = rt?.rollProfile;
 
   const downloadDimSheet = () => {
     const lines = [
@@ -407,18 +412,21 @@ export function AssemblyDrawingView({ rollTooling }: { rollTooling: RollToolingR
       "MACHINE LAYOUT",
       `  Total Stations    : ${rollTooling.length}`,
       `  Total Roll Pairs  : ${rollTooling.length}`,
-      `  Pass Line Height  : ${rp.passLineY.toFixed(3)} mm`,
+      `  Pass Line Height  : ${(rp?.passLineY ?? 0).toFixed(3)} mm`,
       "",
       "ROLL DIMENSIONS (per station)",
       "Station  | Roll# | OD(mm)    | Bore(mm)  | Width(mm) | Groove(mm) | Gap(mm)",
       "─".repeat(80),
-      ...rollTooling.flatMap(rt => [
-        `${rt.label.padEnd(8)} | R${String(rt.rollProfile.upperRollNumber).padStart(3,"0")} U | Ø${rt.rollProfile.rollDiameter.toFixed(3).padEnd(8)} | Ø${rt.rollProfile.shaftDiameter.toFixed(3).padEnd(8)} | ${rt.rollProfile.rollWidth.toFixed(3).padEnd(8)} | ${rt.rollProfile.grooveDepth.toFixed(3).padEnd(9)} | ${(rt.rollProfile.gap??0).toFixed(3)}`,
-        `${" ".repeat(8)} | R${String(rt.rollProfile.lowerRollNumber).padStart(3,"0")} L | Ø${rt.rollProfile.rollDiameter.toFixed(3).padEnd(8)} | Ø${rt.rollProfile.shaftDiameter.toFixed(3).padEnd(8)} | ${rt.rollProfile.rollWidth.toFixed(3).padEnd(8)} | ${rt.rollProfile.grooveDepth.toFixed(3).padEnd(9)} | —`,
-      ]),
+      ...rollTooling.filter(rt => rt.rollProfile).flatMap(rt => {
+        const p = rt.rollProfile!;
+        return [
+          `${(rt.label ?? "").padEnd(8)} | R${String(p.upperRollNumber).padStart(3,"0")} U | Ø${p.rollDiameter.toFixed(3).padEnd(8)} | Ø${p.shaftDiameter.toFixed(3).padEnd(8)} | ${p.rollWidth.toFixed(3).padEnd(8)} | ${p.grooveDepth.toFixed(3).padEnd(9)} | ${(p.gap??0).toFixed(3)}`,
+          `${" ".repeat(8)} | R${String(p.lowerRollNumber).padStart(3,"0")} L | Ø${p.rollDiameter.toFixed(3).padEnd(8)} | Ø${p.shaftDiameter.toFixed(3).padEnd(8)} | ${p.rollWidth.toFixed(3).padEnd(8)} | ${p.grooveDepth.toFixed(3).padEnd(9)} | —`,
+        ];
+      }),
       "",
       "SHAFT DETAILS",
-      ...rollTooling.map(rt => `  ${rt.label}: Ø${rt.rollProfile.shaftDiameter.toFixed(1)} × L${(rt.rollProfile.rollWidth + 220).toFixed(0)} mm`),
+      ...rollTooling.filter(rt => rt.rollProfile).map(rt => `  ${rt.label}: Ø${rt.rollProfile!.shaftDiameter.toFixed(1)} × L${(rt.rollProfile!.rollWidth + 220).toFixed(0)} mm`),
       "",
       "SPACER DETAILS",
       ...rollTooling.map(rt => `  ${rt.label}: T${(rt.mfgSpec?.spacerThickness ?? 0).toFixed(2)} mm — ${rt.mfgSpec?.spacerMaterial ?? "EN8"}`),
@@ -433,7 +441,7 @@ export function AssemblyDrawingView({ rollTooling }: { rollTooling: RollToolingR
         <div>
           <div className="text-xs font-bold text-zinc-200">Roll Assembly Drawing</div>
           <div className="text-[11px] text-zinc-500 mt-0.5">
-            {rollTooling.length} stations · Pass line Y = {rp.passLineY.toFixed(3)} mm
+            {rollTooling.length} stations · Pass line Y = {(rp?.passLineY ?? 0).toFixed(3)} mm
           </div>
         </div>
         <div className="flex gap-2">
@@ -470,7 +478,7 @@ export function AssemblyDrawingView({ rollTooling }: { rollTooling: RollToolingR
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: side === "upper" ? UPPER_COLOR : LOWER_COLOR }} />
                 <span className="text-[11px] font-bold text-zinc-200 capitalize">{side} Shaft Assembly</span>
                 <span className="text-[10px] text-zinc-600 ml-2">
-                  Ø{rollTooling[0].rollProfile.shaftDiameter.toFixed(0)} shaft · {rollTooling.length} rolls
+                  Ø{(rollTooling[0]?.rollProfile?.shaftDiameter ?? 0).toFixed(0)} shaft · {rollTooling.length} rolls
                 </span>
               </div>
               <div className="p-4 overflow-x-auto bg-[#06060E]">
@@ -480,8 +488,8 @@ export function AssemblyDrawingView({ rollTooling }: { rollTooling: RollToolingR
           ))}
 
           {/* Side Collar Specification Table */}
-          {rollTooling[0]?.rollProfile.sideCollar && (() => {
-            const collar = rollTooling[0].rollProfile.sideCollar!;
+          {rollTooling[0]?.rollProfile?.sideCollar && (() => {
+            const collar = rollTooling[0].rollProfile!.sideCollar!;
             // collar.qty is per-roll (2 per roll); × 2 shafts (upper + lower) per station
             const totalCollarQty = rollTooling.length * collar.qty * 2;
             return (
@@ -568,13 +576,13 @@ export function AssemblyDrawingView({ rollTooling }: { rollTooling: RollToolingR
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
               {[
-                ["Roll OD", `Ø${rp.rollDiameter.toFixed(3)} mm`, "text-blue-300"],
-                ["Shaft Bore", `Ø${rp.shaftDiameter.toFixed(3)} mm H7`, "text-emerald-300"],
-                ["Roll Width", `${rp.rollWidth.toFixed(3)} mm`, "text-amber-300"],
-                ["Groove Depth", `${rp.grooveDepth.toFixed(3)} mm`, "text-pink-300"],
-                ["Roll Gap", `${(rp.gap ?? 0).toFixed(3)} mm`, "text-cyan-300"],
-                ["Pass Line", `${rp.passLineY.toFixed(3)} mm`, "text-green-300"],
-                ["K-Factor", `${rp.kFactor}`, "text-violet-300"],
+                ["Roll OD", `Ø${(rp?.rollDiameter ?? 0).toFixed(3)} mm`, "text-blue-300"],
+                ["Shaft Bore", `Ø${(rp?.shaftDiameter ?? 0).toFixed(3)} mm H7`, "text-emerald-300"],
+                ["Roll Width", `${(rp?.rollWidth ?? 0).toFixed(3)} mm`, "text-amber-300"],
+                ["Groove Depth", `${(rp?.grooveDepth ?? 0).toFixed(3)} mm`, "text-pink-300"],
+                ["Roll Gap", `${(rp?.gap ?? 0).toFixed(3)} mm`, "text-cyan-300"],
+                ["Pass Line", `${(rp?.passLineY ?? 0).toFixed(3)} mm`, "text-green-300"],
+                ["K-Factor", `${rp?.kFactor ?? 0}`, "text-violet-300"],
                 ["Bore Fit", rt.mfgSpec?.boreFit ?? "H7/k6", "text-zinc-300"],
               ].map(([l, v, c]) => (
                 <div key={String(l)} className="border border-white/[0.06] rounded-lg px-3 py-1.5">

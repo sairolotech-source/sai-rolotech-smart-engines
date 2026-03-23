@@ -34,8 +34,9 @@ const STATUS_LABELS: Record<NodeStatus, string> = {
   error: "Error",
 };
 
-function generateRollDxf(tooling: { rollProfile: { rollDiameter: number; shaftDiameter: number; rollWidth: number; gap: number; grooveDepth: number; kFactor: number } }, stationNumber: number): string {
+function generateRollDxf(tooling: { rollProfile?: { rollDiameter: number; shaftDiameter: number; rollWidth: number; gap: number; grooveDepth: number; kFactor: number } }, stationNumber: number): string {
   const rp = tooling.rollProfile;
+  if (!rp) return "";
   // Numeric guards — ensure all values are positive and sensible
   const rollDiameter = Math.max(rp.rollDiameter, 10);
   const shaftDiameter = Math.min(Math.max(rp.shaftDiameter, 5), rollDiameter * 0.8);

@@ -203,25 +203,32 @@ function buildMachineData(rollTooling: RollToolingResult[], materialType: string
   };
 }
 
+const BASE_PROFILE = { useCSS: true, useDwell: true, useCoolant: true, toolChangeFormat: "T{tool:02d}{tool:02d}" };
+
 const GCODE_PROFILES: Record<string, GcodeProfile> = {
   fanuc_0i: {
+    ...BASE_PROFILE, name: "Fanuc 0i", controller: "Fanuc",
     spindleDirection: "M3", maxSpindleCmd: "G50", maxSpindleRpm: 3000,
     safeZ: 100, toolChangeSafety: ["G28 U0 W0"], feedUnit: "mm_min", endCode: "M30",
   },
   siemens_840d: {
+    ...BASE_PROFILE, name: "Siemens 840D", controller: "Siemens 840D",
     spindleDirection: "M3", maxSpindleCmd: "G50", maxSpindleRpm: 3000,
     safeZ: 100, toolChangeSafety: ["SPOS=0"], feedUnit: "mm_min", endCode: "M2",
   },
   haas: {
+    ...BASE_PROFILE, name: "Haas", controller: "Haas",
     spindleDirection: "M3", maxSpindleCmd: "G50", maxSpindleRpm: 3000,
     safeZ: 100, toolChangeSafety: ["G28 U0 W0"], feedUnit: "mm_min", endCode: "M30",
   },
   mitsubishi_m70: {
+    ...BASE_PROFILE, name: "Mitsubishi M70", controller: "Mitsubishi",
     spindleDirection: "M3", maxSpindleCmd: "G50", maxSpindleRpm: 3000,
     safeZ: 100, toolChangeSafety: ["G28 U0.0 W0.0"], feedUnit: "mm_min", endCode: "M02",
   },
   delta_2x: DELTA_GCODE_PROFILE,
   syntec: {
+    ...BASE_PROFILE, name: "Syntec", controller: "Syntec",
     spindleDirection: "M3", maxSpindleCmd: "G50", maxSpindleRpm: 3000,
     safeZ: 100, toolChangeSafety: ["M05"], feedUnit: "mm_min", endCode: "M30",
   },
@@ -283,7 +290,7 @@ router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolin
     const mKw = parseFloat(String((req.body as RollToolingBody).motorKw)) || 11;
     const mRpm = parseFloat(String((req.body as RollToolingBody).motorRpm)) || 1440;
 
-    const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness, sectionType);
+    const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness);
 
     // sectionModel-specific adjustments to clearance and roll gap strategy
     // Closed-section (Model B): tighter gap (+0% clearance added), plus weld-seam pass adjustment
@@ -310,7 +317,7 @@ router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolin
       effectiveClearance
     );
 
-    const bom = calcBomFromTooling(rollTooling, matType, shaftDia);
+    const bom = calcBomFromTooling(rollTooling, matType);
     const machineData = buildMachineData(rollTooling, matType, thickness);
 
     res.json({
@@ -391,7 +398,7 @@ router.post("/cam-plan", (req: Request, res: Response) => {
     const clr = parseFloat(String(clearance)) || 0.05;
     const matType = String(materialType || "GI").toUpperCase();
     const sectionType = String(openSectionType || "C-Section");
-    const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness, sectionType);
+    const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness);
     const rollTooling = generateRollTooling(flowerResult.stations, matType, thickness, shaftDia, clr, 11, 1440);
     const camPlans = rollTooling.map(rt => ({
       stationId: rt.stationId,
@@ -429,7 +436,7 @@ router.post("/bom", (req: Request, res: Response) => {
     const clr = parseFloat(String(clearance)) || 0.05;
     const matType = String(materialType || "GI").toUpperCase();
     const sectionType = String(openSectionType || "C-Section");
-    const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness, sectionType);
+    const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness);
     const rollTooling = generateRollTooling(flowerResult.stations, matType, thickness, shaftDia, clr, 11, 1440);
     const bom = calcBomFromTooling(rollTooling, matType);
     res.json({ success: true, bom });

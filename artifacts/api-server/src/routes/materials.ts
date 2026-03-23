@@ -14,20 +14,20 @@ router.get("/materials", async (_req, res) => {
   }
 });
 
-router.get("/materials/:id", async (req, res) => {
+router.get("/materials/:id", async (req, res): Promise<void> => {
   try {
     const [material] = await db.select().from(cncMaterials).where(eq(cncMaterials.id, req.params.id));
-    if (!material) return res.status(404).json({ success: false, error: "Material not found" });
+    if (!material) { res.status(404).json({ success: false, error: "Material not found" }); return; }
     res.json({ success: true, material });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.get("/materials/by-code/:code", async (req, res) => {
+router.get("/materials/by-code/:code", async (req, res): Promise<void> => {
   try {
     const [material] = await db.select().from(cncMaterials).where(eq(cncMaterials.code, req.params.code));
-    if (!material) return res.status(404).json({ success: false, error: "Material not found" });
+    if (!material) { res.status(404).json({ success: false, error: "Material not found" }); return; }
     res.json({ success: true, material });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -44,40 +44,41 @@ router.post("/materials", async (req, res) => {
   }
 });
 
-router.put("/materials/:id", async (req, res) => {
+router.put("/materials/:id", async (req, res): Promise<void> => {
   try {
     const matData = req.body;
     const [material] = await db.update(cncMaterials)
       .set({ ...matData, updatedAt: new Date() })
       .where(eq(cncMaterials.id, req.params.id))
       .returning();
-    if (!material) return res.status(404).json({ success: false, error: "Material not found" });
+    if (!material) { res.status(404).json({ success: false, error: "Material not found" }); return; }
     res.json({ success: true, material });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.delete("/materials/:id", async (req, res) => {
+router.delete("/materials/:id", async (req, res): Promise<void> => {
   try {
     const [material] = await db.delete(cncMaterials)
       .where(eq(cncMaterials.id, req.params.id))
       .returning();
-    if (!material) return res.status(404).json({ success: false, error: "Material not found" });
+    if (!material) { res.status(404).json({ success: false, error: "Material not found" }); return; }
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.post("/materials/seed", async (_req, res) => {
+router.post("/materials/seed", async (_req, res): Promise<void> => {
   try {
     const existing = await db.select().from(cncMaterials);
     if (existing.length >= 30) {
-      return res.json({ success: true, message: "Materials already seeded", count: existing.length });
+      res.json({ success: true, message: "Materials already seeded", count: existing.length });
+      return;
     }
 
-    const existingCodes = new Set(existing.map(m => m.code));
+    const existingCodes = new Set(existing.map((m: { code: string }) => m.code));
     const materials = getDefaultMaterials();
     let inserted = 0;
     for (const mat of materials) {

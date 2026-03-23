@@ -1,3 +1,19 @@
+export interface DetectedTool {
+  toolNumber: number;
+  offsetNumber: number;
+  description?: string;
+}
+
+export interface ModalGroups {
+  motionCodes: string[];
+  feedCodes: string[];
+  unitCodes: string[];
+  planeCodes: string[];
+  coolantCodes: string[];
+  spindleCodes: string[];
+  compensationCodes: string[];
+}
+
 export interface MachineProfile {
   name: string;
   controller: string;
@@ -9,7 +25,26 @@ export interface MachineProfile {
   spindleOffCommand: string;
   coolantOnCommand?: string;
   coolantOffCommand?: string;
+  spindleDirection?: "M3" | "M4";
+  coordinateFormat?: string;
+  decimalPrecision?: number;
+  safeZ?: number;
+  programNumber?: number;
+  detectedTools: DetectedTool[];
+  headerLines: string[];
+  footerLines: string[];
+  customCodes: string[];
+  arcFormat?: string;
+  safetyBlock?: string;
+  endOfBlockChar?: string;
+  programNumberFormat?: string;
+  lineNumberFormat?: string;
+  toolChangeSequence: string[];
+  modalGroups: ModalGroups;
+  [key: string]: unknown;
 }
+
+const EMPTY_MODAL: ModalGroups = { motionCodes: [], feedCodes: [], unitCodes: [], planeCodes: [], coolantCodes: [], spindleCodes: [], compensationCodes: [] };
 
 const DEFAULT_PROFILES: Record<string, MachineProfile> = {
   "fanuc": {
@@ -23,6 +58,8 @@ const DEFAULT_PROFILES: Record<string, MachineProfile> = {
     spindleOffCommand: "M5",
     coolantOnCommand: "M8",
     coolantOffCommand: "M9",
+    detectedTools: [], headerLines: [], footerLines: [], customCodes: [], toolChangeSequence: [],
+    modalGroups: { ...EMPTY_MODAL },
   },
   "siemens": {
     name: "Siemens 840D",
@@ -35,6 +72,8 @@ const DEFAULT_PROFILES: Record<string, MachineProfile> = {
     spindleOffCommand: "M5",
     coolantOnCommand: "M8",
     coolantOffCommand: "M9",
+    detectedTools: [], headerLines: [], footerLines: [], customCodes: [], toolChangeSequence: [],
+    modalGroups: { ...EMPTY_MODAL },
   },
   "delta": {
     name: "Delta 2X",
@@ -45,6 +84,8 @@ const DEFAULT_PROFILES: Record<string, MachineProfile> = {
     homeCommand: "G28 U0.\nG28 W0.",
     spindleOnCommand: "M4",
     spindleOffCommand: "M5",
+    detectedTools: [], headerLines: [], footerLines: [], customCodes: [], toolChangeSequence: [],
+    modalGroups: { ...EMPTY_MODAL },
   },
 };
 
@@ -85,6 +126,13 @@ export function parseReferenceGcode(content: string): MachineProfile {
     spindleOffCommand: "M5",
     coolantOnCommand: hasCoolant ? "M8" : undefined,
     coolantOffCommand: hasCoolant ? "M9" : undefined,
+    spindleDirection: spindleDir as "M3" | "M4",
+    detectedTools: [],
+    headerLines: [],
+    footerLines: [],
+    customCodes: [],
+    toolChangeSequence: [],
+    modalGroups: { ...EMPTY_MODAL },
   };
 }
 

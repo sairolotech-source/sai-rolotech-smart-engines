@@ -9,6 +9,13 @@ export interface GcodeProfile {
   useDwell: boolean;
   useCoolant: boolean;
   toolChangeFormat: string;
+  maxSpindleCmd?: string;
+  maxSpindleRpm?: number;
+  safeZ?: number;
+  toolChangeSafety?: string[];
+  feedUnit?: string;
+  endCode?: string;
+  [key: string]: unknown;
 }
 
 export const DEFAULT_GCODE_PROFILE: GcodeProfile = {

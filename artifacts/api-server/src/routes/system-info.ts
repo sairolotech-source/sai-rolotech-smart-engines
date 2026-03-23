@@ -29,7 +29,7 @@ router.get("/system/info", async (_req: Request, res: Response) => {
     const bat = battery.status === "fulfilled" ? battery.value : null;
     const gpuData = graphics.status === "fulfilled" ? graphics.value : null;
 
-    const mainDisk = diskArr.find((d) => d.mount === "/" || d.mount === "C:") ?? diskArr[0] ?? null;
+    const mainDisk = diskArr.find((d: { mount: string }) => d.mount === "/" || d.mount === "C:") ?? diskArr[0] ?? null;
 
     const totalRam = memVal ? memVal.total : os.totalmem();
     const usedRam  = memVal ? memVal.active : os.totalmem() - os.freemem();
@@ -48,7 +48,7 @@ router.get("/system/info", async (_req: Request, res: Response) => {
       return false;
     })();
 
-    const gpuInfo = gpuData?.controllers?.map((c) => ({
+    const gpuInfo = gpuData?.controllers?.map((c: { model: string; vendor: string; vram: number; driverVersion: string; bus: string }) => ({
       model: c.model,
       vendor: c.vendor,
       vram: c.vram,

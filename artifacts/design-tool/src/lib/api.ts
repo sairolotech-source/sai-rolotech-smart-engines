@@ -183,7 +183,7 @@ export async function generateGcode(
   config: GcodeConfig,
   machineProfile: MachineProfile | null
 ) {
-  const cacheKey = `gcode-${numStations}-${config.postProcessor}-${config.spindleSpeed}`;
+  const cacheKey = `gcode-${numStations}-${config.coordinateFormat}-${config.spindleSpeed}`;
   return safeFetchWithCache(cacheKey, async () => {
     const res = await authFetchJson(getApiUrl("/generate-gcode"), { geometry, numStations, stationPrefix, config, machineProfile });
     if (!res.ok) {

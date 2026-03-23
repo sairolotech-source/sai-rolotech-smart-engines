@@ -121,6 +121,54 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   }
 }
 
+async function callOpenRouterFallback(
+  message: string,
+  history: ConversationEntry[],
+  style: string,
+  language: string,
+): Promise<string | null> {
+  const systemPrompt = `You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing.
+Response style: ${style}. Language: ${language}.
+Be accurate, concise when asked to be concise, detailed when asked for detail.
+${SAI_CONFIDENTIALITY_RULES}`;
+
+  const msgs = [
+    { role: "system", content: systemPrompt },
+    ...history.slice(-10).map(e => ({ role: e.role, content: e.content })),
+    { role: "user", content: message },
+  ];
+
+  const providers = [
+    {
+      key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"],
+      url: "https://openrouter.ai/api/v1/chat/completions",
+      model: "deepseek/deepseek-r1:free",
+    },
+    {
+      key: process.env["SAMBANOVA_API_KEY"],
+      url: "https://api.sambanova.ai/v1/chat/completions",
+      model: "Meta-Llama-3.3-70B-Instruct",
+    },
+  ];
+
+  for (const p of providers) {
+    if (!p.key) continue;
+    try {
+      const res = await fetch(p.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
+        body: JSON.stringify({ model: p.model, messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) continue;
+      const data = await res.json() as { choices: { message: { content: string } }[] };
+      const text = data.choices?.[0]?.message?.content;
+      if (text) return text;
+    } catch { continue; }
+  }
+  return null;
+}
+
 const router: IRouter = Router();
 
 router.post("/ai/chat", async (req: Request, res: Response) => {
@@ -144,15 +192,27 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
     let mode: "online" | "offline";
 
     if (isOffline) {
-      responseText = offlineResponse(message, settings.responseStyle, settings.language);
-      mode = "offline";
+      const fallback = await callOpenRouterFallback(message, contextHistory, settings.responseStyle, settings.language);
+      if (fallback) {
+        responseText = fallback;
+        mode = "online";
+      } else {
+        responseText = offlineResponse(message, settings.responseStyle, settings.language);
+        mode = "offline";
+      }
     } else {
       try {
         responseText = await onlineResponse(message, contextHistory, settings.responseStyle, settings.language);
         mode = "online";
       } catch {
-        responseText = offlineResponse(message, settings.responseStyle, settings.language);
-        mode = "offline";
+        const fallback = await callOpenRouterFallback(message, contextHistory, settings.responseStyle, settings.language);
+        if (fallback) {
+          responseText = fallback;
+          mode = "online";
+        } else {
+          responseText = offlineResponse(message, settings.responseStyle, settings.language);
+          mode = "offline";
+        }
       }
     }
 

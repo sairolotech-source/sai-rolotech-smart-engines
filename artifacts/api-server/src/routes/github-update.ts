@@ -24,11 +24,26 @@ function logAuto(message: string, type: "info" | "success" | "warn" | "error" = 
   console.log(`[auto-update] [${type}] ${message}`);
 }
 
+function buildGitEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    GIT_TERMINAL_PROMPT: "0",
+  };
+  if (process.env["REPLIT_SESSION"]) {
+    env["REPLIT_SESSION"] = process.env["REPLIT_SESSION"];
+    env["REPLIT_ASKPASS_PID2_SESSION"] = process.env["REPLIT_SESSION"];
+  }
+  if (process.env["GIT_ASKPASS"]) {
+    env["GIT_ASKPASS"] = process.env["GIT_ASKPASS"];
+  }
+  return env;
+}
+
 async function runGit(cmd: string): Promise<{ stdout: string; stderr: string; ok: boolean }> {
   try {
     const { stdout, stderr } = await execAsync(`git -C "${REPO_ROOT}" ${cmd}`, {
       timeout: 30000,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      env: buildGitEnv(),
     });
     return { stdout: stdout.trim(), stderr: stderr.trim(), ok: true };
   } catch (err: unknown) {
@@ -319,33 +334,47 @@ router.post("/system/git-pull", async (_req: Request, res: Response) => {
 router.post("/system/git-push", async (req: Request, res: Response) => {
   try {
     const { message: commitMsg } = req.body as { message?: string };
-    const msg = commitMsg?.trim() || `Auto-update: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
+    const msg = commitMsg?.trim() || `SAI Rolotech update: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
+
+    await runGit(`config user.email "sairolotech@gmail.com"`);
+    await runGit(`config user.name "SAI Rolotech"`);
 
     const statusRes = await runGit("status --porcelain");
-    if (!statusRes.stdout) {
-      res.json({ ok: true, message: "Koi nayi changes nahi — nothing to push", pushed: false });
+    if (statusRes.stdout) {
+      await runGit("add -A");
+      const commitRes = await runGit(`commit -m "${msg.replace(/"/g, "'")}"`);
+      if (!commitRes.ok && !commitRes.stdout.includes("nothing to commit")) {
+        logAuto(`Commit warning: ${commitRes.stderr.slice(0, 100)}`, "warn");
+      }
+    }
+
+    const aheadRes = await runGit("rev-list origin/main..HEAD --count");
+    const aheadCount = parseInt(aheadRes.stdout) || 0;
+
+    if (aheadCount === 0) {
+      res.json({ ok: true, message: "GitHub already up to date — koi nayi commits nahi hain", pushed: false, aheadCount: 0 });
       return;
     }
 
-    const addRes = await runGit("add -A");
-    if (!addRes.ok) {
-      res.status(500).json({ ok: false, error: `git add failed: ${addRes.stderr}` });
-      return;
-    }
-
-    const commitRes = await runGit(`commit -m "${msg.replace(/"/g, "'")}"`);
-    if (!commitRes.ok && !commitRes.stdout.includes("nothing to commit")) {
-      res.status(500).json({ ok: false, error: `Commit failed: ${commitRes.stderr}` });
-      return;
-    }
-
+    logAuto(`GitHub pe ${aheadCount} unpushed commit(s) push ho rahe hain...`, "info");
     const pushRes = await runGit("push origin main");
     if (!pushRes.ok) {
-      res.status(500).json({ ok: false, error: `Push failed: ${pushRes.stderr}` });
+      res.status(500).json({ ok: false, error: `Push failed: ${pushRes.stderr}`, hint: "GitHub token/access check karo" });
       return;
     }
 
-    res.json({ ok: true, message: `✅ GitHub pe push ho gaya! Commit: "${msg}"`, pushed: true, output: pushRes.stdout });
+    const newHeadRes = await runGit("rev-parse HEAD");
+    const newCommit = newHeadRes.stdout.slice(0, 10);
+    logAuto(`GitHub push done! ${aheadCount} commits pushed — HEAD: ${newCommit}`, "success");
+
+    res.json({
+      ok: true,
+      message: `✅ GitHub pe ${aheadCount} commit(s) push ho gaye! Commit: ${newCommit}`,
+      pushed: true,
+      aheadCount,
+      newCommit,
+      output: pushRes.stdout || pushRes.stderr,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Git push failed";
     res.status(500).json({ ok: false, error: message });

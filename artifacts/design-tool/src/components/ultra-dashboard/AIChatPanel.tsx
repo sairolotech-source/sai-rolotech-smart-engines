@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, Trash2, Bot, User, Wifi, WifiOff, Loader2, Brain } from "lucide-react";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { authFetch, getApiUrl } from "../../lib/auth-fetch";
+import { getPersonalGeminiKey } from "../../hooks/usePersonalAIKey";
 
 interface ChatMessage {
   id: string;
@@ -106,7 +107,11 @@ export function AIChatPanel() {
       const r = await authFetch(getApiUrl("/ai/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, forceOffline: forceOffline || !network.isOnline }),
+        body: JSON.stringify({
+          message: text,
+          forceOffline: forceOffline || !network.isOnline,
+          personalGeminiKey: getPersonalGeminiKey() || undefined,
+        }),
       });
       const data = await r.json() as { response: string; mode: string; assistantEntry: ChatMessage };
 

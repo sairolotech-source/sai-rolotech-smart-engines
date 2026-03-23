@@ -121,11 +121,12 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   }
 }
 
-async function callOpenRouterFallback(
+async function callInternetFallback(
   message: string,
   history: ConversationEntry[],
   style: string,
   language: string,
+  personalGeminiKey?: string,
 ): Promise<string | null> {
   const systemPrompt = `You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing.
 Response style: ${style}. Language: ${language}.
@@ -138,18 +139,31 @@ ${SAI_CONFIDENTIALITY_RULES}`;
     { role: "user", content: message },
   ];
 
-  const providers = [
+  const providers: { key: string | undefined; url: string; model: string; label: string }[] = [];
+
+  if (personalGeminiKey) {
+    providers.push({
+      key: personalGeminiKey,
+      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      model: "gemini-3-pro-preview",
+      label: "Personal Gemini 3.0",
+    });
+  }
+
+  providers.push(
     {
       key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"],
       url: "https://openrouter.ai/api/v1/chat/completions",
       model: "deepseek/deepseek-r1:free",
+      label: "OpenRouter DeepSeek R1",
     },
     {
       key: process.env["SAMBANOVA_API_KEY"],
       url: "https://api.sambanova.ai/v1/chat/completions",
       model: "Meta-Llama-3.3-70B-Instruct",
+      label: "SambaNova Llama 70B",
     },
-  ];
+  );
 
   for (const p of providers) {
     if (!p.key) continue;
@@ -160,11 +174,11 @@ ${SAI_CONFIDENTIALITY_RULES}`;
         body: JSON.stringify({ model: p.model, messages: msgs, max_tokens: 4096, temperature: 0.5 }),
         signal: AbortSignal.timeout(15000),
       });
-      if (!res.ok) continue;
+      if (!res.ok) { console.log(`[AI Fallback] ${p.label} failed (${res.status})`); continue; }
       const data = await res.json() as { choices: { message: { content: string } }[] };
       const text = data.choices?.[0]?.message?.content;
-      if (text) return text;
-    } catch { continue; }
+      if (text) { console.log(`[AI Fallback] Responded via ${p.label}`); return text; }
+    } catch (e) { console.log(`[AI Fallback] ${p.label} error:`, e); continue; }
   }
   return null;
 }
@@ -173,10 +187,11 @@ const router: IRouter = Router();
 
 router.post("/ai/chat", async (req: Request, res: Response) => {
   try {
-    const { message, forceOffline, history } = req.body as {
+    const { message, forceOffline, history, personalGeminiKey } = req.body as {
       message: string;
       forceOffline?: boolean;
       history?: ConversationEntry[];
+      personalGeminiKey?: string;
     };
     if (!message?.trim()) {
       res.status(400).json({ error: "message required" });
@@ -192,7 +207,7 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
     let mode: "online" | "offline";
 
     if (isOffline) {
-      const fallback = await callOpenRouterFallback(message, contextHistory, settings.responseStyle, settings.language);
+      const fallback = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, personalGeminiKey);
       if (fallback) {
         responseText = fallback;
         mode = "online";
@@ -205,7 +220,7 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
         responseText = await onlineResponse(message, contextHistory, settings.responseStyle, settings.language);
         mode = "online";
       } catch {
-        const fallback = await callOpenRouterFallback(message, contextHistory, settings.responseStyle, settings.language);
+        const fallback = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, personalGeminiKey);
         if (fallback) {
           responseText = fallback;
           mode = "online";

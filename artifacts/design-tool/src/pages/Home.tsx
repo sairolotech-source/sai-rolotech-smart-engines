@@ -63,6 +63,7 @@ const RollKnowledgeHub = lazy(() => import("../components/cnc/RollKnowledgeHub")
 const AutoProfileConverter = lazy(() => import("../components/cnc/AutoProfileConverter").then(m => ({ default: m.AutoProfileConverter })));
 const AutoCncPlanner = lazy(() => import("../components/cnc/AutoCncPlanner").then(m => ({ default: m.AutoCncPlanner })));
 const GitHubUpdatePanel = lazy(() => import("../components/cnc/GitHubUpdatePanel").then(m => ({ default: m.GitHubUpdatePanel })));
+const DemoVideoCenter = lazy(() => import("../components/cnc/DemoVideoCenter").then(m => ({ default: m.DemoVideoCenter })));
 const FormingSimulationView = lazy(() => import("../components/cnc/FormingSimulationView").then(m => ({ default: m.FormingSimulationView })));
 const SpringbackView = lazy(() => import("../components/cnc/SpringbackView").then(m => ({ default: m.SpringbackView })));
 const StripWidthView = lazy(() => import("../components/cnc/StripWidthView").then(m => ({ default: m.StripWidthView })));
@@ -150,7 +151,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
   "station-control": "ai", "rf-machine": "simulation",
   "validation-pipeline": "quality", "testing-engine": "quality", "machine-bom": "quality", "dimension-confirm": "design",
-  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-data-files": "manufacturing", "roll-export": "manufacturing", "buddy-crm": "system",
+  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-data-files": "manufacturing", "roll-export": "manufacturing", "buddy-crm": "system", "demo-videos": "system",
   report: "project",
 };
 
@@ -356,6 +357,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "master-designer", label: "Master Designer", icon: <Brain className="w-4 h-4" />, desc: "50-year veteran AI chatbot with project context" },
         { id: "auto-backup", label: "Auto Backup (5 min)", icon: <Save className="w-4 h-4" />, desc: "Auto-save har 5 min — laptop band ho to bhi kuch nahi jayega" },
         { id: "buddy-crm", label: "🤖 BUDDY CRM — AI Lead Manager", icon: <Bot className="w-4 h-4" />, desc: "AI-powered CRM: Lead tracking, WhatsApp bina API ke, BUDDY coordinator, analytics, scoring — sab ek jagah" },
+        { id: "demo-videos", label: "📺 Demo Videos (13 Animated)", icon: <PlayCircle className="w-4 h-4" />, desc: "Har feature ka animated demo walkthrough — Setup, DXF, Flower, Roll, G-Code, CRM sab included" },
         { id: "github-update", label: "GitHub Auto-Update (Pull / Push)", icon: <Github className="w-4 h-4" />, desc: "GitHub se latest code pull karo — ya Replit se GitHub pe push karo — auto-sync system" },
         { id: "demo-c-channel", label: "Demo C-Channel Program", icon: <Layers className="w-4 h-4" />, desc: "Complete C-channel — stations, rolls, bearings, motor, BOM" },
         { id: "rf-machine", label: "🏭 Roll Forming Machine (Animated)", icon: <Activity className="w-4 h-4" />, desc: "Live animated roll forming machine — 9 stations, spinning rollers, C-channel forming, cut-off press" },
@@ -497,6 +499,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "machine-load-calc": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-y-auto animate-fade-slide-in"><MachineLoadCalculator /></div></Suspense>;
       case "roll-data-files": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollDataFileGenerator /></div></Suspense>;
       case "buddy-crm": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><BuddyCRMDashboard /></div></Suspense>;
+      case "demo-videos": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DemoVideoCenter /></div></Suspense>;
       case "twin": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DigitalTwinView /></div></Suspense>;
       case "gcode":
         return (

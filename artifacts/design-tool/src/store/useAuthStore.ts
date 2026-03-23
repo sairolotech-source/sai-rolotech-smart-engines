@@ -240,10 +240,13 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 (function initAuth() {
   const hasOfflineSession = (() => { try { return localStorage.getItem("sai_offline_session") === "true"; } catch { return false; } })();
 
-  if (hasOfflineSession || !firebaseReady || !navigator.onLine) {
+  if (hasOfflineSession) {
     const offlineUser = createOfflineUser();
     useAuthStore.setState({ user: offlineUser, token: "offline-sai-rolotech-local", initialized: true });
-    console.log("[Auth] Offline mode — app ready, hardware local");
+    console.log("[Auth] Returning user — offline session restored");
+  } else {
+    useAuthStore.setState({ user: null, token: null, initialized: true });
+    console.log("[Auth] New session — login required");
   }
 
   if (firebaseReady) {
@@ -264,9 +267,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           useAuthStore.setState({ user, token, initialized: true });
           try { localStorage.removeItem("sai_offline_session"); } catch {}
         } else {
-          if (!useAuthStore.getState().user) {
+          const hasOffline = (() => { try { return localStorage.getItem("sai_offline_session") === "true"; } catch { return false; } })();
+          if (hasOffline && !useAuthStore.getState().user) {
             const offlineUser = createOfflineUser();
             useAuthStore.setState({ user: offlineUser, token: "offline-sai-rolotech-local", initialized: true });
+          } else {
+            useAuthStore.setState({ initialized: true });
           }
         }
       });

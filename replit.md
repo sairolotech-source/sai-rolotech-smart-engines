@@ -32,7 +32,30 @@ Har session mein user yeh code likhta hai — sab rules activate ho jate hain.
 
 ## 📋 FEATURES BUILT (All Working — March 23, 2026)
 
-### Latest Session Features (SAVE POINT)
+### Latest Session Features (March 23, 2026 — Session 2)
+7. **📺 Demo Video Center** (`demo-videos` tab, Smart Tools section)
+   - 13 animated feature walkthroughs with auto-play
+   - Covers: Setup, DXF Import, Flower Pattern, Roll Tooling, G-Code, Machine Load, AutoCAD Drawing, Roll Data Files, BUDDY CRM, 3D Visualization, Analysis (9 tools), Safety Checks, 10-Layer Validation
+   - Play/Pause, Next/Prev, sidebar navigation, progress bar
+   - File: `artifacts/design-tool/src/components/cnc/DemoVideoCenter.tsx`
+
+8. **🔐 Login Screen First** (Auth flow updated)
+   - New users/devices: Landing Page → Login → Dashboard → Workspace
+   - Returning users (same browser): Auto-login from saved session
+   - Offline login via "Enter as Engineer" button
+   - Files: `useAuthStore.ts` (initAuth changed), `App.tsx` (auto-login removed)
+
+9. **🖥️ setup.bat Improved** (Windows Auto Setup)
+   - Windows Defender auto-exclusion (Run as Admin)
+   - Node.js/pnpm check, auto-install, file verification
+   - Auto-start both servers + auto-open browser
+   - One double-click = everything done
+
+10. **📦 Root `dev` Script** (package.json)
+    - `pnpm run dev` now works from root
+    - Starts both api-server and design-tool
+
+### Previous Session Features (SAVE POINT)
 1. **🤖 BUDDY CRM** (`buddy-crm` tab, System section)
    - AI-powered CRM with 5 agents: BUDDY (coordinator), Lead Scout, WA Bot, Qualifier, Analytics
    - Lead management: Add/Edit/Delete, Status tracking (New→Contacted→Qualified→Demo→Quoted→Won→Lost)

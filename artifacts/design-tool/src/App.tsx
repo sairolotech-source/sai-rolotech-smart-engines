@@ -111,10 +111,7 @@ function AuthGate() {
       if (granted) console.log("[RAM] Persistent storage — cache protected from RAM pressure eviction");
     });
 
-    // 4. If no user yet (shouldn't happen now), auto-login offline
-    if (!useAuthStore.getState().user) {
-      useAuthStore.getState().devLogin();
-    }
+    // 4. User login is handled by LandingPage/LoginPage — no auto-login
   }, []);
 
   if (!initialized || !splashDone) {

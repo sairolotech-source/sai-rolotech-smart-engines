@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Plus, Clock, ArrowRight, Zap, FileCode2,
   Wrench, Layers, Box, Star, Cpu,
-  Upload, Folder, TrendingUp, Activity, Sparkles,
+  Upload, Folder, TrendingUp, Activity, Sparkles, PlayCircle,
 } from "lucide-react";
 import { useCncStore, type AppTab } from "../store/useCncStore";
 import { WelcomeRobot } from "../components/WelcomeRobot";
@@ -99,6 +99,10 @@ const QUICK_ACTIONS = [
     id: "studio3d", label: "3D Studio", icon: <Box className="w-5 h-5" />, desc: "CAD + CAM",
     color: "#34d399", glow: "rgba(52,211,153,0.2)", bg: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.2)",
   },
+  {
+    id: "demo-videos", label: "Demo Videos", icon: <PlayCircle className="w-5 h-5" />, desc: "Feature walkthroughs",
+    color: "#f43f5e", glow: "rgba(244,63,94,0.2)", bg: "rgba(244,63,94,0.1)", border: "rgba(244,63,94,0.2)",
+  },
 ];
 
 export function Dashboard({ onOpenWorkspace }: Props) {
@@ -151,7 +155,7 @@ export function Dashboard({ onOpenWorkspace }: Props) {
         </div>
 
         {/* ── Quick Actions ────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action.id}

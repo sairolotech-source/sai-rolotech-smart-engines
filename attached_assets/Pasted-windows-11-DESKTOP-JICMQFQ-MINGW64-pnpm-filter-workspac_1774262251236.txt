@@ -1,0 +1,40 @@
+windows 11@DESKTOP-JICMQFQ MINGW64 ~
+$ pnpm --filter @workspace/api-server run dev & pnpm --filter @workspace/design-tool run dev
+[1] 1636
+Scope: 5 of 65 projects
+Scope: 5 of 65 projects
+.../artifacts/design-tool dev$ vite --config vite.config.ts --host 0.0.0.0
+└─ Running...
+.../artifacts/api-server dev$ tsx --tsconfig tsconfig.json src/index.ts
+└─ Running...
+.../artifacts/api-server dev$ tsx --tsconfig tsconfig.json src/index.ts
+└─ Running...
+.../artifacts/design-tool dev$ vite --config vite.config.ts --host 0.0.0.0
+└─ Running...
+.../artifacts/design-tool dev$ vite --config vite.config.ts --host 0.0.0.0
+│ 'tsx' is not recognized as an internal or external command,
+│ operable program or batch file.
+│ 'vite' is not recognized as an internal or external command,
+│ operable program or batch file.
+└─ Failed in 42ms at C:\Users\windows 11\Downloads\sai-rolotech-smart-engines-1\sai-rolotech-smart-engines-1\artifacts\design-toolconfig.ts --host 0.0.0.0
+└─ Running...
+.../artifacts/design-tool dev$ vite --config vite.config.ts --host 0.0.0.0
+└─ Running...
+.../artifacts/design-tool dev$ vite --config vite.config.ts --host 0.0.0.0
+└─ Running...
+C:\Users\windows 11\Downloads\sai-rolotech-smart-engines-1\sai-rolotech-smart-engines-1\artifacts\api-server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 dev: `tsx --tsconfig tsconfig.json src/index.ts`
+Exit status 1
+C:\Users\windows 11\Downloads\sai-rolotech-smart-engines-1\sai-rolotech-smart-engines-1\artifacts\design-tool:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/design-tool@0.0.0 dev: `vite --config vite.config.ts --host 0.0.0.0`
+Exit status 1
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?
+.../artifacts/api-server dev$ tsx --tsconfig tsconfig.json src/index.ts
+└─ Running...
+.../artifacts/design-tool dev$ vite --config vite.config.ts --host 0.0.0.0
+└─ Running...
+[1]+  Exit 1                  pnpm --filter @workspace/api-server run dev
+
+windows 11@DESKTOP-JICMQFQ MINGW64 ~
+$

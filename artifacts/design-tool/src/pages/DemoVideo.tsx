@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Settings, FileCode, Layers, Cpu, Code, ArrowRight } from "lucide-react";
 
 // Duration of each scene in milliseconds
-const SCENE_DURATIONS = [5000, 10000, 10000, 10000, 10000, 10000, 14000, 14000];
+const SCENE_DURATIONS = [5000, 10000, 10000, 10000, 10000, 12000, 14000, 12000, 10000, 14000];
 
 const defaultEase = [0.16, 1, 0.3, 1] as [number, number, number, number]; // Smooth custom ease
 const springSnappy = { type: "spring" as const, stiffness: 400, damping: 30 };
@@ -38,7 +38,7 @@ export default function DemoVideo() {
       <motion.div
         className="absolute top-8 left-8 z-50 flex items-center gap-3"
         animate={{
-          opacity: currentScene === 0 || currentScene === 5 || currentScene === 6 || currentScene === 7 ? 0 : 1,
+          opacity: currentScene === 0 || currentScene === 8 || currentScene === 9 ? 0 : 1,
           y: currentScene === 0 ? -20 : 0,
         }}
         transition={{ duration: 0.8, ease: defaultEase }}
@@ -55,9 +55,11 @@ export default function DemoVideo() {
           {currentScene === 2 && <Scene2 key="scene2" />}
           {currentScene === 3 && <Scene3 key="scene3" />}
           {currentScene === 4 && <Scene4 key="scene4" />}
-          {currentScene === 5 && <Scene5 key="scene5" />}
+          {currentScene === 5 && <SceneAccuracy key="scene-accuracy" />}
           {currentScene === 6 && <Scene6 key="scene6" />}
-          {currentScene === 7 && <Scene7 key="scene7" />}
+          {currentScene === 7 && <SceneSpecialFunctions key="scene-special" />}
+          {currentScene === 8 && <Scene5 key="scene5" />}
+          {currentScene === 9 && <Scene7 key="scene7" />}
         </AnimatePresence>
       </div>
       
@@ -634,6 +636,322 @@ function Scene4() {
           ))}
         </div>
       </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── Scene: ACCURACY & PRECISION ─────────────────────────────────────────────
+const ACCURACY_METRICS = [
+  { label: "Strip Width Calc", value: "±0.01mm", desc: "Bend Deduction + K-Factor formula se exact strip width", icon: "📐" },
+  { label: "Springback Correction", value: "±0.5°", desc: "Material-wise springback auto-compensate karta hai", icon: "🔄" },
+  { label: "Roll Gap Tolerance", value: "±0.02mm", desc: "Upper/Lower roll gap precision machining level", icon: "⚙️" },
+  { label: "Bend Angle Accuracy", value: "99.7%", desc: "Progressive forming stations mein angle deviation < 0.3%", icon: "📊" },
+  { label: "G-Code Precision", value: "6 Decimal", desc: "CNC coordinates 0.000001mm resolution tak", icon: "💻" },
+  { label: "Flower Pattern Calc", value: "Auto ±0.1°", desc: "Per-station bend progression with real springback data", icon: "🌸" },
+];
+
+const CALCULATION_STEPS = [
+  { step: "Flat Blank = Web + 2×Flange + 2×BA", result: "97.14mm", time: "0.02s" },
+  { step: "BA = π/180 × (R + K×T) × θ", result: "3.57mm/bend", time: "0.01s" },
+  { step: "Springback = f(E, σy, T, R/T)", result: "2.1° correction", time: "0.03s" },
+  { step: "Roll OD = PassLine ± Profile", result: "Ø172.5mm", time: "0.01s" },
+  { step: "Station Count = θ_total / Δθ_max", result: "7 stations", time: "0.02s" },
+];
+
+function SceneAccuracy() {
+  const [visibleMetrics, setVisibleMetrics] = React.useState(0);
+  const [showCalc, setShowCalc] = React.useState(false);
+  const [visibleCalcRows, setVisibleCalcRows] = React.useState(0);
+
+  React.useEffect(() => {
+    const t1 = setTimeout(() => setShowCalc(true), 5000);
+    return () => clearTimeout(t1);
+  }, []);
+
+  React.useEffect(() => {
+    if (visibleMetrics >= ACCURACY_METRICS.length) return;
+    const t = setTimeout(() => setVisibleMetrics(v => v + 1), visibleMetrics === 0 ? 800 : 350);
+    return () => clearTimeout(t);
+  }, [visibleMetrics]);
+
+  React.useEffect(() => {
+    if (!showCalc || visibleCalcRows >= CALCULATION_STEPS.length) return;
+    const t = setTimeout(() => setVisibleCalcRows(v => v + 1), visibleCalcRows === 0 ? 200 : 400);
+    return () => clearTimeout(t);
+  }, [showCalc, visibleCalcRows]);
+
+  return (
+    <motion.div
+      className="w-full h-full flex flex-col items-center justify-center p-6 relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.8 }}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.08),transparent_60%)]" />
+
+      <motion.div className="text-center mb-6 relative z-10"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.7 }}>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-mono tracking-widest uppercase mb-3">
+          PRECISION ENGINEERING
+        </div>
+        <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+          Accuracy{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-[#f97316]">
+            Industry Level
+          </span>
+        </h2>
+        <p className="text-zinc-500 text-sm mt-1 font-mono">Engineering calculations jo 100% reliable hain</p>
+      </motion.div>
+
+      <div className="relative z-10 w-full max-w-6xl flex gap-6" style={{ maxHeight: "70vh" }}>
+        <div className="flex-1 grid grid-cols-2 gap-3">
+          {ACCURACY_METRICS.map((m, i) => (
+            <motion.div
+              key={m.label}
+              className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 relative overflow-hidden"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{
+                opacity: visibleMetrics > i ? 1 : 0,
+                y: visibleMetrics > i ? 0 : 20,
+                scale: visibleMetrics > i ? 1 : 0.95,
+              }}
+              transition={{ duration: 0.4, ease: defaultEase }}
+            >
+              {visibleMetrics > i && (
+                <motion.div
+                  className="absolute top-0 left-0 h-1 bg-gradient-to-r from-emerald-500 to-[#f97316]"
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                />
+              )}
+              <div className="flex items-start gap-3">
+                <div className="text-2xl">{m.icon}</div>
+                <div className="flex-1">
+                  <div className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">{m.label}</div>
+                  <div className="text-xl font-bold text-emerald-400 font-mono mt-1">{m.value}</div>
+                  <div className="text-[10px] text-zinc-400 mt-1 leading-relaxed">{m.desc}</div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <AnimatePresence>
+          {showCalc && (
+            <motion.div
+              className="w-80 bg-[#080b18] border border-[#f97316]/30 rounded-xl overflow-hidden shadow-xl shadow-[#f97316]/5"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, ease: defaultEase }}
+            >
+              <div className="bg-gradient-to-r from-[#0f1420] to-[#131926] border-b border-[#f97316]/20 px-4 py-3 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-mono text-[#f97316] uppercase tracking-widest">Live Calculation Engine</span>
+              </div>
+              <div className="p-4 space-y-2">
+                {CALCULATION_STEPS.map((c, i) => (
+                  <motion.div
+                    key={i}
+                    className="bg-white/[0.02] border border-white/[0.05] rounded-lg p-3"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{
+                      opacity: visibleCalcRows > i ? 1 : 0,
+                      x: visibleCalcRows > i ? 0 : 20,
+                    }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="text-[9px] text-zinc-500 font-mono">{c.step}</div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm font-bold text-[#f97316] font-mono">{c.result}</span>
+                      <span className="text-[8px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-full">{c.time}</span>
+                    </div>
+                  </motion.div>
+                ))}
+                <motion.div
+                  className="mt-3 text-center p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: visibleCalcRows >= CALCULATION_STEPS.length ? 1 : 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="text-emerald-400 text-sm font-bold font-mono">Total Time: 0.09 seconds</div>
+                  <div className="text-[9px] text-zinc-500 mt-1">Manual calculation: 4-6 hours</div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Scene: SPECIAL FUNCTIONS ────────────────────────────────────────────────
+const SPECIAL_FEATURES = [
+  {
+    title: "BUDDY AI CRM",
+    subtitle: "Smart Customer Management",
+    desc: "AI-powered lead tracking, follow-up reminders, aur sales pipeline — sab ek jagah",
+    color: "#8b5cf6",
+    stats: ["Auto Lead Scoring", "WhatsApp Integration", "Sales Analytics"],
+  },
+  {
+    title: "Drawing Vision AI",
+    subtitle: "Photo se Engineering Data",
+    desc: "Camera se drawing ki photo lo — AI automatically dimensions, angles, tolerances extract karega",
+    color: "#06b6d4",
+    stats: ["DXF Auto-Extract", "Dimension Detection", "Tolerance Reading"],
+  },
+  {
+    title: "Multi-Controller CNC",
+    subtitle: "Delta 2X + Fanuc + Siemens",
+    desc: "Ek hi design se multiple CNC controller formats mein G-Code export karo",
+    color: "#f97316",
+    stats: ["Delta 2X Primary", "Fanuc Compatible", "Siemens Ready"],
+  },
+  {
+    title: "Offline-First Engine",
+    subtitle: "Bina Internet Bhi Chale",
+    desc: "Factory mein internet nahi? Koi problem nahi — sab calculations offline hardware pe hoti hain",
+    color: "#10b981",
+    stats: ["Local Processing", "Auto-Sync", "Zero Latency"],
+  },
+  {
+    title: "3D Solid Modeling",
+    subtitle: "Real-Time Visualization",
+    desc: "Roll pairs, profiles, aur machine layout 3D mein live dekhein — rotate, zoom, inspect",
+    color: "#f59e0b",
+    stats: ["WebGL Rendering", "Roll Animation", "Export STL/STEP"],
+  },
+  {
+    title: "Auto GitHub Sync",
+    subtitle: "Version Control Built-in",
+    desc: "Har 5 minute mein latest version auto-update — team sabko latest features milte hain",
+    color: "#ef4444",
+    stats: ["Auto-Pull Updates", "Backup History", "Team Sync"],
+  },
+];
+
+function SceneSpecialFunctions() {
+  const [visibleCards, setVisibleCards] = React.useState(0);
+  const [showWhyBanner, setShowWhyBanner] = React.useState(false);
+
+  React.useEffect(() => {
+    if (visibleCards >= SPECIAL_FEATURES.length) {
+      const t = setTimeout(() => setShowWhyBanner(true), 500);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setVisibleCards(v => v + 1), visibleCards === 0 ? 600 : 380);
+    return () => clearTimeout(t);
+  }, [visibleCards]);
+
+  return (
+    <motion.div
+      className="w-full h-full flex flex-col items-center justify-center p-6 relative overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, y: -30 }}
+      transition={{ duration: 0.8 }}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.08),transparent_60%)]" />
+
+      <motion.div className="text-center mb-5 relative z-10"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.7 }}>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-400 text-xs font-mono tracking-widest uppercase mb-2">
+          EXCLUSIVE FEATURES
+        </div>
+        <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+          Special Functions{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-[#f97316]">
+            Sirf SAI Rolotech Mein
+          </span>
+        </h2>
+        <p className="text-zinc-500 text-sm mt-1 font-mono">Yeh features kisi aur software mein nahi milenge</p>
+      </motion.div>
+
+      <div className="relative z-10 w-full max-w-6xl grid grid-cols-3 gap-3" style={{ maxHeight: "65vh" }}>
+        {SPECIAL_FEATURES.map((f, i) => (
+          <motion.div
+            key={f.title}
+            className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 relative overflow-hidden"
+            initial={{ opacity: 0, y: 30, scale: 0.9 }}
+            animate={{
+              opacity: visibleCards > i ? 1 : 0,
+              y: visibleCards > i ? 0 : 30,
+              scale: visibleCards > i ? 1 : 0.9,
+            }}
+            transition={{ duration: 0.5, ease: defaultEase }}
+          >
+            {visibleCards > i && (
+              <motion.div
+                className="absolute top-0 left-0 w-full h-1"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                style={{ transformOrigin: "left", background: `linear-gradient(to right, ${f.color}, ${f.color}80)` }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              />
+            )}
+
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                style={{ background: `${f.color}20`, color: f.color, border: `1px solid ${f.color}40` }}>
+                {(i + 1).toString().padStart(2, "0")}
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">{f.title}</div>
+                <div className="text-[9px] font-mono" style={{ color: f.color }}>{f.subtitle}</div>
+              </div>
+            </div>
+
+            <div className="text-[10px] text-zinc-400 leading-relaxed mb-3">{f.desc}</div>
+
+            <div className="flex flex-wrap gap-1">
+              {f.stats.map((s) => (
+                <span key={s} className="text-[8px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-zinc-400 border border-white/[0.08]">
+                  {s}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {showWhyBanner && (
+          <motion.div
+            className="relative z-10 mt-5 w-full max-w-4xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: defaultEase }}
+          >
+            <div className="bg-gradient-to-r from-[#f97316]/20 via-violet-500/10 to-emerald-500/20 border border-[#f97316]/30 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-bold text-white">Kyon SAI Rolotech Use Karein?</div>
+                <div className="text-[10px] text-zinc-400 font-mono mt-1">
+                  6 exclusive features + ₹999/month pricing + Hindi/Urdu support + Android app + Offline mode
+                </div>
+              </div>
+              <div className="flex gap-3">
+                {[
+                  { val: "96×", label: "Faster" },
+                  { val: "97%", label: "Cheaper" },
+                  { val: "100%", label: "Offline" },
+                ].map((s) => (
+                  <div key={s.label} className="text-center px-3">
+                    <div className="text-lg font-black text-[#f97316] font-mono">{s.val}</div>
+                    <div className="text-[8px] text-zinc-500 font-mono uppercase">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

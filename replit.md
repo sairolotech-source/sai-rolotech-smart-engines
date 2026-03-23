@@ -77,7 +77,21 @@ Har session mein user yeh code likhta hai — sab rules activate ho jate hain.
     - File: `artifacts/design-tool/src/pages/DemoDownloadPage.tsx`
     - Route: `/download` (accessible without login)
 
-12. **Tailwind Dynamic Class Bug — COMPLETE FIX (All Files)**
+13. **Demo Video — Professional 10-Scene Animated Presentation** (`/demo` route, login required)
+    - 10 auto-playing scenes with Framer Motion animations
+    - Scene 0: SAI Rolotech intro with rotating gear + version badge
+    - Scene 1: DXF Profile Import with live strip width counter
+    - Scene 2: Flower Pattern Generation with progressive bending SVG
+    - Scene 3: Roll Tooling Calc with isometric roll pair 3D SVG
+    - Scene 4: G-Code Output with live typing animation + simulation overlay
+    - Scene 5: **ACCURACY & PRECISION** — 6 accuracy metrics (±0.01mm strip width, ±0.5° springback, 99.7% bend accuracy, 6-decimal G-Code) + Live Calculation Engine panel
+    - Scene 6: Machine Specification PDF with station table + cross-section diagram
+    - Scene 7: **SPECIAL FUNCTIONS** — 6 exclusive features (BUDDY AI CRM, Drawing Vision AI, Multi-Controller CNC, Offline-First, 3D Modeling, GitHub Sync) + "Kyon Use Karein" banner
+    - Scene 8: Pipeline Summary (DXF → Flower → Roll → G-Code) + "Complete in Under 2 Minutes"
+    - Scene 9: Benchmark vs Competitors — bar chart (96× faster), feature matrix (11 features), winner screen
+    - File: `artifacts/design-tool/src/pages/DemoVideo.tsx`
+
+14. **Tailwind Dynamic Class Bug — COMPLETE FIX (All Files)**
     - Replaced ALL dynamic `bg-${color}`, `text-${color}`, `border-${color}` patterns with static class maps
     - Files fixed: AutoCADEngineeringDrawing, AutoCncPlanner, BuddyCRMDashboard, GitHubUpdatePanel, RollDesignSuite, RollKnowledgeHub, WizardMode, DemoCChannelPanel, SolidModelingPanel
     - AutoCncPlanner uses centralized `TW_COLOR` map for all color lookups

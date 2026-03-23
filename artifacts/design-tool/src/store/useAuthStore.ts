@@ -17,6 +17,10 @@ import {
 } from "firebase/auth";
 import { auth, firebaseReady } from "../lib/firebase";
 
+const OFFLINE_SESSION_KEY = "sai_offline_session";
+const DEMO_LOGIN_TIME_KEY = "sai_demo_login_time";
+const DEMO_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -66,6 +70,23 @@ function createOfflineUser(): User {
   } as unknown as User;
 }
 
+function isDemoSessionExpired(): boolean {
+  try {
+    const saved = localStorage.getItem(DEMO_LOGIN_TIME_KEY);
+    if (!saved) return false;
+    const elapsed = Date.now() - Number(saved);
+    return elapsed > DEMO_MAX_AGE_MS;
+  } catch { return false; }
+}
+
+function clearDemoSession() {
+  try {
+    localStorage.removeItem(DEMO_LOGIN_TIME_KEY);
+    localStorage.removeItem(OFFLINE_SESSION_KEY);
+  } catch {}
+  console.log("[Auth] Demo session expired (3 din) — auto logout");
+}
+
 export const useAuthStore = create<AuthState>()((set, get) => ({
   user: null,
   token: null,
@@ -112,17 +133,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     provider.addScope("email");
     provider.addScope("profile");
     try {
-      // Try popup first; if blocked (Replit iframe / mobile), fall back to redirect
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
       set({ user: result.user, token, loading: false });
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       if (code === "auth/popup-blocked" || code === "auth/popup-cancelled" || code === "auth/cancelled-popup-request") {
-        // Redirect flow — page will reload after Google login
         try {
           await signInWithRedirect(auth, provider);
-          // signInWithRedirect navigates away; code below won't execute
           return;
         } catch (redirectErr: unknown) {
           const message = getOAuthErrorMessage(redirectErr);
@@ -198,10 +216,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   logout: async () => {
     try {
       await signOut(auth);
-      set({ user: null, token: null, error: null });
-    } catch {
-      set({ user: null, token: null, error: null });
-    }
+    } catch {}
+    try {
+      localStorage.removeItem(DEMO_LOGIN_TIME_KEY);
+      localStorage.removeItem(OFFLINE_SESSION_KEY);
+    } catch {}
+    set({ user: null, token: null, error: null });
   },
 
   resetPassword: async (email: string) => {
@@ -231,19 +251,27 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   devLogin: () => {
     const offlineUser = createOfflineUser();
     set({ user: offlineUser, token: "offline-sai-rolotech-local", loading: false, error: null });
-    try { localStorage.setItem("sai_offline_session", "true"); } catch {}
+    try {
+      localStorage.setItem(OFFLINE_SESSION_KEY, "true");
+      localStorage.setItem(DEMO_LOGIN_TIME_KEY, String(Date.now()));
+    } catch {}
   },
 }));
 
-// ── Auto-start: Offline-first — app loads instantly, Firebase optional ────────
-// Check for saved offline session or auto-login offline
 (function initAuth() {
-  const hasOfflineSession = (() => { try { return localStorage.getItem("sai_offline_session") === "true"; } catch { return false; } })();
+  const hasOfflineSession = (() => { try { return localStorage.getItem(OFFLINE_SESSION_KEY) === "true"; } catch { return false; } })();
+
+  if (hasOfflineSession && isDemoSessionExpired()) {
+    clearDemoSession();
+    useAuthStore.setState({ user: null, token: null, initialized: true });
+    console.log("[Auth] Demo session expired (3 din) — login required");
+    return;
+  }
 
   if (hasOfflineSession) {
     const offlineUser = createOfflineUser();
     useAuthStore.setState({ user: offlineUser, token: "offline-sai-rolotech-local", initialized: true });
-    console.log("[Auth] Returning user — offline session restored");
+    console.log("[Auth] Returning user — demo session restored");
   } else {
     useAuthStore.setState({ user: null, token: null, initialized: true });
     console.log("[Auth] New session — login required");
@@ -255,7 +283,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         if (result?.user) {
           const token = await result.user.getIdToken();
           useAuthStore.setState({ user: result.user, token, loading: false, error: null });
-          try { localStorage.removeItem("sai_offline_session"); } catch {}
+          try { localStorage.removeItem(OFFLINE_SESSION_KEY); localStorage.removeItem(DEMO_LOGIN_TIME_KEY); } catch {}
         }
       }).catch(() => {});
     } catch {}
@@ -265,9 +293,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         if (user) {
           const token = await user.getIdToken();
           useAuthStore.setState({ user, token, initialized: true });
-          try { localStorage.removeItem("sai_offline_session"); } catch {}
+          try { localStorage.removeItem(OFFLINE_SESSION_KEY); localStorage.removeItem(DEMO_LOGIN_TIME_KEY); } catch {}
         } else {
-          const hasOffline = (() => { try { return localStorage.getItem("sai_offline_session") === "true"; } catch { return false; } })();
+          const hasOffline = (() => { try { return localStorage.getItem(OFFLINE_SESSION_KEY) === "true"; } catch { return false; } })();
           if (hasOffline && !useAuthStore.getState().user) {
             const offlineUser = createOfflineUser();
             useAuthStore.setState({ user: offlineUser, token: "offline-sai-rolotech-local", initialized: true });

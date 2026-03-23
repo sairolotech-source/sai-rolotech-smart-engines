@@ -1,5 +1,5 @@
 /**
- * SAI Rolotech Smart Engines — Electron Main Process
+ * SAI Rolotech Smart Engines  -  Electron Main Process
  * Windows 10/11 Native Desktop App
  *
  * Features:
@@ -23,7 +23,7 @@ import * as crypto from "crypto";
 import { spawn, ChildProcess, execSync } from "child_process";
 import { autoUpdater } from "electron-updater";
 
-// ─── GPU Acceleration Flags ──────────────────────────────────────────────────
+// --- GPU Acceleration Flags --------------------------------------------------
 
 app.commandLine.appendSwitch("enable-gpu-rasterization");
 app.commandLine.appendSwitch("enable-zero-copy");
@@ -33,7 +33,7 @@ app.commandLine.appendSwitch("enable-features", "VaapiVideoDecoder,VaapiVideoEnc
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
 app.commandLine.appendSwitch("enable-accelerated-video-decode");
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// --- Constants ---------------------------------------------------------------
 
 const APP_NAME    = "SAI Rolotech Smart Engines";
 const APP_VERSION = app.getVersion();
@@ -41,7 +41,7 @@ const API_PORT    = 3001;
 const IS_DEV      = process.env.NODE_ENV === "development" || !app.isPackaged;
 const IS_WIN      = process.platform === "win32";
 
-// ─── Valid License Keys (offline fallback) ───────────────────────────────────
+// --- Valid License Keys (offline fallback) -----------------------------------
 const VALID_LICENSE_KEYS = new Set([
   "SAIR-2026-ROLL-FORM",
   "SAIR-2026-ENGI-NEER",
@@ -50,11 +50,11 @@ const VALID_LICENSE_KEYS = new Set([
   "SAIR-DEMO-2026-TRIAL",
 ]);
 
-// ─── Admin Server URL ────────────────────────────────────────────────────────
+// --- Admin Server URL --------------------------------------------------------
 const ADMIN_SERVER_URL = "https://sairolotech.com";
 const OFFLINE_GRACE_DAYS = 7;
 
-// ─── State ───────────────────────────────────────────────────────────────────
+// --- State -------------------------------------------------------------------
 
 let mainWindow:     BrowserWindow | null = null;
 let tray:           Tray         | null = null;
@@ -64,7 +64,7 @@ let apiReady         = false;
 let appIsReady       = false;   // guards globalShortcut usage
 let updateDownloadProgress = 0;
 
-// ─── Resource paths ──────────────────────────────────────────────────────────
+// --- Resource paths ----------------------------------------------------------
 
 function getResourcePath(rel: string): string {
   return IS_DEV
@@ -78,7 +78,7 @@ function getAssetPath(filename: string): string {
     : path.join(process.resourcesPath, "assets", filename);
 }
 
-// ─── API Server ──────────────────────────────────────────────────────────────
+// --- API Server --------------------------------------------------------------
 
 function startApiServer(): Promise<void> {
   return new Promise((resolve) => {
@@ -114,7 +114,7 @@ function startApiServer(): Promise<void> {
 
       try {
         require(serverScript);
-        console.log("[API] Server module loaded — waiting for port...");
+        console.log("[API] Server module loaded  -  waiting for port...");
         const checkReady = (attempt: number) => {
           const http = require("http");
           const req = http.get(`http://localhost:${API_PORT}`, (res: any) => {
@@ -152,7 +152,7 @@ function stopApiServer(): void {
   }
 }
 
-// ─── Crash Logger ─────────────────────────────────────────────────────────────
+// --- Crash Logger -------------------------------------------------------------
 
 function _logCrash(detail: string): void {
   try {
@@ -163,7 +163,7 @@ function _logCrash(detail: string): void {
   } catch { /* never throw from crash handler */ }
 }
 
-// ─── Browser Window ──────────────────────────────────────────────────────────
+// --- Browser Window ----------------------------------------------------------
 
 async function createMainWindow(): Promise<void> {
   const preloadPath = path.join(__dirname, "preload.js");
@@ -203,7 +203,7 @@ async function createMainWindow(): Promise<void> {
     icon: getAssetPath("icon.ico"),
   });
 
-  // ── Load content ──
+  // -- Load content --
   if (IS_DEV) {
     mainWindow.loadURL("http://localhost:5000");
     mainWindow.webContents.openDevTools({ mode: "detach" });
@@ -238,7 +238,7 @@ async function createMainWindow(): Promise<void> {
     }
 
     if (!loaded) {
-      console.log("[App] API server unavailable — loading frontend from local files");
+      console.log("[App] API server unavailable  -  loading frontend from local files");
       const indexPath = path.join(process.resourcesPath, "frontend", "index.html");
       if (fs.existsSync(indexPath)) {
         await mainWindow.loadFile(indexPath);
@@ -251,7 +251,7 @@ async function createMainWindow(): Promise<void> {
           button{margin-top:20px;padding:12px 24px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;}
           </style></head><body>
           <h1>SAI Rolotech Smart Engines</h1>
-          <p>The application server could not start.<br>This may happen on first run — please try again.</p>
+          <p>The application server could not start.<br>This may happen on first run  -  please try again.</p>
           <p>If the problem persists, reinstall the application or contact:<br><code>support@sairolotech.com</code></p>
           <button onclick="window.location.reload()">Retry</button>
           </body></html>`;
@@ -260,7 +260,7 @@ async function createMainWindow(): Promise<void> {
     }
   }
 
-  // ── Window events ──
+  // -- Window events --
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
     if (IS_WIN && mainWindow) {
@@ -268,7 +268,7 @@ async function createMainWindow(): Promise<void> {
       try {
         const { setMica } = require("electron-acrylic-window");
         setMica(mainWindow);
-      } catch { /* Not available — no issue */ }
+      } catch { /* Not available  -  no issue */ }
     }
   });
 
@@ -298,19 +298,19 @@ async function createMainWindow(): Promise<void> {
     } catch { /* ignore */ }
   }
 
-  // ── Renderer crash protection ──────────────────────────────────────────────
+  // -- Renderer crash protection ----------------------------------------------
 
   // Renderer gone (crash / OOM / killed)
   mainWindow.webContents.on("render-process-gone", (_event, details) => {
     const { reason, exitCode } = details;
-    console.error(`[Renderer] Gone — reason=${reason} exitCode=${exitCode}`);
+    console.error(`[Renderer] Gone  -  reason=${reason} exitCode=${exitCode}`);
     _logCrash(`render-process-gone: reason=${reason} exitCode=${exitCode}`);
 
     if (isQuitting || reason === "clean-exit") return;
 
     dialog.showMessageBox({
       type:      "error",
-      title:     "SAI Rolotech — Recovering",
+      title:     "SAI Rolotech  -  Recovering",
       message:   "The application encountered an error and is recovering.",
       detail:    `Reason: ${reason}\n\nClick Reload to continue working. Your last saved data is safe.`,
       buttons:   ["Reload App", "Close Application"],
@@ -341,7 +341,7 @@ async function createMainWindow(): Promise<void> {
 
     dialog.showMessageBox({
       type:      "warning",
-      title:     "SAI Rolotech — Not Responding",
+      title:     "SAI Rolotech  -  Not Responding",
       message:   "The application is not responding.",
       detail:    "Would you like to wait or force-reload?",
       buttons:   ["Wait", "Reload App", "Force Close"],
@@ -361,7 +361,7 @@ async function createMainWindow(): Promise<void> {
   });
 }
 
-// ─── System Tray ─────────────────────────────────────────────────────────────
+// --- System Tray -------------------------------------------------------------
 
 function createTray(): void {
   const iconPath = getAssetPath(IS_WIN ? "tray.ico" : "tray.png");
@@ -428,7 +428,7 @@ function createTray(): void {
   });
 }
 
-// ─── Application Menu ─────────────────────────────────────────────────────────
+// --- Application Menu ---------------------------------------------------------
 
 function buildAppMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -436,7 +436,7 @@ function buildAppMenu(): void {
       label: "&File",
       submenu: [
         {
-          label: "Open DXF Profile…",
+          label: "Open DXF Profile...",
           accelerator: "Ctrl+O",
           click: async () => {
             const result = await dialog.showOpenDialog(mainWindow!, {
@@ -457,7 +457,7 @@ function buildAppMenu(): void {
           },
         },
         {
-          label: "Save G-Code…",
+          label: "Save G-Code...",
           accelerator: "Ctrl+S",
           click: async () => {
             const result = await dialog.showSaveDialog(mainWindow!, {
@@ -479,7 +479,7 @@ function buildAppMenu(): void {
           },
         },
         {
-          label: "Export Project…",
+          label: "Export Project...",
           click: async () => {
             const result = await dialog.showSaveDialog(mainWindow!, {
               title: "Export Project",
@@ -496,7 +496,7 @@ function buildAppMenu(): void {
           },
         },
         {
-          label: "Import Project…",
+          label: "Import Project...",
           click: async () => {
             const result = await dialog.showOpenDialog(mainWindow!, {
               title: "Import Project",
@@ -587,7 +587,7 @@ function buildAppMenu(): void {
               type:    "info",
               title:   `About ${APP_NAME}`,
               message: `${APP_NAME}\nVersion: ${APP_VERSION}`,
-              detail:  `SAI Rolotech Smart Engines — Roll Forming Engineering Suite\n\nFeatures:\n• FormAxis-grade Power Pattern Generation\n• Roll Tooling Design & CAM Plan\n• AutoCAD DXF 2D Export\n• G-Code Output (RAW + FINAL split)\n• Smart Defect Diagnosis (offline)\n• Digital Twin Simulation\n• Factory Smart Engine — 8 Production Modules\n• Arc Calculator & SimCam Profile Builder\n• Auto-Update from GitHub Releases\n\nBuilt for Windows 10/11 × 64-bit\n© 2026 SAI Rolotech Smart Engines`,
+              detail:  `SAI Rolotech Smart Engines  -  Roll Forming Engineering Suite\n\nFeatures:\n* FormAxis-grade Power Pattern Generation\n* Roll Tooling Design & CAM Plan\n* AutoCAD DXF 2D Export\n* G-Code Output (RAW + FINAL split)\n* Smart Defect Diagnosis (offline)\n* Digital Twin Simulation\n* Factory Smart Engine  -  8 Production Modules\n* Arc Calculator & SimCam Profile Builder\n* Auto-Update from GitHub Releases\n\nBuilt for Windows 10/11 x 64-bit\n(c) 2026 SAI Rolotech Smart Engines`,
               buttons: ["OK"],
             });
           },
@@ -608,7 +608,7 @@ function buildAppMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// ─── IPC Handlers (renderer → main communication) ─────────────────────────────
+// --- IPC Handlers (renderer -> main communication) -----------------------------
 
 function setupIPC(): void {
   // Save file natively (G-code, DXF, etc.)
@@ -725,7 +725,7 @@ function setupIPC(): void {
   });
 }
 
-// ─── Auto Updater ─────────────────────────────────────────────────────────────
+// --- Auto Updater -------------------------------------------------------------
 
 let updateRetryCount = 0;
 const MAX_UPDATE_RETRIES = 3;
@@ -867,9 +867,9 @@ function setupAutoUpdater(): void {
   setupUpdateSchedule();
 }
 
-// ─── App Lifecycle ────────────────────────────────────────────────────────────
+// --- App Lifecycle ------------------------------------------------------------
 
-// ─── License Key Verification ────────────────────────────────────────────────
+// --- License Key Verification ------------------------------------------------
 
 const DEMO_KEY = "SAIR-DEMO-2026-TRIAL";
 const DEMO_TRIAL_HOURS = 24;
@@ -1059,7 +1059,7 @@ function startRuntimeLicenseCheck(): void {
     // Legacy key check
     const licData = loadLicenseEncrypted();
     if (!licData || !isValidLicenseKey(licData.key)) {
-      console.error("[Security] License tampered — shutting down");
+      console.error("[Security] License tampered  -  shutting down");
       dialog.showMessageBoxSync({
         type: "error",
         title: "License Error",
@@ -1175,7 +1175,7 @@ function isValidLicenseKey(key: string): boolean {
   return VALID_LICENSE_KEYS.has(key.trim().toUpperCase());
 }
 
-// ─── Activation Token System (new — replaces repeated key prompts) ────────────
+// --- Activation Token System (new  -  replaces repeated key prompts) ------------
 
 interface ActivationData {
   token: string;
@@ -1287,7 +1287,7 @@ async function showRegistrationForm(prefilledKey?: string): Promise<{ name: stri
   const win = new BrowserWindow({
     width: 480, height: 520,
     resizable: false, minimizable: false, maximizable: false, closable: true,
-    frame: true, title: "SAI Rolotech — Software Registration",
+    frame: true, title: "SAI Rolotech  -  Software Registration",
     backgroundColor: "#0a0a1a", icon: getAssetPath("icon.ico"),
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
@@ -1313,8 +1313,8 @@ async function showRegistrationForm(prefilledKey?: string): Promise<{ name: stri
   .foot{color:#52525b;font-size:11px;text-align:center;margin-top:14px;}
   .req{color:#ef4444;}
 </style></head><body>
-  <h2>✦ Software Registration</h2>
-  <p class="sub">SAI Rolotech Smart Engines — Pehli baar apni details daalo</p>
+  <h2>* Software Registration</h2>
+  <p class="sub">SAI Rolotech Smart Engines  -  Pehli baar apni details daalo</p>
   <label>Aapka Naam <span class="req">*</span></label>
   <input type="text" id="name" placeholder="Poora naam" autocomplete="off">
   <label>Mobile Number <span class="req">*</span></label>
@@ -1368,19 +1368,19 @@ async function verifyLicense(): Promise<boolean> {
 
   const hwId = getHardwareId();
 
-  // ── Step 1: Check new token-based activation ──────────────────────────────
+  // -- Step 1: Check new token-based activation ------------------------------
   const activation = loadActivation();
   if (activation && activation.token && activation.hwId === hwId) {
-    console.log("[License] Activation token found — verifying online...");
+    console.log("[License] Activation token found  -  verifying online...");
 
     const result = await verifyTokenOnline(activation.token, hwId);
 
     if (result === null) {
-      // Server unreachable — check grace period
+      // Server unreachable  -  check grace period
       const lastVerified = new Date(activation.lastVerifiedAt).getTime();
       const daysSince = (Date.now() - lastVerified) / (1000 * 60 * 60 * 24);
       if (daysSince <= OFFLINE_GRACE_DAYS) {
-        console.log(`[License] Offline — grace period active (${daysSince.toFixed(1)} days since last verify)`);
+        console.log(`[License] Offline  -  grace period active (${daysSince.toFixed(1)} days since last verify)`);
         startRuntimeLicenseCheck();
         return true;
       } else {
@@ -1405,28 +1405,28 @@ async function verifyLicense(): Promise<boolean> {
     }
 
     if (!result.active) {
-      console.log("[License] Token invalid — need re-registration");
+      console.log("[License] Token invalid  -  need re-registration");
       // Fall through to registration
     } else {
       // Update lastVerifiedAt
       activation.lastVerifiedAt = new Date().toISOString();
       saveActivation(activation);
-      console.log(`[License] Verified OK — Welcome ${activation.name}`);
+      console.log(`[License] Verified OK  -  Welcome ${activation.name}`);
       startRuntimeLicenseCheck();
       return true;
     }
   }
 
-  // ── Step 2: Check old license key for migration ────────────────────────────
+  // -- Step 2: Check old license key for migration ----------------------------
   const oldKey = getSavedLicenseKey();
   if (oldKey && isValidLicenseKey(oldKey) && verifyHardwareBinding()) {
-    console.log("[License] Old license key found — auto-migrating to token system");
+    console.log("[License] Old license key found  -  auto-migrating to token system");
     // Silently use the old key for now (will get token on next registration attempt)
     startRuntimeLicenseCheck();
     return true;
   }
 
-  // ── Step 3: Show Registration Form ────────────────────────────────────────
+  // -- Step 3: Show Registration Form ----------------------------------------
   let attempts = 0;
   const maxAttempts = 3;
 
@@ -1449,7 +1449,7 @@ async function verifyLicense(): Promise<boolean> {
     });
     loadingWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(
       `<html><body style="margin:0;background:#0a0a1a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:'Segoe UI',sans-serif;color:#f97316;font-size:16px;font-weight:600;">
-        ⟳ Server se verify ho raha hai...
+        ... Server se verify ho raha hai...
       </body></html>`
     )});
     loadingWin.setMenu(null);
@@ -1459,7 +1459,7 @@ async function verifyLicense(): Promise<boolean> {
     try { loadingWin.close(); } catch {}
 
     if (result === null) {
-      // Server unreachable — check key locally
+      // Server unreachable  -  check key locally
       if (isValidLicenseKey(key)) {
         const upperKey = key.trim().toUpperCase();
         saveLicenseKey(upperKey);
@@ -1611,7 +1611,7 @@ app.on("will-quit", () => {
 
 // Prevent multiple instances
 if (!app.requestSingleInstanceLock()) {
-  // Another instance is running — just bring it to front and exit quietly
+  // Another instance is running  -  just bring it to front and exit quietly
   app.quit();
 } else {
   app.on("second-instance", () => {
@@ -1623,8 +1623,8 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
-// ─── Global Process-Level Crash Shield ───────────────────────────────────────
-// This is the final safety net — like AutoCAD/SolidWorks crash recovery.
+// --- Global Process-Level Crash Shield ---------------------------------------
+// This is the final safety net  -  like AutoCAD/SolidWorks crash recovery.
 // It catches ANY uncaught error in the main process and prevents silent death.
 
 process.on("uncaughtException", (error: Error) => {
@@ -1633,7 +1633,7 @@ process.on("uncaughtException", (error: Error) => {
 
   // Never crash if it's the globalShortcut-before-ready error
   if (error.message?.includes("globalShortcut") || error.message?.includes("before the app is ready")) {
-    console.warn("[Recovery] Ignored early globalShortcut error — app continues.");
+    console.warn("[Recovery] Ignored early globalShortcut error  -  app continues.");
     return; // swallow, continue running
   }
 
@@ -1641,17 +1641,17 @@ process.on("uncaughtException", (error: Error) => {
   if (appIsReady && mainWindow) {
     try {
       dialog.showErrorBox(
-        "SAI Rolotech — Error Recovered",
-        `An unexpected error occurred but was caught safely.\n\nError: ${error.message}\n\nThe application will continue. If problems persist, use File → Restart.`
+        "SAI Rolotech  -  Error Recovered",
+        `An unexpected error occurred but was caught safely.\n\nError: ${error.message}\n\nThe application will continue. If problems persist, use File -> Restart.`
       );
-    } catch { /* dialog may fail too — ignore */ }
+    } catch { /* dialog may fail too  -  ignore */ }
   }
-  // DO NOT call process.exit() — let Electron try to recover
+  // DO NOT call process.exit()  -  let Electron try to recover
 });
 
 process.on("unhandledRejection", (reason: unknown) => {
   const msg = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
   console.error("[FATAL] Unhandled Promise Rejection:", msg);
   _logCrash(`unhandledRejection: ${msg}`);
-  // Don't exit — log and continue
+  // Don't exit  -  log and continue
 });

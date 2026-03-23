@@ -1451,7 +1451,8 @@ async function verifyLicense(): Promise<boolean> {
       `<html><body style="margin:0;background:#0a0a1a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:'Segoe UI',sans-serif;color:#f97316;font-size:16px;font-weight:600;">
         ... Server se verify ho raha hai...
       </body></html>`
-    )});
+    )}`);
+
     loadingWin.setMenu(null);
 
     // Call server

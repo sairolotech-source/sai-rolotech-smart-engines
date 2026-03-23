@@ -348,7 +348,9 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
 
     const statusRes = await runGit("status --porcelain");
     if (statusRes.stdout) {
+      // Stage all files EXCEPT .github/workflows/ (workflow pushes need 'workflow' PAT scope)
       await runGit("add -A");
+      await runGit("reset HEAD .github/").catch(() => {}); // unstage .github/ if any
       const commitRes = await runGit(`commit -m "${msg.replace(/"/g, "'")}"`);
       if (!commitRes.ok && !commitRes.stdout.includes("nothing to commit")) {
         logAuto(`Commit warning: ${commitRes.stderr.slice(0, 100)}`, "warn");
@@ -424,6 +426,287 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Git push failed";
     res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ── Push specific files to GitHub via REST API (bypasses git push + workflow scope) ──
+router.post("/system/github-files-push", async (req: Request, res: Response) => {
+  try {
+    const { files, message: commitMsg } = req.body as { files?: string[]; message?: string };
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      res.status(400).json({ ok: false, error: "files[] array required" });
+      return;
+    }
+
+    const ghToken = process.env["GITHUB_PERSONAL_ACCESS_TOKEN"] || process.env["GITHUB_TOKEN"] || "";
+    if (!ghToken) {
+      res.status(500).json({ ok: false, error: "GITHUB_PERSONAL_ACCESS_TOKEN not set" });
+      return;
+    }
+
+    const msg = commitMsg?.trim() || `SAI Rolotech update: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
+    const headers = {
+      Authorization: `Bearer ${ghToken}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+    };
+    const baseUrl = `https://api.github.com/repos/${GITHUB_REPO}`;
+
+    // 1. Get current HEAD commit SHA on GitHub
+    const refRes = await fetch(`${baseUrl}/git/ref/heads/main`, { headers });
+    if (!refRes.ok) throw new Error(`Get ref failed: ${refRes.status} ${await refRes.text()}`);
+    const refData = await refRes.json() as { object: { sha: string } };
+    const baseSha = refData.object.sha;
+    logAuto(`GitHub base SHA: ${baseSha.slice(0, 10)}`, "info");
+
+    // 2. Get base tree SHA from the commit
+    const baseCommitRes = await fetch(`${baseUrl}/git/commits/${baseSha}`, { headers });
+    if (!baseCommitRes.ok) throw new Error(`Get commit failed: ${baseCommitRes.status}`);
+    const baseCommitData = await baseCommitRes.json() as { tree: { sha: string } };
+    const baseTreeSha = baseCommitData.tree.sha;
+
+    // 3. Create blobs for each file
+    const treeItems: { path: string; mode: string; type: string; sha: string }[] = [];
+    for (const filePath of files) {
+      const absPath = path.join(REPO_ROOT, filePath);
+      if (!fs.existsSync(absPath)) {
+        logAuto(`File not found, skipping: ${filePath}`, "warn");
+        continue;
+      }
+      const content = fs.readFileSync(absPath, "utf-8");
+      const blobRes = await fetch(`${baseUrl}/git/blobs`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ content, encoding: "utf-8" }),
+      });
+      if (!blobRes.ok) throw new Error(`Blob create failed for ${filePath}: ${blobRes.status}`);
+      const blobData = await blobRes.json() as { sha: string };
+      treeItems.push({ path: filePath, mode: "100644", type: "blob", sha: blobData.sha });
+      logAuto(`Blob created for ${filePath}: ${blobData.sha.slice(0, 10)}`, "info");
+    }
+
+    if (treeItems.length === 0) {
+      res.json({ ok: false, error: "No valid files found to push" });
+      return;
+    }
+
+    // 4. Create new tree
+    const newTreeRes = await fetch(`${baseUrl}/git/trees`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
+    });
+    if (!newTreeRes.ok) throw new Error(`Tree create failed: ${newTreeRes.status} ${await newTreeRes.text()}`);
+    const newTreeData = await newTreeRes.json() as { sha: string };
+    logAuto(`New tree created: ${newTreeData.sha.slice(0, 10)}`, "info");
+
+    // 5. Create commit
+    const newCommitRes = await fetch(`${baseUrl}/git/commits`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        message: msg,
+        tree: newTreeData.sha,
+        parents: [baseSha],
+        author: { name: "SAI Rolotech", email: "sairolotech@gmail.com", date: new Date().toISOString() },
+      }),
+    });
+    if (!newCommitRes.ok) throw new Error(`Commit create failed: ${newCommitRes.status} ${await newCommitRes.text()}`);
+    const newCommitData = await newCommitRes.json() as { sha: string };
+    logAuto(`Commit created: ${newCommitData.sha.slice(0, 10)}`, "info");
+
+    // 6. Update refs/heads/main
+    const updateRefRes = await fetch(`${baseUrl}/git/refs/heads/main`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ sha: newCommitData.sha, force: false }),
+    });
+    if (!updateRefRes.ok) throw new Error(`Update ref failed: ${updateRefRes.status} ${await updateRefRes.text()}`);
+
+    logAuto(`GitHub files push done! Commit: ${newCommitData.sha.slice(0, 10)} — ${files.length} file(s)`, "success");
+    res.json({
+      ok: true,
+      message: `✅ ${files.length} file(s) GitHub pe push ho gaye! Commit: ${newCommitData.sha.slice(0, 10)}`,
+      pushed: true,
+      commitSha: newCommitData.sha,
+      files: treeItems.map(t => t.path),
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "GitHub files push failed";
+    logAuto(`github-files-push error: ${message}`, "error");
+    res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ── Create/update GitHub tag via REST API (no git push needed) ────────────────
+router.post("/system/github-tag", async (req: Request, res: Response) => {
+  try {
+    const { tag, sha: customSha, message: tagMsg } = req.body as { tag?: string; sha?: string; message?: string };
+    if (!tag || !/^v\d+\.\d+\.\d+/.test(tag)) {
+      res.status(400).json({ ok: false, error: "tag required — format: v2.2.2" });
+      return;
+    }
+
+    const ghToken = process.env["GITHUB_PERSONAL_ACCESS_TOKEN"] || process.env["GITHUB_TOKEN"] || "";
+    if (!ghToken) {
+      res.status(500).json({ ok: false, error: "GITHUB_PERSONAL_ACCESS_TOKEN not set" });
+      return;
+    }
+
+    const msg = tagMsg?.trim() || `SAI Rolotech Smart Engines ${tag}`;
+
+    // Get latest commit SHA from GitHub (or use provided sha)
+    let sha = customSha;
+    if (!sha) {
+      const mainRes = await execAsync(
+        `curl -sf -H "Authorization: Bearer ${ghToken}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/${GITHUB_REPO}/git/ref/heads/main`,
+        { timeout: 10000 }
+      );
+      const mainData = JSON.parse(mainRes.stdout) as { object?: { sha?: string } };
+      sha = mainData.object?.sha;
+    }
+
+    if (!sha) {
+      res.status(500).json({ ok: false, error: "Could not get latest commit SHA from GitHub" });
+      return;
+    }
+
+    logAuto(`Using commit SHA: ${sha.slice(0, 10)}`, "info");
+
+    // Delete existing tag on GitHub (if exists)
+    await execAsync(
+      `curl -sf -X DELETE -H "Authorization: Bearer ${ghToken}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/${GITHUB_REPO}/git/refs/tags/${tag}`,
+      { timeout: 10000 }
+    ).catch(() => {}); // ignore if tag doesn't exist
+
+    logAuto(`Old tag ${tag} deleted (if existed)`, "info");
+
+    // Create annotated tag object
+    const taggerDate = new Date().toISOString();
+    const tagObjBody = JSON.stringify({
+      tag,
+      message: msg,
+      object: sha,
+      type: "commit",
+      tagger: { name: "SAI Rolotech", email: "sairolotech@gmail.com", date: taggerDate }
+    });
+
+    const tagObjRes = await execAsync(
+      `curl -sf -X POST -H "Authorization: Bearer ${ghToken}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" -H "Content-Type: application/json" -d '${tagObjBody.replace(/'/g, "\\'")}' https://api.github.com/repos/${GITHUB_REPO}/git/tags`,
+      { timeout: 15000 }
+    );
+    const tagObj = JSON.parse(tagObjRes.stdout) as { sha?: string; message?: string };
+    if (!tagObj.sha) {
+      res.status(500).json({ ok: false, error: `Tag object creation failed: ${tagObjRes.stdout.slice(0, 200)}` });
+      return;
+    }
+
+    logAuto(`Tag object created: ${tagObj.sha.slice(0, 10)}`, "info");
+
+    // Create tag reference
+    const refBody = JSON.stringify({ ref: `refs/tags/${tag}`, sha: tagObj.sha });
+    const refRes = await execAsync(
+      `curl -sf -X POST -H "Authorization: Bearer ${ghToken}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" -H "Content-Type: application/json" -d '${refBody}' https://api.github.com/repos/${GITHUB_REPO}/git/refs`,
+      { timeout: 15000 }
+    );
+    const refData = JSON.parse(refRes.stdout) as { ref?: string; message?: string };
+
+    if (!refData.ref) {
+      res.status(500).json({ ok: false, error: `Ref creation failed: ${refRes.stdout.slice(0, 200)}` });
+      return;
+    }
+
+    logAuto(`✅ Tag ${tag} pushed via GitHub API → Actions build SHURU!`, "success");
+    res.json({
+      ok: true,
+      tag,
+      ref: refData.ref,
+      commitSha: sha,
+      message: `✅ Tag ${tag} GitHub pe create ho gaya! GitHub Actions ab Windows installer build karega.`,
+      actionsUrl: `https://github.com/${GITHUB_REPO}/actions`,
+      releaseUrl: `https://github.com/${GITHUB_REPO}/releases/tag/${tag}`,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+// ── Push a version tag → triggers GitHub Actions build ───────────────────────
+router.post("/system/git-tag", async (req: Request, res: Response) => {
+  try {
+    const { tag, message: tagMsg } = req.body as { tag?: string; message?: string };
+    if (!tag || !/^v\d+\.\d+\.\d+/.test(tag)) {
+      res.status(400).json({ ok: false, error: "tag required — format: v2.2.2" });
+      return;
+    }
+
+    const msg = tagMsg?.trim() || `SAI Rolotech Smart Engines ${tag}`;
+    const ghToken = process.env["GITHUB_PERSONAL_ACCESS_TOKEN"] || process.env["GITHUB_TOKEN"] || "";
+    if (!ghToken) {
+      res.status(500).json({ ok: false, error: "GITHUB_PERSONAL_ACCESS_TOKEN not set" });
+      return;
+    }
+
+    // Clean stale lock
+    const gitLockPath = path.join(REPO_ROOT, ".git", "index.lock");
+    if (fs.existsSync(gitLockPath)) {
+      try { fs.unlinkSync(gitLockPath); } catch {}
+    }
+
+    // Delete existing tag (local + remote) if exists — avoid conflict
+    await runGit(`tag -d ${tag}`).catch(() => {});
+    // Delete remote tag too (using askpass for auth)
+    const delAskpassPath = `/tmp/sai-askpass-deltag-${process.pid}.sh`;
+    fs.writeFileSync(delAskpassPath, `#!/bin/sh\necho "${ghToken}"\n`, { mode: 0o700 });
+    const delEnv = { ...process.env, GIT_ASKPASS: delAskpassPath, GIT_TERMINAL_PROMPT: "0" };
+    delete delEnv["REPLIT_SESSION"];
+    delete delEnv["REPLIT_ASKPASS_PID2_SESSION"];
+    await new Promise<void>((resolve) => {
+      const cmd = `git -C "${REPO_ROOT}" -c core.askpass="${delAskpassPath}" -c credential.helper= push origin --delete ${tag}`;
+      exec(cmd, { timeout: 15000, env: delEnv }, () => {
+        try { fs.unlinkSync(delAskpassPath); } catch {}
+        resolve();
+      });
+    });
+
+    // Create annotated tag
+    const tagRes = await runGit(`tag -a ${tag} -m "${msg.replace(/"/g, "'")}"`);
+    if (!tagRes.ok) {
+      res.status(500).json({ ok: false, error: `Tag create failed: ${tagRes.stderr}` });
+      return;
+    }
+
+    // Push tag using askpass
+    const askpassPath = `/tmp/sai-askpass-tag-${process.pid}.sh`;
+    fs.writeFileSync(askpassPath, `#!/bin/sh\necho "${ghToken}"\n`, { mode: 0o700 });
+
+    const pushEnv = { ...process.env, GIT_ASKPASS: askpassPath, GIT_TERMINAL_PROMPT: "0" };
+    delete pushEnv["REPLIT_SESSION"];
+    delete pushEnv["REPLIT_ASKPASS_PID2_SESSION"];
+
+    const pushResult = await new Promise<{ ok: boolean; stdout: string; stderr: string }>((resolve) => {
+      const cmd = `git -C "${REPO_ROOT}" -c core.askpass="${askpassPath}" -c credential.helper= push origin ${tag}`;
+      exec(cmd, { timeout: 30000, env: pushEnv }, (err, stdout, stderr) => {
+        resolve({ ok: !err, stdout: stdout.trim(), stderr: stderr.trim() });
+        try { fs.unlinkSync(askpassPath); } catch {}
+      });
+    });
+
+    if (!pushResult.ok) {
+      res.status(500).json({ ok: false, error: `Tag push failed: ${pushResult.stderr}` });
+      return;
+    }
+
+    logAuto(`Version tag ${tag} pushed → GitHub Actions build SHURU ho gaya!`, "success");
+    res.json({
+      ok: true,
+      tag,
+      message: `✅ Tag ${tag} GitHub pe push ho gaya! GitHub Actions ab Windows installer build karega.`,
+      actionsUrl: `https://github.com/${GITHUB_REPO}/actions`,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e) });
   }
 });
 

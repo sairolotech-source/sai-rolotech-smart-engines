@@ -10,7 +10,7 @@ const GEMINI_BASE_URL =
 const GEMINI_API_URL = `${GEMINI_BASE_URL}/v1beta/openai/chat/completions`;
 
 async function callGemini(
-  model: "gemini-2.5-flash" | "gemini-2.5-pro",
+  model: "gemini-2.5-pro" | "gemini-2.5-flash",
   systemPrompt: string,
   userMsg: string,
   maxTokens = 1024,
@@ -50,7 +50,7 @@ async function callOpenAI(
 ): Promise<string | null> {
   if (!openai) return null;
   try {
-    const model = aiProvider === "gemini" ? "gemini-2.5-flash" : "gpt-4o-mini";
+    const model = aiProvider === "gemini" ? "gemini-2.5-pro" : "gpt-4o-mini";
     const res = await openai.chat.completions.create({
       model,
       messages: [
@@ -101,21 +101,21 @@ Check for syntax errors, efficiency, and safety. Reference DIN 66025 where appli
       );
       if (analysis) { source = "openai"; aiModel = "GPT-4o Mini"; }
       else {
-        analysis = await callGemini("gemini-2.5-flash", systemPrompt, userMsg);
-        if (analysis) { source = "gemini-flash"; aiModel = "Gemini 2.5 Flash"; }
+        analysis = await callGemini("gemini-2.5-pro", systemPrompt, userMsg);
+        if (analysis) { source = "gemini-pro"; aiModel = "Gemini 2.5 Pro"; }
         else { analysis = buildOfflineResponse(userMsg, "detailed", "english"); source = "offline"; aiModel = "Offline KB"; }
       }
     } else if (isComplexAnalysis(type, data)) {
       analysis = await callGemini("gemini-2.5-pro", systemPrompt, userMsg, 2048);
       if (analysis) { source = "gemini-pro"; aiModel = "Gemini 2.5 Pro"; }
       else {
-        analysis = await callGemini("gemini-2.5-flash", systemPrompt, userMsg);
-        if (analysis) { source = "gemini-flash"; aiModel = "Gemini 2.5 Flash"; }
+        analysis = await callOpenAI(systemPrompt, userMsg);
+        if (analysis) { source = "openai"; aiModel = "GPT-4o Mini"; }
         else { analysis = buildOfflineResponse(userMsg, "detailed", "english"); source = "offline"; aiModel = "Offline KB"; }
       }
     } else {
-      analysis = await callGemini("gemini-2.5-flash", systemPrompt, userMsg);
-      if (analysis) { source = "gemini-flash"; aiModel = "Gemini 2.5 Flash"; }
+      analysis = await callGemini("gemini-2.5-pro", systemPrompt, userMsg);
+      if (analysis) { source = "gemini-pro"; aiModel = "Gemini 2.5 Pro"; }
       else {
         analysis = await callOpenAI(systemPrompt, userMsg);
         if (analysis) { source = "openai"; aiModel = "GPT-4o Mini"; }
@@ -161,8 +161,8 @@ G-Code lines: ${gcode ? (Array.isArray(gcode) ? gcode.length : "present") : "not
 
     const geminiKey = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
     if (geminiKey) {
-      aiResult = await callGemini("gemini-2.5-flash", systemPrompt, userMsg, 1024);
-      if (aiResult) aiSource = "gemini-flash";
+      aiResult = await callGemini("gemini-2.5-pro", systemPrompt, userMsg, 1024);
+      if (aiResult) aiSource = "gemini-pro";
     }
 
     if (!aiResult && openai) {
@@ -236,9 +236,9 @@ router.post("/ai/cnc-plan", async (req: Request, res: Response) => {
 
     let result: string | null = null;
 
-    result = await callGemini("gemini-2.5-flash", sysMsg, userPrompt, 2048);
+    result = await callGemini("gemini-2.5-pro", sysMsg, userPrompt, 2048);
     if (result) {
-      res.json({ success: true, result, model: "Gemini 2.5 Flash" });
+      res.json({ success: true, result, model: "Gemini 2.5 Pro" });
       return;
     }
     result = await callOpenAI(sysMsg, userPrompt, 2048);

@@ -1,7 +1,7 @@
 {
   "name": "@workspace/desktop",
   "version": "2.2.2",
-  "description": "SAI Rolotech Smart Engines — Roll Forming Engineering Suite (Windows Desktop)",
+  "description": "SAI Rolotech Smart Engines  -  Roll Forming Engineering Suite (Windows Desktop)",
   "private": true,
   "main": "dist/main.js",
   "homepage": "./",
@@ -38,7 +38,7 @@
   "build": {
     "appId": "com.saisai-rolotech-smart-engines.rollformingai",
     "productName": "SAI Rolotech Smart Engines",
-    "copyright": "Copyright © 2026 SAI Rolotech Smart Engines",
+    "copyright": "Copyright (c) 2026 SAI Rolotech Smart Engines",
     "icon": "assets/icon",
     "directories": {
       "output": "release",

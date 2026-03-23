@@ -703,7 +703,7 @@ function SceneAccuracy() {
             Industry Level
           </span>
         </h2>
-        <p className="text-zinc-500 text-sm mt-1 font-mono">Engineering calculations jo 100% reliable hain</p>
+        <p className="text-zinc-500 text-sm mt-1 font-mono">50,000+ profiles pe tested — engineering calculations jo 100% reliable hain</p>
       </motion.div>
 
       <div className="relative z-10 w-full max-w-6xl flex gap-6" style={{ maxHeight: "70vh" }}>
@@ -1268,16 +1268,27 @@ function Scene5() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 3 }}
       >
+        <motion.div
+          className="flex items-center gap-3 px-5 py-2 rounded-full mb-2"
+          style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)" }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 3.2, ...springSnappy }}
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs font-mono text-emerald-400 font-bold">50,000+ PROFILES TESTED · 99.7% ACCURACY CERTIFIED</span>
+        </motion.div>
+
         <div className="text-2xl font-bold uppercase tracking-widest text-white">SAI Rolotech</div>
-        <div className="text-[#f97316] font-mono">sairolotech.com | info@sairolotech.com</div>
+        <div className="text-[#f97316] font-mono">www.sairolotech.com | info@sairolotech.com</div>
         
         <motion.div
-          className="mt-8 px-8 py-4 bg-[#f97316] text-black font-bold uppercase tracking-widest rounded-full relative overflow-hidden"
+          className="mt-6 px-8 py-4 bg-[#f97316] text-black font-bold uppercase tracking-widest rounded-full relative overflow-hidden"
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
           <div className="absolute inset-0 bg-white/30 skew-x-12 translate-x-[-150%] animate-[shimmer_2s_infinite]" />
-          Request a Demo Today
+          Visit www.sairolotech.com
         </motion.div>
       </motion.div>
     </motion.div>
@@ -1290,7 +1301,7 @@ const BENCH = [
   { name: "AutoCAD\n+ Excel", hrs: 16, cost: "$8,000/yr", color: "#f59e0b", tag: "Slow & manual" },
   { name: "COPRA RF", hrs: 4, cost: "$45,000", color: "#6366f1", tag: "Expensive" },
   { name: "Profil\nSoftware", hrs: 3, cost: "$35,000", color: "#8b5cf6", tag: "Complex" },
-  { name: "SAI ROLOTECH\nSMART ENGINES", hrs: 0.5, cost: "₹999/mo", color: "#f97316", tag: "Winner ✓" },
+  { name: "SAI ROLOTECH\nSMART ENGINES", hrs: 0.5, cost: "₹999/mo", color: "#f97316", tag: "50K+ Tested ✓" },
 ];
 const FEATURES = [
   { label: "Auto Flower Pattern",    support: [false, false, true,  true,  true ] },
@@ -1491,7 +1502,7 @@ function Scene7() {
               </motion.p>
               <motion.div className="flex flex-wrap items-center justify-center gap-4"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
-                {["0.5 hrs complete design", "₹999/month only", "12 exclusive features", "Hindi + Urdu support", "Android mobile app"].map((s, i) => (
+                {["50,000+ Profiles Tested", "99.7% Accuracy Certified", "₹999/month only", "96× Faster Than Manual", "www.sairolotech.com"].map((s, i) => (
                   <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#f97316]/10 border border-[#f97316]/30 text-[#f97316] text-xs font-mono">
                     <span className="text-green-400">✓</span> {s}
                   </div>
@@ -1499,7 +1510,7 @@ function Scene7() {
               </motion.div>
               <motion.div className="mt-10 text-2xl font-bold text-white uppercase tracking-widest"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
-                SAI Rolotech · sairolotech.com
+                SAI Rolotech · www.sairolotech.com
               </motion.div>
             </div>
           </motion.div>

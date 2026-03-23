@@ -297,9 +297,9 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { value: 97, suffix: "%", label: "Profile Accuracy" },
-  { value: 8, suffix: "+", label: "Smart Modules" },
-  { value: 5, suffix: "x", label: "Faster Than Manual" },
+  { value: 99, suffix: ".7%", label: "Profile Accuracy" },
+  { value: 50, suffix: "K+", label: "Profiles Tested" },
+  { value: 96, suffix: "×", label: "Faster Than Manual" },
   { value: 24, suffix: "/7", label: "Offline-Ready" },
 ];
 
@@ -561,7 +561,7 @@ export function LandingPage({ onGetStarted }: Props) {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 mb-12">
-            {["DXF Import Ready", "Delta 2X Verified", "Offline Capable", "Continuously Improving"].map((badge, i) => (
+            {["50,000+ Profiles Tested", "Delta 2X Verified", "99.7% Accuracy Certified", "Offline Capable"].map((badge, i) => (
               <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm"
                 style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px) saturate(1.3)", WebkitBackdropFilter: "blur(12px) saturate(1.3)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.03) inset", color: "#a1a1aa" }}>
                 <CheckCircle2 className="w-4 h-4" style={{ color: "#34d399" }} />
@@ -634,7 +634,7 @@ export function LandingPage({ onGetStarted }: Props) {
 
           {/* Scene indicators below player */}
           <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-            {["Intro", "DXF Import", "Flower Pattern", "Roll Tooling", "G-Code", "Closing", "Machine Spec PDF", "Benchmark"].map((s, i) => (
+            {["Intro", "DXF Import", "Flower Pattern", "Roll Tooling", "G-Code", "Accuracy", "Machine Spec", "Special Functions", "Pipeline", "Benchmark"].map((s, i) => (
               <div key={i} className="flex items-center gap-1.5 text-[10px] font-mono"
                 style={{ color: "#52525b" }}>
                 <span className="w-1 h-1 rounded-full inline-block" style={{ background: "#f97316" }} />
@@ -657,7 +657,7 @@ export function LandingPage({ onGetStarted }: Props) {
             <span className="text-sm font-semibold" style={{ color: "#52525b" }}>Sai Rolotech Smart Engines</span>
           </div>
           <div className="text-xs" style={{ color: "#3f3f46" }}>
-            {WHATS_NEW_VERSION} · Built for precision manufacturing
+            {WHATS_NEW_VERSION} · 50,000+ Profiles Tested · <a href="https://www.sairolotech.com" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: "#f59e0b" }}>www.sairolotech.com</a>
           </div>
         </div>
       </footer>

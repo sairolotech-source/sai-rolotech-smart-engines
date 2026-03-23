@@ -89,7 +89,7 @@ router.get("/drive/status", async (_req: Request, res: Response) => {
 router.post("/drive/backup/:projectId", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const projectId = String(req.params.projectId);
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const result = await buildProjectZip(projectId, userId);
     if (!result) {
       res.status(404).json({ error: "Project not found" });
@@ -214,7 +214,7 @@ router.post("/drive/restore/:fileId", async (req: AuthenticatedRequest, res: Res
     const [newProject] = await db
       .insert(rfProjects)
       .values({
-        userId: req.firebaseUser!.uid,
+        userId: req.authUser!.uid,
         projectName: `${project.projectName} (restored)`,
         material: project.material,
         thickness: project.thickness,
@@ -267,7 +267,7 @@ router.post("/drive/disconnect", async (_req: Request, res: Response) => {
 router.post("/drive/auto-backup/:projectId", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const projectId = String(req.params.projectId);
-    const result = await buildProjectZip(projectId, req.firebaseUser!.uid);
+    const result = await buildProjectZip(projectId, req.authUser!.uid);
     if (!result) {
       res.status(404).json({ error: "Project not found" });
       return;

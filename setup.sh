@@ -179,7 +179,7 @@ else
     log_fail "pnpm-workspace.yaml not found — run from project root"
 fi
 
-FRONTEND_DEPS=("react" "react-dom" "three" "zustand" "firebase" "jszip" "jspdf")
+FRONTEND_DEPS=("react" "react-dom" "three" "zustand" "jszip" "jspdf")
 BACKEND_DEPS=("express" "drizzle-orm" "systeminformation" "jose")
 
 echo ""

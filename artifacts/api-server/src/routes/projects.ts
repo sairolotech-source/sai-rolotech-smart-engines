@@ -7,7 +7,7 @@ const router: IRouter = Router();
 
 router.get("/projects", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const projects = await db
       .select()
       .from(rfProjects)
@@ -23,7 +23,7 @@ router.get("/projects", async (req: AuthenticatedRequest, res: Response) => {
 router.get("/projects/:id", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const id = String(req.params.id);
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const [project] = await db.select().from(rfProjects).where(and(eq(rfProjects.id, id), eq(rfProjects.userId, userId)));
     if (!project) {
       res.status(404).json({ error: "Project not found" });
@@ -44,7 +44,7 @@ router.get("/projects/:id", async (req: AuthenticatedRequest, res: Response) => 
 
 router.post("/projects", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const {
       projectName,
       material = "GI",
@@ -118,7 +118,7 @@ router.post("/projects", async (req: AuthenticatedRequest, res: Response) => {
 router.delete("/projects/:id", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const id = String(req.params.id);
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     await db.delete(rfProjects).where(and(eq(rfProjects.id, id), eq(rfProjects.userId, userId)));
     res.json({ success: true, message: "Project deleted" });
   } catch (err: unknown) {

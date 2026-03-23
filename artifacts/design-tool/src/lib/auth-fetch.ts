@@ -1,5 +1,3 @@
-import { auth } from "./firebase";
-
 const OFFLINE_TOKEN = "offline-sai-rolotech-local";
 
 export function getApiUrl(path: string): string {
@@ -7,19 +5,8 @@ export function getApiUrl(path: string): string {
 }
 
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const user = auth.currentUser;
   const headers = new Headers(options.headers || {});
-
-  if (user) {
-    try {
-      const token = await user.getIdToken();
-      headers.set("Authorization", `Bearer ${token}`);
-    } catch {
-      headers.set("Authorization", `Bearer ${OFFLINE_TOKEN}`);
-    }
-  } else {
-    headers.set("Authorization", `Bearer ${OFFLINE_TOKEN}`);
-  }
+  headers.set("Authorization", `Bearer ${OFFLINE_TOKEN}`);
 
   try {
     const controller = new AbortController();

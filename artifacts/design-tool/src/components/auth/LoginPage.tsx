@@ -476,7 +476,7 @@ export function LoginPage({ onForgotPassword }: Props) {
                     className="w-full h-11 rounded-lg border border-orange-500/30 bg-orange-500/5 text-orange-400 text-sm font-medium flex items-center justify-center gap-2 hover:bg-orange-500/10 hover:border-orange-500/50 transition-all"
                   >
                     <Terminal className="w-4 h-4" />
-                    Dev Access — Bypass Firebase
+                    Dev Access — Enter as Engineer
                   </button>
                 </>
               )}

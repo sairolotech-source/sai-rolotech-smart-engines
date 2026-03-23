@@ -7,7 +7,7 @@ const router = Router();
 
 router.get("/tools", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const { category, search, subType } = req.query;
 
     let conditions = [eq(cncTools.userId, userId), eq(cncTools.isActive, true)];
@@ -37,7 +37,7 @@ router.get("/tools", async (req: AuthenticatedRequest, res: Response) => {
 
 router.get("/tools/:id", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const [tool] = await db.select().from(cncTools)
       .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
     if (!tool) return res.status(404).json({ success: false, error: "Tool not found" });
@@ -53,7 +53,7 @@ router.get("/tools/:id", async (req: AuthenticatedRequest, res: Response) => {
 
 router.post("/tools", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const { cuttingData, ...toolData } = req.body;
 
     const [tool] = await db.insert(cncTools).values({ ...toolData, userId }).returning();
@@ -72,7 +72,7 @@ router.post("/tools", async (req: AuthenticatedRequest, res: Response) => {
 
 router.put("/tools/:id", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const { cuttingData, ...toolData } = req.body;
 
     const [tool] = await db.update(cncTools)
@@ -97,7 +97,7 @@ router.put("/tools/:id", async (req: AuthenticatedRequest, res: Response) => {
 
 router.delete("/tools/:id", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const [tool] = await db.update(cncTools)
       .set({ isActive: false, updatedAt: new Date() })
       .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)))
@@ -112,7 +112,7 @@ router.delete("/tools/:id", async (req: AuthenticatedRequest, res: Response) => 
 
 router.get("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const [tool] = await db.select().from(cncTools)
       .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
     if (!tool) return res.status(404).json({ success: false, error: "Tool not found" });
@@ -127,7 +127,7 @@ router.get("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Res
 
 router.post("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const [tool] = await db.select().from(cncTools)
       .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
     if (!tool) return res.status(404).json({ success: false, error: "Tool not found" });
@@ -143,7 +143,7 @@ router.post("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Re
 
 router.put("/tools/:id/cutting-data/:cdId", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const [tool] = await db.select().from(cncTools)
       .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
     if (!tool) return res.status(404).json({ success: false, error: "Tool not found" });
@@ -161,7 +161,7 @@ router.put("/tools/:id/cutting-data/:cdId", async (req: AuthenticatedRequest, re
 
 router.delete("/tools/:id/cutting-data/:cdId", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
     const [tool] = await db.select().from(cncTools)
       .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
     if (!tool) return res.status(404).json({ success: false, error: "Tool not found" });
@@ -178,7 +178,7 @@ router.delete("/tools/:id/cutting-data/:cdId", async (req: AuthenticatedRequest,
 
 router.post("/tools/seed-defaults", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.firebaseUser!.uid;
+    const userId = req.authUser!.uid;
 
     const existing = await db.select().from(cncTools)
       .where(and(eq(cncTools.userId, userId), eq(cncTools.isActive, true)));

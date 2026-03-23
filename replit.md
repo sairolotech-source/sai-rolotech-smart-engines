@@ -94,7 +94,7 @@ The project is structured as a pnpm workspace monorepo containing `api-server`, 
 
 ## External Dependencies
 
-- **Authentication:** Firebase Auth
+- **Authentication:** Offline Token Auth (no external provider)
 - **Database:** PostgreSQL (via Drizzle ORM)
 - **3D Graphics:** Three.js, React Three Fiber (`@react-three/fiber`, `@react-three/drei`)
 - **UI Framework/State Management:** React, Zustand

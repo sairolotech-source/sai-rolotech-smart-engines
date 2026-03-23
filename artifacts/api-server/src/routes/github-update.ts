@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
+import fs from "fs";
 
 const router: IRouter = Router();
 const execAsync = promisify(exec);
@@ -360,76 +361,60 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
 
     const ghToken = process.env["GITHUB_PERSONAL_ACCESS_TOKEN"] || process.env["GITHUB_TOKEN"] || "";
     let pushRes;
-    if (ghToken) {
-      const headRes = await runGit("rev-parse HEAD");
-      const sha = headRes.stdout.trim();
-      const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/git/refs/heads/main`;
-      const apiRes = await fetch(apiUrl, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${ghToken}`,
-          "Content-Type": "application/json",
-          "User-Agent": "SaiRolotech-AutoUpdate/2.0",
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-        body: JSON.stringify({ sha, force: false }),
-        signal: AbortSignal.timeout(20000),
-      });
-      const apiData = await apiRes.json() as { ref?: string; message?: string };
-      if (!apiRes.ok) {
-        const errMsg = apiData.message ?? `HTTP ${apiRes.status}`;
-        if (errMsg.includes("not a fast forward")) {
-          const forceRes = await fetch(apiUrl, {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${ghToken}`,
-              "Content-Type": "application/json",
-              "User-Agent": "SaiRolotech-AutoUpdate/2.0",
-              "X-GitHub-Api-Version": "2022-11-28",
-            },
-            body: JSON.stringify({ sha, force: true }),
-            signal: AbortSignal.timeout(20000),
+    const askpassPath = `/tmp/sai-askpass-${process.pid}.sh`;
+    let cleanedUp = false;
+    const cleanupAskpass = () => {
+      if (!cleanedUp && fs.existsSync(askpassPath)) {
+        try { fs.unlinkSync(askpassPath); } catch {}
+        cleanedUp = true;
+      }
+    };
+
+    try {
+      if (ghToken) {
+        const safeToken = ghToken.replace(/'/g, "'\\''");
+        fs.writeFileSync(
+          askpassPath,
+          `#!/bin/sh\ncase "$1" in\n  *[Uu]sername*) echo "x-access-token";;\n  *) echo '${safeToken}';;\nesac\n`,
+          { mode: 0o700 }
+        );
+        pushRes = await new Promise<{ stdout: string; stderr: string; ok: boolean }>((resolve) => {
+          const pushEnv = { ...process.env, GIT_ASKPASS: askpassPath, GIT_TERMINAL_PROMPT: "0" };
+          delete pushEnv["REPLIT_SESSION"];
+          delete pushEnv["REPLIT_ASKPASS_PID2_SESSION"];
+          const cmd = `git -C "${REPO_ROOT}" -c core.askpass="${askpassPath}" -c credential.helper= push origin main`;
+          exec(cmd, { timeout: 30000, env: pushEnv }, (err, stdout, stderr) => {
+            if (err) resolve({ stdout: stdout?.trim() ?? "", stderr: stderr?.trim() ?? err.message, ok: false });
+            else resolve({ stdout: stdout?.trim() ?? "", stderr: stderr?.trim() ?? "", ok: true });
           });
-          if (!forceRes.ok) {
-            const fd = await forceRes.json() as { message?: string };
-            res.status(500).json({ ok: false, error: `GitHub API push failed: ${fd.message}`, hint: "Token mein repo write permission chahiye" });
-            return;
-          }
-        } else {
-          res.status(500).json({ ok: false, error: `GitHub API push failed: ${errMsg}`, hint: "Token mein repo write permission chahiye" });
-          return;
-        }
+        });
+        cleanupAskpass();
+      } else {
+        pushRes = await runGit("push origin main");
       }
-
-      const newCommit = sha.slice(0, 10);
-      logAuto(`GitHub API push done! ${aheadCount} commits pushed — HEAD: ${newCommit}`, "success");
-
-      res.json({
-        ok: true,
-        message: `✅ GitHub pe ${aheadCount} commit(s) push ho gaye! Commit: ${newCommit}`,
-        pushed: true,
-        aheadCount,
-        newCommit,
-        ref: apiData.ref,
-      });
-    } else {
-      pushRes = await runGit("push origin main");
-      if (!pushRes.ok) {
-        res.status(500).json({ ok: false, error: `Push failed: ${pushRes.stderr}`, hint: "GITHUB_PERSONAL_ACCESS_TOKEN set karo" });
-        return;
-      }
-      const newHeadRes = await runGit("rev-parse HEAD");
-      const newCommit = newHeadRes.stdout.slice(0, 10);
-      logAuto(`GitHub push done! ${aheadCount} commits pushed — HEAD: ${newCommit}`, "success");
-      res.json({
-        ok: true,
-        message: `✅ GitHub pe ${aheadCount} commit(s) push ho gaye! Commit: ${newCommit}`,
-        pushed: true,
-        aheadCount,
-        newCommit,
-        output: pushRes.stdout || pushRes.stderr,
-      });
+    } catch (e) {
+      cleanupAskpass();
+      throw e;
     }
+    cleanupAskpass();
+
+    if (!pushRes.ok) {
+      res.status(500).json({ ok: false, error: `Push failed: ${pushRes.stderr}`, hint: "GITHUB_PERSONAL_ACCESS_TOKEN aur repo access check karo" });
+      return;
+    }
+
+    const newHeadRes = await runGit("rev-parse HEAD");
+    const newCommit = newHeadRes.stdout.slice(0, 10);
+    logAuto(`GitHub push done! ${aheadCount} commits pushed — HEAD: ${newCommit}`, "success");
+
+    res.json({
+      ok: true,
+      message: `✅ GitHub pe ${aheadCount} commit(s) push ho gaye! Commit: ${newCommit}`,
+      pushed: true,
+      aheadCount,
+      newCommit,
+      output: pushRes.stdout || pushRes.stderr,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Git push failed";
     res.status(500).json({ ok: false, error: message });

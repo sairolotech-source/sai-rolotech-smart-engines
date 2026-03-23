@@ -1,5 +1,138 @@
 # SAI Rolotech Smart Engines — Professional Roll Forming & CNC Engineering Suite
 
+## ⚡ ACTIVATION CODE: RSB1164
+Har session mein user yeh code likhta hai — sab rules activate ho jate hain.
+
+## 🔑 CRITICAL SESSION MEMORY (March 23, 2026 — SAVE POINT)
+
+### Communication Rules
+- **ALWAYS Hindi/Urdu** — English technical terms OK but explanation Hindi mein
+- User ka naam: SAI Rolotech owner/engineer
+- Direct, honest, no flattery, concise answers
+
+### GitHub Repository
+- **Repo:** `https://github.com/sairolotech-source/sai-rolotech-smart-engines`
+- **Branch:** `main`
+- **Auto-Update:** Server har 5 min mein GitHub check karta hai → khud pull + pnpm install karega
+- **Push API:** `POST /api/system/git-push` with `Bearer dev-sai-rolotech-2026`
+
+### API Keys & Secrets
+- `AI_INTEGRATIONS_GEMINI_API_KEY` — Replit Secrets mein hai (server-side only)
+- **Offline tokens:** `dev-sai-rolotech-2026`, `offline-sai-rolotech-local`
+- **Firebase Project ID:** `roll-forming-tooling-eng`
+
+### Delta 2X CNC Real Tools (from actual SolidCAM TOOLKIT)
+- T0208 VNMG 060108 R0.8 rough | T0404 groove | T0606 VNMG 160402 R0.2 finish
+- T0808 heavy rough | T1010 detail R0.2 | Shank 25×25mm
+- G96 S200/S225, F0.175/F0.08, G92 S500
+
+### JSZip Available (used in RollToolingExportPanel, RollDataFileGenerator)
+
+---
+
+## 📋 FEATURES BUILT (All Working — March 23, 2026)
+
+### Latest Session Features (SAVE POINT)
+1. **🤖 BUDDY CRM** (`buddy-crm` tab, System section)
+   - AI-powered CRM with 5 agents: BUDDY (coordinator), Lead Scout, WA Bot, Qualifier, Analytics
+   - Lead management: Add/Edit/Delete, Status tracking (New→Contacted→Qualified→Demo→Quoted→Won→Lost)
+   - AI Score (1-100) per lead, Source tracking, Product interest analytics
+   - WhatsApp messaging via wa.me links (bina paid API ke!)
+   - 4 message templates (First Contact, Follow Up, Quote Sent, Demo Invite)
+   - BUDDY chat interface — ask questions, get CRM reports
+   - localStorage persistence
+   - File: `artifacts/design-tool/src/components/cnc/BuddyCRMDashboard.tsx`
+
+2. **📄 Roll Data File Generator** (`roll-data-files` tab, Manufacturing section)
+   - Per-station SVG files: UP roll / Strip profile / DOWN roll
+   - Station list with preview, individual download, ZIP download (all stations)
+   - CSV index file included in ZIP
+   - Professional drawing with title block, dimensions, specs
+   - File: `artifacts/design-tool/src/components/cnc/RollDataFileGenerator.tsx`
+
+3. **⚙️ Machine Load Calculator** (`machine-load-calc` tab, Manufacturing section)
+   - 5-section calculator: Forming Force → Motor HP → Gear Ratio → Bearing → Shaft Check
+   - Standard motor sizes, standard gear ratios, SKF/FAG bearing catalog, L10 life calculation
+   - File: `artifacts/design-tool/src/components/cnc/MachineLoadCalculator.tsx`
+
+4. **📐 AutoCAD Engineering Drawing** (`autocad-engineering-drawing` tab, Design section)
+   - Professional A3/A2/A4 sheet, auto-dimensions (linear/radius/angular)
+   - Title block, center lines, DXF/PNG export, pan/zoom canvas
+   - File: `artifacts/design-tool/src/components/cnc/AutoCADEngineeringDrawing.tsx`
+
+5. **🌸 Flower Pattern Combined** (`flower-combined` tab + `flower` pipeline tab, Simulation section)
+   - 3 modes: 2D only, 3D only, Side-by-side split
+   - File: `artifacts/design-tool/src/components/cnc/FlowerPatternCombined.tsx`
+
+6. **🔄 GitHub Auto-Update System** (`github-update` tab, System section)
+   - Pull/Push/Auto-check system
+   - **Server-side auto-update:** Har 5 min GitHub check → auto pull → pnpm install
+   - Start/Stop/Force-check controls in UI
+   - Live activity log
+   - `startAutoUpdate()` called on server boot
+   - API: `/api/system/auto-update/start`, `/stop`, `/check-now`, `/status`
+   - File: `artifacts/api-server/src/routes/github-update.ts`
+   - Frontend: `artifacts/design-tool/src/components/cnc/GitHubUpdatePanel.tsx`
+
+### Previously Built Features (All Working)
+- Accuracy Graph Calculator
+- SolidCAM Tool Database with Admin Control
+- NVIDIA GPU Override
+- Windows Build (GitHub Actions)
+- Electron Desktop App
+- Line → Sheet Converter
+- 20-Layer Testing Engine
+- Validation Pipeline
+- All FormAxis modules (14 specialized + 8 analysis)
+- Pro CNC Lathe Simulator
+- 5-Axis CAM
+- Roll Design Suite (OD, Gap, Pass Compressor)
+- Roll Knowledge Hub (Line Flow, Defects, 27 Rules)
+- Drawing Vision (Gemini Pro)
+- Safety Panel
+- ERP Integration
+- DXF CAD Viewer
+- G-Code Simulator
+- FEA Simulation
+- Station Control (3-Mode)
+- Auto Backup (5 min)
+- And 50+ more tabs/features
+
+---
+
+## 🏗️ System Architecture
+
+### Monorepo Structure (pnpm workspace)
+```
+artifacts/
+  api-server/     — Express 5 API (port 8080)
+  design-tool/    — React + Vite frontend (port 5000)
+  desktop/        — Electron Windows app
+  mockup-sandbox/ — Component preview (port 8081)
+lib/              — Shared libraries
+```
+
+### Key Files
+- `artifacts/design-tool/src/pages/Home.tsx` — Main app with all tabs
+- `artifacts/design-tool/src/store/useCncStore.ts` — Zustand store + AppTab type
+- `artifacts/api-server/src/routes/index.ts` — API router (all routes)
+- `artifacts/api-server/src/middleware/auth.ts` — Auth middleware (offline tokens)
+- `artifacts/api-server/src/routes/github-update.ts` — GitHub auto-update
+
+### How to Add New Tab
+1. Create component in `artifacts/design-tool/src/components/cnc/`
+2. In `Home.tsx`: Add lazy import
+3. In `useCncStore.ts`: Add to `AppTab` type
+4. In `Home.tsx`: Add tab entry in correct section
+5. In `Home.tsx`: Add category mapping
+6. In `Home.tsx`: Add case in switch statement
+
+### Workflows
+- **"Start application"** — Main workflow (runs both api-server + design-tool)
+- Secondary workflows (api-server alone, mockup-sandbox) — expected to fail alone
+
+---
+
 ## Latest Changes (March 2026 Session)
 
 - **"Replit" naam hata diya** — codebase mein sirf ek code comment tha, wo bhi remove kiya. App fully branded as "SAI Rolotech Engine"
@@ -8,8 +141,6 @@
 - **Accuracy Graph Calculator** — naya tool `AccuracyGraphView.tsx`: SVG line chart, sub-score bar graph, grade history, CSV export, statistics (min/max/avg/trend), offline-first
 - **SolidCAM / SolidWorks FEA / CNC Lathe Pro — har category mein** — Design, Analysis, FormAxis, Quality, Simulation categories mein ab yeh teeno tools directly accessible hain
 - **NVIDIA GPU Override** — `gpu-tier.ts` mein manual override system (localStorage) + `HardwareMonitorPanel.tsx` mein full UI (36 GPU models, VRAM, Apply/Reset)
-
-
 
 ## Windows Build — GitHub Actions
 

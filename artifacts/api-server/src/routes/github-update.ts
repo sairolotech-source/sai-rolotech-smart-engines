@@ -361,8 +361,24 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
     const ghToken = process.env["GITHUB_PERSONAL_ACCESS_TOKEN"] || process.env["GITHUB_TOKEN"] || "";
     let pushRes;
     if (ghToken) {
-      const authUrl = `https://${ghToken}@github.com/${GITHUB_REPO}.git`;
-      pushRes = await runGit(`push "${authUrl}" HEAD:main`);
+      const authUrl = `https://x-access-token:${ghToken}@github.com/${GITHUB_REPO}.git`;
+      const tokenEnv: NodeJS.ProcessEnv = {
+        ...buildGitEnv(),
+        GIT_ASKPASS: "",
+        GIT_TERMINAL_PROMPT: "0",
+        GITHUB_TOKEN: ghToken,
+      };
+      delete tokenEnv["GIT_ASKPASS"];
+      pushRes = await new Promise<{ stdout: string; stderr: string; ok: boolean }>((resolve) => {
+        exec(
+          `git -C "${REPO_ROOT}" push "${authUrl}" HEAD:main`,
+          { timeout: 30000, env: tokenEnv },
+          (err, stdout, stderr) => {
+            if (err) resolve({ stdout: stdout?.trim() ?? "", stderr: stderr?.trim() ?? err.message, ok: false });
+            else resolve({ stdout: stdout?.trim() ?? "", stderr: stderr?.trim() ?? "", ok: true });
+          }
+        );
+      });
     } else {
       pushRes = await runGit("push origin main");
     }

@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { setBackupInterval, createBackup } from "./backup";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const MEMORY_FILE = path.join(DATA_DIR, "ai-memory.json");
@@ -87,8 +87,9 @@ Always be helpful and professional.`;
   ];
 
   try {
+    const model = aiProvider === "gemini" ? "gemini-2.5-flash" : "gpt-5-mini";
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model,
       messages,
       max_completion_tokens: 8192,
     });

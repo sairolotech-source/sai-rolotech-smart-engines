@@ -18,6 +18,8 @@ Har session mein user yeh code likhta hai — sab rules activate ho jate hain.
 
 ### API Keys & Secrets
 - `AI_INTEGRATIONS_GEMINI_API_KEY` — Replit Secrets mein hai (server-side only)
+- **AI Provider:** Gemini 2.5 Flash via OpenAI-compatible endpoint (auto-fallback)
+- **AI Routes Active:** `/api/ai/chat`, `/api/ai/chatbot/:id`, `/api/ai/analysis/*`, `/api/drawing-vision/*`
 - **Offline tokens:** `dev-sai-rolotech-2026`, `offline-sai-rolotech-local`
 - **Firebase Project ID:** `roll-forming-tooling-eng`
 

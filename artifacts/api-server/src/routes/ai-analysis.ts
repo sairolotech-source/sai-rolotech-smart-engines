@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base.js";
 
 const router: IRouter = Router();
@@ -50,8 +50,9 @@ async function callOpenAI(
 ): Promise<string | null> {
   if (!openai) return null;
   try {
+    const model = aiProvider === "gemini" ? "gemini-2.5-flash" : "gpt-4o-mini";
     const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMsg },

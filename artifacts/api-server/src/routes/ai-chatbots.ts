@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 
 type AIProvider = "nvidia" | "kimi" | "sambanova" | "gemini" | "anthropic" | "openrouter";
 
@@ -323,14 +323,15 @@ async function getOnlineExpertResponse(
       { role: "user", content: message },
     ];
 
+    const model = aiProvider === "gemini" ? "gemini-2.5-flash" : "gpt-5-mini";
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model,
       messages,
       max_completion_tokens: 8192,
     });
 
     const text = response.choices?.[0]?.message?.content;
-    return { text: text || getOfflineExpertResponse(category, message), mode: text ? "online" : "offline", provider: "gpt-5-mini" };
+    return { text: text || getOfflineExpertResponse(category, message), mode: text ? "online" : "offline", provider: model };
   } catch {
     return { text: getOfflineExpertResponse(category, message), mode: "offline", provider: "offline-engine" };
   }

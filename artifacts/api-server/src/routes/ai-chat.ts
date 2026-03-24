@@ -89,7 +89,7 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   ];
 
   if (aiProvider === "gemini") {
-    for (const model of ["gemini-3.1-pro-preview", "gemini-3-pro-preview"]) {
+    for (const model of ["gemini-3.1-pro", "gemini-2.5-pro"]) {
       try {
         const response = await openai.chat.completions.create({
           model,
@@ -98,10 +98,10 @@ ${SAI_CONFIDENTIALITY_RULES}`;
         });
         const text = response.choices?.[0]?.message?.content;
         if (text) return text;
-        if (model === "gemini-3.1-pro-preview") continue;
+        if (model === "gemini-3.1-pro") continue;
       } catch {
-        if (model === "gemini-3.1-pro-preview") {
-          console.log("[AI] gemini-3.1-pro-preview unavailable — falling back to gemini-3-pro-preview");
+        if (model === "gemini-3.1-pro") {
+          console.log("[AI] gemini-3.1-pro unavailable — falling back to gemini-2.5-pro");
           continue;
         }
       }

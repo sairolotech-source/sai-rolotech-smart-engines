@@ -18,7 +18,7 @@ function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
     gemini: {
       key: process.env["AI_INTEGRATIONS_GEMINI_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"] ?? "https://generativelanguage.googleapis.com"}/v1beta/openai/chat/completions`,
-      model: "gemini-3.1-pro-preview",
+      model: "gemini-3.1-pro",
       maxTokens: 4096,
       format: "openai",
     },
@@ -92,7 +92,7 @@ async function callExternalAI(
     }
 
     const geminiModels = provider === "gemini"
-      ? ["gemini-3.1-pro-preview", "gemini-3-pro-preview"]
+      ? ["gemini-3.1-pro", "gemini-2.5-pro"]
       : [cfg.model];
 
     for (const model of geminiModels) {
@@ -116,8 +116,8 @@ async function callExternalAI(
         });
 
         if (!response.ok) {
-          if (provider === "gemini" && model === "gemini-3.1-pro-preview") {
-            console.log("[AI] gemini-3.1-pro-preview unavailable — falling back to gemini-3-pro-preview");
+          if (provider === "gemini" && model === "gemini-3.1-pro") {
+            console.log("[AI] gemini-3.1-pro unavailable — falling back to gemini-2.5-pro");
             continue;
           }
           return null;
@@ -125,11 +125,11 @@ async function callExternalAI(
         const data = await response.json() as { choices: { message: { content: string } }[] };
         const result = data.choices?.[0]?.message?.content ?? null;
         if (result) return result;
-        if (provider === "gemini" && model === "gemini-3.1-pro-preview") continue;
+        if (provider === "gemini" && model === "gemini-3.1-pro") continue;
         return null;
       } catch {
-        if (provider === "gemini" && model === "gemini-3.1-pro-preview") {
-          console.log("[AI] gemini-3.1-pro-preview error — falling back to gemini-3-pro-preview");
+        if (provider === "gemini" && model === "gemini-3.1-pro") {
+          console.log("[AI] gemini-3.1-pro error — falling back to gemini-2.5-pro");
           continue;
         }
         return null;

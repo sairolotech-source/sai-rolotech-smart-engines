@@ -631,6 +631,28 @@ export function AutoCADEngineeringDrawing() {
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
+  // ─── Segments + dims (declared early so Pro Mode callbacks can use them) ──
+  const segs = useMemo<Segment[]>(() => {
+    if (!stations || stations.length === 0) {
+      return [
+        { type: "line", startX: -80, startY: 0, endX: -50, endY: 0 },
+        { type: "arc", startX: -50, startY: 0, endX: -40, endY: 10, centerX: -50, centerY: 10, radius: 10, startAngle: 270, endAngle: 360 },
+        { type: "line", startX: -40, startY: 10, endX: -40, endY: 40 },
+        { type: "arc", startX: -40, startY: 40, endX: -30, endY: 50, centerX: -30, centerY: 40, radius: 10, startAngle: 180, endAngle: 270 },
+        { type: "line", startX: -30, startY: 50, endX: 30, endY: 50 },
+        { type: "arc", startX: 30, startY: 50, endX: 40, endY: 40, centerX: 30, centerY: 40, radius: 10, startAngle: 270, endAngle: 360 },
+        { type: "line", startX: 40, startY: 40, endX: 40, endY: 10 },
+        { type: "arc", startX: 40, startY: 10, endX: 50, endY: 0, centerX: 50, centerY: 10, radius: 10, startAngle: 180, endAngle: 270 },
+        { type: "line", startX: 50, startY: 0, endX: 80, endY: 0 },
+      ];
+    }
+    const lastStation = stations[stations.length - 1];
+    return lastStation?.segments || [];
+  }, [stations]);
+
+  const paperMM = PAPER[state.paperSize];
+  const dims = useMemo(() => generateDimensions(segs, getBounds(segs)), [segs]);
+
   // ─── Super Pro Mode state ──────────────────────────────────────────────────
   const [proMode, setProMode] = useState(false);
   const [proChat, setProChat] = useState<AutoMsg[]>([]);
@@ -847,31 +869,6 @@ Example: "Bhai, yeh profile dekh ke lag raha hai 8 stations perfect rahenge. Mat
     "G-Code generate karo",
     "Drawing ka part number update karo",
   ];
-
-  // Get segments from active station or all stations
-  const segs = useMemo<Segment[]>(() => {
-    if (!stations || stations.length === 0) {
-      // Demo C-channel profile
-      return [
-        { type: "line", startX: -80, startY: 0, endX: -50, endY: 0 },
-        { type: "arc", startX: -50, startY: 0, endX: -40, endY: 10, centerX: -50, centerY: 10, radius: 10, startAngle: 270, endAngle: 360 },
-        { type: "line", startX: -40, startY: 10, endX: -40, endY: 40 },
-        { type: "arc", startX: -40, startY: 40, endX: -30, endY: 50, centerX: -30, centerY: 40, radius: 10, startAngle: 180, endAngle: 270 },
-        { type: "line", startX: -30, startY: 50, endX: 30, endY: 50 },
-        { type: "arc", startX: 30, startY: 50, endX: 40, endY: 40, centerX: 30, centerY: 40, radius: 10, startAngle: 270, endAngle: 360 },
-        { type: "line", startX: 40, startY: 40, endX: 40, endY: 10 },
-        { type: "arc", startX: 40, startY: 10, endX: 50, endY: 0, centerX: 50, centerY: 10, radius: 10, startAngle: 180, endAngle: 270 },
-        { type: "line", startX: 50, startY: 0, endX: 80, endY: 0 },
-      ];
-    }
-    // Use last station (final profile)
-    const lastStation = stations[stations.length - 1];
-    return lastStation?.segments || [];
-  }, [stations]);
-
-  const paperMM = PAPER[state.paperSize];
-
-  const dims = useMemo(() => generateDimensions(segs, getBounds(segs)), [segs]);
 
   // Render
   const draw = useCallback(() => {

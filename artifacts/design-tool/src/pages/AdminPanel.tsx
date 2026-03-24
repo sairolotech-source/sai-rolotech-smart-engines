@@ -127,10 +127,9 @@ export default function AdminPanel() {
   };
 
   useEffect(() => {
-    if (loggedIn && password) {
-      const interval = setInterval(() => fetchData(password), 30000);
-      return () => clearInterval(interval);
-    }
+    if (!loggedIn || !password) return;
+    const interval = setInterval(() => fetchData(password), 30000);
+    return () => clearInterval(interval);
   }, [loggedIn, password, fetchData]);
 
   const filtered = users.filter(u => {

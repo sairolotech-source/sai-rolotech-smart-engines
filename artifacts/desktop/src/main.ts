@@ -691,6 +691,13 @@ function setupIPC(): void {
     autoUpdater.checkForUpdatesAndNotify();
   });
 
+  ipcMain.handle("download-update", () => {
+    autoUpdater.downloadUpdate().catch((err) => {
+      console.error("[Updater] downloadUpdate error:", err.message);
+      mainWindow?.webContents.send("update-error", { message: err.message });
+    });
+  });
+
   ipcMain.handle("quit-and-install", () => {
     if ((global as any).__updateTimer) {
       clearInterval((global as any).__updateTimer);

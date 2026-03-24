@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
 
+  downloadUpdate: () => ipcRenderer.invoke("download-update"),
+
   getUpdateSettings: () => ipcRenderer.invoke("get-update-settings"),
 
   setUpdateSettings: (settings: { checkFrequency?: string; autoDownload?: boolean }) =>
@@ -71,6 +73,7 @@ declare global {
         os: { platform: string; release: string; hostname: string; arch: string; uptime: number };
       }>;
       checkForUpdates:   () => Promise<void>;
+      downloadUpdate:    () => Promise<void>;
       getUpdateSettings: () => Promise<{ checkFrequency: string; autoDownload: boolean }>;
       setUpdateSettings: (settings: { checkFrequency?: string; autoDownload?: boolean }) => Promise<{ checkFrequency: string; autoDownload: boolean }>;
       getUpdateHistory:  () => Promise<{ version: string; action: string; timestamp: string; success: boolean }[]>;
@@ -79,6 +82,7 @@ declare global {
       onUpdateDownloaded: (callback: (data: { version: string }) => void) => void;
       onUpdateError:     (callback: (data: { message: string }) => void) => void;
       onUpdateNotAvailable: (callback: () => void) => void;
+      onUpdateCountdown: (callback: (data: { seconds: number; version: string }) => void) => void;
       quitAndInstall:    () => Promise<void>;
       showNotification:  (title: string, message: string) => void;
       isElectron:        true;

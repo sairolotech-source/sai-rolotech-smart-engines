@@ -92,10 +92,36 @@ function isAntivirusSafeFile(filename: string): boolean {
   return !dangerous.some(ext => lower.endsWith(ext));
 }
 
+async function resolveStaleConflict(): Promise<boolean> {
+  const lsRes = await runGit("ls-files -u --name-only");
+  if (!lsRes.stdout.trim()) return false;
+
+  logAuto(`Purana merge conflict mila — resolve kar raha hun: ${lsRes.stdout}`, "warn");
+
+  const lockPath = path.join(REPO_ROOT, ".git", "index.lock");
+  if (fs.existsSync(lockPath)) {
+    try { fs.unlinkSync(lockPath); logAuto("Stale index.lock removed", "info"); } catch {}
+  }
+
+  const isMergeInProgress = fs.existsSync(path.join(REPO_ROOT, ".git", "MERGE_HEAD"));
+  if (!isMergeInProgress) return false;
+
+  await runGit("add -A");
+  const commitRes = await runGit(`-c user.email="sairolotech@gmail.com" -c user.name="SAI Rolotech" commit --no-edit -m "Auto-resolve stale merge conflict"`);
+  if (commitRes.ok || commitRes.stdout.includes("nothing to commit")) {
+    logAuto("Merge conflict resolved + committed", "success");
+    return true;
+  }
+  logAuto(`Conflict resolve fail: ${commitRes.stderr.slice(0, 200)}`, "error");
+  return false;
+}
+
 async function checkAndPull(): Promise<{ updated: boolean; message: string }> {
   lastAutoCheck = new Date().toISOString();
 
   try {
+    await resolveStaleConflict();
+
     const localRes = await runGit("rev-parse HEAD");
     const localCommit = localRes.stdout.slice(0, 10);
 
@@ -270,6 +296,8 @@ router.get("/system/git-status", async (_req: Request, res: Response) => {
 
 router.post("/system/git-pull", async (_req: Request, res: Response) => {
   try {
+    await resolveStaleConflict();
+
     const localCommitRes = await runGit("rev-parse HEAD");
     const localCommit = localCommitRes.stdout.slice(0, 10);
 
@@ -723,6 +751,85 @@ router.post("/system/auto-update/stop", async (_req: Request, res: Response) => 
 router.post("/system/auto-update/check-now", async (_req: Request, res: Response) => {
   const result = await checkAndPull();
   res.json({ ok: true, ...result });
+});
+
+// ── Special Windows Install Script API ──
+// User runs: irm https://<api>/api/system/install | iex
+router.get("/system/install", async (_req: Request, res: Response) => {
+  try {
+    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers: { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" }
+    });
+    const release = await ghRes.json() as { tag_name: string; assets: { name: string; browser_download_url: string; size: number }[] };
+    const tag = release.tag_name ?? "v2.2.11";
+    const asset = release.assets?.find((a) => a.name.endsWith(".exe") && !a.name.endsWith(".blockmap"));
+    const url = asset?.browser_download_url ?? `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v","")}.exe`;
+    const sizeMB = asset ? Math.round(asset.size / 1024 / 1024) : 83;
+
+    const ps1 = `
+# SAI Rolotech Smart Engines — Auto Update Script
+# Latest: ${tag}
+Write-Host ""
+Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host "  SAI Rolotech Smart Engines Update      " -ForegroundColor Cyan
+Write-Host "  Version: ${tag}                        " -ForegroundColor White
+Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Step 1: Kill old processes
+Write-Host "[1/4] Purani app band kar raha hun..." -ForegroundColor Yellow
+$procs = @("SAI Rolotech Smart Engines","Sai Rolotech Smart Engines","SaiRolotech-SmartEngines","electron")
+foreach ($p in $procs) { Get-Process -Name $p -EA SilentlyContinue | Stop-Process -Force }
+Start-Sleep -Seconds 2
+
+# Step 2: Remove old Desktop installer files
+Write-Host "[2/4] Purane installer files saaf kar raha hun..." -ForegroundColor Yellow
+Get-ChildItem "$env:USERPROFILE\\Desktop" -Filter "SAI*.exe" -EA SilentlyContinue | Remove-Item -Force
+Get-ChildItem "$env:USERPROFILE\\Desktop" -Filter "SAI-*.exe" -EA SilentlyContinue | Remove-Item -Force
+
+# Step 3: Download latest
+Write-Host "[3/4] ${tag} download ho raha hai (~${sizeMB}MB)..." -ForegroundColor Yellow
+$installer = "$env:TEMP\\SAI-Latest-${tag}.exe"
+Invoke-WebRequest "${url}" -OutFile $installer -UseBasicParsing
+Write-Host "      Download complete!" -ForegroundColor Green
+
+# Step 4: Install
+Write-Host "[4/4] Install ho raha hai..." -ForegroundColor Yellow
+Start-Process $installer -Wait
+Write-Host ""
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host "  ${tag} install complete!              " -ForegroundColor Green
+Write-Host "  Desktop shortcut se app kholen        " -ForegroundColor Green
+Write-Host "=========================================" -ForegroundColor Green
+`;
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", "inline; filename=sai-update.ps1");
+    res.send(ps1.trim());
+  } catch (err) {
+    res.status(500).send(`Write-Host "Update fetch failed: ${err}" -ForegroundColor Red`);
+  }
+});
+
+// JSON version info for the latest release
+router.get("/system/install/info", async (_req: Request, res: Response) => {
+  try {
+    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers: { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" }
+    });
+    const release = await ghRes.json() as { tag_name: string; name: string; published_at: string; assets: { name: string; browser_download_url: string; size: number }[] };
+    const asset = release.assets?.find((a) => a.name.endsWith(".exe") && !a.name.endsWith(".blockmap"));
+    res.json({
+      version: release.tag_name,
+      name: release.name,
+      publishedAt: release.published_at,
+      downloadUrl: asset?.browser_download_url,
+      sizeMB: asset ? Math.round(asset.size / 1024 / 1024) : null,
+      installCommand: `irm ${process.env.API_BASE_URL ?? "https://api-url"}/api/system/install | iex`
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.get("/system/auto-update/status", async (_req: Request, res: Response) => {

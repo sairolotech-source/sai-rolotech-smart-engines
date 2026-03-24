@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Download, RefreshCw, CheckCircle, X, Zap, AlertCircle } from "lucide-react";
 import { useAppVersion } from "@/lib/appVersion";
 
@@ -19,49 +19,75 @@ export function ElectronAutoUpdate() {
   const [info, setInfo] = useState<UpdateInfo>({});
   const [visible, setVisible] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const cleanupRef = useRef<(() => void)[]>([]);
 
   useEffect(() => {
     if (!isElectron()) return;
 
     const api = (window as any).electronAPI;
 
-    api.onUpdateAvailable?.((data: { version: string; releaseDate: string }) => {
+    const onAvailable = (data: { version: string; releaseDate: string }) => {
       setInfo({ version: data.version });
       setState("available");
       setVisible(true);
       setMinimized(false);
-    });
+    };
 
-    api.onUpdateDownloadProgress?.((data: { percent: number; bytesPerSecond: number }) => {
+    const onProgress = (data: { percent: number; bytesPerSecond: number }) => {
       setInfo(prev => ({ ...prev, percent: Math.round(data.percent) }));
       setState("downloading");
       setVisible(true);
-    });
+    };
 
-    api.onUpdateDownloaded?.((data: { version: string }) => {
+    const onDownloaded = (data: { version: string }) => {
       setInfo(prev => ({ ...prev, version: data.version }));
       setState("ready");
       setVisible(true);
       setMinimized(false);
-    });
+    };
 
-    api.onUpdateError?.((data: { message: string }) => {
+    const onError = (data: { message: string }) => {
       setInfo({ error: data.message });
       setState("error");
-    });
+      setVisible(true);
+    };
 
-    api.onUpdateNotAvailable?.(() => {
+    const onNotAvailable = () => {
       setState("latest");
       setVisible(true);
       setTimeout(() => setVisible(false), 4000);
-    });
+    };
 
-    api.onUpdateCountdown?.((data: { seconds: number; version: string }) => {
+    const onCountdown = (data: { seconds: number; version: string }) => {
       setInfo(prev => ({ ...prev, version: data.version, countdown: data.seconds }));
       setState("countdown");
       setVisible(true);
       setMinimized(false);
-    });
+    };
+
+    api.onUpdateAvailable?.(onAvailable);
+    api.onUpdateDownloadProgress?.(onProgress);
+    api.onUpdateDownloaded?.(onDownloaded);
+    api.onUpdateError?.(onError);
+    api.onUpdateNotAvailable?.(onNotAvailable);
+    api.onUpdateCountdown?.(onCountdown);
+
+    const { ipcRenderer } = (window as any).require?.("electron") ?? {};
+    if (ipcRenderer) {
+      cleanupRef.current = [
+        () => ipcRenderer.removeListener("update-available", onAvailable),
+        () => ipcRenderer.removeListener("update-download-progress", onProgress),
+        () => ipcRenderer.removeListener("update-downloaded", onDownloaded),
+        () => ipcRenderer.removeListener("update-error", onError),
+        () => ipcRenderer.removeListener("update-not-available", onNotAvailable),
+        () => ipcRenderer.removeListener("update-countdown", onCountdown),
+      ];
+    }
+
+    return () => {
+      cleanupRef.current.forEach(fn => fn());
+      cleanupRef.current = [];
+    };
   }, []);
 
   const checkForUpdates = async () => {
@@ -74,21 +100,33 @@ export function ElectronAutoUpdate() {
     } catch {
       setState("error");
       setInfo({ error: "Update check fail hua. Internet check karein." });
+      setVisible(true);
+    }
+  };
+
+  const startDownload = async () => {
+    if (!isElectron()) return;
+    setState("downloading");
+    setInfo(prev => ({ ...prev, percent: 0 }));
+    try {
+      await (window as any).electronAPI.downloadUpdate?.();
+    } catch {
+      setState("error");
+      setInfo({ error: "Download start nahi ho saka." });
     }
   };
 
   const installNow = () => {
-    if (!(window as any).electronAPI) return;
-    (window as any).electronAPI.showNotification?.({
-      title: "SAI Rolotech Update",
-      message: "App restart ho rahi hai — update install ho raha hai..."
-    });
+    const api = (window as any).electronAPI;
+    if (!api) return;
+    api.showNotification?.("SAI Rolotech Update", "App restart ho rahi hai — update install ho raha hai...");
     setTimeout(() => {
-      (window as any).electronAPI?.quitAndInstall?.();
+      api.quitAndInstall?.();
     }, 800);
   };
 
   if (!isElectron()) return null;
+
   if (!visible && state === "idle") return (
     <button
       onClick={checkForUpdates}
@@ -176,12 +214,12 @@ export function ElectronAutoUpdate() {
                 </div>
               </div>
               <button
-                onClick={checkForUpdates}
+                onClick={startDownload}
                 className="w-full py-2 rounded-lg text-[12px] font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
                 style={{ background: "linear-gradient(135deg,#f97316,#d97706)", color: "white" }}
               >
                 <Download size={13} />
-                Auto Download & Install
+                Download & Auto Install
               </button>
             </>
           )}
@@ -293,7 +331,7 @@ export function ElectronAutoUpdate() {
 
           <div className="flex items-center justify-between mt-3 pt-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
             <span className="text-[9px]" style={{ color: "#3f3f46" }}>Current: {currentVersion}</span>
-            {state === "idle" && (
+            {(state === "idle" || state === "latest") && (
               <button
                 onClick={checkForUpdates}
                 className="text-[10px] flex items-center gap-1 transition-colors hover:opacity-80"

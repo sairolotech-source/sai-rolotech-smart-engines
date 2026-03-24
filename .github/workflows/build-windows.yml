@@ -69,7 +69,11 @@ jobs:
           $resized.Dispose()
           $bitmap.Dispose()
 
+          # Also copy as tray.ico (same icon for system tray)
+          Copy-Item $icoPath -Destination "artifacts/desktop/assets/tray.ico" -Force
+
           Write-Host "Icon created: $icoPath"
+          Write-Host "Tray icon created: artifacts/desktop/assets/tray.ico"
 
       # ── 5. Build frontend (React + Vite) ────────────────────────────────────
       - name: Build frontend

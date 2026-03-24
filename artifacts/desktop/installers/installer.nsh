@@ -75,9 +75,24 @@
 !macroend
 
 !macro customInstall
-  ; Firewall rule for API server
+  ; ── Firewall rule for API server ──
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="SAI Rolotech Smart Engines API"'
   nsExec::ExecToLog 'netsh advfirewall firewall add rule name="SAI Rolotech Smart Engines API" dir=in action=allow protocol=TCP localport=8080 profile=private'
+
+  ; ── Force-create Desktop shortcut (guarantee it always appears) ──
+  CreateShortCut "$DESKTOP\SAI Rolotech Smart Engines.lnk" \
+    "$INSTDIR\SAI Rolotech Smart Engines.exe" "" \
+    "$INSTDIR\SAI Rolotech Smart Engines.exe" 0 SW_SHOWNORMAL \
+    "" "SAI Rolotech Smart Engines v${VERSION}"
+
+  ; ── Force-create Start Menu shortcut ──
+  CreateDirectory "$SMPROGRAMS\SAI Rolotech Smart Engines"
+  CreateShortCut "$SMPROGRAMS\SAI Rolotech Smart Engines\SAI Rolotech Smart Engines.lnk" \
+    "$INSTDIR\SAI Rolotech Smart Engines.exe" "" \
+    "$INSTDIR\SAI Rolotech Smart Engines.exe" 0 SW_SHOWNORMAL \
+    "" "SAI Rolotech Smart Engines v${VERSION}"
+  CreateShortCut "$SMPROGRAMS\SAI Rolotech Smart Engines\Uninstall SAI Rolotech.lnk" \
+    "$INSTDIR\Uninstall SAI Rolotech Smart Engines.exe"
 !macroend
 
 !macro customUnInstall

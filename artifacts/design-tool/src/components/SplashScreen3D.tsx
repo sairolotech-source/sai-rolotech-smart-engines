@@ -514,7 +514,7 @@ function Scene({ phase }: { phase: number }) {
 }
 
 // ─── 2D CSS Fallback Splash (no GPU needed) ────────────────────────────────────
-function SplashScreen2D({ onComplete, minDuration = 4000 }: SplashScreen3DProps) {
+function SplashScreen2D({ onComplete, minDuration = 1800 }: SplashScreen3DProps) {
   const [progress, setProgress] = useState(5);
   const [visible, setVisible] = useState(true);
 
@@ -608,7 +608,7 @@ function SplashScreen2D({ onComplete, minDuration = 4000 }: SplashScreen3DProps)
 }
 
 // ─── 3D Splash internals ───────────────────────────────────────────────────────
-function SplashScreen3DInner({ onComplete, minDuration = 4000 }: SplashScreen3DProps) {
+function SplashScreen3DInner({ onComplete, minDuration = 1800 }: SplashScreen3DProps) {
   const [phase, setPhase] = useState(0);
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(5);

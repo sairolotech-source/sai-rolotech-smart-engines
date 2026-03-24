@@ -1,33 +1,51 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter, useRoute } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Home from "@/pages/Home";
-import NotFound from "@/pages/not-found";
-import { LandingPage } from "@/pages/LandingPage";
-import { Dashboard } from "@/pages/Dashboard";
-import DemoVideo from "@/pages/DemoVideo";
-import DemoDownloadPage from "@/pages/DemoDownloadPage";
-import AdminPanel from "@/pages/AdminPanel";
-import { LoginPage } from "@/components/auth/LoginPage";
-import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { useAuthStore } from "@/store/useAuthStore";
-import { UpdateNotification } from "@/components/UpdateNotification";
-import { ElectronAutoUpdate } from "@/components/ElectronAutoUpdate";
-import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
-import { ContextualGuide } from "@/components/ContextualGuide";
 import { useCncStore, type AppTab } from "@/store/useCncStore";
 import { SplashScreen3D } from "@/components/SplashScreen3D";
-import { startAutoBackup } from "@/lib/auto-backup";
-import { initGPUComputePipeline } from "@/lib/gpu-compute-pipeline";
-import { getHardwareCapabilities, ensureWorkerPool, requestPersistentStorage } from "@/lib/hardware-engine";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { syncOfflineQueue, getOfflineQueue } from "@/lib/api";
 import { useThemeStore, applyTheme } from "@/store/useThemeStore";
 import { useRoleStore, ROLE_LABELS, ROLE_COLORS, type UserRole } from "@/store/useRoleStore";
-import { OnboardingTutorial } from "@/components/OnboardingTutorial";
-import { ProjectShare } from "@/components/ProjectShare";
+import { syncOfflineQueue, getOfflineQueue } from "@/lib/api";
+
+// ── Heavy pages — lazy load (sirf jab zaroorat ho tab download hoga) ──────────
+const Home             = lazy(() => import("@/pages/Home"));
+const LandingPage      = lazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })));
+const Dashboard        = lazy(() => import("@/pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const LoginPage        = lazy(() => import("@/components/auth/LoginPage").then(m => ({ default: m.LoginPage })));
+const ForgotPasswordPage = lazy(() => import("@/components/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })));
+const DemoVideo        = lazy(() => import("@/pages/DemoVideo"));
+const DemoDownloadPage = lazy(() => import("@/pages/DemoDownloadPage"));
+const AdminPanel       = lazy(() => import("@/pages/AdminPanel"));
+const NotFound         = lazy(() => import("@/pages/not-found"));
+const UpdateNotification  = lazy(() => import("@/components/UpdateNotification").then(m => ({ default: m.UpdateNotification })));
+const ElectronAutoUpdate  = lazy(() => import("@/components/ElectronAutoUpdate").then(m => ({ default: m.ElectronAutoUpdate })));
+const KeyboardShortcutOverlay = lazy(() => import("@/components/KeyboardShortcutOverlay").then(m => ({ default: m.KeyboardShortcutOverlay })));
+const ContextualGuide  = lazy(() => import("@/components/ContextualGuide").then(m => ({ default: m.ContextualGuide })));
+const OnboardingTutorial = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial })));
+const ProjectShare     = lazy(() => import("@/components/ProjectShare").then(m => ({ default: m.ProjectShare })));
+
+// Lazy-loaded heavy libs — splash ke baad init hoga
+const startAutoBackup = () => import("@/lib/auto-backup").then(m => m.startAutoBackup());
+const initGPU = () => import("@/lib/gpu-compute-pipeline").then(m => m.initGPUComputePipeline());
+const initHardware = () => import("@/lib/hardware-engine").then(m => {
+  const hw = m.getHardwareCapabilities();
+  m.ensureWorkerPool();
+  m.requestPersistentStorage();
+  return hw;
+});
+
+// Simple fallback spinner — zero cost
+function PageSpinner() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-[#08090f]">
+      <div className="w-8 h-8 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function OfflineGuard() {
   const [offline, setOffline] = useState(!navigator.onLine);
@@ -229,37 +247,32 @@ function AuthGate() {
 
   const handleSplashComplete = useCallback(() => {
     setSplashDone(true);
-    startAutoBackup();
-
-    initGPUComputePipeline().then(status => {
+    // Heavy libs — splash ke baad background mein load karo (non-blocking)
+    startAutoBackup().catch(() => {});
+    initGPU().then(status => {
       console.log(`[GPU] ${status.dedicatedGPU ? "DEDICATED" : "Integrated"} | ~${status.vramGB}GB VRAM | Mode: ${status.renderingMode} | ${status.optimizations.length} opt`);
     }).catch(() => {});
-
-    const hw = getHardwareCapabilities();
-    ensureWorkerPool();
-    console.log(`[CPU] ${hw.cpu.cores} logical cores | ${hw.recommended.workerPoolSize} worker threads | ${hw.recommended.simulationQuality} quality`);
-
-    requestPersistentStorage().then((granted) => {
-      if (granted) console.log("[RAM] Persistent storage — cache protected from RAM pressure eviction");
-    });
+    initHardware().then(hw => {
+      console.log(`[CPU] ${hw.cpu.cores} logical cores | ${hw.recommended.workerPoolSize} worker threads | ${hw.recommended.simulationQuality} quality`);
+    }).catch(() => {});
   }, []);
 
   const [isDownloadPage] = useRoute("/download");
   const [isAdminPage] = useRoute("/admin");
 
-  if (isAdminPage) return <AdminPanel />;
+  if (isAdminPage) return <Suspense fallback={<PageSpinner />}><AdminPanel /></Suspense>;
   if (!initialized || !splashDone) return <SplashScreen3D onComplete={handleSplashComplete} />;
-  if (isDownloadPage) return <DemoDownloadPage />;
+  if (isDownloadPage) return <Suspense fallback={<PageSpinner />}><DemoDownloadPage /></Suspense>;
 
   if (!user) {
-    if (view === "forgot") return <ForgotPasswordPage onBack={() => setView("login")} />;
-    if (view === "login") return <LoginPage onForgotPassword={() => setView("forgot")} />;
-    return <LandingPage onGetStarted={() => setView("login")} />;
+    if (view === "forgot") return <Suspense fallback={<PageSpinner />}><ForgotPasswordPage onBack={() => setView("login")} /></Suspense>;
+    if (view === "login") return <Suspense fallback={<PageSpinner />}><LoginPage onForgotPassword={() => setView("forgot")} /></Suspense>;
+    return <Suspense fallback={<PageSpinner />}><LandingPage onGetStarted={() => setView("login")} /></Suspense>;
   }
 
   if (view === "workspace") {
     return (
-      <>
+      <Suspense fallback={<PageSpinner />}>
         <Switch>
           <Route path="/demo">
             <ErrorBoundary fallbackTitle="Demo Video Error"><DemoVideo /></ErrorBoundary>
@@ -273,12 +286,12 @@ function AuthGate() {
         </Switch>
         <FloatingToolbar loggedIn={!!user} />
         {showTutorial && <OnboardingTutorial onClose={() => setShowTutorial(false)} />}
-      </>
+      </Suspense>
     );
   }
 
   return (
-    <>
+    <Suspense fallback={<PageSpinner />}>
       <ErrorBoundary fallbackTitle="Dashboard Error — Click Recover to continue">
         <Dashboard
           onOpenWorkspace={(tab?: AppTab) => {
@@ -289,7 +302,7 @@ function AuthGate() {
       </ErrorBoundary>
       <FloatingToolbar loggedIn={!!user} />
       {showTutorial && <OnboardingTutorial onClose={() => setShowTutorial(false)} />}
-    </>
+    </Suspense>
   );
 }
 
@@ -304,12 +317,14 @@ function App() {
         </WouterRouter>
         <Toaster />
         <OfflineGuard />
-        <ErrorBoundary fallbackTitle="Notification Error">
-          <UpdateNotification />
-        </ErrorBoundary>
-        <ElectronAutoUpdate />
-        <KeyboardShortcutOverlay />
-        <ContextualGuide />
+        <Suspense fallback={null}>
+          <ErrorBoundary fallbackTitle="Notification Error">
+            <UpdateNotification />
+          </ErrorBoundary>
+          <ElectronAutoUpdate />
+          <KeyboardShortcutOverlay />
+          <ContextualGuide />
+        </Suspense>
       </TooltipProvider>
     </QueryClientProvider>
   );

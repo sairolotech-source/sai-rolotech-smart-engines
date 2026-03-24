@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { Download, RefreshCw, CheckCircle, X, Zap, AlertCircle } from "lucide-react";
 import { useAppVersion } from "@/lib/appVersion";
 
-type UpdateState = "idle" | "checking" | "available" | "downloading" | "ready" | "error" | "latest";
+type UpdateState = "idle" | "checking" | "available" | "downloading" | "ready" | "countdown" | "error" | "latest";
 
 interface UpdateInfo {
   version?: string;
   percent?: number;
   error?: string;
+  countdown?: number;
 }
 
 const isElectron = () => !!(window as any).electronAPI?.checkForUpdates;
@@ -53,6 +54,13 @@ export function ElectronAutoUpdate() {
       setState("latest");
       setVisible(true);
       setTimeout(() => setVisible(false), 4000);
+    });
+
+    api.onUpdateCountdown?.((data: { seconds: number; version: string }) => {
+      setInfo(prev => ({ ...prev, version: data.version, countdown: data.seconds }));
+      setState("countdown");
+      setVisible(true);
+      setMinimized(false);
     });
   }, []);
 
@@ -198,6 +206,39 @@ export function ElectronAutoUpdate() {
               <p className="text-[10px]" style={{ color: "#52525b" }}>
                 Download complete hone ke baad auto install ho jayega
               </p>
+            </>
+          )}
+
+          {state === "countdown" && (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="relative w-9 h-9 flex-shrink-0">
+                  <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(249,115,22,0.15)" strokeWidth="3"/>
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="#f97316" strokeWidth="3"
+                      strokeDasharray={`${((info.countdown ?? 30) / 30) * 94} 94`}
+                      style={{ transition: "stroke-dasharray 1s linear" }}
+                    />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold" style={{ color: "#f97316" }}>
+                    {info.countdown}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-[12px] font-semibold" style={{ color: "#f1f5f9" }}>
+                    Auto Install {info.countdown}s mein!
+                  </div>
+                  <div className="text-[10px]" style={{ color: "#71717a" }}>v{info.version} install ho raha hai</div>
+                </div>
+              </div>
+              <button
+                onClick={installNow}
+                className="w-full py-2 rounded-lg text-[12px] font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
+                style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "white" }}
+              >
+                <Zap size={13} />
+                Abhi Install Karo (Skip Countdown)
+              </button>
             </>
           )}
 

@@ -692,6 +692,11 @@ function setupIPC(): void {
   });
 
   ipcMain.handle("quit-and-install", () => {
+    if ((global as any).__updateTimer) {
+      clearInterval((global as any).__updateTimer);
+      (global as any).__updateTimer = null;
+    }
+    isQuitting = true;
     autoUpdater.quitAndInstall();
   });
 
@@ -700,7 +705,7 @@ function setupIPC(): void {
     try {
       return JSON.parse(fs.readFileSync(settingsPath, "utf8"));
     } catch {
-      return { checkFrequency: "startup", autoDownload: false };
+      return { checkFrequency: "startup", autoDownload: true };
     }
   });
 
@@ -749,7 +754,7 @@ function getUpdateSettings(): { checkFrequency: string; autoDownload: boolean } 
   try {
     return JSON.parse(fs.readFileSync(settingsPath, "utf8"));
   } catch {
-    return { checkFrequency: "startup", autoDownload: false };
+    return { checkFrequency: "startup", autoDownload: true };
   }
 }
 
@@ -823,13 +828,13 @@ function setupAutoUpdater(): void {
       success: true,
     });
 
-    dialog.showMessageBox(mainWindow!, {
-      type:    "info",
-      title:   "Update Ready",
-      message: `Version ${info.version} download ho gaya! Restart karein to install ho jaayega.`,
-      buttons: ["Restart Now", "Later"],
-    }).then(({ response }) => {
-      if (response === 0) {
+    // Auto-install after 30 seconds — user can click "Install Now" in the app panel earlier
+    let countdown = 30;
+    const timer = setInterval(() => {
+      countdown--;
+      mainWindow?.webContents.send("update-countdown", { seconds: countdown, version: info.version });
+      if (countdown <= 0) {
+        clearInterval(timer);
         logUpdateHistory({
           version: info.version,
           action: "installed",
@@ -839,7 +844,10 @@ function setupAutoUpdater(): void {
         isQuitting = true;
         autoUpdater.quitAndInstall();
       }
-    });
+    }, 1000);
+
+    // Store timer reference so "Install Now" button can clear it
+    (global as any).__updateTimer = timer;
   });
 
   autoUpdater.on("error", (err) => {

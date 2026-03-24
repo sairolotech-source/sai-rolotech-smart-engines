@@ -45,6 +45,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
 
+  onUpdateCountdown: (callback: (data: { seconds: number; version: string }) => void) => {
+    ipcRenderer.on("update-countdown", (_event, data) => callback(data));
+  },
+
   showNotification: (title: string, message: string) =>
     ipcRenderer.send("show-notification", { title, message }),
 

@@ -41,13 +41,13 @@ const API_PORT    = 3001;
 const IS_DEV      = process.env.NODE_ENV === "development" || !app.isPackaged;
 const IS_WIN      = process.platform === "win32";
 
-// --- Valid License Keys (offline fallback) -----------------------------------
+// --- Valid License Keys (offline fallback — DEMO KEY intentionally excluded) --
 const VALID_LICENSE_KEYS = new Set([
   "SAIR-2026-ROLL-FORM",
   "SAIR-2026-ENGI-NEER",
   "SAIR-2026-PREM-IUMS",
   "SAIR-PRO-2026-MSTR",
-  "SAIR-DEMO-2026-TRIAL",
+  // SAIR-DEMO-2026-TRIAL is NOT here: demo must verify server-side, no offline fallback
 ]);
 
 // --- Admin Server URL --------------------------------------------------------
@@ -1048,6 +1048,17 @@ function startRuntimeLicenseCheck(): void {
           app.quit();
           return;
         }
+        if (result && (result as { demoExpired?: boolean }).demoExpired) {
+          nukeTrialData();
+          dialog.showMessageBoxSync({
+            type: "error",
+            title: "Demo Trial Khatam",
+            message: `Aapka ${DEMO_TRIAL_HOURS}-ghante ka demo trial khatam ho gaya.\n\nFull license ke liye contact karein:\nsupport@sairolotech.com`,
+            buttons: ["Exit"],
+          });
+          app.quit();
+          return;
+        }
         if (result && result.active) {
           activation.lastVerifiedAt = new Date().toISOString();
           saveActivation(activation);
@@ -1234,7 +1245,7 @@ async function verifyTokenOnline(token: string, hwId: string): Promise<{ active:
 async function registerOnline(payload: {
   key: string; name: string; mobile: string; hwId: string;
   systemInfo: Record<string, string>;
-}): Promise<{ ok: boolean; token?: string; message?: string; error?: string; blocked?: boolean } | null> {
+}): Promise<{ ok: boolean; token?: string; message?: string; error?: string; blocked?: boolean; demoExpired?: boolean } | null> {
   try {
     const https = require("https") as typeof import("https");
     const http = require("http") as typeof import("http");
@@ -1498,6 +1509,17 @@ async function verifyLicense(): Promise<boolean> {
         type: "error",
         title: "Access Blocked",
         message: `Aapka access admin ne band kar diya hai.\n\n${result.error || ""}\n\nContact: support@sairolotech.com`,
+        buttons: ["Exit"],
+      });
+      return false;
+    }
+
+    if (result.demoExpired) {
+      nukeTrialData();
+      dialog.showMessageBoxSync({
+        type: "error",
+        title: "Demo Trial Khatam",
+        message: `Is machine par demo trial pehle hi use ho chuka hai.\n\nDemo sirf ek baar ${DEMO_TRIAL_HOURS} ghante ke liye milta hai.\n\nFull license lene ke liye contact karein:\nsupport@sairolotech.com`,
         buttons: ["Exit"],
       });
       return false;

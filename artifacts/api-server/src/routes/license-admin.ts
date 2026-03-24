@@ -5,13 +5,15 @@ import crypto from "crypto";
 
 const REGISTRY_PATH = path.resolve("/home/runner/workspace/data/license-registry.json");
 const ADMIN_PASSWORD = process.env["ADMIN_PASSWORD"] || "SAIRTECH-ADMIN-2026";
+const DEMO_KEY = "SAIR-DEMO-2026-TRIAL";
+const DEMO_TRIAL_HOURS = 24;
 
 const VALID_LICENSE_KEYS = new Set([
   "SAIR-2026-ROLL-FORM",
   "SAIR-2026-ENGI-NEER",
   "SAIR-2026-PREM-IUMS",
   "SAIR-PRO-2026-MSTR",
-  "SAIR-DEMO-2026-TRIAL",
+  DEMO_KEY,
 ]);
 
 interface LicenseEntry {
@@ -28,6 +30,7 @@ interface LicenseEntry {
   blockedAt: string | null;
   blockedReason: string | null;
   ipAddress: string;
+  demoStartedAt: string | null;
 }
 
 function loadRegistry(): LicenseEntry[] {
@@ -68,6 +71,15 @@ function requireAdmin(req: Request, res: Response): boolean {
   return true;
 }
 
+function isDemoExpiredForEntry(entry: LicenseEntry): boolean {
+  if (entry.key !== DEMO_KEY) return false;
+  const startStr = entry.demoStartedAt || entry.activatedAt;
+  const startTime = new Date(startStr).getTime();
+  if (isNaN(startTime)) return false;
+  const elapsed = Date.now() - startTime;
+  return elapsed > DEMO_TRIAL_HOURS * 60 * 60 * 1000;
+}
+
 // ── Public License Router (mounted at /license in apiRouter) ──────────────────
 export const licenseRouter: IRouter = Router();
 
@@ -100,6 +112,25 @@ licenseRouter.post("/register", (req: Request, res: Response) => {
       });
       return;
     }
+
+    // Demo key: check if trial already expired on this machine (server-side permanent lock)
+    if (cleanKey === DEMO_KEY || existing.key === DEMO_KEY) {
+      if (isDemoExpiredForEntry(existing)) {
+        res.status(403).json({
+          ok: false,
+          demoExpired: true,
+          error: "Is machine par demo trial pehle hi use ho chuka hai aur khatam ho gaya hai. Full license lene ke liye contact karein: support@sairolotech.com",
+        });
+        return;
+      }
+      // Demo still active — return existing token
+      existing.lastSeenAt = new Date().toISOString();
+      if (systemInfo) existing.systemInfo = systemInfo;
+      saveRegistry(registry);
+      res.json({ ok: true, token: existing.token, message: "Demo session active — token refreshed" });
+      return;
+    }
+
     existing.lastSeenAt = new Date().toISOString();
     existing.name = name.trim();
     existing.mobile = mobile.trim();
@@ -109,9 +140,14 @@ licenseRouter.post("/register", (req: Request, res: Response) => {
     return;
   }
 
+  // New registration — if demo key, check if this hwId ever used demo before
+  // (covers case where nukeTrialData deleted local files but hwId is already in registry under different entry)
+  // Already handled by `existing` check above; if not existing, allow first-time demo registration.
+
   const token = generateToken(hwId, name);
   const ip = ((req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "")
     .split(",")[0]?.trim() || "unknown";
+  const now = new Date().toISOString();
 
   const entry: LicenseEntry = {
     id: generateId(),
@@ -121,19 +157,24 @@ licenseRouter.post("/register", (req: Request, res: Response) => {
     hwId,
     systemInfo: systemInfo ?? {},
     token,
-    activatedAt: new Date().toISOString(),
-    lastSeenAt: new Date().toISOString(),
+    activatedAt: now,
+    lastSeenAt: now,
     blocked: false,
     blockedAt: null,
     blockedReason: null,
     ipAddress: ip,
+    demoStartedAt: cleanKey === DEMO_KEY ? now : null,
   };
 
   registry.push(entry);
   saveRegistry(registry);
 
-  console.log(`[License] New registration: ${name} | ${mobile} | HW: ${hwId.slice(0, 8)}...`);
-  res.json({ ok: true, token, message: `Welcome ${name}! Software activate ho gaya.` });
+  const msg = cleanKey === DEMO_KEY
+    ? `Welcome ${name}! Demo trial shuru ho gaya — ${DEMO_TRIAL_HOURS} ghante ke liye available hai.`
+    : `Welcome ${name}! Software activate ho gaya.`;
+
+  console.log(`[License] New registration: ${name} | ${mobile} | HW: ${hwId.slice(0, 8)}... | Key: ${cleanKey}`);
+  res.json({ ok: true, token, message: msg });
 });
 
 // GET /api/license/verify?token=xxx&hwId=yyy
@@ -157,6 +198,16 @@ licenseRouter.get("/verify", (req: Request, res: Response) => {
     res.json({
       active: false, blocked: true,
       reason: entry.blockedReason || "Admin ne access band kar diya hai",
+    });
+    return;
+  }
+
+  // Demo key: server-side expiry check
+  if (entry.key === DEMO_KEY && isDemoExpiredForEntry(entry)) {
+    res.json({
+      active: false,
+      demoExpired: true,
+      reason: "Demo trial khatam ho gaya. Full license ke liye contact karein: support@sairolotech.com",
     });
     return;
   }
@@ -185,7 +236,8 @@ adminRouter.get("/stats", (req: Request, res: Response) => {
   const active = total - blocked;
   const today = new Date().toDateString();
   const todayNew = registry.filter(e => new Date(e.activatedAt).toDateString() === today).length;
-  res.json({ ok: true, total, active, blocked, todayNew });
+  const demoExpired = registry.filter(e => isDemoExpiredForEntry(e)).length;
+  res.json({ ok: true, total, active, blocked, todayNew, demoExpired });
 });
 
 // POST /api/admin/users/:id/block
@@ -217,6 +269,26 @@ adminRouter.post("/users/:id/unblock", (req: Request, res: Response) => {
   saveRegistry(registry);
   console.log(`[Admin] Unblocked: ${entry.name} | ${entry.mobile}`);
   res.json({ ok: true, message: `${entry.name} ka access restore kar diya gaya` });
+});
+
+// POST /api/admin/users/:id/reset-demo  (admin can give another demo chance)
+adminRouter.post("/users/:id/reset-demo", (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  const { id } = req.params;
+  const registry = loadRegistry();
+  const entry = registry.find(e => e.id === id);
+  if (!entry) { res.status(404).json({ ok: false, error: "User not found" }); return; }
+  if (entry.key !== DEMO_KEY) {
+    res.status(400).json({ ok: false, error: "Yeh user demo key use nahi karta" });
+    return;
+  }
+  const now = new Date().toISOString();
+  entry.demoStartedAt = now;
+  entry.activatedAt = now;
+  entry.lastSeenAt = now;
+  saveRegistry(registry);
+  console.log(`[Admin] Demo reset: ${entry.name} | ${entry.mobile}`);
+  res.json({ ok: true, message: `${entry.name} ka demo trial reset kar diya gaya — nayi ${DEMO_TRIAL_HOURS} ghante ki trial shuru` });
 });
 
 // DELETE /api/admin/users/:id

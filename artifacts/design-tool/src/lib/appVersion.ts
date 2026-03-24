@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
-export const APP_VERSION = "2.2.15";
-export const APP_VERSION_TAG = "v2.2.15";
+export const APP_VERSION = "2.2.16";
+export const APP_VERSION_TAG = "v2.2.16";
 
 export function useAppVersion(): string {
   const [version, setVersion] = useState(APP_VERSION_TAG);

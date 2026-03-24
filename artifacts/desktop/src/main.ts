@@ -163,6 +163,70 @@ function _logCrash(detail: string): void {
   } catch { /* never throw from crash handler */ }
 }
 
+// --- Startup Diagnostic Log --------------------------------------------------
+// Har launch par ek sai-diagnostic.log file likhta hai
+// Bina kisi PowerShell ke problem diagnose karna asaan ho jaye
+
+function writeDiagnosticLog(): void {
+  try {
+    const logDir  = path.join(os.tmpdir(), "sai-rolotech-diag");
+    const logFile = path.join(logDir, "sai-diagnostic.log");
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+
+    const userDataPath = appIsReady ? app.getPath("userData") : "not-ready";
+    const logsPath     = appIsReady ? app.getPath("logs")     : "not-ready";
+    const exePath      = process.execPath;
+    const installDir   = path.dirname(exePath);
+    const cacheDir     = path.join(userDataPath, "Cache");
+    const cacheExists  = fs.existsSync(cacheDir);
+
+    const lines = [
+      `========== SAI Rolotech Smart Engines — Diagnostic Log ==========`,
+      `Time         : ${new Date().toISOString()}`,
+      `App Version  : ${APP_VERSION}`,
+      `Exe Path     : ${exePath}`,
+      `Install Dir  : ${installDir}`,
+      `UserData     : ${userDataPath}`,
+      `Logs Dir     : ${logsPath}`,
+      `Cache Exists : ${cacheExists}`,
+      `Is Dev       : ${IS_DEV}`,
+      `Is Packaged  : ${app.isPackaged}`,
+      `Platform     : ${process.platform} ${os.arch()}`,
+      `OS Version   : ${os.version?.() ?? os.release()}`,
+      `Node Version : ${process.version}`,
+      `Electron Ver : ${process.versions.electron ?? "n/a"}`,
+      `Process PID  : ${process.pid}`,
+      `Single Lock  : ${app.hasSingleInstanceLock()}`,
+      `API Port     : ${API_PORT}`,
+      ``,
+      `--- Files in Install Dir ---`,
+    ];
+
+    try {
+      const files = fs.readdirSync(installDir).slice(0, 20);
+      files.forEach(f => lines.push(`  ${f}`));
+    } catch { lines.push("  (could not read)"); }
+
+    lines.push(``, `--- AppData Contents ---`);
+    try {
+      if (fs.existsSync(userDataPath)) {
+        const dirs = fs.readdirSync(userDataPath).slice(0, 30);
+        dirs.forEach(d => lines.push(`  ${d}`));
+      } else {
+        lines.push("  (userData not found)");
+      }
+    } catch { lines.push("  (could not read)"); }
+
+    lines.push(``, `=================================================================`);
+    lines.push(``);
+
+    fs.appendFileSync(logFile, lines.join("\n"), "utf8");
+    console.log(`[Diag] Diagnostic log written: ${logFile}`);
+  } catch (e) {
+    console.warn("[Diag] Could not write diagnostic log:", e);
+  }
+}
+
 // --- Browser Window ----------------------------------------------------------
 
 async function createMainWindow(): Promise<void> {
@@ -1629,6 +1693,9 @@ app.whenReady().then(async () => {
 
   console.log(`[App] Starting ${APP_NAME} v${APP_VERSION}`);
   console.log(`[App] isDev=${IS_DEV}, platform=${process.platform}`);
+
+  // Write diagnostic log on every launch
+  writeDiagnosticLog();
 
   if (!IS_DEV) {
     await killPortProcess(API_PORT);

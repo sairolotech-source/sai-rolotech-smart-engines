@@ -23,6 +23,7 @@ import smartToolSelectorRouter from "./smart-tool-selector";
 import gcodeSafetyRouter from "./gcode-safety";
 import githubUpdateRouter, { startAutoUpdate } from "./github-update";
 import installRouter from "./install";
+import serialRouter from "./serial";
 import { licenseRouter, adminRouter } from "./license-admin";
 import { requireAuth } from "../middleware/auth";
 
@@ -60,6 +61,7 @@ router.use(drawingVisionRouter);
 router.use(smartToolSelectorRouter);
 router.use(gcodeSafetyRouter);
 router.use(githubUpdateRouter);
+router.use(serialRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

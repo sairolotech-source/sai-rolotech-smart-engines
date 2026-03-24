@@ -150,7 +150,8 @@ function calcShaftDiameter(
 
   const M_Nm = (formingForceN * rollWidthM) / 4;
   const P_W = motorKw * 1000;
-  const T_Nm = rpm > 0 ? (P_W * 9550) / (rpm * 1000) * 1000 : (formingForceN * 0.05);
+  // T(Nm) = P(W) / ω = P(W) × 9.55 / rpm   [correct: P_W not P_kW here]
+  const T_Nm = rpm > 0 ? (P_W * 9.55) / rpm : (formingForceN * 0.05);
 
   const combinedMoment = Math.sqrt(M_Nm * M_Nm + T_Nm * T_Nm);
   const d_req_m = Math.pow((16 * combinedMoment) / (Math.PI * tau_allow * 1e6), 1 / 3);

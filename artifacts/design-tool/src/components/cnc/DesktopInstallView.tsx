@@ -157,8 +157,7 @@ if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
 
 try {
     Write-Host "  GitHub se code download ho raha hai..." -ForegroundColor Cyan
-    Invoke-WebRequest "https://github.com/sairolotech-source/sai-rolotech-smart-engines/archive/refs/heads/main.zip" `
-        -OutFile $RepoZip -UseBasicParsing
+    Invoke-WebRequest "https://github.com/sairolotech-source/sai-rolotech-smart-engines/archive/refs/heads/main.zip" -OutFile $RepoZip -UseBasicParsing
     Write-Host "  Download complete! Extract ho raha hai..." -ForegroundColor Green
     Expand-Archive -Path $RepoZip -DestinationPath $ExtractDir -Force
     $srcFolder = Get-ChildItem $ExtractDir | Select-Object -First 1

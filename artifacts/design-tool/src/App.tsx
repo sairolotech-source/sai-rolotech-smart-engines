@@ -14,6 +14,7 @@ import { LoginPage } from "@/components/auth/LoginPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { useAuthStore } from "@/store/useAuthStore";
 import { UpdateNotification } from "@/components/UpdateNotification";
+import { ElectronAutoUpdate } from "@/components/ElectronAutoUpdate";
 import { KeyboardShortcutOverlay } from "@/components/KeyboardShortcutOverlay";
 import { ContextualGuide } from "@/components/ContextualGuide";
 import { useCncStore, type AppTab } from "@/store/useCncStore";
@@ -185,6 +186,7 @@ function App() {
         <ErrorBoundary fallbackTitle="Notification Error">
           <UpdateNotification />
         </ErrorBoundary>
+        <ElectronAutoUpdate />
         <KeyboardShortcutOverlay />
         <ContextualGuide />
       </TooltipProvider>

@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("update-not-available", () => callback());
   },
 
+  quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
+
   showNotification: (title: string, message: string) =>
     ipcRenderer.send("show-notification", { title, message }),
 
@@ -73,6 +75,7 @@ declare global {
       onUpdateDownloaded: (callback: (data: { version: string }) => void) => void;
       onUpdateError:     (callback: (data: { message: string }) => void) => void;
       onUpdateNotAvailable: (callback: () => void) => void;
+      quitAndInstall:    () => Promise<void>;
       showNotification:  (title: string, message: string) => void;
       isElectron:        true;
       apiBaseUrl:        string;

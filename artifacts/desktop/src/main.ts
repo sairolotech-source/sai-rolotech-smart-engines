@@ -691,6 +691,10 @@ function setupIPC(): void {
     autoUpdater.checkForUpdatesAndNotify();
   });
 
+  ipcMain.handle("quit-and-install", () => {
+    autoUpdater.quitAndInstall();
+  });
+
   ipcMain.handle("get-update-settings", () => {
     const settingsPath = path.join(app.getPath("userData"), "update-settings.json");
     try {

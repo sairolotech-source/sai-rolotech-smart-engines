@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Download, X, RefreshCw } from "lucide-react";
+import { APP_VERSION_TAG } from "@/lib/appVersion";
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = APP_VERSION_TAG.replace("v", "");
 const VERSION_CHECK_INTERVAL = 30 * 60 * 1000;
 
 export function UpdateNotification() {

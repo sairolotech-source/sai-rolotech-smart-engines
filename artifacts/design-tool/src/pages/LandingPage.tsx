@@ -5,8 +5,9 @@ import {
   ChevronRight, Star, Sparkles, GitBranch, Scissors, Bot, Wrench, Monitor, Download,
 } from "lucide-react";
 import DemoVideo from "@/pages/DemoVideo";
+import { useAppVersion } from "@/lib/appVersion";
 
-const WHATS_NEW_VERSION = "v2.2.0";
+const WHATS_NEW_VERSION = "v2.2.6";
 const WHATS_NEW_DATE = "Mar 2026";
 const WHATS_NEW_ITEMS = [
   { icon: <Shield className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />, text: "G-Code Pre-Flight Safety Validator" },
@@ -319,6 +320,7 @@ const COMPARISON = [
 ];
 
 export function LandingPage({ onGetStarted }: Props) {
+  const appVersion = useAppVersion();
   return (
     <div className="min-h-screen text-white overflow-x-hidden" style={{ background: "linear-gradient(135deg, #04060e 0%, #0a0d1a 25%, #060818 50%, #0c0a1e 75%, #04060e 100%)" }}>
 
@@ -617,7 +619,7 @@ export function LandingPage({ onGetStarted }: Props) {
                   SAI Rolotech Smart Engines — Live Demo · U-Channel 40×25mm GP 1.2mm
                 </div>
               </div>
-              <div className="text-[10px] font-mono" style={{ color: "#3f3f46" }}>v2.2.0</div>
+              <div className="text-[10px] font-mono" style={{ color: "#3f3f46" }}>{appVersion}</div>
             </div>
 
             {/* Demo video fills the frame */}

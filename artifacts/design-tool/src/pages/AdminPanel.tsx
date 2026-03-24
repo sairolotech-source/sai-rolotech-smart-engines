@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAppVersion } from "@/lib/appVersion";
 
 const ADMIN_API = "/api/admin";
 
@@ -44,6 +45,7 @@ function formatDate(iso: string): string {
 }
 
 export default function AdminPanel() {
+  const appVersion = useAppVersion();
   const [password, setPassword] = useState(() => sessionStorage.getItem("sai_admin_pwd") || "");
   const [loggedIn, setLoggedIn] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -184,7 +186,7 @@ export default function AdminPanel() {
             {loading ? "Verifying..." : "Login"}
           </button>
           <p style={{ color: "#52525b", fontSize: 11, textAlign: "center", marginTop: 16 }}>
-            SAI Rolotech Smart Engines v2.2.1
+            SAI Rolotech Smart Engines {appVersion}
           </p>
         </div>
       </div>

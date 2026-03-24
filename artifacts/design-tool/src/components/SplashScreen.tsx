@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { onDownloadProgress, initSWDownloadManager } from "@/lib/sw-download-manager";
+import { useAppVersion } from "@/lib/appVersion";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -207,6 +208,7 @@ function WarpLines({ active }: { active: boolean }) {
 }
 
 export function SplashScreen({ onComplete, minDuration = 5500 }: SplashScreenProps) {
+  const appVersion = useAppVersion();
   const [phase, setPhase] = useState<"init" | "space" | "planets" | "brand" | "loading" | "warp" | "fadeout">("init");
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("Entering orbit...");
@@ -650,7 +652,7 @@ export function SplashScreen({ onComplete, minDuration = 5500 }: SplashScreenPro
                 color: "rgba(156,163,175,0.5)",
                 letterSpacing: "0.08em",
               }}>
-                v2.2.0 Ultra Pro Max — Hardware-First Architecture
+                {appVersion} Ultra Pro Max — Hardware-First Architecture
               </span>
             </div>
           </div>

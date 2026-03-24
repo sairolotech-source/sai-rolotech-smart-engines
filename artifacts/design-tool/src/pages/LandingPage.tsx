@@ -7,13 +7,13 @@ import {
 import DemoVideo from "@/pages/DemoVideo";
 import { useAppVersion } from "@/lib/appVersion";
 
-const WHATS_NEW_VERSION = "v2.2.20";
+const WHATS_NEW_VERSION = "v2.2.21";
 const WHATS_NEW_DATE = "Mar 2026";
 const WHATS_NEW_ITEMS = [
-  { icon: <Sparkles className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />, text: "Gemini 3.1 Pro AI — Activated" },
-  { icon: <Shield className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />, text: "Fix: No Retry/Close Error During Install" },
-  { icon: <Zap className="w-3.5 h-3.5" style={{ color: "#06b6d4" }} />, text: "Smart Multi-Pass Roughing (G71/G70)" },
-  { icon: <BarChart3 className="w-3.5 h-3.5" style={{ color: "#34d399" }} />, text: "Manufacturing Feasibility Report" },
+  { icon: <Layers className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />, text: "Integrated Flower + Roll Design View" },
+  { icon: <Zap className="w-3.5 h-3.5" style={{ color: "#06b6d4" }} />, text: "Electric Motor Capacity Calculator (IEC)" },
+  { icon: <BarChart3 className="w-3.5 h-3.5" style={{ color: "#34d399" }} />, text: "Camber & Crown Compensation Panel" },
+  { icon: <Monitor className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />, text: "1-Min Software Demo Video on Home Page" },
 ];
 
 function PremiumLaptopMockup() {

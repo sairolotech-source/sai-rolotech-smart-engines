@@ -123,7 +123,7 @@ jobs:
       - name: Upload installer as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SAI-Rolotech-Smart-Engines-v2.2.20-Windows
+          name: SAI-Rolotech-Smart-Engines-v2.2.21-Windows
           path: |
             artifacts/desktop/release/*.exe
           retention-days: 30
@@ -143,9 +143,15 @@ jobs:
             ### Windows Portable
             Download **SAI-Rolotech-Smart-Engines-Portable.exe** — no installation needed, run directly.
 
-            ### Features
+            ### What's New in v2.2.21
+            - **Integrated Flower + Roll Design View** — Pass schedule chart, per-station cross-sections, OD progression, machine spec, camber/crown compensation
+            - **Electric Motor Capacity Calculator** — IEC frame selection, gearbox ratio, VFD recommendation, drive efficiency
+            - **Camber & Crown Compensation Panel** — Material-specific crown %, springback overbend, per-station springback table
+            - **1-Minute Software Demo Video** — 10-scene animated showcase on home page
+
+            ### All Features
             - Flower Pattern Design & Springback Compensation
-            - Roll Tooling Designer (DXF export)
+            - Roll Tooling Designer (DXF export, G-Code)
             - TurnAxis CNC G-Code Generator
             - AI Defect Diagnosis (fully offline — 1625 patterns)
             - Digital Twin Simulation

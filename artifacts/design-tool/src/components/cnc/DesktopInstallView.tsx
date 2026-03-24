@@ -183,7 +183,7 @@ Write-Host "[7/7] Naye shortcuts bana raha hun..." -ForegroundColor Yellow
 $WshShell = New-Object -comObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut("$env:USERPROFILE\\Desktop\\SAI Rolotech Smart Engines.lnk")
 $Shortcut.TargetPath = "cmd.exe"
-$Shortcut.Arguments = "/c cd /d `"$InstallDir`" && pnpm --filter @workspace/design-tool run dev && timeout 3 && start http://localhost:5000"
+$Shortcut.Arguments = "/c cd /d ""$InstallDir"" && pnpm --filter @workspace/design-tool run dev && timeout 3 && start http://localhost:5000"
 $Shortcut.WindowStyle = 7
 $Shortcut.Description = "SAI Rolotech Smart Engines v2.2"
 if (Test-Path "$InstallDir\\artifacts\\desktop\\assets\\icon.ico") {
@@ -196,7 +196,7 @@ $StartMenuDir = "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\SAI Rol
 if (-not (Test-Path $StartMenuDir)) { New-Item -ItemType Directory -Path $StartMenuDir -Force | Out-Null }
 $ShortcutSM = $WshShell.CreateShortcut("$StartMenuDir\\SAI Rolotech Smart Engines.lnk")
 $ShortcutSM.TargetPath = "cmd.exe"
-$ShortcutSM.Arguments = "/c cd /d `"$InstallDir`" && pnpm --filter @workspace/design-tool run dev && timeout 3 && start http://localhost:5000"
+$ShortcutSM.Arguments = "/c cd /d ""$InstallDir"" && pnpm --filter @workspace/design-tool run dev && timeout 3 && start http://localhost:5000"
 $ShortcutSM.WindowStyle = 7
 $ShortcutSM.Description = "SAI Rolotech Smart Engines v2.2"
 $ShortcutSM.Save()

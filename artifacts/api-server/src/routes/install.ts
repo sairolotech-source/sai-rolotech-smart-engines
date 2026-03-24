@@ -1,29 +1,68 @@
 import { Router, type Request, type Response } from "express";
+import https from "https";
 
 const router = Router();
 const GITHUB_REPO = "sairolotech-source/sai-rolotech-smart-engines";
 
-function getSetupAsset(assets: { name: string; browser_download_url: string; size: number }[]) {
-  // Always prefer "Setup" installer — never Portable
-  return assets?.find((a) => a.name.includes("Setup") && a.name.endsWith(".exe"))
-    ?? assets?.find((a) => a.name.endsWith(".exe") && !a.name.endsWith(".blockmap") && !a.name.includes("Portable"));
+function ghHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" };
+  const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GH_TOKEN || "";
+  if (token) h["Authorization"] = `token ${token}`;
+  return h;
 }
 
-// Public endpoint — no auth required
-// PowerShell (as Admin): irm https://<domain>:8080/api/install | iex
+async function fetchLatestRelease() {
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, { headers: ghHeaders() });
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  return res.json() as Promise<{ tag_name: string; name: string; published_at: string; assets: { id: number; name: string; browser_download_url: string; size: number; url: string }[] }>;
+}
+
+function getSetupAsset(assets: any[]) {
+  return assets?.find((a: any) => a.name.includes("Setup") && a.name.endsWith(".exe"))
+    ?? assets?.find((a: any) => a.name.endsWith(".exe") && !a.name.endsWith(".blockmap") && !a.name.includes("Portable"));
+}
+
+function proxyUrl(req: Request, asset: any): string {
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost:8080") as string;
+  const proto = (req.headers["x-forwarded-proto"] ?? "https") as string;
+  return `${proto}://${host}/api/download/proxy/${asset.id}/${asset.name}`;
+}
+
+router.get("/download/proxy/:assetId/:filename", async (req: Request, res: Response) => {
+  try {
+    const assetId = req.params.assetId;
+    const filename = req.params.filename || "SAI-Rolotech-Setup.exe";
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/releases/assets/${assetId}`;
+    const headers = { ...ghHeaders(), Accept: "application/octet-stream" };
+
+    const proxyReq = https.get(url, { headers }, (proxyRes) => {
+      if (proxyRes.statusCode === 302 && proxyRes.headers.location) {
+        https.get(proxyRes.headers.location, (finalRes) => {
+          res.setHeader("Content-Type", "application/octet-stream");
+          res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+          if (finalRes.headers["content-length"]) res.setHeader("Content-Length", finalRes.headers["content-length"]);
+          finalRes.pipe(res);
+        }).on("error", (e) => res.status(500).json({ error: String(e) }));
+        return;
+      }
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      if (proxyRes.headers["content-length"]) res.setHeader("Content-Length", proxyRes.headers["content-length"]);
+      proxyRes.pipe(res);
+    });
+    proxyReq.on("error", (e) => res.status(500).json({ error: String(e) }));
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.get("/install", async (_req: Request, res: Response) => {
   try {
-    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-      headers: { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" }
-    });
-    const release = await ghRes.json() as {
-      tag_name: string;
-      assets: { name: string; browser_download_url: string; size: number }[];
-    };
+    const release = await fetchLatestRelease();
 
-    const tag = release.tag_name ?? "v2.2.11";
+    const tag = release.tag_name ?? "v2.2.18";
     const asset = getSetupAsset(release.assets ?? []);
-    const url = asset?.browser_download_url ??
+    const url = asset ? proxyUrl(_req, asset) :
       `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
     const sizeMB = asset ? Math.round(asset.size / 1024 / 1024) : 83;
 
@@ -70,44 +109,30 @@ Write-Host "=========================================" -ForegroundColor Green
 
 // ── Direct download redirect — one click, installer starts automatically ──────
 // Visit: /api/download → browser auto-downloads latest Setup.exe
-router.get("/download", async (_req: Request, res: Response) => {
+router.get("/download", async (req: Request, res: Response) => {
   try {
-    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-      headers: { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" }
-    });
-    const release = await ghRes.json() as {
-      tag_name: string;
-      assets: { name: string; browser_download_url: string; size: number }[];
-    };
+    const release = await fetchLatestRelease();
     const asset = getSetupAsset(release.assets ?? []);
     if (!asset) {
       res.status(404).json({ error: "Installer not found in latest release" });
       return;
     }
-    // Redirect directly to GitHub download → browser auto-downloads
-    res.redirect(302, asset.browser_download_url);
+    res.redirect(302, `/api/download/proxy/${asset.id}/${asset.name}`);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
 });
 
 // ── Download page — HTML page with auto-download + all file links ─────────────
-router.get("/download-page", async (_req: Request, res: Response) => {
+router.get("/download-page", async (req: Request, res: Response) => {
   try {
-    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-      headers: { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" }
-    });
-    const release = await ghRes.json() as {
-      tag_name: string;
-      name: string;
-      assets: { name: string; browser_download_url: string; size: number }[];
-    };
+    const release = await fetchLatestRelease();
 
-    const tag = release.tag_name ?? "v2.2.15";
+    const tag = release.tag_name ?? "v2.2.18";
     const setupAsset   = getSetupAsset(release.assets ?? []);
-    const portableAsset = release.assets?.find(a => a.name.includes("Portable") && a.name.endsWith(".exe"));
-    const setupUrl    = setupAsset?.browser_download_url ?? "";
-    const portableUrl = portableAsset?.browser_download_url ?? "";
+    const portableAsset = (release.assets ?? []).find((a: any) => a.name.includes("Portable") && a.name.endsWith(".exe"));
+    const setupUrl    = setupAsset ? proxyUrl(req, setupAsset) : "";
+    const portableUrl = portableAsset ? proxyUrl(req, portableAsset) : "";
     const setupMB     = setupAsset    ? Math.round(setupAsset.size    / 1024 / 1024) : 83;
     const portableMB  = portableAsset ? Math.round(portableAsset.size / 1024 / 1024) : 83;
 
@@ -185,21 +210,15 @@ router.get("/download-page", async (_req: Request, res: Response) => {
 });
 
 // JSON info endpoint
-router.get("/install/info", async (_req: Request, res: Response) => {
+router.get("/install/info", async (req: Request, res: Response) => {
   try {
-    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-      headers: { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" }
-    });
-    const release = await ghRes.json() as {
-      tag_name: string; name: string; published_at: string;
-      assets: { name: string; browser_download_url: string; size: number }[];
-    };
+    const release = await fetchLatestRelease();
     const asset = getSetupAsset(release.assets ?? []);
     res.json({
       version: release.tag_name,
       name: release.name,
       publishedAt: release.published_at,
-      downloadUrl: asset?.browser_download_url,
+      downloadUrl: asset ? proxyUrl(req, asset) : null,
       fileName: asset?.name,
       sizeMB: asset ? Math.round(asset.size / 1024 / 1024) : null,
     });

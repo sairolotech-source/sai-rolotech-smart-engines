@@ -142,30 +142,27 @@ Write-Host "=========================================" -ForegroundColor Green
 
 // ── Direct download redirect — one click, installer starts automatically ──────
 // Visit: /api/download → browser auto-downloads latest Setup.exe
-router.get("/download", async (req: Request, res: Response) => {
+router.get("/download", async (_req: Request, res: Response) => {
   try {
     const release = await fetchLatestRelease();
     const asset = getSetupAsset(release.assets ?? []);
-    if (!asset) {
-      res.status(404).json({ error: "Installer not found in latest release" });
-      return;
-    }
-    res.redirect(302, `/api/download/proxy/${asset.id}/${asset.name}`);
+    if (!asset) { res.status(404).json({ error: "Installer not found" }); return; }
+    const directUrl = await getDirectDownloadUrl(asset.id);
+    res.redirect(302, directUrl);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
 });
 
-// ── Download page — HTML page with auto-download + all file links ─────────────
-router.get("/download-page", async (req: Request, res: Response) => {
+router.get("/download-page", async (_req: Request, res: Response) => {
   try {
     const release = await fetchLatestRelease();
 
     const tag = release.tag_name ?? "v2.2.18";
     const setupAsset   = getSetupAsset(release.assets ?? []);
     const portableAsset = (release.assets ?? []).find((a: any) => a.name.includes("Portable") && a.name.endsWith(".exe"));
-    const setupUrl    = setupAsset ? proxyUrl(req, setupAsset) : "";
-    const portableUrl = portableAsset ? proxyUrl(req, portableAsset) : "";
+    const setupUrl    = setupAsset ? await getDirectDownloadUrl(setupAsset.id) : "";
+    const portableUrl = portableAsset ? await getDirectDownloadUrl(portableAsset.id) : "";
     const setupMB     = setupAsset    ? Math.round(setupAsset.size    / 1024 / 1024) : 83;
     const portableMB  = portableAsset ? Math.round(portableAsset.size / 1024 / 1024) : 83;
 

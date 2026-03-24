@@ -86,7 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
 
         <p className="text-[10px] text-zinc-700">
-          v2.2.6 · Error logged · sairolotech.com
+          v2.2.11 · Error logged · sairolotech.com
         </p>
       </div>
     );

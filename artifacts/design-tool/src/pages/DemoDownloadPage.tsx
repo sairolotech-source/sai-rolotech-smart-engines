@@ -8,7 +8,7 @@ import {
 const GITHUB_REPO = "https://github.com/sairolotech-source/sai-rolotech-smart-engines";
 const GITHUB_ZIP = `${GITHUB_REPO}/archive/refs/heads/main.zip`;
 const DEMO_LINK = "https://www.sairolotech.com";
-const VERSION = "v2.2.6";
+const VERSION = "v2.2.11";
 
 const FEATURES = [
   { icon: <Scissors className="w-4 h-4" />, text: "DXF/DWG Import → Flower Pattern" },

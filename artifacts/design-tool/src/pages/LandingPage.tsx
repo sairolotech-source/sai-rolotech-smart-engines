@@ -7,7 +7,7 @@ import {
 import DemoVideo from "@/pages/DemoVideo";
 import { useAppVersion } from "@/lib/appVersion";
 
-const WHATS_NEW_VERSION = "v2.2.6";
+const WHATS_NEW_VERSION = "v2.2.11";
 const WHATS_NEW_DATE = "Mar 2026";
 const WHATS_NEW_ITEMS = [
   { icon: <Shield className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />, text: "G-Code Pre-Flight Safety Validator" },

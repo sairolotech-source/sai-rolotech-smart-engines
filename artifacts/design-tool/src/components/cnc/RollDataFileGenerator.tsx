@@ -295,7 +295,7 @@ function buildStationSVG(
   <text x="${20+(W-16)*4/5}" y="${H-FOOTER_H+26}" class="value">${new Date().toLocaleDateString("en-IN")} / A</text>
 
   <!-- Footer bottom row -->
-  <text x="20" y="${H-12}" class="label" fill="#94a3b8">SAI ROLOTECH SMART ENGINES v2.2.6  |  Station ${stNum} of ${stationLabel}</text>
+  <text x="20" y="${H-12}" class="label" fill="#94a3b8">SAI ROLOTECH SMART ENGINES v2.2.11  |  Station ${stNum} of ${stationLabel}</text>
   <text x="${W-16}" y="${H-12}" text-anchor="end" class="label" fill="#94a3b8">ST-${String(stNum).padStart(2,"0")}_${stationLabel.replace(/\s+/g,"_").toUpperCase()}.svg</text>
 </svg>`;
 }

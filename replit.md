@@ -92,6 +92,47 @@ The project is structured as a pnpm workspace monorepo containing `api-server`, 
 - **20-Layer Testing Engine:** Offline validation across 20 levels.
 - **Desktop App (Electron):** Windows Electron app with GPU acceleration, worker threads, adaptive 3D quality, and auto-updater.
 
+## v2.2.15+ New Features (March 2026 — AI Suggestions Implemented)
+
+**1. Dark/Light Theme Toggle (`useThemeStore.ts`)**
+- Zustand persist store with `dark` and `light` themes
+- `applyTheme()` adds `light-mode` / `dark-mode` class to `document.documentElement`
+- Light mode CSS variables added to `index.css` (`.light-mode` class)
+- Toggle button in `FloatingToolbar` (bottom-left, moon/sun icon)
+
+**2. User Role System (`useRoleStore.ts`)**
+- Roles: `admin`, `engineer`, `viewer` — persisted via Zustand
+- `ROLE_PERMISSIONS` map for action-based access control
+- Role badge in `FloatingToolbar` with inline role switcher
+- Role-aware via `can(action)` utility
+
+**3. Interactive Tutorial (`OnboardingTutorial.tsx`)**
+- 7-step guided onboarding overlay with progress dots
+- Auto-shows on first login (after `sai-tutorial-done` localStorage check)
+- Steps: Welcome → DXF → Flower → G-Code → Super Pro Mode → Project Share → Done
+- Replay via 📚 button in FloatingToolbar
+
+**4. Project Share (`ProjectShare.tsx`)**
+- Export project as base64-encoded JSON share code
+- Import from share code — restores `profileName`, `materialType`, `materialThickness`, `numStations`, `openSectionType`, `stations`, `rollDiameter`, `shaftDiameter`
+- Access via 🔗 button in FloatingToolbar
+
+**5. Super Pro Mode AI Upgrade (`AutoCADEngineeringDrawing.tsx`)**
+- Expanded QUICK_CMDS from 6 → 14 (springback, bend radius, machine speed, roll tooling material, cost estimate, defect diagnosis, station angles, section convert)
+- Richer system prompt: K-factor rules, springback math, cost data injected as AI context
+- Live project data (paper size, drawn by, rev, sheet) included in every prompt
+
+**6. DXF Enhancement (`DXFImportView.tsx`)**
+- Smart validation panel in Info tab: Quality Score (0-100), progress bar
+- Profile type auto-detection from aspect ratio (U-Section/Hat, C-Section/Z-Section, Sigma/Omega, Closed/Tube)
+- Contextual warnings: too few entities, too many layers, no arcs, scale verification
+
+**FloatingToolbar (bottom-left of screen when logged in):**
+- 🌙/☀️ — Theme Toggle
+- 🔗 — Project Share
+- 📚 — Tutorial Replay
+- ⚙/★/👁 — Role Switcher (Admin/Engineer/Viewer)
+
 ## External Dependencies
 
 - **Authentication:** Offline Token Auth (no external provider)

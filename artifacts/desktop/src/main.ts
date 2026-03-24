@@ -1582,23 +1582,58 @@ async function verifyLicense(): Promise<boolean> {
   return false;
 }
 
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  console.log("[App] Another instance is already running — quitting this one.");
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+function killPortProcess(port: number): Promise<void> {
+  return new Promise((resolve) => {
+    if (process.platform !== "win32") { resolve(); return; }
+    const { exec } = require("child_process");
+    exec(`netstat -ano | findstr :${port} | findstr LISTENING`, (err: any, stdout: string) => {
+      if (err || !stdout.trim()) { resolve(); return; }
+      const pids = new Set<string>();
+      stdout.trim().split("\n").forEach((line: string) => {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && pid !== "0" && pid !== String(process.pid)) pids.add(pid);
+      });
+      if (pids.size === 0) { resolve(); return; }
+      console.log(`[App] Killing old processes on port ${port}: PIDs ${[...pids].join(", ")}`);
+      const killCmd = [...pids].map(p => `taskkill /PID ${p} /F`).join(" & ");
+      exec(killCmd, () => { setTimeout(resolve, 1500); });
+    });
+  });
+}
+
 app.whenReady().then(async () => {
   appIsReady = true;
 
-  // Force dark mode
   nativeTheme.themeSource = "dark";
 
   console.log(`[App] Starting ${APP_NAME} v${APP_VERSION}`);
   console.log(`[App] isDev=${IS_DEV}, platform=${process.platform}`);
 
-  // Verify license key before anything else
+  if (!IS_DEV) {
+    await killPortProcess(API_PORT);
+  }
+
   const licensed = await verifyLicense();
   if (!licensed) {
     app.quit();
     return;
   }
 
-  // Start API server
   await startApiServer();
 
   // Create window

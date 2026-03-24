@@ -204,7 +204,7 @@ export function LeftPanel() {
     setFileName, setGeometry, setNumStations, setStationPrefix,
     setMaterialThickness, setBendAllowanceMethod, setStations, setGcodeOutputs,
     setGcodeConfig, updateTool, addTool, removeTool, setRollTooling, setRollGaps,
-    setMachineData, setBomResult,
+    setMachineData, setMotorCalc, setBomResult,
     setRollDiameter, setShaftDiameter, setClearance, setLoading, setError, reset,
     setProfileName, setMaterialType, setLineSpeed, setArborLength, setSpacerLimit,
     setOpenSectionType, applyShutterPreset, applyPopAnglePreset, setActiveTab,
@@ -547,6 +547,7 @@ export function LeftPanel() {
       setRollTooling(result.rollTooling);
       if (result.rollGaps) setRollGaps(result.rollGaps);
       if (result.machineData) setMachineData(result.machineData);
+      if (result.motorCalc) setMotorCalc(result.motorCalc);
       if (result.bom) setBomResult(result.bom);
 
       if (result.rollTooling && result.rollTooling.length > 0) {
@@ -566,7 +567,7 @@ export function LeftPanel() {
     } finally {
       setLoading(false);
     }
-  }, [geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, openSectionType, setStations, setRollTooling, setRollGaps, setMachineData, setBomResult, setLoading, setError, scoreTask]);
+  }, [geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, openSectionType, setStations, setRollTooling, setRollGaps, setMachineData, setMotorCalc, setBomResult, setLoading, setError, scoreTask]);
 
   const inputCls = "rt-input";
   const inputSmCls = "rt-input-sm";

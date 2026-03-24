@@ -441,6 +441,28 @@ export interface CncCuttingParams {
   docFinish: number;
 }
 
+export interface MotorCalcResult {
+  deformationPowerKw: number;
+  frictionPowerKw: number;
+  shaftPowerKw: number;
+  totalRequiredKw: number;
+  selectedMotorKw: number;
+  motorFrame: string;
+  motorRpm: number;
+  motorTorqueNm: number;
+  driveEfficiency: number;
+  serviceFactor: number;
+  gearboxRatioRequired: number;
+  recommendedGearboxRatio: number;
+  outputShaftRpm: number;
+  lineSpeedTargetMpm: number;
+  lineSpeedActualMpm: number;
+  rollCircumferenceMm: number;
+  vfdRecommended: boolean;
+  powerDensityKwPerStation: number;
+  warnings: string[];
+}
+
 export interface MachineData {
   materialType: string;
   materialThickness: number;
@@ -838,6 +860,7 @@ interface CncState {
   rollTooling: RollToolingResult[];
   rollGaps: RollGapInfo[];
   machineData: MachineData | null;
+  motorCalc: MotorCalcResult | null;
   bomResult: BomResult | null;
   rollDiameter: number;
   shaftDiameter: number;
@@ -912,6 +935,7 @@ interface CncState {
   setRollTooling: (r: RollToolingResult[]) => void;
   setRollGaps: (g: RollGapInfo[]) => void;
   setMachineData: (m: MachineData | null) => void;
+  setMotorCalc: (m: MotorCalcResult | null) => void;
   setBomResult: (b: BomResult | null) => void;
   setPostProcessorId: (id: string) => void;
   setRollDiameter: (d: number) => void;
@@ -985,6 +1009,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
   rollTooling: [],
   rollGaps: [],
   machineData: null,
+  motorCalc: null,
   bomResult: null,
   rollDiameter: 150,
   shaftDiameter: 40,
@@ -1101,6 +1126,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
   setRollTooling: (r) => set({ rollTooling: r }),
   setRollGaps: (g) => set({ rollGaps: g }),
   setMachineData: (m) => set({ machineData: m }),
+  setMotorCalc: (m) => set({ motorCalc: m }),
   setBomResult: (b) => set({ bomResult: b }),
   setPostProcessorId: (id) => set({ postProcessorId: id }),
   setRollDiameter: (d) => set({ rollDiameter: d }),
@@ -1149,6 +1175,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
       rollTooling: [],
       rollGaps: [],
       machineData: null,
+      motorCalc: null,
       bomResult: null,
       postProcessorId: "delta_2x",
       machineProfile: null,

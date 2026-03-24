@@ -762,7 +762,7 @@ export function CompletePackagePanel({ autoGenerate = false }: { autoGenerate?: 
     geometry, numStations, stationPrefix, materialThickness,
     rollDiameter, shaftDiameter, clearance, materialType, openSectionType,
     postProcessorId,
-    setRollTooling, setRollGaps, setStations, setMachineData, setBomResult,
+    setRollTooling, setRollGaps, setStations, setMachineData, setMotorCalc, setBomResult,
   } = useCncStore();
   const [activeTab, setActiveTab] = useState<PackageTab>("rolls");
   const [generating, setGenerating] = useState(false);
@@ -786,13 +786,14 @@ export function CompletePackagePanel({ autoGenerate = false }: { autoGenerate?: 
       if (result.rollTooling) setRollTooling(result.rollTooling);
       if (result.rollGaps) setRollGaps(result.rollGaps);
       if (result.machineData) setMachineData(result.machineData);
+      if (result.motorCalc) setMotorCalc(result.motorCalc);
       if (result.bom) setBomResult(result.bom);
     } catch (err: unknown) {
       setGenError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
     }
-  }, [geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, openSectionType, setStations, setRollTooling, setRollGaps, setMachineData, setBomResult]);
+  }, [geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, openSectionType, setStations, setRollTooling, setRollGaps, setMachineData, setMotorCalc, setBomResult]);
 
   // Auto-generate on first open if data is missing
   useEffect(() => {

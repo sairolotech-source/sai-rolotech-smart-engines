@@ -12,6 +12,7 @@ import { SetupSheetGenerator } from "./SetupSheetGenerator";
 import { GcodeStepVerifier } from "./GcodeStepVerifier";
 import { AIToolRecommender } from "./AIToolRecommender";
 import { CompletePackagePanel } from "./CompletePackagePanel";
+import { RollFlowerIntegratedView } from "./RollFlowerIntegratedView";
 
 const UPPER_COLOR = "#3b82f6";
 const LOWER_COLOR = "#f97316";
@@ -1592,13 +1593,13 @@ function ProfileRulesEngine() {
 }
 
 // ─── Main view ────────────────────────────────────────────────────────────────
-type RollView = "stations" | "gap" | "summary" | "mfg" | "cam" | "bom" | "assembly" | "rolltypes" | "rules" | "engineering";
+type RollView = "integrated" | "stations" | "gap" | "summary" | "mfg" | "cam" | "bom" | "assembly" | "rolltypes" | "rules" | "engineering";
 
 export function RollToolingView() {
   const { rollTooling, rollGaps, accuracyLog, accuracyThreshold } = useCncStore();
   const latestToolingScore = [...accuracyLog].reverse().find(e => e.taskType === "tooling");
   const [expandedStation, setExpandedStation] = useState<number | null>(1);
-  const [view, setView] = useState<RollView>("stations");
+  const [view, setView] = useState<RollView>("integrated");
   const [showPackagePanel, setShowPackagePanel] = useState(false);
 
   const totalRolls = rollTooling.length * 2;
@@ -1672,6 +1673,7 @@ export function RollToolingView() {
 
         <div className="flex gap-1 ml-4 flex-wrap">
           {([
+            ["integrated",  "🌸", "Integrated",    "amber"],
             ["stations",    "⚙",  "Per Roll",      "blue"],
             ["engineering", "📐", "Sizing Calc",   "green"],
             ["gap",         "⊟",  "Gap Calc",      "blue"],
@@ -1749,6 +1751,8 @@ export function RollToolingView() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+        {view === "integrated" && <RollFlowerIntegratedView />}
+
         {view === "stations" && rollTooling.map((rt) => (
           <StationRollPair key={rt.stationNumber} rt={rt}
             totalStations={rollTooling.length}

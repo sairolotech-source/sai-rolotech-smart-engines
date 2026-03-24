@@ -98,6 +98,7 @@ const RealMukablaView = lazy(() => import("../components/cnc/RealMukablaView").t
 const FEASimulationView = lazy(() => import("../components/cnc/FEASimulationView").then(m => ({ default: m.FEASimulationView })));
 const GCodeVerificationView = lazy(() => import("../components/cnc/GCodeVerificationView").then(m => ({ default: m.GCodeVerificationView })));
 const AdvancedCAMView = lazy(() => import("../components/cnc/AdvancedCAMView").then(m => ({ default: m.AdvancedCAMView })));
+const HardwareDashboardView = lazy(() => import("../components/cnc/HardwareDashboardView").then(m => ({ default: m.HardwareDashboardView })));
 const ERPIntegrationView = lazy(() => import("../components/cnc/ERPIntegrationView").then(m => ({ default: m.ERPIntegrationView })));
 const DXFImportView = lazy(() => import("../components/cnc/DXFImportView").then(m => ({ default: m.DXFImportView })));
 const GCodeSimulatorView = lazy(() => import("../components/cnc/GCodeSimulatorView").then(m => ({ default: m.GCodeSimulatorView })));
@@ -406,6 +407,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "_history", label: "History", icon: <History className="w-4 h-4" />, desc: "Design version history", action: () => setShowHistory(true) },
         { id: "_exports", label: "Export Log", icon: <ClipboardList className="w-4 h-4" />, desc: "View export history", action: () => setShowExportHistory(true) },
         { id: "_drive", label: "Google Drive", icon: <Cloud className="w-4 h-4" />, desc: "Cloud backup & sync", action: () => setShowDrive(true) },
+        { id: "hardware-dashboard", label: "Hardware Dashboard", icon: <Cpu className="w-4 h-4" />, desc: "Live RAM, GPU, CPU — Hardware Boost Mode" },
         { id: "_system", label: "System Info", icon: <HardDrive className="w-4 h-4" />, desc: "GPU, RAM, CPU monitor", action: () => setShowSystemInfo(true) },
       ],
     },
@@ -475,6 +477,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "fea-simulation": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FEASimulationView /></div></Suspense>;
       case "gcode-verify": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><GCodeVerificationView /></div></Suspense>;
       case "advanced-cam": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AdvancedCAMView /></div></Suspense>;
+      case "hardware-dashboard": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><HardwareDashboardView /></div></Suspense>;
       case "erp-integration": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><ERPIntegrationView /></div></Suspense>;
       case "dxf-import": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DXFImportView /></div></Suspense>;
       case "gcode-simulator": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><GCodeSimulatorView /></div></Suspense>;

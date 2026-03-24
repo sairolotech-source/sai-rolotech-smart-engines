@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { APP_VERSION_TAG } from "@/lib/appVersion";
 import { useCncStore, type AppTab } from "../store/useCncStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
@@ -901,8 +902,8 @@ export default function Home({ onBackToDashboard }: HomeProps) {
               <h2 className="text-xl font-bold text-white mb-1">Sai Rolotech Smart Engines</h2>
               <p className="text-xs font-medium tracking-widest uppercase mb-4" style={{ color: "#52525b" }}>Smart Engines Platform</p>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6"
-                style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#60a5fa" }}>
-                Version 2.1.0
+                style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}>
+                Version {APP_VERSION_TAG}
               </div>
 
               <div className="space-y-3 text-left rounded-xl p-4"
@@ -910,10 +911,12 @@ export default function Home({ onBackToDashboard }: HomeProps) {
                 <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#71717a" }}>Changelog</h3>
                 <div className="space-y-2">
                   {[
-                    { ver: "2.1.0", title: "Figma-Level Premium UI Redesign", desc: "Sidebar navigation, glassmorphism panels, premium dark theme" },
-                    { ver: "2.0.0", title: "Commercial UI/UX Overhaul", desc: "Landing page, dashboard, polished workspace" },
-                    { ver: "1.9.0", title: "3D Studio & Digital Twin", desc: "Full 3D CAD/CAM with machine visualization" },
-                    { ver: "1.8.0", title: "Factory Smart Modules", desc: "8 smart modules for smart manufacturing" },
+                    { ver: "2.2.11", title: "Auto-Update Engine + IPC Fix", desc: "downloadUpdate IPC, hard-reset conflict resolver, ElectronAutoUpdate UI" },
+                    { ver: "2.2.9",  title: "One-Command Windows Installer", desc: "install.ps1, auto-kill old version, Desktop + Start Menu shortcut guarantee" },
+                    { ver: "2.2.0",  title: "GitHub Auto-Update System", desc: "Live GitHub pull, version tracking, Admin panel update controls" },
+                    { ver: "2.1.0",  title: "Figma-Level Premium UI Redesign", desc: "Sidebar navigation, glassmorphism panels, premium dark theme" },
+                    { ver: "2.0.0",  title: "Commercial UI/UX Overhaul", desc: "Landing page, dashboard, polished workspace" },
+                    { ver: "1.9.0",  title: "3D Studio & Digital Twin", desc: "Full 3D CAD/CAM with machine visualization" },
                   ].map((entry, i) => (
                     <div key={i} className="flex items-start gap-3 py-1.5">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0 mt-0.5"

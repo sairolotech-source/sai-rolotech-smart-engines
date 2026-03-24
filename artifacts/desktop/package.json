@@ -1,6 +1,6 @@
 {
   "name": "@workspace/desktop",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "SAI Rolotech Smart Engines  -  Roll Forming Engineering Suite (Windows Desktop)",
   "private": true,
   "main": "dist/main.js",

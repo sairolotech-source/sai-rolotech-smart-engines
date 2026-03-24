@@ -261,8 +261,10 @@ function AuthGate() {
 
   const [isDownloadPage] = useRoute("/download");
   const [isAdminPage] = useRoute("/admin");
+  const [isDemoVideoPage] = useRoute("/demo");
 
   if (isAdminPage) return <Suspense fallback={<PageSpinner />}><AdminPanel /></Suspense>;
+  if (isDemoVideoPage) return <Suspense fallback={<PageSpinner />}><DemoVideo /></Suspense>;
   if (!initialized || !splashDone) return <SplashScreen3D onComplete={handleSplashComplete} />;
   if (isDownloadPage) return <Suspense fallback={<PageSpinner />}><DemoDownloadPage /></Suspense>;
 

@@ -1,19 +1,41 @@
 import { Router, Request, Response } from "express";
-import { SerialPort } from "serialport";
-import { ReadlineParser } from "@serialport/parser-readline";
 
 const router = Router();
 
-// Active connections store
-const activeConnections: Map<string, { port: SerialPort; parser: ReadlineParser; buffer: string[] }> = new Map();
+let SerialPortClass: any = null;
+let ReadlineParserClass: any = null;
+let serialAvailable = false;
 
-// ── List available COM ports ──────────────────────────────────────────────────
+try {
+  SerialPortClass = require("serialport").SerialPort;
+  ReadlineParserClass = require("@serialport/parser-readline").ReadlineParser;
+  serialAvailable = true;
+  console.log("[serial] SerialPort library loaded OK");
+} catch {
+  console.log("[serial] SerialPort not available — hardware routes disabled (normal on cloud/Replit)");
+}
+
+const activeConnections: Map<string, { port: any; parser: any; buffer: string[] }> = new Map();
+
+function requireSerial(_req: Request, res: Response): boolean {
+  if (!serialAvailable) {
+    res.status(503).json({
+      success: false,
+      error: "SerialPort library not available. Yeh feature sirf Windows Desktop App (.exe) mein kaam karta hai.",
+      hint: "GitHub Releases se .exe download karo: https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases"
+    });
+    return false;
+  }
+  return true;
+}
+
 router.get("/serial/ports", async (_req: Request, res: Response) => {
+  if (!requireSerial(_req, res)) return;
   try {
-    const ports = await SerialPort.list();
+    const ports = await SerialPortClass.list();
     res.json({
       success: true,
-      ports: ports.map(p => ({
+      ports: ports.map((p: any) => ({
         path: p.path,
         manufacturer: p.manufacturer || "Unknown",
         serialNumber: p.serialNumber || "",
@@ -27,40 +49,26 @@ router.get("/serial/ports", async (_req: Request, res: Response) => {
   }
 });
 
-// ── Connect to a COM port ─────────────────────────────────────────────────────
 router.post("/serial/connect", (req: Request, res: Response) => {
+  if (!requireSerial(req, res)) return;
   const { path, baudRate = 115200, dataBits = 8, parity = "none", stopBits = 1 } = req.body;
-
   if (!path) return res.status(400).json({ success: false, error: "COM port path required" });
-
-  if (activeConnections.has(path)) {
-    return res.json({ success: true, message: "Already connected", path });
-  }
+  if (activeConnections.has(path)) return res.json({ success: true, message: "Already connected", path });
 
   try {
-    const port = new SerialPort({ path, baudRate: Number(baudRate), dataBits, parity, stopBits, autoOpen: false });
-    const parser = port.pipe(new ReadlineParser({ delimiter: "\n" }));
+    const port = new SerialPortClass({ path, baudRate: Number(baudRate), dataBits, parity, stopBits, autoOpen: false });
+    const parser = port.pipe(new ReadlineParserClass({ delimiter: "\n" }));
     const buffer: string[] = [];
 
-    port.open((err) => {
-      if (err) {
-        return res.status(500).json({ success: false, error: `Port open failed: ${err.message}` });
-      }
+    port.open((err: any) => {
+      if (err) return res.status(500).json({ success: false, error: `Port open failed: ${err.message}` });
 
       parser.on("data", (line: string) => {
         buffer.push(`[RX] ${line.trim()}`);
         if (buffer.length > 500) buffer.shift();
       });
-
-      port.on("error", (e) => {
-        console.error(`[serial] Error on ${path}:`, e.message);
-        activeConnections.delete(path);
-      });
-
-      port.on("close", () => {
-        console.log(`[serial] Port ${path} closed`);
-        activeConnections.delete(path);
-      });
+      port.on("error", (e: any) => { console.error(`[serial] Error on ${path}:`, e.message); activeConnections.delete(path); });
+      port.on("close", () => { console.log(`[serial] Port ${path} closed`); activeConnections.delete(path); });
 
       activeConnections.set(path, { port, parser, buffer });
       console.log(`[serial] Connected to ${path} @ ${baudRate} baud`);
@@ -71,62 +79,57 @@ router.post("/serial/connect", (req: Request, res: Response) => {
   }
 });
 
-// ── Disconnect from a COM port ────────────────────────────────────────────────
 router.post("/serial/disconnect", (req: Request, res: Response) => {
+  if (!requireSerial(req, res)) return;
   const { path } = req.body;
   const conn = activeConnections.get(path);
   if (!conn) return res.json({ success: true, message: "Not connected" });
 
-  conn.port.close((err) => {
+  conn.port.close((err: any) => {
     activeConnections.delete(path);
     if (err) return res.status(500).json({ success: false, error: String(err) });
     res.json({ success: true, message: `Disconnected from ${path}` });
   });
 });
 
-// ── Send G-Code command ───────────────────────────────────────────────────────
 router.post("/serial/send", (req: Request, res: Response) => {
+  if (!requireSerial(req, res)) return;
   const { path, command } = req.body;
   const conn = activeConnections.get(path);
-
   if (!conn) return res.status(400).json({ success: false, error: "Not connected to this port" });
   if (!command) return res.status(400).json({ success: false, error: "Command required" });
 
   const cmd = command.trim() + "\n";
-  conn.port.write(cmd, (err) => {
+  conn.port.write(cmd, (err: any) => {
     if (err) return res.status(500).json({ success: false, error: String(err) });
     conn.buffer.push(`[TX] ${command.trim()}`);
     res.json({ success: true, sent: command.trim() });
   });
 });
 
-// ── Send full G-Code file (line by line with delay) ───────────────────────────
 router.post("/serial/send-gcode", async (req: Request, res: Response) => {
+  if (!requireSerial(req, res)) return;
   const { path, lines, delayMs = 100 } = req.body;
   const conn = activeConnections.get(path);
-
   if (!conn) return res.status(400).json({ success: false, error: "Not connected to this port" });
   if (!Array.isArray(lines) || lines.length === 0) return res.status(400).json({ success: false, error: "G-Code lines required" });
 
   res.json({ success: true, message: `Sending ${lines.length} lines to ${path}...`, total: lines.length });
 
   for (const line of lines) {
-    const clean = line.trim();
+    const clean = (line as string).trim();
     if (!clean || clean.startsWith(";")) continue;
     await new Promise<void>((resolve, reject) => {
-      conn.port.write(clean + "\n", (err) => {
+      conn.port.write(clean + "\n", (err: any) => {
         if (err) reject(err);
-        else {
-          conn.buffer.push(`[TX] ${clean}`);
-          setTimeout(resolve, Number(delayMs));
-        }
+        else { conn.buffer.push(`[TX] ${clean}`); setTimeout(resolve, Number(delayMs)); }
       });
     }).catch(() => {});
   }
 });
 
-// ── Read received data buffer ─────────────────────────────────────────────────
 router.post("/serial/buffer", (req: Request, res: Response) => {
+  if (!requireSerial(req, res)) return;
   const { path } = req.body;
   if (!path) return res.status(400).json({ success: false, error: "Path required" });
   const conn = activeConnections.get(path);
@@ -136,14 +139,13 @@ router.post("/serial/buffer", (req: Request, res: Response) => {
   res.json({ success: true, lines });
 });
 
-// ── Status of all connections ─────────────────────────────────────────────────
 router.get("/serial/status", (_req: Request, res: Response) => {
   const connections = Array.from(activeConnections.entries()).map(([path, conn]) => ({
     path,
-    isOpen: conn.port.isOpen,
-    baudRate: (conn.port as any).baudRate,
+    isOpen: conn.port?.isOpen ?? false,
+    baudRate: conn.port?.baudRate ?? 0,
   }));
-  res.json({ success: true, connections });
+  res.json({ success: true, available: serialAvailable, connections });
 });
 
 export default router;

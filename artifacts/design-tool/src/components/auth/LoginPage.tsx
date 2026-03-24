@@ -1,6 +1,17 @@
-import React, { useState, useRef } from "react";
-import { Eye, EyeOff, Lock, Mail, UserPlus, ArrowRight, Cog, Layers, CircleDot, Terminal, Phone, MessageSquare } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Eye, EyeOff, Lock, Mail, UserPlus, ArrowRight, Cog, Layers, CircleDot, Terminal, Phone, MessageSquare, Fingerprint, ShieldCheck, X } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
+import {
+  isBiometricSupported,
+  isBiometricRegistered,
+  isCrossDeviceRegistered,
+  checkPlatformAuthenticatorAvailable,
+  registerBiometric,
+  registerCrossDevice,
+  removeBiometricRegistration,
+  removeCrossDeviceRegistration,
+  getBiometricUser,
+} from "../../lib/webauthn";
 
 const IS_DEV = import.meta.env.DEV;
 
@@ -9,7 +20,7 @@ interface Props {
 }
 
 export function LoginPage({ onForgotPassword }: Props) {
-  const { login, signup, loginWithGoogle, loginWithGitHub, loginWithPhone, verifyOTP, otpConfirmation, devLogin, loading, error: storeError } = useAuthStore();
+  const { login, signup, loginWithGoogle, loginWithGitHub, loginWithPhone, verifyOTP, otpConfirmation, devLogin, loginWithBiometric, loginWithCrossDevice, loading, error: storeError } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -24,6 +35,76 @@ export function LoginPage({ onForgotPassword }: Props) {
   const recaptchaContainerId = "recaptcha-container";
 
   const [socialLoading, setSocialLoading] = useState<"google" | "github" | null>(null);
+
+  // ── Biometric (platform) state ────────────────────────────────────────────
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricRegistered, setBiometricRegistered] = useState(false);
+  const [crossDeviceRegistered, setCrossDeviceRegistered] = useState(false);
+  const [biometricUser, setBiometricUser] = useState<string | null>(null);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [crossDeviceLoading, setCrossDeviceLoading] = useState(false);
+  const [showBiometricSetup, setShowBiometricSetup] = useState(false);
+  const [setupTab, setSetupTab] = useState<"device" | "mobile">("device");
+  const [setupEmail, setSetupEmail] = useState("");
+
+  useEffect(() => {
+    if (isBiometricSupported()) {
+      checkPlatformAuthenticatorAvailable().then(ok => {
+        setBiometricAvailable(ok);
+        setBiometricRegistered(isBiometricRegistered());
+        setCrossDeviceRegistered(isCrossDeviceRegistered());
+        setBiometricUser(getBiometricUser());
+      });
+    }
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    setLocalError(null);
+    const result = await loginWithBiometric();
+    setBiometricLoading(false);
+    if (!result.ok) setLocalError(result.error ?? "Fingerprint login failed");
+  };
+
+  const handleCrossDeviceLogin = async () => {
+    setCrossDeviceLoading(true);
+    setLocalError(null);
+    const result = await loginWithCrossDevice();
+    setCrossDeviceLoading(false);
+    if (!result.ok) setLocalError(result.error ?? "Mobile login failed");
+  };
+
+  const handleBiometricSetup = async () => {
+    if (!setupEmail.trim()) { setLocalError("Email enter karo"); return; }
+    setBiometricLoading(true);
+    setLocalError(null);
+    const result = await registerBiometric(setupEmail.trim());
+    setBiometricLoading(false);
+    if (result.ok) {
+      setBiometricRegistered(true);
+      setBiometricUser(setupEmail.trim());
+      setShowBiometricSetup(false);
+      setSuccessMsg("Is device ka fingerprint register ho gaya! Ab sirf fingerprint se login karo.");
+    } else {
+      setLocalError(result.error ?? "Registration failed");
+    }
+  };
+
+  const handleCrossDeviceSetup = async () => {
+    if (!setupEmail.trim()) { setLocalError("Email enter karo"); return; }
+    setCrossDeviceLoading(true);
+    setLocalError(null);
+    const result = await registerCrossDevice(setupEmail.trim());
+    setCrossDeviceLoading(false);
+    if (result.ok) {
+      setCrossDeviceRegistered(true);
+      setBiometricUser(setupEmail.trim());
+      setShowBiometricSetup(false);
+      setSuccessMsg("Mobile fingerprint register ho gaya! Ab laptop par QR scan karo aur mobile fingerprint se login karo.");
+    } else {
+      setLocalError(result.error ?? "Cross-device setup failed");
+    }
+  };
 
   const error = localError || storeError;
 
@@ -403,6 +484,156 @@ export function LoginPage({ onForgotPassword }: Props) {
                 </div>
                 <span className="relative px-3 text-[11px] text-zinc-600 bg-[#0a0c14]">or</span>
               </div>
+
+              {/* ── Biometric / Fingerprint Login Section ── */}
+              {isBiometricSupported() && (
+                <div className="mb-2.5 space-y-2">
+
+                  {/* --- Row 1: Platform fingerprint (this device) --- */}
+                  {biometricRegistered ? (
+                    <button
+                      type="button"
+                      onClick={handleBiometricLogin}
+                      disabled={biometricLoading || loading}
+                      className="w-full h-12 rounded-lg border border-green-500/30 bg-green-500/5 text-green-300 text-sm font-semibold flex items-center justify-center gap-3 hover:bg-green-500/10 hover:border-green-500/50 transition-all disabled:opacity-50 group"
+                    >
+                      {biometricLoading ? (
+                        <><div className="w-5 h-5 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" /><span>Scanning...</span></>
+                      ) : (
+                        <><Fingerprint className="w-5 h-5 group-hover:scale-110 transition-transform" /><span>Is Device ka Fingerprint</span>{biometricUser && <span className="text-[10px] text-green-500/60 font-normal">({biometricUser.split("@")[0]})</span>}</>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setShowBiometricSetup(true); setSetupTab("device"); setLocalError(null); }}
+                      className="w-full h-11 rounded-lg border border-blue-500/20 bg-blue-500/5 text-blue-400 text-sm font-medium flex items-center justify-center gap-2.5 hover:bg-blue-500/10 hover:border-blue-500/35 transition-all group"
+                    >
+                      <Fingerprint className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      Is Device ka Fingerprint Setup
+                      <span className="text-[9px] text-blue-500/60 border border-blue-500/20 px-1.5 py-0.5 rounded font-mono">NEW</span>
+                    </button>
+                  )}
+
+                  {/* --- Row 2: Cross-device (mobile phone QR) --- */}
+                  {crossDeviceRegistered ? (
+                    <button
+                      type="button"
+                      onClick={handleCrossDeviceLogin}
+                      disabled={crossDeviceLoading || loading}
+                      className="w-full h-12 rounded-lg border border-purple-500/30 bg-purple-500/5 text-purple-300 text-sm font-semibold flex items-center justify-center gap-3 hover:bg-purple-500/10 hover:border-purple-500/50 transition-all disabled:opacity-50 group"
+                    >
+                      {crossDeviceLoading ? (
+                        <><div className="w-5 h-5 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" /><span>Mobile se connect ho raha hai...</span></>
+                      ) : (
+                        <><span className="text-lg">📱</span><span>Mobile Fingerprint se Login (QR)</span>{biometricUser && <span className="text-[10px] text-purple-500/60 font-normal">({biometricUser.split("@")[0]})</span>}</>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setShowBiometricSetup(true); setSetupTab("mobile"); setLocalError(null); }}
+                      className="w-full h-11 rounded-lg border border-purple-500/15 bg-purple-500/5 text-purple-400/80 text-sm font-medium flex items-center justify-center gap-2.5 hover:bg-purple-500/8 hover:border-purple-500/30 hover:text-purple-300 transition-all group"
+                    >
+                      <span className="text-base group-hover:scale-110 transition-transform inline-block">📱</span>
+                      Laptop pe QR, Mobile se Fingerprint
+                      <span className="text-[9px] text-purple-500/50 border border-purple-500/20 px-1.5 py-0.5 rounded font-mono">NEW</span>
+                    </button>
+                  )}
+
+                  {/* remove links */}
+                  {(biometricRegistered || crossDeviceRegistered) && (
+                    <div className="flex items-center justify-center gap-4">
+                      {biometricRegistered && (
+                        <button type="button" onClick={() => { removeBiometricRegistration(); setBiometricRegistered(false); }} className="text-[10px] text-zinc-700 hover:text-zinc-500 flex items-center gap-1"><X className="w-2.5 h-2.5" />Device fingerprint hata do</button>
+                      )}
+                      {crossDeviceRegistered && (
+                        <button type="button" onClick={() => { removeCrossDeviceRegistration(); setCrossDeviceRegistered(false); }} className="text-[10px] text-zinc-700 hover:text-zinc-500 flex items-center gap-1"><X className="w-2.5 h-2.5" />Mobile fingerprint hata do</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Setup Modal ── */}
+              {showBiometricSetup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                  <div className="bg-[#0d1117] border border-blue-500/25 rounded-2xl p-6 w-full max-w-sm shadow-2xl shadow-blue-500/10">
+
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                        <Fingerprint className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-white">Fingerprint Setup</div>
+                        <div className="text-[10px] text-zinc-500">Bina password ke login karo</div>
+                      </div>
+                      <button onClick={() => { setShowBiometricSetup(false); setLocalError(null); }} className="ml-auto text-zinc-600 hover:text-zinc-300 transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex rounded-lg bg-white/[0.04] border border-white/[0.06] p-0.5 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => { setSetupTab("device"); setLocalError(null); }}
+                        className={`flex-1 h-8 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all ${setupTab === "device" ? "bg-blue-600 text-white shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+                      >
+                        <Fingerprint className="w-3 h-3" /> Is Device
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSetupTab("mobile"); setLocalError(null); }}
+                        className={`flex-1 h-8 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all ${setupTab === "mobile" ? "bg-purple-600 text-white shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+                      >
+                        <span>📱</span> Mobile Phone
+                      </button>
+                    </div>
+
+                    {/* Tab content */}
+                    {setupTab === "device" ? (
+                      <div className="space-y-3">
+                        <div className="bg-blue-500/5 border border-blue-500/15 rounded-lg p-3 text-[11px] text-blue-300/80 leading-relaxed">
+                          <ShieldCheck className="w-3.5 h-3.5 inline mr-1.5 text-blue-400" />
+                          Is laptop/computer ka fingerprint ya Windows Hello register hoga. Sirf isi device pe kaam karega.
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-zinc-400 font-medium">Apna Email</label>
+                          <input type="email" value={setupEmail} onChange={e => { setSetupEmail(e.target.value); setLocalError(null); }} placeholder="engineer@sairolotech.local" className="mt-1 w-full h-10 px-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all" />
+                        </div>
+                        {error && <div className="text-xs text-red-400 bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2">{error}</div>}
+                        <button type="button" onClick={handleBiometricSetup} disabled={biometricLoading} className="w-full h-11 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50">
+                          {biometricLoading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Scan ho raha hai...</> : <><Fingerprint className="w-4 h-4" /> Fingerprint Register Karo</>}
+                        </button>
+                        <p className="text-[10px] text-zinc-600 text-center">Button dabane ke baad device fingerprint / Windows Hello maangega</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="bg-purple-500/5 border border-purple-500/15 rounded-lg p-3 text-[11px] text-purple-300/80 leading-relaxed">
+                          <span className="mr-1.5">📱</span>
+                          <strong>Kaise kaam karta hai:</strong> Register button dabao → browser QR code dikhayega → mobile se scan karo → phone pe fingerprint lagao → ho gaya! Phir jab bhi login karo, wahi QR + fingerprint se laptop khul jaayega.
+                        </div>
+                        <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-2.5 text-[10px] text-zinc-500 space-y-1">
+                          <div className="flex items-center gap-1.5"><span className="text-green-400">✓</span> Android (Chrome 108+) — fingerprint sensor</div>
+                          <div className="flex items-center gap-1.5"><span className="text-green-400">✓</span> iPhone (iOS 16+, Safari) — Face ID / Touch ID</div>
+                          <div className="flex items-center gap-1.5"><span className="text-yellow-500">!</span> Mobile aur laptop ek hi WiFi par honge to best result</div>
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-zinc-400 font-medium">Apna Email</label>
+                          <input type="email" value={setupEmail} onChange={e => { setSetupEmail(e.target.value); setLocalError(null); }} placeholder="engineer@sairolotech.local" className="mt-1 w-full h-10 px-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50 transition-all" />
+                        </div>
+                        {error && <div className="text-xs text-red-400 bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2">{error}</div>}
+                        <button type="button" onClick={handleCrossDeviceSetup} disabled={crossDeviceLoading} className="w-full h-11 rounded-lg bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50">
+                          {crossDeviceLoading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> QR code aa raha hai...</> : <><span>📱</span> Mobile se Register Karo (QR Dikhega)</>}
+                        </button>
+                        <p className="text-[10px] text-zinc-600 text-center">Browser apna QR code dikhayega — mobile camera se scan karo</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2.5">
                 <button

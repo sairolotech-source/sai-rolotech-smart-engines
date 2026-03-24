@@ -43,6 +43,8 @@ interface AuthState {
   loginWithGitHub: () => Promise<void>;
   loginWithPhone: (phone: string, containerId: string) => Promise<void>;
   verifyOTP: (code: string) => Promise<void>;
+  loginWithBiometric: () => Promise<{ ok: boolean; error?: string }>;
+  loginWithCrossDevice: () => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshToken: () => Promise<string | null>;
@@ -162,6 +164,51 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       localStorage.setItem(OFFLINE_SESSION_KEY, "true");
       localStorage.setItem(DEMO_LOGIN_TIME_KEY, String(Date.now()));
     } catch {}
+  },
+
+  loginWithBiometric: async () => {
+    const { authenticateBiometric } = await import("../lib/webauthn");
+    set({ loading: true, error: null });
+    try {
+      const result = await authenticateBiometric();
+      if (result.ok) {
+        const offlineUser = createOfflineUser();
+        set({ user: offlineUser, token: "offline-sai-rolotech-biometric", loading: false });
+        localStorage.setItem(OFFLINE_SESSION_KEY, "true");
+        localStorage.setItem(DEMO_LOGIN_TIME_KEY, String(Date.now()));
+        return { ok: true };
+      } else {
+        set({ loading: false, error: result.error ?? "Biometric verification failed" });
+        return { ok: false, error: result.error };
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Biometric error";
+      set({ loading: false, error: msg });
+      return { ok: false, error: msg };
+    }
+  },
+
+  loginWithCrossDevice: async () => {
+    const { authenticateCrossDevice } = await import("../lib/webauthn");
+    set({ loading: true, error: null });
+    try {
+      const result = await authenticateCrossDevice();
+      if (result.ok) {
+        const offlineUser = createOfflineUser();
+        if (result.email) offlineUser.email = result.email;
+        set({ user: offlineUser, token: "offline-sai-rolotech-cross-device", loading: false });
+        localStorage.setItem(OFFLINE_SESSION_KEY, "true");
+        localStorage.setItem(DEMO_LOGIN_TIME_KEY, String(Date.now()));
+        return { ok: true };
+      } else {
+        set({ loading: false, error: result.error ?? "Mobile verification failed" });
+        return { ok: false, error: result.error };
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Cross-device auth error";
+      set({ loading: false, error: msg });
+      return { ok: false, error: msg };
+    }
   },
 
   logout: async () => {

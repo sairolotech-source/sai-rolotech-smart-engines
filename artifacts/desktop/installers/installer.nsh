@@ -1,6 +1,6 @@
-; SAI Rolotech Smart Engines — NSIS Custom Script (oneClick mode)
-; Fixed install path: %LOCALAPPDATA%\Programs\SAI Rolotech Smart Engines
-; Old version auto-killed and replaced on every install
+; SAI Rolotech Smart Engines — NSIS Custom Script
+; Install path: %LOCALAPPDATA%\Programs\SAI Rolotech Smart Engines
+; No key prompt during install — activation handled inside the app
 
 !macro customInit
   ; ── Kill all running instances before install ──
@@ -30,47 +30,9 @@
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SAI Sai Rolotech Smart Engines AI"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SAI Sai Rolotech Smart Engines AI"
 
-  ; ── Keep license key (preserve user data) ──
-  ReadRegStr $1 HKCU "Software\SAI Rolotech Smart Engines" "ProductKey"
-  StrCmp $1 "SAIR-2026-ROLL-FORM" keyok
-  StrCmp $1 "SAIR-2026-ENGI-NEER" keyok
-  StrCmp $1 "SAIR-2026-PREM-IUMS" keyok
-  StrCmp $1 "SAIR-PRO-2026-MSTR" keyok
-  StrCmp $1 "SAIR-DEMO-2026-TRIAL" keyok
-
-  ; No key found — ask for it
-  keyentry:
-    FileOpen $0 "$TEMP\sai-key-input.vbs" w
-    FileWrite $0 'key = InputBox("Enter your Product Key:" & vbCrLf & vbCrLf & "Format: XXXX-XXXX-XXXX-XXXX" & vbCrLf & "Email: support@sairolotech.com", "SAI Rolotech — Activation", "")$\r$\n'
-    FileWrite $0 'If key = "" Then WScript.Quit 1$\r$\n'
-    FileWrite $0 'Set fso = CreateObject("Scripting.FileSystemObject")$\r$\n'
-    FileWrite $0 'Set f = fso.CreateTextFile("$TEMP\sai-product-key.txt", True)$\r$\n'
-    FileWrite $0 'f.Write UCase(Trim(key))$\r$\n'
-    FileWrite $0 'f.Close$\r$\n'
-    FileClose $0
-    nsExec::ExecToLog 'wscript.exe "$TEMP\sai-key-input.vbs"'
-    Pop $2
-    IntCmp $2 1 keycancelled
-    FileOpen $0 "$TEMP\sai-product-key.txt" r
-    FileRead $0 $1
-    FileClose $0
-    Delete "$TEMP\sai-product-key.txt"
-    Delete "$TEMP\sai-key-input.vbs"
-    StrCmp $1 "SAIR-2026-ROLL-FORM" keyok
-    StrCmp $1 "SAIR-2026-ENGI-NEER" keyok
-    StrCmp $1 "SAIR-2026-PREM-IUMS" keyok
-    StrCmp $1 "SAIR-PRO-2026-MSTR" keyok
-    StrCmp $1 "SAIR-DEMO-2026-TRIAL" keyok
-    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Invalid Product Key! Try again." IDRETRY keyentry
-    Abort
-
-  keycancelled:
-    MessageBox MB_OK|MB_ICONSTOP "Installation cancelled. Valid Product Key required."
-    Abort
-
-  keyok:
-    WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "ProductKey" "$1"
-    WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "Version" "${VERSION}"
+  ; ── Write version info (no key required at install time) ──
+  WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "Version" "${VERSION}"
+  WriteRegStr HKCU "Software\SAI Rolotech Smart Engines" "InstalledAt" "$TEMP"
 
 !macroend
 
@@ -79,13 +41,13 @@
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="SAI Rolotech Smart Engines API"'
   nsExec::ExecToLog 'netsh advfirewall firewall add rule name="SAI Rolotech Smart Engines API" dir=in action=allow protocol=TCP localport=8080 profile=private'
 
-  ; ── Force-create Desktop shortcut (guarantee it always appears) ──
+  ; ── Force-create Desktop shortcut ──
   CreateShortCut "$DESKTOP\SAI Rolotech Smart Engines.lnk" \
     "$INSTDIR\SAI Rolotech Smart Engines.exe" "" \
     "$INSTDIR\SAI Rolotech Smart Engines.exe" 0 SW_SHOWNORMAL \
     "" "SAI Rolotech Smart Engines v${VERSION}"
 
-  ; ── Force-create Start Menu shortcut ──
+  ; ── Force-create Start Menu shortcuts ──
   CreateDirectory "$SMPROGRAMS\SAI Rolotech Smart Engines"
   CreateShortCut "$SMPROGRAMS\SAI Rolotech Smart Engines\SAI Rolotech Smart Engines.lnk" \
     "$INSTDIR\SAI Rolotech Smart Engines.exe" "" \
@@ -98,4 +60,6 @@
 !macro customUnInstall
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="SAI Rolotech Smart Engines API"'
   DeleteRegKey HKCU "Software\SAI Rolotech Smart Engines"
+  Delete "$DESKTOP\SAI Rolotech Smart Engines.lnk"
+  RMDir /r "$SMPROGRAMS\SAI Rolotech Smart Engines"
 !macroend

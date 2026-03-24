@@ -123,6 +123,7 @@ const AdminDashboard3D = lazy(() => import("../components/cnc/AdminDashboard3D")
 const MasterDesignerChatbot = lazy(() => import("../components/cnc/MasterDesignerChatbot").then(m => ({ default: m.MasterDesignerChatbot })));
 const SectionModelSelector = lazy(() => import("../components/cnc/SectionModelSelector").then(m => ({ default: m.SectionModelSelector })));
 const DimensionConfirmationPanel = lazy(() => import("../components/cnc/DimensionConfirmationPanel").then(m => ({ default: m.DimensionConfirmationPanel })));
+const RollFormingSimulator = lazy(() => import("../components/cnc/RollFormingSimulator").then(m => ({ default: m.RollFormingSimulator })));
 
 function LazyFallback() {
   return <PanelShimmer />;
@@ -139,7 +140,7 @@ const TAB_TO_CAT: Record<string, string> = {
   setup: "design", "manual-drawing": "design", flower: "design", roll: "design", specs: "design",
   "smart-rolls": "design", "rf-spreadsheet": "design", "downhill-forming": "design", "assembly-check": "design",
   gcode: "manufacturing", turner: "manufacturing", "geometry-edit": "manufacturing", "cam-operations": "manufacturing", "milling-operations": "manufacturing", "5axis-cam": "manufacturing", "load-calc": "manufacturing", "tool-library": "manufacturing",
-  "forming-sim": "analysis", springback: "analysis", "strip-width": "analysis",
+  "forming-sim": "analysis", "roll-forming-sim": "analysis", springback: "analysis", "strip-width": "analysis",
   "roll-gap": "analysis", "cost-estimator": "analysis", camber: "analysis",
   "forming-energy": "analysis", "material-db": "analysis", "rf-dtm": "analysis",
   twin: "simulation", studio3d: "simulation",
@@ -294,6 +295,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       label: "Analysis",
       icon: <Activity className="w-[18px] h-[18px]" />,
       tools: [
+        { id: "roll-forming-sim", label: "Roll Forming Simulator", icon: <Layers className="w-4 h-4" />, desc: "Station-by-station animated simulator — strip cross-section, manual roll check, comparison mode" },
         { id: "forming-sim", label: "FEA Simulation", icon: <Activity className="w-4 h-4" />, desc: "Stress/strain forming analysis" },
         { id: "springback", label: "Springback", icon: <RotateCcw className="w-4 h-4" />, desc: "Springback prediction & compensation" },
         { id: "strip-width", label: "Strip Width", icon: <Ruler className="w-4 h-4" />, desc: "Flat pattern & bend deduction" },
@@ -426,6 +428,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "auto-cnc-planner": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AutoCncPlanner /></div></Suspense>;
       case "github-update": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><GitHubUpdatePanel /></div></Suspense>;
       case "ai-chatbots": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><AIChatbotsView /></div></Suspense>;
+      case "roll-forming-sim": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollFormingSimulator /></div></Suspense>;
       case "forming-sim": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><FormingSimulationView /></div></Suspense>;
       case "springback": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><SpringbackView /></div></Suspense>;
       case "strip-width": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><StripWidthView /></div></Suspense>;

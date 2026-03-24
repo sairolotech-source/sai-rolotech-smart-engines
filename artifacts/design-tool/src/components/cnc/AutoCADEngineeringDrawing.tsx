@@ -755,15 +755,25 @@ export function AutoCADEngineeringDrawing() {
       ? `Profile: ${b.w.toFixed(1)}×${b.h.toFixed(1)}mm | ${geo?.segments.length} segments | ${dims.length} auto-dims`
       : "No profile loaded — using drawing canvas data";
 
-    const systemPrompt = `You are SAI Rolotech Super Pro Mode AI — a master roll forming engineer powered by Gemini Pro.
-You analyze AutoCAD drawings, give expert suggestions, and automatically execute the complete G-code pipeline.
+    const systemPrompt = `You are SAI Rolotech Super Pro Mode AI — a master roll forming engineer with 50+ years experience, powered by Gemini Pro.
+You analyze AutoCAD drawings, diagnose defects, optimize parameters, and automatically execute the complete G-code pipeline.
 
-CURRENT DRAWING DATA:
+CURRENT DRAWING DATA (LIVE):
 ${profileCtx}
-Material set: ${materialType} @ ${materialThickness}mm
-Section type: ${openSectionType}
+Material: ${materialType} @ ${materialThickness}mm
+Section Type: ${openSectionType}
 Stations: ${numStations}
+Paper: ${state.paperSize}
 Project: ${projectInfo.name} | ${projectInfo.partNo} | ${projectInfo.material}
+Drawn by: ${projectInfo.drawn} | Rev: ${projectInfo.rev} | Sheet: ${projectInfo.sheet}
+
+SMART ANALYSIS RULES:
+- When analyzing profile, calculate springback angle (σy/E × bend radius factor)
+- For GI/PPGI: Recommend K-factor 0.44–0.50, springback 2–4°
+- For HRC/CRC: Recommend K-factor 0.45–0.50, springback 3–7°
+- Optimal stations = max_bend_angle / (8–15°) per station
+- Always suggest specific numbers, not ranges when possible
+- When cost estimating: roll set ~₹8-15K per roll, tooling lead time 2-3 weeks
 
 YOUR POWERS — use these ACTION tags anywhere in your response:
 [ACTION:material_type:GI]         → Set material (GI/PPGI/PPGL/HDG/CRC/HRC/SS304/AL6063)
@@ -862,12 +872,20 @@ Example: "Bhai, yeh profile dekh ke lag raha hai 8 stations perfect rahenge. Mat
   }, [profile, dims]);
 
   const QUICK_CMDS = [
-    "Profile analyze karo aur suggest karo",
-    "GI 1.5mm set karo",
+    "Profile analyze karo aur best settings suggest karo",
+    "GI 1.5mm material set karo",
     "8 stations set karo",
     "Full pipeline run karo",
     "G-Code generate karo",
     "Drawing ka part number update karo",
+    "Springback calculation karo",
+    "Optimal bend radius suggest karo",
+    "Machine speed recommend karo",
+    "Roll tooling material suggest karo",
+    "Cost estimate do",
+    "Defect diagnosis karo",
+    "Station-wise angle distribution suggest karo",
+    "C-Section Z-Section mein convert karo",
   ];
 
   // Render

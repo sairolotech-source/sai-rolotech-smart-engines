@@ -670,27 +670,79 @@ export function DXFImportView() {
                 </div>
               )}
 
-              {activePanel === "info" && stats && (
-                <div style={{ padding: "12px 10px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", marginBottom: 10 }}>{filename}</div>
-                  {[
-                    { l: "Total Entities", v: stats.entities.toString(), c: "#60a5fa" },
-                    { l: "Lines", v: stats.lines.toString(), c: "#e4e4e7" },
-                    { l: "Arcs", v: stats.arcs.toString(), c: "#34d399" },
-                    { l: "Circles", v: stats.circles.toString(), c: "#a78bfa" },
-                    { l: "Polylines", v: stats.polylines.toString(), c: "#fbbf24" },
-                    { l: "Texts", v: stats.texts.toString(), c: "#71717a" },
-                    { l: "Layers", v: stats.layers.toString(), c: "#f59e0b" },
-                    { l: "Width (X)", v: `${stats.width.toFixed(2)} mm`, c: "#e4e4e7" },
-                    { l: "Height (Y)", v: `${stats.height.toFixed(2)} mm`, c: "#e4e4e7" },
-                  ].map((s, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <span style={{ fontSize: 11, color: "#71717a" }}>{s.l}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: s.c }}>{s.v}</span>
+              {activePanel === "info" && stats && (() => {
+                // Smart validation & profile detection
+                const ratio = stats.height > 0 ? stats.width / stats.height : 0;
+                const hasArcs = stats.arcs > 0;
+                const profileGuess = ratio > 3 ? "U-Section / Hat" : ratio > 1.5 ? "C-Section / Z-Section" : ratio > 0.5 ? "Sigma / Omega" : "Closed / Tube";
+                const warnings: { icon: string; msg: string; color: string }[] = [];
+                if (stats.entities < 3) warnings.push({ icon: "⚠️", msg: "Bahut kam entities — incomplete DXF", color: "#ef4444" });
+                if (stats.layers > 20) warnings.push({ icon: "⚠️", msg: `${stats.layers} layers — complex drawing`, color: "#f59e0b" });
+                if (!hasArcs) warnings.push({ icon: "ℹ️", msg: "No arcs found — sharp corners only", color: "#06b6d4" });
+                if (stats.width > 500) warnings.push({ icon: "ℹ️", msg: "Wide profile — verify scale (mm)", color: "#8b5cf6" });
+                const qualityScore = Math.min(100, Math.round(
+                  (stats.entities > 5 ? 30 : 10) +
+                  (hasArcs ? 20 : 0) +
+                  (stats.layers > 0 && stats.layers < 15 ? 20 : 10) +
+                  (stats.width > 0 && stats.height > 0 ? 30 : 0)
+                ));
+                const qColor = qualityScore >= 80 ? "#16a34a" : qualityScore >= 50 ? "#f59e0b" : "#ef4444";
+
+                return (
+                  <div style={{ padding: "12px 10px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", marginBottom: 10 }}>{filename}</div>
+
+                    {/* Quality score */}
+                    <div style={{ marginBottom: 12, padding: "8px 10px", borderRadius: 8, background: `${qColor}11`, border: `1px solid ${qColor}33` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>DXF Quality Score</span>
+                        <span style={{ fontSize: 16, fontWeight: 900, color: qColor }}>{qualityScore}/100</span>
+                      </div>
+                      <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 4, marginTop: 6 }}>
+                        <div style={{ height: "100%", width: `${qualityScore}%`, background: qColor, borderRadius: 4, transition: "width 1s ease" }} />
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {/* Profile guess */}
+                    <div style={{ marginBottom: 12, padding: "7px 10px", borderRadius: 7, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                      <span style={{ fontSize: 10, color: "#f59e0b", fontWeight: 700 }}>🔍 Detected Profile: </span>
+                      <span style={{ fontSize: 10, color: "#fff" }}>{profileGuess}</span>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
+                        Aspect ratio: {ratio.toFixed(2)} ({stats.width.toFixed(1)}×{stats.height.toFixed(1)}mm)
+                      </div>
+                    </div>
+
+                    {/* Warnings */}
+                    {warnings.length > 0 && (
+                      <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 4 }}>
+                        {warnings.map((w, i) => (
+                          <div key={i} style={{ fontSize: 10, padding: "5px 8px", borderRadius: 6, background: `${w.color}11`, border: `1px solid ${w.color}33`, color: w.color }}>
+                            {w.icon} {w.msg}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Stats */}
+                    {[
+                      { l: "Total Entities", v: stats.entities.toString(), c: "#60a5fa" },
+                      { l: "Lines", v: stats.lines.toString(), c: "#e4e4e7" },
+                      { l: "Arcs", v: stats.arcs.toString(), c: "#34d399" },
+                      { l: "Circles", v: stats.circles.toString(), c: "#a78bfa" },
+                      { l: "Polylines", v: stats.polylines.toString(), c: "#fbbf24" },
+                      { l: "Texts", v: stats.texts.toString(), c: "#71717a" },
+                      { l: "Layers", v: stats.layers.toString(), c: "#f59e0b" },
+                      { l: "Width (X)", v: `${stats.width.toFixed(2)} mm`, c: "#e4e4e7" },
+                      { l: "Height (Y)", v: `${stats.height.toFixed(2)} mm`, c: "#e4e4e7" },
+                    ].map((s, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                        <span style={{ fontSize: 11, color: "#71717a" }}>{s.l}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: s.c }}>{s.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

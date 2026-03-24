@@ -126,8 +126,9 @@ router.post("/serial/send-gcode", async (req: Request, res: Response) => {
 });
 
 // ── Read received data buffer ─────────────────────────────────────────────────
-router.get("/serial/buffer/:path(*)", (req: Request, res: Response) => {
-  const path = decodeURIComponent(req.params.path);
+router.post("/serial/buffer", (req: Request, res: Response) => {
+  const { path } = req.body;
+  if (!path) return res.status(400).json({ success: false, error: "Path required" });
   const conn = activeConnections.get(path);
   if (!conn) return res.status(400).json({ success: false, error: "Not connected" });
   const lines = [...conn.buffer];

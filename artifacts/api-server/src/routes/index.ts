@@ -22,6 +22,7 @@ import drawingVisionRouter from "./drawing-vision";
 import smartToolSelectorRouter from "./smart-tool-selector";
 import gcodeSafetyRouter from "./gcode-safety";
 import githubUpdateRouter, { startAutoUpdate } from "./github-update";
+import installRouter from "./install";
 import { licenseRouter, adminRouter } from "./license-admin";
 import { requireAuth } from "../middleware/auth";
 
@@ -34,6 +35,9 @@ router.use(authRouter);
 // License & Admin routes — own auth, no requireAuth needed
 router.use("/license", licenseRouter);
 router.use("/admin", adminRouter);
+
+// Public install script — no auth (PowerShell: irm <url>/api/install | iex)
+router.use(installRouter);
 
 router.use(requireAuth as any);
 router.use(dxfRouter);

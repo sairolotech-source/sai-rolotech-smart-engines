@@ -35,8 +35,10 @@ Write-Host "  Version: ${tag}  (~${sizeMB}MB)        " -ForegroundColor White
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "[1/4] Purani app band kar raha hun..." -ForegroundColor Yellow
-Get-Process | Where-Object { $_.Name -like "*SAI*" -or $_.Name -like "*Sai*" } | Stop-Process -Force -EA SilentlyContinue
+Write-Host "[1/4] Purani SAI app band kar raha hun..." -ForegroundColor Yellow
+$exactNames = @("SAI Rolotech Smart Engines","Sai Rolotech Smart Engines","SaiRolotech-SmartEngines","SAI-Rolotech-Smart-Engines")
+foreach ($n in $exactNames) { Get-Process -Name $n -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue }
+Get-Process | Where-Object { $_.MainWindowTitle -like "*SAI Rolotech*" } | Stop-Process -Force -EA SilentlyContinue
 Start-Sleep -Seconds 2
 Write-Host "      Done." -ForegroundColor Green
 

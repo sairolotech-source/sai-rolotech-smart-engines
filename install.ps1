@@ -18,32 +18,43 @@ try {
     }
     $url = $asset.browser_download_url
     $sizeMB = [math]::Round($asset.size / 1MB)
-    Write-Host "  Latest Setup: $($asset.name) (~${sizeMB}MB)" -ForegroundColor Green
+    Write-Host "  Latest: $($asset.name) (~${sizeMB}MB)" -ForegroundColor Green
 } catch {
-    Write-Host "  GitHub offline, using latest known..." -ForegroundColor Yellow
+    Write-Host "  Using latest known version..." -ForegroundColor Yellow
     $tag = "v2.2.11"
     $url = "https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases/download/v2.2.11/SAI-Rolotech-Smart-Engines-Setup-2.2.11.exe"
 }
 
 Write-Host ""
 
-# Step 1: Kill old processes
-Write-Host "[1/4] Purani app band kar raha hun..." -ForegroundColor Yellow
-Get-Process | Where-Object { $_.Name -like "*SAI*" -or $_.Name -like "*Sai*" } | Stop-Process -Force -EA SilentlyContinue
+# Step 1: Kill ONLY SAI app processes (EXACT names only — no wildcards)
+Write-Host "[1/4] Purani SAI app band kar raha hun..." -ForegroundColor Yellow
+$exactNames = @(
+    "SAI Rolotech Smart Engines",
+    "Sai Rolotech Smart Engines",
+    "SaiRolotech-SmartEngines",
+    "SAI-Rolotech-Smart-Engines"
+)
+foreach ($name in $exactNames) {
+    Get-Process -Name $name -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
+}
+# Also stop by window title (safer than wildcard)
+Get-Process | Where-Object { $_.MainWindowTitle -like "*SAI Rolotech*" } | Stop-Process -Force -EA SilentlyContinue
 Start-Sleep -Seconds 2
 Write-Host "      Done." -ForegroundColor Green
 
 # Step 2: Remove old installer files from Desktop
 Write-Host "[2/4] Purane installer files Desktop se hata raha hun..." -ForegroundColor Yellow
-Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
-Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI-*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI-Rolotech*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI-Update*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI-2.*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
 Write-Host "      Done." -ForegroundColor Green
 
-# Step 3: Download Setup installer (NOT Portable)
+# Step 3: Download Setup installer
 Write-Host "[3/4] $tag Setup download ho raha hai..." -ForegroundColor Yellow
 $installer = "$env:TEMP\SAI-Setup-$tag.exe"
 Invoke-WebRequest $url -OutFile $installer -UseBasicParsing
-Write-Host "      Download complete! (Setup installer)" -ForegroundColor Green
+Write-Host "      Download complete!" -ForegroundColor Green
 
 # Step 4: Run installer
 Write-Host "[4/4] Install ho raha hai..." -ForegroundColor Yellow
@@ -52,7 +63,6 @@ Start-Process $installer -Wait
 Write-Host ""
 Write-Host "=========================================" -ForegroundColor Green
 Write-Host "  $tag install ho gaya!                  " -ForegroundColor Green
-Write-Host "  Desktop ke NAYE shortcut se kholen     " -ForegroundColor Green
-Write-Host "  (Purana shortcut use mat karna!)        " -ForegroundColor Yellow
+Write-Host "  Desktop ke NAYE shortcut se app kholen " -ForegroundColor Green
 Write-Host "=========================================" -ForegroundColor Green
 Write-Host ""

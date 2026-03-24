@@ -77,8 +77,8 @@ router.get("/download/direct-url", async (_req: Request, res: Response) => {
     const release = await fetchLatestRelease();
     const setupAsset = getSetupAsset(release.assets ?? []);
     const portableAsset = (release.assets ?? []).find((a: any) => a.name.includes("Portable") && a.name.endsWith(".exe"));
-    const setupUrl = setupAsset ? await getDirectDownloadUrl(setupAsset.id) : null;
-    const portableUrl = portableAsset ? await getDirectDownloadUrl(portableAsset.id) : null;
+    const setupUrl = setupAsset?.browser_download_url ?? null;
+    const portableUrl = portableAsset?.browser_download_url ?? null;
     res.json({ version: release.tag_name, setup: { url: setupUrl, name: setupAsset?.name, sizeMB: setupAsset ? Math.round(setupAsset.size / 1024 / 1024) : null }, portable: { url: portableUrl, name: portableAsset?.name, sizeMB: portableAsset ? Math.round(portableAsset.size / 1024 / 1024) : null } });
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -91,12 +91,8 @@ router.get("/install", async (_req: Request, res: Response) => {
 
     const tag = release.tag_name ?? "v2.2.18";
     const asset = getSetupAsset(release.assets ?? []);
-    let url: string;
-    try {
-      url = asset ? await getDirectDownloadUrl(asset.id) : `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
-    } catch {
-      url = asset ? proxyUrl(_req, asset) : `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
-    }
+    const url: string = asset?.browser_download_url
+      ?? `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
     const sizeMB = asset ? Math.round(asset.size / 1024 / 1024) : 83;
 
     const ps1 = `
@@ -147,7 +143,8 @@ router.get("/download", async (_req: Request, res: Response) => {
     const release = await fetchLatestRelease();
     const asset = getSetupAsset(release.assets ?? []);
     if (!asset) { res.status(404).json({ error: "Installer not found" }); return; }
-    const directUrl = await getDirectDownloadUrl(asset.id);
+    // Direct browser_download_url — no auth needed for public repo
+    const directUrl = asset.browser_download_url;
     res.redirect(302, directUrl);
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -161,8 +158,8 @@ router.get("/download-page", async (_req: Request, res: Response) => {
     const tag = release.tag_name ?? "v2.2.18";
     const setupAsset   = getSetupAsset(release.assets ?? []);
     const portableAsset = (release.assets ?? []).find((a: any) => a.name.includes("Portable") && a.name.endsWith(".exe"));
-    const setupUrl    = setupAsset ? await getDirectDownloadUrl(setupAsset.id) : "";
-    const portableUrl = portableAsset ? await getDirectDownloadUrl(portableAsset.id) : "";
+    const setupUrl    = setupAsset?.browser_download_url ?? "";
+    const portableUrl = portableAsset?.browser_download_url ?? "";
     const setupMB     = setupAsset    ? Math.round(setupAsset.size    / 1024 / 1024) : 83;
     const portableMB  = portableAsset ? Math.round(portableAsset.size / 1024 / 1024) : 83;
 

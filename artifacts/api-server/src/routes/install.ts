@@ -208,6 +208,86 @@ router.get("/install/info", async (_req: Request, res: Response) => {
   }
 });
 
+// ── irm | iex clean install endpoint ─────────────────────────────────────────
+// PowerShell one-liner: irm https://<domain>/api/install/clean | iex
+router.get("/install/clean", (req: Request, res: Response) => {
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost:5000") as string;
+  const proto = (req.headers["x-forwarded-proto"] ?? "https") as string;
+  const appUrl = `${proto}://${host}`;
+
+  const script = `
+$ErrorActionPreference = "SilentlyContinue"
+Write-Host ""
+Write-Host "================================================" -ForegroundColor Red
+Write-Host "  SAI ROLOTECH — PURA SAAF + NAYA INSTALL" -ForegroundColor Yellow
+Write-Host "================================================" -ForegroundColor Red
+Write-Host ""
+
+Write-Host "[1/5] Purane processes band kar raha hun..." -ForegroundColor Yellow
+@("SAI Rolotech Smart Engines","SaiRolotech","sai-rolotech","electron","node") | ForEach-Object {
+    Get-Process -Name $_ -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+}
+Start-Sleep -Seconds 2
+Write-Host "  Done!" -ForegroundColor Green
+
+Write-Host "[2/5] Registry se uninstall kar raha hun..." -ForegroundColor Yellow
+@("HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall","HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall","HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall") | ForEach-Object {
+    if (Test-Path $_) {
+        Get-ChildItem $_ | ForEach-Object {
+            $dn = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).DisplayName
+            if ($dn -like "*SAI*" -or $dn -like "*Rolotech*") {
+                $us = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).UninstallString
+                if ($us) { if ($us -like "*MsiExec*") { Start-Process msiexec.exe -ArgumentList "/x $($us -replace 'MsiExec.exe /[IX]','') /quiet /norestart" -Wait -EA SilentlyContinue } else { Start-Process ($us -replace '"','') -ArgumentList "/S" -Wait -EA SilentlyContinue } }
+                Remove-Item $_.PSPath -Recurse -Force -EA SilentlyContinue
+                Write-Host "  Uninstall: $dn" -ForegroundColor Cyan
+            }
+        }
+    }
+}
+Write-Host "  Done!" -ForegroundColor Green
+
+Write-Host "[3/5] Purane folders aur shortcuts hata raha hun..." -ForegroundColor Yellow
+@("$env:LOCALAPPDATA\\SAI-Rolotech","$env:LOCALAPPDATA\\sai-rolotech-smart-engines","$env:LOCALAPPDATA\\SAI Rolotech Smart Engines","$env:APPDATA\\SAI-Rolotech","$env:PROGRAMFILES\\SAI Rolotech Smart Engines","$env:PROGRAMFILES(X86)\\SAI Rolotech Smart Engines","C:\\SAI-Rolotech","$env:USERPROFILE\\SAI-Rolotech") | ForEach-Object {
+    if (Test-Path $_) { Remove-Item $_ -Recurse -Force -EA SilentlyContinue; Write-Host "  Hata: $_" -ForegroundColor DarkGray }
+}
+@("$env:USERPROFILE\\Desktop\\SAI Rolotech Smart Engines.lnk","$env:USERPROFILE\\Desktop\\SAI-Rolotech.lnk","$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\SAI Rolotech Smart Engines.lnk") | ForEach-Object {
+    if (Test-Path $_) { Remove-Item $_ -Force -EA SilentlyContinue }
+}
+@("$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\SAI Rolotech Smart Engines","$env:PROGRAMDATA\\Microsoft\\Windows\\Start Menu\\Programs\\SAI Rolotech Smart Engines") | ForEach-Object {
+    if (Test-Path $_) { Remove-Item $_ -Recurse -Force -EA SilentlyContinue }
+}
+Write-Host "  Done!" -ForegroundColor Green
+
+Write-Host "[4/5] Naya Desktop shortcut bana raha hun..." -ForegroundColor Yellow
+$AppUrl = "${appUrl}"
+$WshShell = New-Object -comObject WScript.Shell
+$lnk = $WshShell.CreateShortcut("$env:USERPROFILE\\Desktop\\SAI Rolotech Smart Engines.lnk")
+$chrome = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+$edge   = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+if (Test-Path $chrome) { $lnk.TargetPath = $chrome; $lnk.Arguments = "--app=\`"$AppUrl\`" --window-size=1440,900" }
+elseif (Test-Path $edge) { $lnk.TargetPath = $edge; $lnk.Arguments = "--app=\`"$AppUrl\`" --window-size=1440,900" }
+else { $lnk.TargetPath = "explorer.exe"; $lnk.Arguments = $AppUrl }
+$lnk.Description = "SAI Rolotech Smart Engines v2.2"
+$lnk.Save()
+Write-Host "  Desktop shortcut bana diya!" -ForegroundColor Green
+
+Write-Host "[5/5] Browser mein latest version khol raha hun..." -ForegroundColor Yellow
+Start-Process $AppUrl
+Start-Sleep -Seconds 1
+
+Write-Host ""
+Write-Host "================================================" -ForegroundColor Green
+Write-Host "  COMPLETE! Purana hata, naya install ho gaya!" -ForegroundColor Green
+Write-Host "  URL: $AppUrl" -ForegroundColor Cyan
+Write-Host "  Desktop shortcut ready!" -ForegroundColor White
+Write-Host "================================================" -ForegroundColor Green
+`.trim();
+
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-store");
+  res.send(script);
+});
+
 // ── Script download endpoints — browser-safe, no Blob needed ─────────────────
 // GET /api/download-script/clean  → SAI-PuraSaaf-NayaInstall.ps1
 // GET /api/download-script/fresh  → SAI-Install-Windows.ps1

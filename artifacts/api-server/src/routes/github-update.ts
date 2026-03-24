@@ -167,14 +167,35 @@ async function checkAndPull(): Promise<{ updated: boolean; message: string }> {
       logAuto(`Antivirus Warning: ye files skip ki gayi (blocked): ${blockedFiles.join(", ")}`, "warn");
     }
 
-    const pullRes = await runGit("pull origin main --ff-only");
-    if (!pullRes.ok) {
-      logAuto(`FF pull fail — trying merge...`, "warn");
-      const mergeRes = await runGit("pull origin main --no-rebase -X theirs");
-      if (!mergeRes.ok) {
-        logAuto(`Pull fail: ${mergeRes.stderr}`, "error");
-        lastAutoResult = "Pull failed";
-        return { updated: false, message: `Pull failed: ${mergeRes.stderr}` };
+    const localChangesRes = await runGit("diff --name-only");
+    const stagedChangesRes = await runGit("diff --cached --name-only");
+    const hasLocalChanges = !!(localChangesRes.stdout.trim() || stagedChangesRes.stdout.trim());
+
+    if (hasLocalChanges) {
+      logAuto(`Local uncommitted changes detected (${localChangesRes.stdout.trim().split("\n").filter(Boolean).join(", ")}) — using hard reset to sync`, "warn");
+      const resetRes = await runGit("reset --hard origin/main");
+      if (resetRes.ok) {
+        logAuto("Hard reset complete — local synced to origin/main", "success");
+      } else {
+        logAuto(`Hard reset fail: ${resetRes.stderr.slice(0, 150)} — trying stash+pull...`, "warn");
+        await runGit("stash");
+        const pullRes2 = await runGit("pull origin main --ff-only");
+        if (!pullRes2.ok) {
+          logAuto(`Pull after stash fail: ${pullRes2.stderr.slice(0, 150)}`, "error");
+          lastAutoResult = "Pull failed";
+          return { updated: false, message: `Pull failed: ${pullRes2.stderr}` };
+        }
+      }
+    } else {
+      const pullRes = await runGit("pull origin main --ff-only");
+      if (!pullRes.ok) {
+        logAuto(`FF pull fail — trying hard reset...`, "warn");
+        const resetRes = await runGit("reset --hard origin/main");
+        if (!resetRes.ok) {
+          logAuto(`Pull fail: ${resetRes.stderr.slice(0, 150)}`, "error");
+          lastAutoResult = "Pull failed";
+          return { updated: false, message: `Pull failed: ${resetRes.stderr}` };
+        }
       }
     }
 

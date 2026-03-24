@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useCncStore, type RollToolingResult, type RollGapInfo, type CamPlan, type CamTool, type CamOperation } from "../../store/useCncStore";
+import { useCncStore, type RollToolingResult, type RollGapInfo, type CamPlan, type CamTool, type CamOperation, type RollTypeInfo, type RollMaterialRec } from "../../store/useCncStore";
 import { AccuracyBadge } from "./AccuracyBadge";
 import { getAccuracyExportText } from "./AccuracyMonitor";
 import { BomView } from "./BomView";
@@ -30,31 +30,105 @@ function downloadFile(content: string, filename: string) {
 }
 
 // ─── SVG Cross-section ───────────────────────────────────────────────────────
-function RollCrossSection({ rp, side, rollNum }: {
+function RollGrooveProfile({ shape, angleDeg, depthFrac, outerR, cx, cy, color, side }: {
+  shape: RollTypeInfo["grooveShape"] | undefined;
+  angleDeg: number;
+  depthFrac: number;
+  outerR: number;
+  cx: number;
+  cy: number;
+  color: string;
+  side: "upper" | "lower";
+}) {
+  const gd = outerR * Math.min(0.70, depthFrac);
+  const gw = outerR * 0.55;
+  const edgeY = side === "upper" ? cy + outerR : cy - outerR;
+  const sign = side === "upper" ? -1 : 1;
+
+  if (!shape || shape === "flat") {
+    return <line x1={cx - outerR * 0.85} y1={edgeY} x2={cx + outerR * 0.85} y2={edgeY} stroke={color} strokeWidth={2.5} strokeOpacity={0.8} />;
+  }
+  if (shape === "shallow-v" || shape === "v-groove") {
+    const halfW = gw * 0.5;
+    const depth = shape === "shallow-v" ? gd * 0.3 : gd * 0.6;
+    const d = `M${cx - halfW},${edgeY} L${cx},${edgeY + sign * depth} L${cx + halfW},${edgeY}`;
+    return <>
+      <line x1={cx - outerR * 0.85} y1={edgeY} x2={cx - halfW} y2={edgeY} stroke={color} strokeWidth={2.5} strokeOpacity={0.8} />
+      <path d={d} stroke={color} strokeWidth={2.5} fill="none" strokeOpacity={0.9} strokeLinecap="round" strokeLinejoin="round" />
+      <line x1={cx + halfW} y1={edgeY} x2={cx + outerR * 0.85} y2={edgeY} stroke={color} strokeWidth={2.5} strokeOpacity={0.8} />
+    </>;
+  }
+  if (shape === "u-groove" || shape === "deep-groove") {
+    const hw = shape === "u-groove" ? gw * 0.45 : gw * 0.38;
+    const depth = shape === "u-groove" ? gd * 0.55 : gd * 0.75;
+    const r = hw * 0.35;
+    const d = `M${cx - hw},${edgeY} L${cx - hw},${edgeY + sign * depth} Q${cx - hw},${edgeY + sign * (depth + r)} ${cx},${edgeY + sign * (depth + r)} Q${cx + hw},${edgeY + sign * (depth + r)} ${cx + hw},${edgeY + sign * depth} L${cx + hw},${edgeY}`;
+    return <>
+      <line x1={cx - outerR * 0.85} y1={edgeY} x2={cx - hw} y2={edgeY} stroke={color} strokeWidth={2.5} strokeOpacity={0.8} />
+      <path d={d} stroke={color} strokeWidth={2.5} fill="none" strokeOpacity={0.9} strokeLinecap="round" strokeLinejoin="round" />
+      <line x1={cx + hw} y1={edgeY} x2={cx + outerR * 0.85} y2={edgeY} stroke={color} strokeWidth={2.5} strokeOpacity={0.8} />
+    </>;
+  }
+  if (shape === "fin") {
+    const hw = gw * 0.18;
+    const depth = gd * 0.80;
+    const d = `M${cx - outerR * 0.85},${edgeY} L${cx - hw * 2},${edgeY} L${cx - hw},${edgeY + sign * depth} L${cx + hw},${edgeY + sign * depth} L${cx + hw * 2},${edgeY} L${cx + outerR * 0.85},${edgeY}`;
+    return <path d={d} stroke={color} strokeWidth={2.5} fill="none" strokeOpacity={0.9} strokeLinecap="round" strokeLinejoin="round" />;
+  }
+  return null;
+}
+
+function RollCrossSection({ rp, side, rollNum, rollType }: {
   rp: RollToolingResult["rollProfile"];
   side: "upper" | "lower";
   rollNum: number;
+  rollType?: RollTypeInfo;
 }) {
-  const W = 200, H = 170;
+  const W = 200, H = 180;
   const cx = W / 2, cy = H / 2;
-  const outerR = Math.min(W, H) * 0.37;
-  const boreR = outerR * Math.min(0.75, rp.shaftDiameter / rp.rollDiameter);
-  const grooveFrac = Math.min(0.88, rp.grooveDepth / (rp.rollDiameter / 2));
-  const grooveR = outerR * grooveFrac;
+  const outerR = Math.min(W, H) * 0.36;
+  const boreR = outerR * Math.min(0.70, rp.shaftDiameter / rp.rollDiameter);
   const color = side === "upper" ? UPPER_COLOR : LOWER_COLOR;
+  const typeColor = rollType?.color ?? color;
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block", margin: "0 auto" }}>
       <rect width={W} height={H} fill="#0a0a0f" rx={6} />
+      {/* Outer roll body */}
       <circle cx={cx} cy={cy} r={outerR} fill="#1e293b" stroke={color} strokeWidth={2} />
-      <circle cx={cx} cy={cy} r={grooveR} fill="#0f172a" stroke={color} strokeOpacity={0.45} strokeWidth={1.5} strokeDasharray="5 3" />
+      {/* Groove profile drawn on edge */}
+      <RollGrooveProfile
+        shape={rollType?.grooveShape}
+        angleDeg={rollType?.grooveAngleDeg ?? 0}
+        depthFrac={rollType?.grooveDepthFraction ?? 0}
+        outerR={outerR}
+        cx={cx}
+        cy={cy}
+        color={typeColor}
+        side={side}
+      />
+      {/* Keyway / drive hub */}
       <rect x={cx - 5} y={cy - outerR - 1} width={10} height={outerR * 0.18} fill="#334155" stroke="#64748b" strokeWidth={0.8} rx={1} />
+      {/* Bore */}
       <circle cx={cx} cy={cy} r={boreR} fill="#0f172a" stroke="#64748b" strokeWidth={1.5} />
-      <line x1={cx - outerR + 4} y1={cy} x2={cx + outerR - 4} y2={cy} stroke="#334155" strokeWidth={0.7} />
-      <line x1={cx} y1={cy - outerR + 4} x2={cx} y2={cy + outerR - 4} stroke="#334155" strokeWidth={0.7} />
+      {/* Center cross */}
+      <line x1={cx - outerR + 4} y1={cy} x2={cx + outerR - 4} y2={cy} stroke="#334155" strokeWidth={0.6} />
+      <line x1={cx} y1={cy - outerR + 4} x2={cx} y2={cy + outerR - 4} stroke="#334155" strokeWidth={0.6} />
+      {/* Pass line */}
       {side === "upper" && <line x1={cx - outerR + 4} y1={cy + outerR} x2={cx + outerR - 4} y2={cy + outerR} stroke={PASS_LINE_COLOR} strokeWidth={1.5} strokeDasharray="5 3" />}
       {side === "lower" && <line x1={cx - outerR + 4} y1={cy - outerR} x2={cx + outerR - 4} y2={cy - outerR} stroke={PASS_LINE_COLOR} strokeWidth={1.5} strokeDasharray="5 3" />}
-      <text x={cx} y={cy - 3} textAnchor="middle" fill={color} fontSize={14} fontWeight="bold" fontFamily="monospace">R{rollNum}</text>
+      {/* Roll Type badge */}
+      {rollType && (
+        <rect x={4} y={4} width={68} height={14} rx={3} fill={typeColor} fillOpacity={0.15} stroke={typeColor} strokeOpacity={0.5} strokeWidth={0.8} />
+      )}
+      {rollType && (
+        <text x={8} y={14} fill={typeColor} fontSize={7.5} fontWeight="bold" fontFamily="monospace">{rollType.name.toUpperCase()}</text>
+      )}
+      {/* Groove shape label */}
+      {rollType && rollType.grooveShape !== "flat" && (
+        <text x={cx} y={H - 5} textAnchor="middle" fill="#475569" fontSize={7} fontFamily="monospace">{rollType.grooveShape} · {rollType.grooveAngleDeg}°</text>
+      )}
+      <text x={cx} y={cy - 3} textAnchor="middle" fill={color} fontSize={13} fontWeight="bold" fontFamily="monospace">R{rollNum}</text>
       <text x={cx} y={cy + 12} textAnchor="middle" fill="#94a3b8" fontSize={8} fontFamily="monospace">{side === "upper" ? "UPPER" : "LOWER"}</text>
       <line x1={cx + outerR + 4} y1={cy - outerR} x2={cx + outerR + 4} y2={cy + outerR} stroke="#475569" strokeWidth={0.8} />
       <text x={cx + outerR + 8} y={cy + 4} fill="#94a3b8" fontSize={8} fontFamily="monospace">Ø{rp.rollDiameter}</text>
@@ -64,30 +138,39 @@ function RollCrossSection({ rp, side, rollNum }: {
 }
 
 // ─── Per-roll detail card ────────────────────────────────────────────────────
-function RollCard({ rp, side, rollNum, stationLabel, stationNum }: {
+function RollCard({ rp, side, rollNum, stationLabel, stationNum, rollType, rollMaterial }: {
   rp: RollToolingResult["rollProfile"];
   side: "upper" | "lower";
   rollNum: number;
   stationLabel: string;
   stationNum: number;
+  rollType?: RollTypeInfo;
+  rollMaterial?: RollMaterialRec;
 }) {
   const [showGcode, setShowGcode] = useState(false);
+  const [showMatPanel, setShowMatPanel] = useState(false);
   const color = side === "upper" ? UPPER_COLOR : LOWER_COLOR;
   const borderCls = side === "upper" ? "border-blue-900/60 bg-blue-950/10" : "border-orange-900/60 bg-orange-950/10";
   const gcode = side === "upper" ? rp.upperLatheGcode : rp.lowerLatheGcode;
   const filename = `ROLL_${String(rollNum).padStart(3, "0")}_${side.toUpperCase()}_${stationLabel}.nc`;
   const gcodeLines = gcode.split("\n").length;
+  const typeColor = rollType?.color ?? color;
 
   return (
     <div className={`border rounded-lg p-3 ${borderCls}`}>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
         <span className="font-bold text-sm font-mono" style={{ color }}>ROLL #{rollNum}</span>
         <span className="text-zinc-500 text-xs">({side === "upper" ? "Upper — Top Arbor" : "Lower — Bottom Arbor"})</span>
+        {rollType && (
+          <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold border" style={{ color: typeColor, borderColor: typeColor + "44", background: typeColor + "15" }}>
+            {rollType.name.toUpperCase()}
+          </span>
+        )}
         <span className="text-zinc-600 text-xs ml-auto">Stn {stationNum}</span>
       </div>
 
-      <RollCrossSection rp={rp} side={side} rollNum={rollNum} />
+      <RollCrossSection rp={rp} side={side} rollNum={rollNum} rollType={rollType} />
 
       <div className="mt-2 space-y-0.5 font-mono text-xs">
         {[
@@ -106,6 +189,65 @@ function RollCard({ rp, side, rollNum, stationLabel, stationNum }: {
           </div>
         ))}
       </div>
+
+      {/* ── Roll Type Info Panel ── */}
+      {rollType && (
+        <div className="mt-2 rounded border border-zinc-700/60 bg-zinc-900/50 px-2.5 py-2 text-[10px] font-mono space-y-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-bold text-[9px] uppercase tracking-wider" style={{ color: rollType.color }}>◈ {rollType.name}</span>
+            <span className="text-zinc-600">·</span>
+            <span className="text-zinc-500">{rollType.phase} phase</span>
+            <span className="ml-auto px-1.5 py-0.5 rounded text-[8px] border" style={{ color: rollType.color, borderColor: rollType.color + "44" }}>
+              {rollType.grooveShape.replace("-", " ").toUpperCase()}
+            </span>
+          </div>
+          <div className="text-zinc-500 text-[9px] leading-tight">{rollType.description}</div>
+          <div className="flex gap-3 pt-0.5">
+            <div><span className="text-zinc-600">Groove∠</span> <span className="text-amber-400">{rollType.grooveAngleDeg}°</span></div>
+            <div><span className="text-zinc-600">Fillet R</span> <span className="text-cyan-400">{rollType.filletRadiusMm}mm</span></div>
+            <div><span className="text-zinc-600">Depth</span> <span className="text-green-400">{(rollType.grooveDepthFraction * 100).toFixed(0)}%</span></div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Roll Material Panel ── */}
+      {rollMaterial && (
+        <div className="mt-2 rounded border border-amber-900/40 bg-amber-950/10 px-2.5 py-2 text-[10px] font-mono space-y-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-bold text-[9px] uppercase tracking-wider text-amber-400">⬡ Roll Material</span>
+            <button onClick={() => setShowMatPanel(!showMatPanel)} className="ml-auto text-zinc-600 hover:text-zinc-300 text-[8px]">
+              {showMatPanel ? "▲ less" : "▼ more"}
+            </button>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">Tool Steel</span>
+            <span className="text-amber-300 font-bold">{rollMaterial.toolSteel}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">Hardness</span>
+            <span className="text-amber-200">{rollMaterial.hardnessHRC}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">Surface Treat.</span>
+            <span className="text-green-400 text-[9px]">{rollMaterial.surfaceTreatment}</span>
+          </div>
+          {showMatPanel && (<>
+            <div className="border-t border-amber-900/30 pt-1 text-zinc-500 text-[9px] leading-tight">{rollMaterial.treatmentNote}</div>
+            <div className="flex justify-between pt-0.5">
+              <span className="text-zinc-600">Alternative</span>
+              <span className="text-zinc-400 text-[9px]">{rollMaterial.alternativeMaterial}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-600">Lubricant</span>
+              <span className="text-cyan-400 text-[9px]">{rollMaterial.lubricantRecommended.split(" ")[0]} {rollMaterial.lubricantRecommended.split(" ")[1]}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-600">Life (est.)</span>
+              <span className="text-green-300">{rollMaterial.lifeHrs.toLocaleString()} hrs</span>
+            </div>
+          </>)}
+        </div>
+      )}
 
       {/* ── Bore-to-Profile Clearance Panel ── */}
       {rp.boreClearance && (
@@ -385,8 +527,8 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle }: {
 
           {/* ── Roll Cards ── */}
           <div className="grid grid-cols-2 gap-4">
-            <RollCard rp={rp} side="upper" rollNum={rp.upperRollNumber} stationLabel={rt.label} stationNum={rt.stationNumber} />
-            <RollCard rp={rp} side="lower" rollNum={rp.lowerRollNumber} stationLabel={rt.label} stationNum={rt.stationNumber} />
+            <RollCard rp={rp} side="upper" rollNum={rp.upperRollNumber} stationLabel={rt.label} stationNum={rt.stationNumber} rollType={rt.rollType} rollMaterial={rt.rollMaterial} />
+            <RollCard rp={rp} side="lower" rollNum={rp.lowerRollNumber} stationLabel={rt.label} stationNum={rt.stationNumber} rollType={rt.rollType} rollMaterial={rt.rollMaterial} />
           </div>
 
           <div className="bg-green-950/40 border border-green-800/50 rounded px-3 py-2 flex flex-wrap items-center gap-3 text-xs">

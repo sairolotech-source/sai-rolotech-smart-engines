@@ -444,7 +444,71 @@ export function RollFlowerIntegratedView() {
       {/* ── 5. Camber & Crown Compensation ── */}
       <CamberCrownPanel materialType={materialType} />
 
-      {/* ── 6. Springback Overbend Table ── */}
+      {/* ── 6. Roll Types Classification Guide ── */}
+      {rollTooling.length > 0 && rollTooling.some(rt => rt.rollType) && (
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 bg-zinc-800/60 border-b border-zinc-700 flex items-center gap-3">
+            <span className="text-xs font-bold text-zinc-100">Roll Type Classification</span>
+            <span className="text-[9px] px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">Auto-assigned per station</span>
+          </div>
+          <div className="p-3 flex flex-wrap gap-2">
+            {[
+              { code: "GUIDE",     name: "Guide Roll",     shape: "flat",      color: "#64748b", desc: "Entry — strip alignment, no bending",          angle: "0°",   fillet: "5mm" },
+              { code: "BREAKDOWN", name: "Breakdown Roll",  shape: "shallow-v", color: "#0ea5e9", desc: "First bend initiation, edge forming begins",     angle: "≤30°", fillet: "4mm" },
+              { code: "FORMING",   name: "Forming Roll",   shape: "v-groove",  color: "#f59e0b", desc: "Progressive bend angle, side wall development",   angle: "≤60°", fillet: "3mm" },
+              { code: "GROOVE",    name: "Groove Roll",    shape: "u/deep",    color: "#8b5cf6", desc: "Deep contoured groove, both walls fully formed",   angle: "≤85°", fillet: "2mm" },
+              { code: "FINPASS",   name: "Fin Pass Roll",  shape: "fin",       color: "#ec4899", desc: "Profile closing, near-net shape, weld seam prep",  angle: "≤90°", fillet: "1.5mm" },
+              { code: "SIZING",    name: "Sizing Roll",    shape: "u-groove",  color: "#22c55e", desc: "Final calibration, OD/width, surface finish",      angle: "90°",  fillet: "1mm" },
+            ].map(rt => (
+              <div key={rt.code} className="flex-1 min-w-[140px] rounded-lg border p-2.5" style={{ borderColor: rt.color + "33", background: rt.color + "08" }}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="w-2 h-2 rounded-full" style={{ background: rt.color }} />
+                  <span className="text-[9px] font-bold font-mono" style={{ color: rt.color }}>{rt.name.toUpperCase()}</span>
+                </div>
+                <div className="text-[8px] text-zinc-500 leading-tight mb-1.5">{rt.desc}</div>
+                <div className="flex gap-2 text-[8px] font-mono">
+                  <span className="text-zinc-600">Shape: <span style={{ color: rt.color }}>{rt.shape}</span></span>
+                  <span className="text-zinc-600">∠: <span className="text-amber-400">{rt.angle}</span></span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Roll Type + Material summary per station */}
+          <div className="border-t border-zinc-800 overflow-x-auto">
+            <table className="w-full text-[9px] font-mono">
+              <thead>
+                <tr className="bg-zinc-800/40">
+                  {["Stn", "Roll Type", "Groove Shape", "Groove ∠", "Depth%", "Tool Steel", "Hardness", "Surface Treatment", "Est. Life"].map(h => (
+                    <th key={h} className="px-2 py-1.5 text-left text-zinc-500 font-semibold whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rollTooling.map((rt, i) => {
+                  const typ = rt.rollType;
+                  const mat = rt.rollMaterial;
+                  if (!typ || !mat) return null;
+                  return (
+                    <tr key={i} className={`border-t border-zinc-800/40 ${i % 2 === 0 ? "" : "bg-zinc-800/10"}`}>
+                      <td className="px-2 py-1 font-bold text-zinc-300">S{i + 1}</td>
+                      <td className="px-2 py-1 font-bold" style={{ color: typ.color }}>{typ.name}</td>
+                      <td className="px-2 py-1 text-zinc-400">{typ.grooveShape.replace("-", " ")}</td>
+                      <td className="px-2 py-1 text-amber-400">{typ.grooveAngleDeg}°</td>
+                      <td className="px-2 py-1 text-purple-400">{(typ.grooveDepthFraction * 100).toFixed(0)}%</td>
+                      <td className="px-2 py-1 text-amber-300">{mat.toolSteel}</td>
+                      <td className="px-2 py-1 text-zinc-300">{mat.hardnessHRC}</td>
+                      <td className="px-2 py-1 text-green-400">{mat.surfaceTreatment.split(" ").slice(0, 2).join(" ")}</td>
+                      <td className="px-2 py-1 text-cyan-300">{mat.lifeHrs.toLocaleString()} h</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── 7. Springback Overbend Table ── */}
       {rollTooling.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden">
           <div className="px-4 py-2.5 bg-zinc-800/60 border-b border-zinc-700 flex items-center gap-3">
@@ -455,8 +519,8 @@ export function RollFlowerIntegratedView() {
             <table className="w-full text-[10px] font-mono">
               <thead>
                 <tr className="border-b border-zinc-800 bg-zinc-800/30">
-                  {["Stn", "Phase", "Nominal°", "Springback°", "Overbend°", "Final Tool°", "Upper OD", "Lower OD", "Shaft Ø", "Bearing"].map(h => (
-                    <th key={h} className="px-2 py-2 text-left text-zinc-500 font-semibold">{h}</th>
+                  {["Stn", "Roll Type", "Phase", "Nominal°", "Springback°", "Overbend°", "Final Tool°", "Upper OD", "Lower OD", "Shaft Ø", "Bearing"].map(h => (
+                    <th key={h} className="px-2 py-2 text-left text-zinc-500 font-semibold whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -468,6 +532,7 @@ export function RollFlowerIntegratedView() {
                   const rt = rollTooling[i];
                   const sc = rt?.shaftCalc;
                   const br = rt?.bearing;
+                  const typ = rt?.rollType;
                   const stProp = stations[i];
                   const sbAngle = stProp?.springbackAngles?.[0] ?? (angle * 0.03);
                   const overbend = phase === "CALIBRATION" || phase === "PRE_CLOSE" ? (sbAngle).toFixed(1) : "—";
@@ -475,6 +540,9 @@ export function RollFlowerIntegratedView() {
                   return (
                     <tr key={i} className={`border-b border-zinc-800/50 ${i % 2 === 0 ? "bg-zinc-900/20" : ""}`}>
                       <td className="px-2 py-1.5 font-bold text-zinc-300">S{i + 1}</td>
+                      <td className="px-2 py-1.5 font-bold text-[9px] whitespace-nowrap" style={{ color: typ?.color ?? "#71717a" }}>
+                        {typ ? typ.name : "—"}
+                      </td>
                       <td className="px-2 py-1.5 font-bold" style={{ color: pc.text }}>{pc.label}</td>
                       <td className="px-2 py-1.5 text-zinc-300">{angle.toFixed(1)}°</td>
                       <td className="px-2 py-1.5 text-amber-400">{sbAngle.toFixed(2)}°</td>

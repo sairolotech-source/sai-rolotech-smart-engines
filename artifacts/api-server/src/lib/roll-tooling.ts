@@ -75,6 +75,30 @@ export interface StandPitchResult {
   formula: string;
 }
 
+export type RollTypeCode = "GUIDE" | "BREAKDOWN" | "FORMING" | "GROOVE" | "FINPASS" | "SIZING" | "SIDE";
+
+export interface RollTypeInfo {
+  code: RollTypeCode;
+  name: string;
+  description: string;
+  grooveShape: "flat" | "shallow-v" | "v-groove" | "u-groove" | "deep-groove" | "fin";
+  grooveAngleDeg: number;
+  grooveDepthFraction: number;
+  filletRadiusMm: number;
+  phase: "ENTRY" | "FORMING" | "CLOSING" | "SIZING";
+  color: string;
+}
+
+export interface RollMaterialRec {
+  toolSteel: string;
+  hardnessHRC: string;
+  surfaceTreatment: string;
+  treatmentNote: string;
+  alternativeMaterial: string;
+  lubricantRecommended: string;
+  lifeHrs: number;
+}
+
 export interface RollToolingResult {
   stationId: string;
   stationIndex: number;
@@ -97,6 +121,8 @@ export interface RollToolingResult {
   rollODCalc: RollODResult;
   standPitch: StandPitchResult;
   profileDepthMm: number;
+  rollType: RollTypeInfo;
+  rollMaterial: RollMaterialRec;
 }
 
 const K_FACTORS: Record<string, number> = {
@@ -225,6 +251,200 @@ function estimateProfileDepth(
   const halfWidth = station.stripWidth * 0.5;
   const geometricDepth = halfWidth * Math.sin(Math.min(angleRad, Math.PI / 2));
   return Math.max(0, geometricDepth * progressFraction);
+}
+
+// ─── Roll Type Classification ─────────────────────────────────────────────────
+
+function classifyRollType(
+  index: number,
+  totalStations: number,
+  cumulativeBendAngleDeg: number,
+  profileDepthMm: number,
+): RollTypeInfo {
+  const pct = totalStations <= 1 ? 1 : index / (totalStations - 1);
+  const bendAngle = cumulativeBendAngleDeg;
+
+  if (pct === 0) {
+    // First station: Guide Roll — minimal forming, sheet entry alignment
+    return {
+      code: "GUIDE",
+      name: "Guide Roll",
+      description: "Entry guide — aligns strip, minimal bending, flat contact",
+      grooveShape: "flat",
+      grooveAngleDeg: 0,
+      grooveDepthFraction: 0,
+      filletRadiusMm: 5.0,
+      phase: "ENTRY",
+      color: "#64748b",
+    };
+  }
+  if (pct <= 0.20 && bendAngle <= 30) {
+    // Early stations: Breakdown Roll — initial shallow bending
+    return {
+      code: "BREAKDOWN",
+      name: "Breakdown Roll",
+      description: "Shallow V-groove — first bend initiation, edge forming begins",
+      grooveShape: "shallow-v",
+      grooveAngleDeg: Math.round(bendAngle * 0.9),
+      grooveDepthFraction: 0.10,
+      filletRadiusMm: 4.0,
+      phase: "ENTRY",
+      color: "#0ea5e9",
+    };
+  }
+  if (pct <= 0.45 && bendAngle <= 60) {
+    // Mid-early: Forming Roll — main bending progression
+    return {
+      code: "FORMING",
+      name: "Forming Roll",
+      description: "V-groove forming — progressive bend angle increase, side wall development",
+      grooveShape: "v-groove",
+      grooveAngleDeg: Math.round(bendAngle * 0.95),
+      grooveDepthFraction: 0.25,
+      filletRadiusMm: 3.0,
+      phase: "FORMING",
+      color: "#f59e0b",
+    };
+  }
+  if (pct <= 0.70 && bendAngle <= 85) {
+    // Mid: Groove Roll — deep contoured groove, main shaping
+    return {
+      code: "GROOVE",
+      name: "Groove Roll",
+      description: "Deep contoured groove — profile shaping, both walls fully formed",
+      grooveShape: profileDepthMm > 20 ? "deep-groove" : "u-groove",
+      grooveAngleDeg: Math.round(bendAngle),
+      grooveDepthFraction: 0.45,
+      filletRadiusMm: 2.0,
+      phase: "FORMING",
+      color: "#8b5cf6",
+    };
+  }
+  if (pct <= 0.88) {
+    // Near-final: Fin Pass Roll — profile closing, near-net shape
+    return {
+      code: "FINPASS",
+      name: "Fin Pass Roll",
+      description: "Fin groove — closing the profile to near-final shape, weld seam prep",
+      grooveShape: "fin",
+      grooveAngleDeg: Math.min(Math.round(bendAngle), 90),
+      grooveDepthFraction: 0.65,
+      filletRadiusMm: 1.5,
+      phase: "CLOSING",
+      color: "#ec4899",
+    };
+  }
+  // Last station(s): Sizing Roll — precision calibration
+  return {
+    code: "SIZING",
+    name: "Sizing Roll",
+    description: "Precision sizing — final OD/width calibration, surface finish, tolerancing",
+    grooveShape: "u-groove",
+    grooveAngleDeg: 90,
+    grooveDepthFraction: 0.70,
+    filletRadiusMm: 1.0,
+    phase: "SIZING",
+    color: "#22c55e",
+  };
+}
+
+// ─── Roll Material Recommendation ────────────────────────────────────────────
+
+const ROLL_MATERIAL_MAP: Record<string, RollMaterialRec> = {
+  GI: {
+    toolSteel: "D2 Tool Steel",
+    hardnessHRC: "HRC 60–62",
+    surfaceTreatment: "Gas Nitriding (650 HV)",
+    treatmentNote: "Nitriding increases surface hardness, resists zinc pick-up",
+    alternativeMaterial: "H11 Tool Steel HRC 56",
+    lubricantRecommended: "Quaker FERROCOAT 395 forming oil",
+    lifeHrs: 8000,
+  },
+  CR: {
+    toolSteel: "D2 Tool Steel",
+    hardnessHRC: "HRC 60–62",
+    surfaceTreatment: "Gas Nitriding (650 HV)",
+    treatmentNote: "Smooth finish critical — avoid tool marks transferring to CR surface",
+    alternativeMaterial: "D3 Tool Steel HRC 62",
+    lubricantRecommended: "Light forming oil or dry lube (chlorine-free)",
+    lifeHrs: 10000,
+  },
+  HR: {
+    toolSteel: "D2 Tool Steel",
+    hardnessHRC: "HRC 58–60",
+    surfaceTreatment: "Salt Bath Nitriding (580 HV)",
+    treatmentNote: "Descale strip before forming — scale particles cause premature wear",
+    alternativeMaterial: "H13 Hot Work Steel HRC 52",
+    lubricantRecommended: "Mineral oil EP (ISO VG 32)",
+    lifeHrs: 6000,
+  },
+  SS: {
+    toolSteel: "H13 Hot Work Tool Steel",
+    hardnessHRC: "HRC 52–54",
+    surfaceTreatment: "TiN PVD Coating (2300 HV, 3–5 μm)",
+    treatmentNote: "TiN reduces galling risk — SS work hardens rapidly; avoid dwell",
+    alternativeMaterial: "D2 + TiAlN Coating",
+    lubricantRecommended: "Chlorine-free drawing compound + flood rinse (mandatory)",
+    lifeHrs: 3000,
+  },
+  AL: {
+    toolSteel: "D2 Tool Steel",
+    hardnessHRC: "HRC 58–60",
+    surfaceTreatment: "Hard Chrome Plating (800–1000 HV, 20–30 μm)",
+    treatmentNote: "Chrome prevents AL adhesion/pick-up — use polyurethane side collars",
+    alternativeMaterial: "Chrome-plated Mild Steel (for light gauge)",
+    lubricantRecommended: "Aluminum-specific forming lubricant (no chlorine, no iron)",
+    lifeHrs: 5000,
+  },
+  MS: {
+    toolSteel: "D2 Tool Steel",
+    hardnessHRC: "HRC 60–62",
+    surfaceTreatment: "Gas Nitriding (650 HV)",
+    treatmentNote: "Same as GI — standard nitriding for mild steel forming",
+    alternativeMaterial: "H11 Tool Steel HRC 56",
+    lubricantRecommended: "Light mineral oil (ISO VG 22)",
+    lifeHrs: 8000,
+  },
+  CU: {
+    toolSteel: "D2 Tool Steel",
+    hardnessHRC: "HRC 58–60",
+    surfaceTreatment: "Hard Chrome Plating (800 HV, 15–20 μm)",
+    treatmentNote: "Chrome prevents copper smearing — avoid sharp tool edges",
+    alternativeMaterial: "Chrome-plated O1 Tool Steel",
+    lubricantRecommended: "Thin mineral oil (no chlorinated compounds for copper)",
+    lifeHrs: 6000,
+  },
+  TI: {
+    toolSteel: "D2 + TiAlN Coating",
+    hardnessHRC: "HRC 60 substrate + TiAlN (2400 HV surface)",
+    surfaceTreatment: "TiAlN PVD Coating (2400 HV, 4–6 μm) — mandatory",
+    treatmentNote: "Titanium is highly reactive — uncoated rolls cause galling within hours",
+    alternativeMaterial: "Carbide-tipped rolls for extreme life",
+    lubricantRecommended: "Titanium-grade lubricant mandatory — dry forming strictly prohibited",
+    lifeHrs: 1500,
+  },
+  PP: {
+    toolSteel: "D2 Tool Steel (core)",
+    hardnessHRC: "HRC 60 core + 60A Shore Polyurethane sleeve",
+    surfaceTreatment: "Polyurethane Sleeve (Shore 60A, 5–10 mm thick)",
+    treatmentNote: "PU sleeve protects pre-painted/coated strip surface — replace when worn",
+    alternativeMaterial: "Chrome-plated D2 (for heavy gauge PP)",
+    lubricantRecommended: "Dry lube or thin protective film — no wet oils on painted surface",
+    lifeHrs: 2000,
+  },
+  HSLA: {
+    toolSteel: "H13 Hot Work Tool Steel",
+    hardnessHRC: "HRC 52–54",
+    surfaceTreatment: "TiN PVD Coating (2300 HV)",
+    treatmentNote: "HSLA high strength causes rapid tool wear — TiN coating extends life 3×",
+    alternativeMaterial: "D2 + TiN Coating (HRC 60–62 + TiN)",
+    lubricantRecommended: "Heavy-duty forming oil (EP additive, VG 68)",
+    lifeHrs: 2500,
+  },
+};
+
+function recommendRollMaterial(materialType: string): RollMaterialRec {
+  return ROLL_MATERIAL_MAP[materialType.toUpperCase()] ?? ROLL_MATERIAL_MAP["GI"];
 }
 
 // ─── Motor Capacity Calculation ───────────────────────────────────────────────
@@ -393,6 +613,9 @@ export function generateRollTooling(
 
     const concentricityTolerance = 0.02 * upperRollOD / 100;
 
+    const rollType = classifyRollType(i, n, station.cumulativeBendAngle, profileDepth);
+    const rollMaterial = recommendRollMaterial(mat);
+
     return {
       stationId: station.stationId,
       stationIndex: i + 1,
@@ -415,6 +638,8 @@ export function generateRollTooling(
       rollODCalc,
       standPitch,
       profileDepthMm: parseFloat(profileDepth.toFixed(3)),
+      rollType,
+      rollMaterial,
     };
   });
 }
@@ -461,17 +686,18 @@ export function calcBomFromTooling(
 ): { item: string; qty: number; spec: string; material: string }[] {
   const bom: { item: string; qty: number; spec: string; material: string }[] = [];
   for (const t of tooling) {
+    const matSpec = `${t.rollMaterial.toolSteel} ${t.rollMaterial.hardnessHRC} | ${t.rollMaterial.surfaceTreatment}`;
     bom.push({
-      item: `Upper Roll ${t.stationId}`,
+      item: `Upper Roll ${t.stationId} [${t.rollType.name}]`,
       qty: 1,
-      spec: `OD${t.upperRollOD}×ID${t.upperRollID}×W${t.upperRollWidth} | Shaft Ø${t.shaftCalc.selectedDiaMm} | ${t.bearing.designation} | Pitch ${t.standPitch.pitchMm}mm`,
-      material: "D2 Tool Steel HRC60-62",
+      spec: `OD${t.upperRollOD}×ID${t.upperRollID}×W${t.upperRollWidth} | Shaft Ø${t.shaftCalc.selectedDiaMm} | ${t.bearing.designation} | Pitch ${t.standPitch.pitchMm}mm | Groove:${t.rollType.grooveShape} ${t.rollType.grooveAngleDeg}°`,
+      material: matSpec,
     });
     bom.push({
-      item: `Lower Roll ${t.stationId}`,
+      item: `Lower Roll ${t.stationId} [${t.rollType.name}]`,
       qty: 1,
-      spec: `OD${t.lowerRollOD}×ID${t.lowerRollID}×W${t.lowerRollWidth} | Shaft Ø${t.shaftCalc.selectedDiaMm}`,
-      material: "D2 Tool Steel HRC60-62",
+      spec: `OD${t.lowerRollOD}×ID${t.lowerRollID}×W${t.lowerRollWidth} | Shaft Ø${t.shaftCalc.selectedDiaMm} | Groove:${t.rollType.grooveShape} ${t.rollType.grooveAngleDeg}°`,
+      material: matSpec,
     });
     bom.push({
       item: `Bearing Set ${t.stationId}`,

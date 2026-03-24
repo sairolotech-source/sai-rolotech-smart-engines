@@ -372,6 +372,30 @@ export interface StandPitchResult {
   formula: string;
 }
 
+export type RollTypeCode = "GUIDE" | "BREAKDOWN" | "FORMING" | "GROOVE" | "FINPASS" | "SIZING" | "SIDE";
+
+export interface RollTypeInfo {
+  code: RollTypeCode;
+  name: string;
+  description: string;
+  grooveShape: "flat" | "shallow-v" | "v-groove" | "u-groove" | "deep-groove" | "fin";
+  grooveAngleDeg: number;
+  grooveDepthFraction: number;
+  filletRadiusMm: number;
+  phase: "ENTRY" | "FORMING" | "CLOSING" | "SIZING";
+  color: string;
+}
+
+export interface RollMaterialRec {
+  toolSteel: string;
+  hardnessHRC: string;
+  surfaceTreatment: string;
+  treatmentNote: string;
+  alternativeMaterial: string;
+  lubricantRecommended: string;
+  lifeHrs: number;
+}
+
 export interface RollToolingResult {
   stationId: string;
   stationIndex: number;
@@ -400,6 +424,8 @@ export interface RollToolingResult {
   behavior?: RollBehavior;
   mfgSpec?: ManufacturingSpec;
   camPlan?: CamPlan;
+  rollType?: RollTypeInfo;
+  rollMaterial?: RollMaterialRec;
 }
 
 // ─── Machine Data (forming parameters summary) ────────────────────────────────

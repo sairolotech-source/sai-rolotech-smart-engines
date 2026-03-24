@@ -30,25 +30,38 @@ router.post("/analyze-profile", (req: Request<unknown, unknown, AnalyzeProfileBo
     const t = parseFloat(String(thickness)) || 1.0;
     const mat = (material || "GI").toUpperCase();
     const bendCount = bends.length;
+    const maxBendAngle = bends.reduce((m, b) => Math.max(m, Math.abs(b.bend_angle || 0)), 0);
+    const isSS = mat === "SS";
+    const isThin = t < 0.5;
+    const isThick = t > 3.0;
+    const hasObtuse = bends.some(b => Math.abs(b.bend_angle || 0) > 120);
 
-    // Step 1 formula (document): base + thin sheet + SS + per-bend angle>90 penalty
-    let suggestedPasses = bendCount * 2;
-    if (t < 0.5) suggestedPasses += 1;
-    if (mat === "SS") suggestedPasses += 2;
+    // Pass count: base (2 per bend) + material & geometry penalties
+    let suggestedPasses = Math.max(bendCount * 2, 3);
+    if (isThin) suggestedPasses += 2;          // thin sheet needs gradual forming
+    if (isThick) suggestedPasses += 1;         // thick plate needs extra force pass
+    if (isSS) suggestedPasses += 2;            // SS springback compensation
+    if (bendCount > 6) suggestedPasses += 2;   // highly complex profile
     bends.forEach(b => {
-      if (Math.abs(b.bend_angle || 0) > 90) suggestedPasses += 1;
+      if (Math.abs(b.bend_angle || 0) > 120) suggestedPasses += 1; // obtuse bends need extra
     });
 
-    // Step 1 risk logic (document): bend count first, then thickness, then material
+    // Risk level: multi-factor assessment (not just bend count)
+    // HIGH: truly complex — SS with many bends, or very thin, or 6+ bends
+    // MEDIUM: moderately complex — SS simple, or 4-5 bends in GI/MS, or thin
+    // LOW: standard profiles — ≤3 bends, normal material/thickness
     let riskLevel: string;
-    if (bendCount >= 4) riskLevel = "high";
-    else if (t < 0.4) riskLevel = "medium";
-    else if (mat === "SS") riskLevel = "high";
-    else riskLevel = "low";
+    if (bendCount >= 6 || (isSS && bendCount >= 4) || isThin || (hasObtuse && bendCount >= 4)) {
+      riskLevel = "high";
+    } else if (bendCount >= 4 || isSS || isThick || (hasObtuse && bendCount >= 2)) {
+      riskLevel = "medium";
+    } else {
+      riskLevel = "low";
+    }
 
     const totalBendAngle = bends.reduce((s, b) => s + Math.abs(b.bend_angle || 0), 0);
 
-    res.json({ bendCount, suggestedPasses, riskLevel, totalBendAngle, material: mat, thickness: t });
+    res.json({ bendCount, suggestedPasses, riskLevel, totalBendAngle, maxBendAngle, material: mat, thickness: t });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Analysis failed";
     res.status(400).json({ error: message });

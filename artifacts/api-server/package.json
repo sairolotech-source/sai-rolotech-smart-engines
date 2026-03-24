@@ -23,6 +23,8 @@
     "jose": "^5.10.0",
     "jszip": "^3.10.1",
     "multer": "^2.0.0",
+    "p-limit": "^7.3.0",
+    "p-retry": "^7.1.1",
     "pg": "^8.20.0",
     "serialport": "^13.0.0",
     "systeminformation": "^5.25.11",

@@ -297,7 +297,7 @@ function TextReveal({ phase, swKb, swFile, progress }: {
 }) {
   const title1 = "SAI ROLOTECH";
   const title2 = "SMART ENGINES";
-  const tag = "PRECISION ROLL FORMING SUITE  ·  v2.2.11";
+  const tag = "PRECISION ROLL FORMING SUITE  ·  v2.2.20";
 
   const chars1 = phase > 0.65 ? Math.floor((phase - 0.65) / 0.35 * title1.length * 1.5) : 0;
   const chars2 = phase > 0.78 ? Math.floor((phase - 0.78) / 0.22 * title2.length * 1.5) : 0;
@@ -570,7 +570,7 @@ function SplashScreen2D({ onComplete, minDuration = 4000 }: SplashScreen3DProps)
         <div style={{
           fontSize: "0.58rem", color: "rgba(156,163,175,0.6)", marginTop: 8,
           letterSpacing: "0.2em", fontFamily: "monospace",
-        }}>PRECISION ROLL FORMING SUITE  ·  v2.2.11</div>
+        }}>PRECISION ROLL FORMING SUITE  ·  v2.2.20</div>
       </div>
 
       {/* Progress */}

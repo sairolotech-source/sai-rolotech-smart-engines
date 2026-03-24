@@ -119,7 +119,7 @@ jobs:
       - name: Upload installer as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SAI-Rolotech-Smart-Engines-v2.2.0-Windows
+          name: SAI-Rolotech-Smart-Engines-v2.2.20-Windows
           path: |
             artifacts/desktop/release/*.exe
           retention-days: 30

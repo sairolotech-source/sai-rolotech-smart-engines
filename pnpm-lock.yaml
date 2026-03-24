@@ -194,6 +194,12 @@ importers:
       multer:
         specifier: ^2.0.0
         version: 2.1.1
+      p-limit:
+        specifier: ^7.3.0
+        version: 7.3.0
+      p-retry:
+        specifier: ^7.1.1
+        version: 7.1.1
       pg:
         specifier: ^8.20.0
         version: 8.20.0

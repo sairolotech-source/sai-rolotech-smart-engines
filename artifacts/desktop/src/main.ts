@@ -224,6 +224,7 @@ async function createMainWindow(): Promise<void> {
           req.setTimeout(2000, () => { req.destroy(); resolve(false); });
         });
         if (ok) {
+          await mainWindow.webContents.session.clearCache();
           await mainWindow.loadURL(serverUrl);
           loaded = true;
           console.log(`[App] Frontend loaded from API server (attempt ${i + 1})`);
@@ -306,7 +307,12 @@ async function createMainWindow(): Promise<void> {
     console.error(`[Renderer] Gone  -  reason=${reason} exitCode=${exitCode}`);
     _logCrash(`render-process-gone: reason=${reason} exitCode=${exitCode}`);
 
-    if (isQuitting || reason === "clean-exit") return;
+    // "killed" = externally killed (e.g. by installer taskkill) — just quit silently
+    if (isQuitting || reason === "clean-exit" || reason === "killed") {
+      isQuitting = true;
+      app.quit();
+      return;
+    }
 
     dialog.showMessageBox({
       type:      "error",

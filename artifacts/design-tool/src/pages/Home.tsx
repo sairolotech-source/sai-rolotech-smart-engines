@@ -58,6 +58,7 @@ const GuardrailReportGenerator = lazy(() => import("../components/cnc/GuardrailR
 const ExportHistoryPanel = lazy(() => import("../components/cnc/ExportHistoryPanel").then(m => ({ default: m.ExportHistoryPanel })));
 const AIChatbotsView = lazy(() => import("../components/cnc/AIChatbotsView").then(m => ({ default: m.AIChatbotsView })));
 const DrawingVisionView = lazy(() => import("../components/cnc/DrawingVisionView").then(m => ({ default: m.DrawingVisionView })));
+const RollToolingDrawingView = lazy(() => import("../components/cnc/RollToolingDrawingView").then(m => ({ default: m.default })));
 const SafetyPanelView = lazy(() => import("../components/cnc/SafetyPanelView").then(m => ({ default: m.SafetyPanelView })));
 const RollDesignSuite = lazy(() => import("../components/cnc/RollDesignSuite").then(m => ({ default: m.RollDesignSuite })));
 const RollKnowledgeHub = lazy(() => import("../components/cnc/RollKnowledgeHub").then(m => ({ default: m.RollKnowledgeHub })));
@@ -152,7 +153,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "dxf-import": "ai", "gcode-simulator": "ai", "roll-flower-designer": "ai", "material-analyzer": "ai",
   "station-control": "ai", "rf-machine": "simulation",
   "validation-pipeline": "quality", "testing-engine": "quality", "machine-bom": "quality", "dimension-confirm": "design",
-  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-data-files": "manufacturing", "roll-export": "manufacturing", "buddy-crm": "system", "demo-videos": "system",
+  "flower-3d": "simulation", "flower-combined": "simulation", "autocad-engineering-drawing": "design", "machine-load-calc": "manufacturing", "roll-data-files": "manufacturing", "roll-export": "manufacturing", "buddy-crm": "system", "demo-videos": "system", "roll-tooling-drawing": "design",
   report: "project",
 };
 
@@ -272,6 +273,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "turner", label: "Turning / Lathe", icon: <Clapperboard className="w-4 h-4" />, desc: "TurnAxis CAM 3D lathe simulation + adaptive toolpaths" },
         { id: "pro-lathe-sim", label: "Pro Lathe Simulator", icon: <Cpu className="w-4 h-4" />, desc: "Professional CNC Lathe — G-Code Editor, Post-Processor (Fanuc/Siemens/HAAS/Mazak), 12-pos Turret, 3D Sim, Collision Verify" },
         { id: "roll-tooling-calc", label: "Roll Tooling Calculator", icon: <Gauge className="w-4 h-4" />, desc: "Bearing size · Bore size · Roll OD/Width · Roll Material — Manual / Semi-Auto / Fully Auto mode with L10 life, keyway, heat treatment" },
+        { id: "roll-tooling-drawing", label: "Roll Tooling Drawing (Station-wise)", icon: <Ruler className="w-4 h-4" />, desc: "Har station ka upper+lower roll cross-section drawing — angle progression, flower pattern visual, BOM table, SVG/Print export" },
         { id: "roll-blank-size", label: "Roll Blank Size Calculator", icon: <Ruler className="w-4 h-4" />, desc: "Raw OD (raf size) · Final OD · Raw Length · Side margin for profile · Material + weight + cost — per roll blank purchase sizing" },
         { id: "roll-cutting-safety", label: "Roll Cutting Safety", icon: <Shield className="w-4 h-4" />, desc: "Cutting approach · Retract distance · Raw size · Safety zones · G-code positions · DXF export for CAD editing" },
         { id: "roll-tool-collision", label: "Roll Tool Setup & Collision", icon: <Crosshair className="w-4 h-4" />, desc: "3-tool setup (Rough/Finish/Groove) · Insert & holder select · Collision detect · Multi-tool G-code · Delta 2X" },
@@ -480,6 +482,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "turner": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><TurningView /></div></Suspense>;
       case "pro-lathe-sim": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><ProLatheSimulator /></div></Suspense>;
       case "roll-tooling-calc": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollToolingCalculator /></div></Suspense>;
+      case "roll-tooling-drawing": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollToolingDrawingView /></div></Suspense>;
       case "roll-blank-size": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollBlankCalculator /></div></Suspense>;
       case "roll-cutting-safety": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollCuttingSafetyCalc /></div></Suspense>;
       case "roll-tool-collision": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RollToolCollisionCalc /></div></Suspense>;

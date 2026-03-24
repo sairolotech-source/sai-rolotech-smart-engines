@@ -275,17 +275,16 @@ export function DesktopInstallView() {
   const [downloaded, setDownloaded] = useState<"" | "clean" | "fresh">("");
 
   function download(type: "clean" | "fresh") {
-    const script = type === "clean" ? CLEAN_REINSTALL_SCRIPT : INSTALL_SCRIPT;
-    const filename = type === "clean"
-      ? "SAI-PuraSaaf-NayaInstall.ps1"
-      : "SAI-Install-Windows.ps1";
-    const blob = new Blob([script], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
+    const endpoint = type === "clean"
+      ? "/api/download-script/clean"
+      : "/api/download-script/fresh";
     const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
+    a.href = endpoint;
+    a.setAttribute("download", type === "clean" ? "SAI-PuraSaaf-NayaInstall.ps1" : "SAI-Install-Windows.ps1");
+    a.target = "_blank";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
     setDownloaded(type);
     setTimeout(() => setDownloaded(""), 4000);
   }

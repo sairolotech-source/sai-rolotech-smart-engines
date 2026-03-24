@@ -6,7 +6,7 @@ import crypto from "crypto";
 const REGISTRY_PATH = path.resolve("/home/runner/workspace/data/license-registry.json");
 const ADMIN_PASSWORD = process.env["ADMIN_PASSWORD"] || "SAIRTECH-ADMIN-2026";
 const DEMO_KEY = "SAIR-DEMO-2026-TRIAL";
-const DEMO_TRIAL_HOURS = 24;
+const DEMO_TRIAL_HOURS = 72; // 3 din = 72 ghante
 
 const VALID_LICENSE_KEYS = new Set([
   "SAIR-2026-ROLL-FORM",

@@ -12,6 +12,7 @@ import { useRoleStore, ROLE_LABELS, ROLE_COLORS, type UserRole } from "@/store/u
 import { syncOfflineQueue, getOfflineQueue } from "@/lib/api";
 
 // ── Heavy pages — lazy load (sirf jab zaroorat ho tab download hoga) ──────────
+const LicenseKeyScreen = lazy(() => import("@/components/auth/LicenseKeyScreen").then(m => ({ default: m.LicenseKeyScreen })));
 const Home             = lazy(() => import("@/pages/Home"));
 const LandingPage      = lazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })));
 const Dashboard        = lazy(() => import("@/pages/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -223,6 +224,7 @@ function AuthGate() {
   const { user, initialized } = useAuthStore();
   const [view, setView] = useState<AppView>(user ? "dashboard" : "landing");
   const [splashDone, setSplashDone] = useState(false);
+  const [licenseOk, setLicenseOk] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const { theme } = useThemeStore();
 
@@ -263,6 +265,15 @@ function AuthGate() {
   if (isAdminPage) return <Suspense fallback={<PageSpinner />}><AdminPanel /></Suspense>;
   if (!initialized || !splashDone) return <SplashScreen3D onComplete={handleSplashComplete} />;
   if (isDownloadPage) return <Suspense fallback={<PageSpinner />}><DemoDownloadPage /></Suspense>;
+
+  // ── License gate — splash ke baad, login se pehle ─────────────────────────
+  if (!licenseOk) {
+    return (
+      <Suspense fallback={<PageSpinner />}>
+        <LicenseKeyScreen onUnlocked={() => setLicenseOk(true)} />
+      </Suspense>
+    );
+  }
 
   if (!user) {
     if (view === "forgot") return <Suspense fallback={<PageSpinner />}><ForgotPasswordPage onBack={() => setView("login")} /></Suspense>;

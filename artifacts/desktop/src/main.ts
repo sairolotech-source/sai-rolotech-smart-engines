@@ -782,8 +782,8 @@ function setupUpdateSchedule() {
 }
 
 function setupAutoUpdater(): void {
-  const settings = getUpdateSettings();
-  autoUpdater.autoDownload = settings.autoDownload;
+  // Always auto-download silently — no user click needed
+  autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("update-available", (info) => {
@@ -793,24 +793,18 @@ function setupAutoUpdater(): void {
         ? info.releaseNotes.map((n: { note?: string | null }) => n.note || "").join("\n")
         : "";
 
+    console.log(`[Updater] v${info.version} available — auto-downloading silently...`);
+
+    // Notify UI (shows progress bar) but NO popup dialog
     mainWindow?.webContents.send("update-available", {
       version: info.version,
       releaseDate: info.releaseDate,
       releaseNotes,
     });
 
-    dialog.showMessageBox(mainWindow!, {
-      type:    "info",
-      title:   "Update Available",
-      message: `Version ${info.version} available`,
-      detail:  `SAI Rolotech Smart Engines ka naya version available hai!\n\n${releaseNotes ? "Release Notes:\n" + releaseNotes.slice(0, 500) : "Download karna chahte hain?"}`,
-      buttons: ["Download", "Later"],
-    }).then(({ response }) => {
-      if (response === 0) {
-        updateRetryCount = 0;
-        autoUpdater.downloadUpdate();
-      }
-    });
+    // Auto-start download immediately — no user click
+    updateRetryCount = 0;
+    autoUpdater.downloadUpdate();
   });
 
   autoUpdater.on("download-progress", (progress) => {
@@ -835,8 +829,8 @@ function setupAutoUpdater(): void {
       success: true,
     });
 
-    // Auto-install after 30 seconds — user can click "Install Now" in the app panel earlier
-    let countdown = 30;
+    // Auto-install after 5 seconds — fully silent, no user action needed
+    let countdown = 5;
     const timer = setInterval(() => {
       countdown--;
       mainWindow?.webContents.send("update-countdown", { seconds: countdown, version: info.version });

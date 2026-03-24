@@ -56,14 +56,47 @@ router.get("/download/proxy/:assetId/:filename", async (req: Request, res: Respo
   }
 });
 
+async function getDirectDownloadUrl(assetId: number): Promise<string> {
+  const url = `https://api.github.com/repos/${GITHUB_REPO}/releases/assets/${assetId}`;
+  const headers = { ...ghHeaders(), Accept: "application/octet-stream" };
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers }, (res) => {
+      if (res.statusCode === 302 && res.headers.location) {
+        resolve(res.headers.location);
+      } else {
+        reject(new Error(`Expected redirect, got ${res.statusCode}`));
+      }
+      res.resume();
+    });
+    req.on("error", reject);
+  });
+}
+
+router.get("/download/direct-url", async (_req: Request, res: Response) => {
+  try {
+    const release = await fetchLatestRelease();
+    const setupAsset = getSetupAsset(release.assets ?? []);
+    const portableAsset = (release.assets ?? []).find((a: any) => a.name.includes("Portable") && a.name.endsWith(".exe"));
+    const setupUrl = setupAsset ? await getDirectDownloadUrl(setupAsset.id) : null;
+    const portableUrl = portableAsset ? await getDirectDownloadUrl(portableAsset.id) : null;
+    res.json({ version: release.tag_name, setup: { url: setupUrl, name: setupAsset?.name, sizeMB: setupAsset ? Math.round(setupAsset.size / 1024 / 1024) : null }, portable: { url: portableUrl, name: portableAsset?.name, sizeMB: portableAsset ? Math.round(portableAsset.size / 1024 / 1024) : null } });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.get("/install", async (_req: Request, res: Response) => {
   try {
     const release = await fetchLatestRelease();
 
     const tag = release.tag_name ?? "v2.2.18";
     const asset = getSetupAsset(release.assets ?? []);
-    const url = asset ? proxyUrl(_req, asset) :
-      `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
+    let url: string;
+    try {
+      url = asset ? await getDirectDownloadUrl(asset.id) : `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
+    } catch {
+      url = asset ? proxyUrl(_req, asset) : `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
+    }
     const sizeMB = asset ? Math.round(asset.size / 1024 / 1024) : 83;
 
     const ps1 = `

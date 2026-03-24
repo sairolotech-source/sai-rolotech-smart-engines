@@ -93,26 +93,39 @@ function isAntivirusSafeFile(filename: string): boolean {
 }
 
 async function resolveStaleConflict(): Promise<boolean> {
-  const lsRes = await runGit("ls-files -u --name-only");
-  if (!lsRes.stdout.trim()) return false;
-
-  logAuto(`Purana merge conflict mila — resolve kar raha hun: ${lsRes.stdout}`, "warn");
-
   const lockPath = path.join(REPO_ROOT, ".git", "index.lock");
   if (fs.existsSync(lockPath)) {
     try { fs.unlinkSync(lockPath); logAuto("Stale index.lock removed", "info"); } catch {}
   }
 
   const isMergeInProgress = fs.existsSync(path.join(REPO_ROOT, ".git", "MERGE_HEAD"));
-  if (!isMergeInProgress) return false;
+  const lsRes = await runGit("ls-files -u --name-only");
+  const hasConflict = !!lsRes.stdout.trim();
 
-  await runGit("add -A");
-  const commitRes = await runGit(`-c user.email="sairolotech@gmail.com" -c user.name="SAI Rolotech" commit --no-edit -m "Auto-resolve stale merge conflict"`);
-  if (commitRes.ok || commitRes.stdout.includes("nothing to commit")) {
-    logAuto("Merge conflict resolved + committed", "success");
+  if (!isMergeInProgress && !hasConflict) return false;
+
+  logAuto(`Stale merge state detected (MERGE_HEAD=${isMergeInProgress}, conflicts=${lsRes.stdout.trim() || "none"}) — aborting merge...`, "warn");
+
+  const abortRes = await runGit("merge --abort");
+  if (abortRes.ok) {
+    logAuto("Merge aborted successfully — syncing to origin/main...", "info");
+  } else {
+    logAuto(`Merge abort: ${abortRes.stderr.slice(0, 100)} — attempting reset...`, "warn");
+  }
+
+  const fetchRes = await runGit("fetch origin main");
+  if (!fetchRes.ok) {
+    logAuto(`Fetch fail during conflict resolve: ${fetchRes.stderr.slice(0, 100)}`, "error");
+    return false;
+  }
+
+  const resetRes = await runGit("reset --hard origin/main");
+  if (resetRes.ok) {
+    logAuto("Hard reset to origin/main — git state clean!", "success");
     return true;
   }
-  logAuto(`Conflict resolve fail: ${commitRes.stderr.slice(0, 200)}`, "error");
+
+  logAuto(`Reset fail: ${resetRes.stderr.slice(0, 200)}`, "error");
   return false;
 }
 

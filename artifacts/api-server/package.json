@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
+    "@serialport/parser-readline": "^13.0.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
@@ -23,6 +24,7 @@
     "jszip": "^3.10.1",
     "multer": "^2.0.0",
     "pg": "^8.20.0",
+    "serialport": "^13.0.0",
     "systeminformation": "^5.25.11",
     "uuid": "^11.1.0",
     "zod": "catalog:"

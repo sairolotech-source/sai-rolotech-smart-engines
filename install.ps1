@@ -1,16 +1,16 @@
-# SAI Rolotech Smart Engines — Auto Install Script
-# Usage (PowerShell as Admin): irm https://raw.githubusercontent.com/sairolotech-source/sai-rolotech-smart-engines/main/install.ps1 | iex
-# Git Bash usage: powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/sairolotech-source/sai-rolotech-smart-engines/main/install.ps1 | iex"
+# SAI Rolotech Smart Engines — Complete Cleanup + Auto Install Script
+# Usage (PowerShell as Admin):
+#   Set-ExecutionPolicy Bypass -Scope Process -Force; irm https://raw.githubusercontent.com/sairolotech-source/sai-rolotech-smart-engines/main/install.ps1 | iex
 
 Write-Host ""
-Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "  SAI Rolotech Smart Engines             " -ForegroundColor Cyan
-Write-Host "  Auto Download + Auto Install           " -ForegroundColor Cyan
-Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
+Write-Host "  SAI Rolotech Smart Engines                " -ForegroundColor Cyan
+Write-Host "  Cleanup + Auto Download + Auto Install    " -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Step 1: Get latest release from GitHub ──────────────────────────────────
-Write-Host "[1/5] Latest version check kar raha hun..." -ForegroundColor Yellow
+# ── Step 1: Get latest release from GitHub ───────────────────────────────────
+Write-Host "[1/6] Latest version check kar raha hun..." -ForegroundColor Yellow
 try {
     $release = Invoke-RestMethod "https://api.github.com/repos/sairolotech-source/sai-rolotech-smart-engines/releases/latest" -EA Stop
     $tag     = $release.tag_name
@@ -26,45 +26,122 @@ try {
     $sizeMB = [math]::Round($asset.size / 1MB)
     Write-Host "  Latest: $($asset.name) (~${sizeMB}MB)" -ForegroundColor Green
 } catch {
-    Write-Host "  Fallback version use kar raha hun..." -ForegroundColor Yellow
-    $tag = "v2.2.13"
-    $url = "https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases/download/v2.2.13/SAI-Rolotech-Smart-Engines-Setup-2.2.13.exe"
+    Write-Host "  Fallback: v2.2.14 use kar raha hun..." -ForegroundColor Yellow
+    $tag = "v2.2.14"
+    $url = "https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases/download/v2.2.14/SAI-Rolotech-Smart-Engines-Setup-2.2.14.exe"
 }
 Write-Host ""
 
-# ── Step 2: Kill running SAI app instances ───────────────────────────────────
-Write-Host "[2/5] Purani SAI app band kar raha hun..." -ForegroundColor Yellow
-$exactNames = @(
+# ── Step 2: Kill ALL running SAI processes ───────────────────────────────────
+Write-Host "[2/6] SAI app ke SAARE processes band kar raha hun..." -ForegroundColor Yellow
+$killNames = @(
     "SAI Rolotech Smart Engines",
     "Sai Rolotech Smart Engines",
     "SaiRolotech-SmartEngines",
-    "SAI-Rolotech-Smart-Engines"
+    "SAI-Rolotech-Smart-Engines",
+    "electron"
 )
-foreach ($name in $exactNames) {
+foreach ($name in $killNames) {
     Get-Process -Name $name -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
 }
-Get-Process | Where-Object { $_.MainWindowTitle -like "*SAI Rolotech*" } | Stop-Process -Force -EA SilentlyContinue
+Get-Process | Where-Object { $_.MainWindowTitle -like "*SAI Rolotech*" -or $_.MainWindowTitle -like "*SAI Smart*" } |
+    Stop-Process -Force -EA SilentlyContinue
+Start-Sleep -Seconds 1
+
+# Second kill pass
+foreach ($name in $killNames) {
+    Get-Process -Name $name -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
+}
 Start-Sleep -Seconds 2
-Write-Host "      Done." -ForegroundColor Green
+Write-Host "      Done — sab processes band!" -ForegroundColor Green
 
-# ── Step 3: Remove ALL old installer files (Desktop + Temp) ──────────────────
-Write-Host "[3/5] Purane installer files hata raha hun..." -ForegroundColor Yellow
+# ── Step 3: Delete ALL duplicate folders from Windows ────────────────────────
+Write-Host "[3/6] Windows se SAARE duplicate folders delete kar raha hun..." -ForegroundColor Yellow
 
-# Desktop cleanup
-Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI-Rolotech*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
-Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI-Update*.exe"   -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
-Get-ChildItem "$env:USERPROFILE\Desktop" -Filter "SAI-2.*.exe"       -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+$foldersToDelete = @(
+    # AppData\Local\Programs (primary install location)
+    "$env:LOCALAPPDATA\Programs\SAI Rolotech Smart Engines",
+    "$env:LOCALAPPDATA\Programs\Sai Rolotech Smart Engines",
+    "$env:LOCALAPPDATA\Programs\SAI Sai Rolotech Smart Engines AI",
+    "$env:LOCALAPPDATA\Programs\SaiRolotech-SmartEngines",
+    "$env:LOCALAPPDATA\Programs\SAI-Rolotech-Smart-Engines",
 
-# Temp folder cleanup (previous downloads)
-Get-ChildItem "$env:TEMP" -Filter "SAI-Setup-*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+    # Program Files (old versions)
+    "$env:ProgramFiles\SAI Rolotech Smart Engines",
+    "$env:ProgramFiles\Sai Rolotech Smart Engines",
+    "$env:ProgramFiles\SAI Sai Rolotech Smart Engines AI",
+    "${env:ProgramFiles(x86)}\SAI Rolotech Smart Engines",
+    "${env:ProgramFiles(x86)}\Sai Rolotech Smart Engines",
+    "${env:ProgramFiles(x86)}\SAI Sai Rolotech Smart Engines AI",
 
-# Downloads folder cleanup
-Get-ChildItem "$env:USERPROFILE\Downloads" -Filter "SAI-Rolotech*.exe" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+    # AppData\Roaming
+    "$env:APPDATA\SAI Rolotech Smart Engines",
+    "$env:APPDATA\Sai Rolotech Smart Engines",
+    "$env:APPDATA\SaiRolotech-SmartEngines",
 
-Write-Host "      Done — sab purane files saaf!" -ForegroundColor Green
+    # AppData\Local (non-Programs)
+    "$env:LOCALAPPDATA\SAI Rolotech Smart Engines",
+    "$env:LOCALAPPDATA\Sai Rolotech Smart Engines",
 
-# ── Step 4: Auto-Download Setup installer ────────────────────────────────────
-Write-Host "[4/5] $tag auto-download ho raha hai..." -ForegroundColor Yellow
+    # Desktop leftover folders (if any)
+    "$env:USERPROFILE\Desktop\SAI Rolotech Smart Engines",
+    "$env:PUBLIC\Desktop\SAI Rolotech Smart Engines"
+)
+
+$deleted = 0
+foreach ($folder in $foldersToDelete) {
+    if (Test-Path $folder) {
+        Write-Host "  DELETE: $folder" -ForegroundColor Red
+        Remove-Item -Path $folder -Recurse -Force -EA SilentlyContinue
+        $deleted++
+    }
+}
+
+if ($deleted -eq 0) {
+    Write-Host "      Koi duplicate folder nahi mila (clean!)." -ForegroundColor Gray
+} else {
+    Write-Host "      $deleted duplicate folder(s) delete kiye!" -ForegroundColor Green
+}
+
+# ── Step 4: Remove old registry + shortcuts + installer files ─────────────────
+Write-Host "[4/6] Registry, shortcuts aur purane files saaf kar raha hun..." -ForegroundColor Yellow
+
+# Registry cleanup
+$regKeys = @(
+    "HKCU:\Software\SAI Rolotech Smart Engines",
+    "HKCU:\Software\Sai Rolotech Smart Engines",
+    "HKCU:\Software\SAI Sai Rolotech Smart Engines AI",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SAI Rolotech Smart Engines",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Sai Rolotech Smart Engines",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SAI Rolotech Smart Engines",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Sai Rolotech Smart Engines"
+)
+foreach ($key in $regKeys) {
+    Remove-Item -Path $key -Recurse -Force -EA SilentlyContinue
+}
+
+# Desktop shortcuts cleanup
+$desktopPaths = @($env:USERPROFILE + "\Desktop", $env:PUBLIC + "\Desktop")
+foreach ($dp in $desktopPaths) {
+    Remove-Item "$dp\SAI Rolotech Smart Engines.lnk"   -Force -EA SilentlyContinue
+    Remove-Item "$dp\Sai Rolotech Smart Engines.lnk"   -Force -EA SilentlyContinue
+    Remove-Item "$dp\SAI-Rolotech*.exe"                -Force -EA SilentlyContinue
+}
+
+# Start Menu cleanup
+Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\SAI Rolotech Smart Engines" -Recurse -Force -EA SilentlyContinue
+Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Sai Rolotech Smart Engines" -Recurse -Force -EA SilentlyContinue
+
+# Temp + Downloads installer files
+Get-ChildItem "$env:TEMP"                    -Filter "SAI-Setup-*.exe"     -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+Get-ChildItem "$env:TEMP"                    -Filter "SAI-Rolotech*.exe"   -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+Get-ChildItem "$env:USERPROFILE\Downloads"   -Filter "SAI-Rolotech*.exe"   -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+Get-ChildItem "$env:USERPROFILE\Desktop"     -Filter "SAI-Rolotech*.exe"   -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+
+Write-Host "      Done — pura system saaf!" -ForegroundColor Green
+
+# ── Step 5: Auto-Download fresh installer ────────────────────────────────────
+Write-Host "[5/6] $tag fresh installer download ho raha hai..." -ForegroundColor Yellow
 $installer = "$env:TEMP\SAI-Setup-$tag.exe"
 try {
     Invoke-WebRequest $url -OutFile $installer -UseBasicParsing
@@ -74,17 +151,37 @@ try {
     exit 1
 }
 
-# ── Step 5: Auto-Install silently (no popup, no click needed) ────────────────
-Write-Host "[5/5] Auto-Install ho raha hai (koi popup nahi)..." -ForegroundColor Yellow
+# ── Step 6: Auto-Install silently + Desktop Shortcut guarantee ───────────────
+Write-Host "[6/6] Auto-Install ho raha hai + Desktop shortcut ban raha hai..." -ForegroundColor Yellow
 Start-Process $installer -ArgumentList "/S" -Wait -NoNewWindow
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 3
 
-# Cleanup installer file after install
+# Cleanup installer
 Remove-Item $installer -Force -EA SilentlyContinue
 
+# Verify Desktop shortcut was created
+$shortcut = "$env:USERPROFILE\Desktop\SAI Rolotech Smart Engines.lnk"
+if (-not (Test-Path $shortcut)) {
+    # Manually create shortcut if installer missed it
+    $installDir = "$env:LOCALAPPDATA\Programs\SAI Rolotech Smart Engines"
+    $exePath    = "$installDir\SAI Rolotech Smart Engines.exe"
+    if (Test-Path $exePath) {
+        $wsh = New-Object -ComObject WScript.Shell
+        $lnk = $wsh.CreateShortcut($shortcut)
+        $lnk.TargetPath       = $exePath
+        $lnk.WorkingDirectory = $installDir
+        $lnk.Description      = "SAI Rolotech Smart Engines"
+        $lnk.Save()
+        Write-Host "      Desktop shortcut manually banaya!" -ForegroundColor Green
+    }
+} else {
+    Write-Host "      Desktop shortcut confirm hai!" -ForegroundColor Green
+}
+
 Write-Host ""
-Write-Host "=========================================" -ForegroundColor Green
-Write-Host "  $tag INSTALL HO GAYA!               " -ForegroundColor Green
-Write-Host "  Desktop shortcut pe double-click karo  " -ForegroundColor Green
-Write-Host "=========================================" -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
+Write-Host "  $tag INSTALL HO GAYA!                  " -ForegroundColor Green
+Write-Host "  Desktop pe 'SAI Rolotech Smart Engines' " -ForegroundColor Green
+Write-Host "  shortcut pe double-click karo            " -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""

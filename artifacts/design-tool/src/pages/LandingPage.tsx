@@ -7,10 +7,10 @@ import {
 import DemoVideo from "@/pages/DemoVideo";
 import { useAppVersion } from "@/lib/appVersion";
 
-const WHATS_NEW_VERSION = "v2.2.13";
+const WHATS_NEW_VERSION = "v2.2.14";
 const WHATS_NEW_DATE = "Mar 2026";
 const WHATS_NEW_ITEMS = [
-  { icon: <Shield className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />, text: "Smooth Install — No Key Prompt During Setup" },
+  { icon: <Shield className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />, text: "Fix: No Retry/Close Error During Install" },
   { icon: <Wrench className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />, text: "8-Tool Preset Library (Delta 2X)" },
   { icon: <Zap className="w-3.5 h-3.5" style={{ color: "#06b6d4" }} />, text: "Smart Multi-Pass Roughing (G71/G70)" },
   { icon: <BarChart3 className="w-3.5 h-3.5" style={{ color: "#34d399" }} />, text: "Manufacturing Feasibility Report" },

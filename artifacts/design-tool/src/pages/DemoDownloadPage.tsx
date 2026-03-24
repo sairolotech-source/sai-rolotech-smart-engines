@@ -6,9 +6,11 @@ import {
 } from "lucide-react";
 
 const GITHUB_REPO = "https://github.com/sairolotech-source/sai-rolotech-smart-engines";
-const GITHUB_ZIP = `${GITHUB_REPO}/archive/refs/heads/main.zip`;
+const RELEASE_BASE = `${GITHUB_REPO}/releases/download/v2.2.22`;
+const SETUP_EXE = `${RELEASE_BASE}/SAI-Rolotech-Smart-Engines-Setup-2.2.22.exe`;
+const PORTABLE_EXE = `${RELEASE_BASE}/SAI-Rolotech-Smart-Engines-Portable-2.2.22.exe`;
 const DEMO_LINK = "https://www.sairolotech.com";
-const VERSION = "v2.2.11";
+const VERSION = "v2.2.22";
 
 const FEATURES = [
   { icon: <Scissors className="w-4 h-4" />, text: "DXF/DWG Import → Flower Pattern" },
@@ -145,15 +147,22 @@ export default function DemoDownloadPage() {
 
           <div className="px-8 py-6 space-y-4">
             <a
-              href={GITHUB_ZIP}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={SETUP_EXE}
               className="group flex items-center justify-center gap-3 w-full py-4 rounded-xl text-base font-bold text-white transition-all hover:scale-[1.01] active:scale-[0.99]"
               style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)" }}
             >
               <Download className="w-5 h-5" />
-              Download ZIP ({VERSION})
+              Download Setup ({VERSION}) — 83 MB
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </a>
+
+            <a
+              href={PORTABLE_EXE}
+              className="group flex items-center justify-center gap-3 w-full py-3 rounded-xl text-sm font-semibold transition-all hover:scale-[1.01] active:scale-[0.99]"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#a1a1aa" }}
+            >
+              <Download className="w-4 h-4" />
+              Portable Version ({VERSION}) — Install Nahi Chahiye
             </a>
 
             <div className="flex items-center justify-center gap-4">

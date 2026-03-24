@@ -1,9 +1,27 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import {
   Download, ZoomIn, ZoomOut, Maximize2, FileText, Image as ImageIcon,
-  Layers, Grid, Ruler, RefreshCw, Settings, ChevronDown, ChevronUp, Info
+  Layers, Grid, Ruler, RefreshCw, Settings, ChevronDown, ChevronUp, Info,
+  Sparkles, Send, Bot, Loader2, X, CheckCircle2, Zap
 } from "lucide-react";
 import { useCncStore, type Segment } from "../../store/useCncStore";
+
+// ─── Auto Mode Types ──────────────────────────────────────────────────────────
+interface AutoMsg {
+  role: "ai" | "user";
+  text: string;
+  actions?: { key: string; value: string }[];
+}
+
+// Parse [ACTION:key:value] tags from AI response
+function parseActions(text: string): { cleaned: string; actions: { key: string; value: string }[] } {
+  const actions: { key: string; value: string }[] = [];
+  const cleaned = text.replace(/\[ACTION:([^:]+):([^\]]+)\]/g, (_, key, value) => {
+    actions.push({ key: key.trim(), value: value.trim() });
+    return "";
+  }).trim();
+  return { cleaned, actions };
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -575,7 +593,13 @@ export function AutoCADEngineeringDrawing() {
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
 
-  const { stations, geometry: profile } = useCncStore();
+  const {
+    stations, geometry: profile,
+    setStations, setRollTooling, setGcodeOutputs,
+    setMaterialType, setMaterialThickness, setNumStations, setOpenSectionType,
+    numStations, materialType, materialThickness, openSectionType,
+    rollDiameter, shaftDiameter, clearance, stationPrefix, gcodeConfig,
+  } = useCncStore();
 
   const [state, setState] = useState<DrawState>({
     zoom: 2.5,
@@ -606,6 +630,223 @@ export function AutoCADEngineeringDrawing() {
   const [showSettings, setShowSettings] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+
+  // ─── Super Pro Mode state ──────────────────────────────────────────────────
+  const [proMode, setProMode] = useState(false);
+  const [proChat, setProChat] = useState<AutoMsg[]>([]);
+  const [proInput, setProInput] = useState("");
+  const [proLoading, setProLoading] = useState(false);
+  const [pipelineStatus, setPipelineStatus] = useState<{
+    flower: "idle"|"running"|"done"|"error";
+    roll:   "idle"|"running"|"done"|"error";
+    gcode:  "idle"|"running"|"done"|"error";
+  }>({ flower: "idle", roll: "idle", gcode: "idle" });
+  const proEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { proEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [proChat]);
+
+  // ─── Apply action tags from AI response ──────────────────────────────────
+  const applyAction = useCallback((key: string, value: string) => {
+    switch (key) {
+      case "material_type":   setMaterialType(value as any); break;
+      case "thickness":       setMaterialThickness(parseFloat(value) || 1.5); break;
+      case "num_stations":    setNumStations(parseInt(value) || 6); break;
+      case "section_type":    setOpenSectionType(value as any); break;
+      case "part_name":       setProjectInfo(p => ({ ...p, name: value.toUpperCase() })); break;
+      case "part_no":         setProjectInfo(p => ({ ...p, partNo: value })); break;
+      case "material_label":  setProjectInfo(p => ({ ...p, material: value })); break;
+      case "drawn_by":        setProjectInfo(p => ({ ...p, drawn: value.toUpperCase() })); break;
+      case "revision":        setProjectInfo(p => ({ ...p, rev: value })); break;
+      case "paper_size":      setState(p => ({ ...p, paperSize: value as any })); break;
+    }
+  }, [setMaterialType, setMaterialThickness, setNumStations, setOpenSectionType]);
+
+  // ─── Pipeline runners ─────────────────────────────────────────────────────
+  const runFlower = useCallback(async (geo: any, nSt: number, mat: string, thick: number) => {
+    setPipelineStatus(p => ({ ...p, flower: "running" }));
+    try {
+      const { authFetch } = await import("../../lib/auth-fetch");
+      const res = await authFetch(`${window.location.origin}/api/generate-flower`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geometry: geo, numStations: nSt, stationPrefix: stationPrefix || "ST", materialType: mat, materialThickness: thick, openSectionType }),
+      });
+      if (!res.ok) throw new Error("Flower generation failed");
+      const data = await res.json() as { stations: any[] };
+      setStations(data.stations);
+      setPipelineStatus(p => ({ ...p, flower: "done" }));
+      return data.stations;
+    } catch {
+      setPipelineStatus(p => ({ ...p, flower: "error" }));
+      return null;
+    }
+  }, [stationPrefix, openSectionType, setStations]);
+
+  const runRollTooling = useCallback(async (geo: any, nSt: number, mat: string, thick: number) => {
+    setPipelineStatus(p => ({ ...p, roll: "running" }));
+    try {
+      const { authFetch } = await import("../../lib/auth-fetch");
+      const res = await authFetch(`${window.location.origin}/api/generate-roll-tooling`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geometry: geo, numStations: nSt, stationPrefix: stationPrefix || "ST", materialThickness: thick, materialType: mat, openSectionType, rollDiameter, shaftDiameter, clearance }),
+      });
+      if (!res.ok) throw new Error("Roll tooling failed");
+      const data = await res.json() as { rollTooling: any[] };
+      setRollTooling(data.rollTooling);
+      setPipelineStatus(p => ({ ...p, roll: "done" }));
+      return data.rollTooling;
+    } catch {
+      setPipelineStatus(p => ({ ...p, roll: "error" }));
+      return null;
+    }
+  }, [stationPrefix, openSectionType, rollDiameter, shaftDiameter, clearance, setRollTooling]);
+
+  const runGcode = useCallback(async (geo: any, nSt: number) => {
+    setPipelineStatus(p => ({ ...p, gcode: "running" }));
+    try {
+      const { authFetch } = await import("../../lib/auth-fetch");
+      const res = await authFetch(`${window.location.origin}/api/generate-gcode`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geometry: geo, numStations: nSt, stationPrefix: stationPrefix || "ST", config: gcodeConfig }),
+      });
+      if (!res.ok) throw new Error("G-code failed");
+      const data = await res.json() as { gcodeOutputs: any[] };
+      setGcodeOutputs(data.gcodeOutputs);
+      setPipelineStatus(p => ({ ...p, gcode: "done" }));
+      return data.gcodeOutputs;
+    } catch {
+      setPipelineStatus(p => ({ ...p, gcode: "error" }));
+      return null;
+    }
+  }, [stationPrefix, gcodeConfig, setGcodeOutputs]);
+
+  // ─── Send message to Super Pro AI ────────────────────────────────────────
+  const sendProMessage = useCallback(async (msgOverride?: string) => {
+    const geo = profile || null;
+    const b = geo ? getBounds(geo.segments) : null;
+    const msg = (msgOverride ?? proInput).trim();
+    if (!msg || proLoading) return;
+    setProInput("");
+    setProLoading(true);
+    setProChat(prev => [...prev, { role: "user", text: msg }]);
+
+    const profileCtx = b
+      ? `Profile: ${b.w.toFixed(1)}×${b.h.toFixed(1)}mm | ${geo?.segments.length} segments | ${dims.length} auto-dims`
+      : "No profile loaded — using drawing canvas data";
+
+    const systemPrompt = `You are SAI Rolotech Super Pro Mode AI — a master roll forming engineer powered by Gemini Pro.
+You analyze AutoCAD drawings, give expert suggestions, and automatically execute the complete G-code pipeline.
+
+CURRENT DRAWING DATA:
+${profileCtx}
+Material set: ${materialType} @ ${materialThickness}mm
+Section type: ${openSectionType}
+Stations: ${numStations}
+Project: ${projectInfo.name} | ${projectInfo.partNo} | ${projectInfo.material}
+
+YOUR POWERS — use these ACTION tags anywhere in your response:
+[ACTION:material_type:GI]         → Set material (GI/PPGI/PPGL/HDG/CRC/HRC/SS304/AL6063)
+[ACTION:thickness:1.5]            → Set thickness in mm
+[ACTION:num_stations:8]           → Set number of forming stations
+[ACTION:section_type:C-Section]   → Set section (C-Section/U-Section/Z-Section/Hat/Sigma/Omega)
+[ACTION:part_name:C CHANNEL]      → Update drawing title
+[ACTION:part_no:SRE-2024-001]     → Update part number
+[ACTION:material_label:GI 1.5mm]  → Update material label on drawing
+[ACTION:drawn_by:SAI ROLOTECH]    → Update drawn by field
+[ACTION:revision:B]               → Update revision
+[ACTION:paper_size:A3]            → Set paper size (A4/A3/A2)
+
+PIPELINE TRIGGER COMMANDS — the user can say "run flower", "generate gcode", "full pipeline" etc:
+When user asks to run flower → reply with: [ACTION:run_flower]
+When user asks to run roll tooling → reply with: [ACTION:run_roll]
+When user asks to run gcode → reply with: [ACTION:run_gcode]
+When user asks to run all / full pipeline → reply with: [ACTION:run_all]
+
+WORKFLOW:
+1. Start by analyzing the profile and giving smart suggestions
+2. Ask one question at a time about what they want
+3. Apply actions immediately as you get info
+4. When profile is ready, offer to run the full pipeline
+5. After pipeline runs, summarize results
+
+LANGUAGE: Respond in Hinglish (mix of Hindi + English). Be direct, confident, expert.
+Example: "Bhai, yeh profile dekh ke lag raha hai 8 stations perfect rahenge. Material GI 1.5mm set kar deta hun. [ACTION:num_stations:8][ACTION:material_type:GI][ACTION:thickness:1.5]"`;
+
+    try {
+      const res = await fetch("/api/chatbot/master-designer", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ message: msg, history: proChat.slice(-8).map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.text })), projectContext: systemPrompt }),
+      });
+      if (!res.ok) throw new Error("AI error");
+      const data = await res.json() as { response: string };
+      const { cleaned, actions } = parseActions(data.response);
+
+      // Apply all non-pipeline actions immediately
+      const pipelineActions = [];
+      for (const act of actions) {
+        if (["run_flower", "run_roll", "run_gcode", "run_all"].includes(act.key)) {
+          pipelineActions.push(act.key);
+        } else {
+          applyAction(act.key, act.value);
+        }
+      }
+
+      setProChat(prev => [...prev, { role: "ai", text: cleaned, actions: actions.filter(a => !["run_flower","run_roll","run_gcode","run_all"].includes(a.key)) }]);
+
+      // Run pipeline steps if requested
+      if (pipelineActions.includes("run_all") || (pipelineActions.includes("run_flower") && pipelineActions.includes("run_gcode"))) {
+        const currentGeo = profile || null;
+        const nSt = numStations;
+        const mat = materialType;
+        const thick = materialThickness;
+        if (currentGeo) {
+          setProChat(prev => [...prev, { role: "ai", text: "🔄 Full pipeline shuru kar raha hun — Flower → Roll Tooling → G-Code..." }]);
+          const fl = await runFlower(currentGeo, nSt, mat, thick);
+          if (fl) {
+            setProChat(prev => [...prev, { role: "ai", text: `✅ Flower pattern ready — ${fl.length} stations generated!` }]);
+            await runRollTooling(currentGeo, nSt, mat, thick);
+            setProChat(prev => [...prev, { role: "ai", text: "✅ Roll tooling dimensions calculate ho gayi!" }]);
+            const gc = await runGcode(currentGeo, nSt);
+            if (gc) setProChat(prev => [...prev, { role: "ai", text: `✅ G-Code ready — ${gc.length} programs generated! Flower & G-Code tabs mein dekh sakte ho.` }]);
+          } else {
+            setProChat(prev => [...prev, { role: "ai", text: "❌ Profile geometry nahi mili. Pehle DXF file upload karo Setup tab mein." }]);
+          }
+        }
+      } else if (pipelineActions.includes("run_flower")) {
+        const fl = await runFlower(profile!, numStations, materialType, materialThickness);
+        if (fl) setProChat(prev => [...prev, { role: "ai", text: `✅ Flower pattern ready — ${fl.length} stations! Flower tab mein dekho.` }]);
+      } else if (pipelineActions.includes("run_roll")) {
+        await runRollTooling(profile!, numStations, materialType, materialThickness);
+        setProChat(prev => [...prev, { role: "ai", text: "✅ Roll tooling dimensions ready! Roll tab mein dekho." }]);
+      } else if (pipelineActions.includes("run_gcode")) {
+        const gc = await runGcode(profile!, numStations);
+        if (gc) setProChat(prev => [...prev, { role: "ai", text: `✅ G-Code ready — ${gc.length} programs! G-Code tab mein dekho.` }]);
+      }
+    } catch {
+      setProChat(prev => [...prev, { role: "ai", text: "Network error aaya — thoda ruko aur dobara try karo." }]);
+    } finally {
+      setProLoading(false);
+    }
+  }, [proInput, proLoading, proChat, profile, dims, materialType, materialThickness, openSectionType, numStations, projectInfo, applyAction, runFlower, runRollTooling, runGcode]);
+
+  // ─── Start Super Pro Mode ─────────────────────────────────────────────────
+  const startProMode = useCallback(() => {
+    setProMode(true);
+    setPipelineStatus({ flower: "idle", roll: "idle", gcode: "idle" });
+    const b = profile ? getBounds(profile.segments) : null;
+    const intro = b
+      ? `Bhai! Main aapka **Super Pro Mode AI** hun 🤖\n\nAapka profile dekh liya:\n📐 Size: **${b.w.toFixed(1)} × ${b.h.toFixed(1)} mm**\n🔢 Segments: **${profile!.segments.length}**\n📏 Auto dimensions: **${dims.length}**\n\nMain aapke liye yeh kaam karunga:\n1️⃣ Smart suggestions dunga\n2️⃣ Manual input accept karunga\n3️⃣ Puri G-Code pipeline chalaunga\n\nBatao — is profile ka material aur thickness kya hai? Ya main apne aap suggest karun?`
+      : `Bhai! **Super Pro Mode** active hai 🚀\n\nAbhi koi profile load nahi hai. Pehle Setup tab mein DXF upload karo, ya main drawing canvas ke data se kaam shuru karta hun.\n\nKya manual dimensions enter karne hain? Ya DXF load karne ke baad Full Pipeline chalana hai?`;
+    setProChat([{ role: "ai", text: intro }]);
+  }, [profile, dims]);
+
+  const QUICK_CMDS = [
+    "Profile analyze karo aur suggest karo",
+    "GI 1.5mm set karo",
+    "8 stations set karo",
+    "Full pipeline run karo",
+    "G-Code generate karo",
+    "Drawing ka part number update karo",
+  ];
 
   // Get segments from active station or all stations
   const segs = useMemo<Segment[]>(() => {
@@ -722,6 +963,22 @@ export function AutoCADEngineeringDrawing() {
 
   const bounds = useMemo(() => getBounds(segs), [segs]);
 
+  // Pipeline step badge helper
+  const PipelineBadge = ({ label, status }: { label: string; status: "idle"|"running"|"done"|"error" }) => {
+    const cfg = {
+      idle:    { bg: "bg-zinc-800/60",      border: "border-zinc-700/40",    text: "text-zinc-500",   dot: "bg-zinc-600"   },
+      running: { bg: "bg-amber-500/10",     border: "border-amber-500/30",   text: "text-amber-400",  dot: "bg-amber-400 animate-pulse" },
+      done:    { bg: "bg-emerald-500/10",   border: "border-emerald-500/30", text: "text-emerald-400",dot: "bg-emerald-400" },
+      error:   { bg: "bg-red-500/10",       border: "border-red-500/30",     text: "text-red-400",    dot: "bg-red-400"    },
+    }[status];
+    return (
+      <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[9px] font-bold ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+        {label}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full bg-zinc-950 overflow-hidden">
 
@@ -732,6 +989,23 @@ export function AutoCADEngineeringDrawing() {
         <span className="text-[9px] text-zinc-500 hidden sm:block">Full Sheet — Dimensions + Title Block + DXF Export</span>
 
         <div className="ml-auto flex items-center gap-1 flex-wrap">
+
+          {/* ── SUPER PRO MODE BUTTON ── */}
+          <button
+            onClick={() => { if (!proMode) startProMode(); else setProMode(false); }}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-[10px] font-bold transition-all mr-1 ${
+              proMode
+                ? "bg-violet-600/30 border-violet-500/50 text-violet-300 shadow-lg shadow-violet-500/20"
+                : "bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border-violet-500/40 text-violet-300 hover:from-violet-600/30 hover:to-fuchsia-600/30"
+            }`}
+          >
+            <Zap className={`w-3 h-3 ${proMode ? "animate-pulse" : ""}`} />
+            Super Pro Mode
+            {proMode && <X className="w-2.5 h-2.5 ml-0.5 opacity-60" />}
+          </button>
+
+          <div className="w-px h-4 bg-zinc-700/50" />
+
           {/* Paper size */}
           <select
             value={state.paperSize}
@@ -754,11 +1028,7 @@ export function AutoCADEngineeringDrawing() {
             return (
               <button key={key}
                 onClick={() => setState(p => ({ ...p, [key]: !p[key] }))}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold transition-all ${
-                  active
-                    ? activeClass
-                    : "bg-zinc-800/40 border-zinc-700/40 text-zinc-500"
-                }`}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold transition-all ${active ? activeClass : "bg-zinc-800/40 border-zinc-700/40 text-zinc-500"}`}
               >
                 {icon} {label}
               </button>
@@ -779,14 +1049,11 @@ export function AutoCADEngineeringDrawing() {
             className="p-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white transition-all" title="Fit to screen">
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
-
           <div className="w-px h-4 bg-zinc-700/50 mx-0.5" />
-
           <button onClick={() => setShowSettings(p => !p)}
             className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] transition-all ${showSettings ? "bg-zinc-700 border-zinc-600 text-zinc-200" : "bg-zinc-800/40 border-zinc-700/40 text-zinc-500 hover:text-zinc-300"}`}>
             <Settings className="w-3 h-3" /> {showSettings ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
           </button>
-
           <button onClick={exportDXF}
             className="flex items-center gap-1.5 px-2.5 py-0.5 rounded border bg-blue-500/15 border-blue-500/40 text-blue-300 hover:bg-blue-500/25 text-[10px] font-bold transition-all">
             <Download className="w-3 h-3" /> DXF
@@ -807,24 +1074,16 @@ export function AutoCADEngineeringDrawing() {
               {Object.entries(projectInfo).map(([key, val]) => (
                 <div key={key} className="flex flex-col">
                   <span className="text-[8px] text-zinc-600 capitalize">{key}</span>
-                  <input
-                    value={val}
-                    onChange={e => setProjectInfo(p => ({ ...p, [key]: e.target.value }))}
-                    className="text-[10px] bg-zinc-800 border border-zinc-700 text-zinc-200 rounded px-1.5 py-0.5 w-32"
-                  />
+                  <input value={val} onChange={e => setProjectInfo(p => ({ ...p, [key]: e.target.value }))}
+                    className="text-[10px] bg-zinc-800 border border-zinc-700 text-zinc-200 rounded px-1.5 py-0.5 w-32" />
                 </div>
               ))}
             </div>
           </div>
-
           <div className="flex flex-col gap-1">
             <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Colors</span>
             <div className="flex gap-2">
-              {[
-                { key: "geomColor", label: "Geometry" },
-                { key: "dimColor", label: "Dimensions" },
-                { key: "centerColor", label: "Center Lines" },
-              ].map(({ key, label }) => (
+              {[{ key: "geomColor", label: "Geometry" }, { key: "dimColor", label: "Dimensions" }, { key: "centerColor", label: "Center Lines" }].map(({ key, label }) => (
                 <div key={key} className="flex flex-col items-center gap-0.5">
                   <span className="text-[8px] text-zinc-600">{label}</span>
                   <input type="color" value={state[key as keyof DrawState] as string}
@@ -842,22 +1101,173 @@ export function AutoCADEngineeringDrawing() {
         <Info className="w-3 h-3 shrink-0" />
         <span>Profile: <b className="text-zinc-400">{fmt(bounds.w)} × {fmt(bounds.h)} mm</b></span>
         <span>Dims: <b className="text-blue-400">{dims.length}</b></span>
-        <span>Segments: <b className="text-zinc-400">{segs.length}</b></span>
+        <span>Segs: <b className="text-zinc-400">{segs.length}</b></span>
         <span>Zoom: <b className="text-zinc-400">{(state.zoom).toFixed(1)}×</b></span>
+        {proMode && (
+          <div className="ml-2 flex items-center gap-1.5">
+            <span className="text-violet-500 font-bold">Pipeline:</span>
+            <PipelineBadge label="Flower" status={pipelineStatus.flower} />
+            <PipelineBadge label="Roll" status={pipelineStatus.roll} />
+            <PipelineBadge label="G-Code" status={pipelineStatus.gcode} />
+          </div>
+        )}
         <span className="ml-auto">Mouse wheel = zoom • Drag = pan</span>
       </div>
 
-      {/* ── Canvas ── */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-hidden relative"
-        style={{ cursor: isPanning ? "grabbing" : "grab" }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        <canvas ref={canvasRef} className="w-full h-full" />
+      {/* ── Main Area (Canvas + Pro Panel) ── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* ── Canvas ── */}
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-hidden relative"
+          style={{ cursor: isPanning ? "grabbing" : "grab" }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <canvas ref={canvasRef} className="w-full h-full" />
+        </div>
+
+        {/* ── Super Pro Mode Panel ── */}
+        {proMode && (
+          <div className="w-80 shrink-0 flex flex-col border-l border-violet-500/20 bg-[#0a0a14] overflow-hidden">
+
+            {/* Panel Header */}
+            <div className="shrink-0 px-3 py-2 border-b border-violet-500/20 bg-violet-500/5">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-lg bg-violet-500/40 blur-md" />
+                  <div className="relative w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
+                    <Zap className="w-3.5 h-3.5 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-violet-200">Super Pro Mode</div>
+                  <div className="text-[9px] text-violet-500">Gemini Pro · AutoCAD → G-Code Pipeline</div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-violet-400 animate-pulse" />
+                  <span className="text-[8px] text-violet-500 font-bold">LIVE</span>
+                </div>
+              </div>
+
+              {/* Live drawing stats */}
+              <div className="mt-2 grid grid-cols-3 gap-1">
+                {[
+                  { label: "W×H", value: `${fmt(bounds.w)}×${fmt(bounds.h)}mm` },
+                  { label: "Material", value: `${materialType} ${materialThickness}mm` },
+                  { label: "Stations", value: String(numStations) },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-violet-500/5 border border-violet-500/15 rounded px-1.5 py-1 text-center">
+                    <div className="text-[8px] text-violet-600 uppercase">{label}</div>
+                    <div className="text-[9px] text-violet-300 font-bold truncate">{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
+              {proChat.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[90%] rounded-xl px-3 py-2 text-[11px] leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-violet-600/20 border border-violet-500/30 text-violet-100"
+                      : "bg-white/[0.04] border border-white/[0.07] text-zinc-300"
+                  }`}>
+                    {msg.role === "ai" && (
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Bot className="w-3 h-3 text-violet-400" />
+                        <span className="text-[9px] font-bold text-violet-400">Super Pro AI</span>
+                        <Sparkles className="w-2.5 h-2.5 text-violet-500" />
+                      </div>
+                    )}
+                    <div className="whitespace-pre-wrap">{msg.text}</div>
+                    {/* Applied actions badge */}
+                    {msg.actions && msg.actions.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {msg.actions.map((act, ai) => (
+                          <span key={ai} className="flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> {act.key}: {act.value}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {proLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 text-violet-400 animate-spin" />
+                    <span className="text-[10px] text-zinc-500">Gemini Pro soch raha hai...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={proEndRef} />
+            </div>
+
+            {/* Quick Commands */}
+            {proChat.length <= 1 && !proLoading && (
+              <div className="shrink-0 px-2.5 pb-1.5">
+                <div className="text-[8px] text-zinc-600 uppercase tracking-wider mb-1">Quick Commands</div>
+                <div className="flex flex-wrap gap-1">
+                  {QUICK_CMDS.map((cmd, i) => (
+                    <button key={i} onClick={() => sendProMessage(cmd)}
+                      className="text-[9px] px-2 py-1 rounded-lg border border-violet-500/20 bg-violet-500/5 text-violet-400 hover:text-violet-200 hover:border-violet-500/40 transition-all text-left">
+                      {cmd}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pipeline Quick Buttons */}
+            <div className="shrink-0 px-2.5 py-2 border-t border-white/[0.05] flex gap-1.5 flex-wrap">
+              {[
+                { label: "Flower", cmd: "Flower pattern generate karo", color: "blue" },
+                { label: "Roll Tooling", cmd: "Roll tooling generate karo", color: "amber" },
+                { label: "G-Code", cmd: "G-Code generate karo", color: "green" },
+                { label: "Full Pipeline", cmd: "Full pipeline run karo — flower, roll tooling, aur gcode sab ek saath", color: "violet" },
+              ].map(({ label, cmd, color }) => (
+                <button key={label} onClick={() => sendProMessage(cmd)} disabled={proLoading}
+                  className={`flex-1 min-w-[60px] px-2 py-1.5 rounded-lg text-[9px] font-bold border transition-all disabled:opacity-40 ${
+                    color === "blue"   ? "bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20" :
+                    color === "amber"  ? "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20" :
+                    color === "green"  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20" :
+                    "bg-violet-500/15 border-violet-500/35 text-violet-300 hover:bg-violet-500/25"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Input */}
+            <div className="shrink-0 px-2.5 pb-2.5 pt-1 border-t border-white/[0.06]">
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={proInput}
+                  onChange={e => setProInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && sendProMessage()}
+                  placeholder="Command do ya kuch pucho..."
+                  className="flex-1 bg-white/[0.04] border border-violet-500/20 rounded-lg px-3 py-2 text-[11px] text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/50 transition-colors"
+                  disabled={proLoading}
+                />
+                <button onClick={() => sendProMessage()} disabled={proLoading || !proInput.trim()}
+                  className="px-3 py-2 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white disabled:opacity-40 transition-all hover:brightness-110 flex items-center">
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="text-[8px] text-zinc-700 mt-1 px-1">
+                Gemini Pro · AutoCAD data → Flower → Roll → G-Code
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

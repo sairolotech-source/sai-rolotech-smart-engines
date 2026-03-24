@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { generateFlowerPattern } from "../lib/power-pattern";
 import {
   generateRollTooling, calculateRollGaps, calcStripWidth, calcBomFromTooling,
+  calcRequiredMotorPower,
   DEFAULT_GCODE_PROFILE, DELTA_GCODE_PROFILE, type GcodeProfile, type RollToolingResult,
 } from "../lib/roll-tooling";
 import type { ProfileGeometry, Segment } from "../lib/dxf-parser-util";
@@ -255,6 +256,7 @@ interface RollToolingBody {
   sectionModel?: "open" | "closed";
   motorKw?: number | string;
   motorRpm?: number | string;
+  lineSpeedMpm?: number | string;   // target line speed m/min for motor calc
 }
 
 router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolingBody>, res: Response) => {
@@ -289,6 +291,13 @@ router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolin
     const gcodeProfile = resolveGcodeProfile(postProcessorId);
     const mKw = parseFloat(String((req.body as RollToolingBody).motorKw)) || 11;
     const mRpm = parseFloat(String((req.body as RollToolingBody).motorRpm)) || 1440;
+    // Line speed defaults by material: SS/TI slower, GI/CR standard
+    const defaultSpeed: Record<string, number> = {
+      GI: 20, CR: 20, HR: 18, SS: 10, AL: 22, MS: 18,
+      CU: 22, TI: 6, PP: 18, HSLA: 15,
+    };
+    const lineSpeed = parseFloat(String((req.body as RollToolingBody).lineSpeedMpm))
+      || defaultSpeed[String(materialType || "GI").toUpperCase()] || 20;
 
     const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness);
 
@@ -320,6 +329,15 @@ router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolin
     const bom = calcBomFromTooling(rollTooling, matType);
     const machineData = buildMachineData(rollTooling, matType, thickness);
 
+    // Motor capacity calculation — uses actual forming forces from flower stations (kN)
+    const motorCalc = calcRequiredMotorPower(
+      flowerResult.stations.map(s => s.formingForce),   // kN — direct from flower engine
+      rollTooling.map(rt => rt.upperRollOD),             // mm — actual roll OD per station
+      matType,
+      lineSpeed,
+      mRpm,
+    );
+
     res.json({
       success: true,
       rollTooling,
@@ -327,6 +345,7 @@ router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolin
       rollGaps,
       bom,
       machineData,
+      motorCalc,
       sectionModelUsed: sectionModel ?? "auto",
       modelNote: sectionModel === "closed"
         ? "Closed Section AI (Model B): clearance tightened 10% for weld seam and ovality control"

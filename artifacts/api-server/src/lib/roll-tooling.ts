@@ -227,6 +227,120 @@ function estimateProfileDepth(
   return Math.max(0, geometricDepth * progressFraction);
 }
 
+// ─── Motor Capacity Calculation ───────────────────────────────────────────────
+
+export interface MotorCalcResult {
+  deformationPowerKw: number;
+  frictionPowerKw: number;
+  shaftPowerKw: number;
+  totalRequiredKw: number;
+  selectedMotorKw: number;
+  motorFrame: string;
+  motorRpm: number;
+  motorTorqueNm: number;
+  driveEfficiency: number;
+  serviceFactor: number;
+  gearboxRatioRequired: number;
+  recommendedGearboxRatio: number;
+  outputShaftRpm: number;
+  lineSpeedTargetMpm: number;
+  lineSpeedActualMpm: number;
+  rollCircumferenceMm: number;
+  vfdRecommended: boolean;
+  powerDensityKwPerStation: number;
+  warnings: string[];
+}
+
+const MOTOR_FRICTION: Record<string, number> = {
+  GI: 0.002, CR: 0.002, HR: 0.0025, SS: 0.002, AL: 0.002,
+  MS: 0.002, CU: 0.002, TI: 0.003,  PP: 0.002, HSLA: 0.0025,
+};
+
+const MOTOR_SERVICE_FACTOR: Record<string, number> = {
+  GI: 1.25, CR: 1.25, HR: 1.35, SS: 1.40, AL: 1.20,
+  MS: 1.30, CU: 1.20, TI: 1.50, PP: 1.20, HSLA: 1.40,
+};
+
+const IEC_FRAME: Record<number, string> = {
+  1.5: "90L", 2.2: "90L", 3: "100L", 4: "112M", 5.5: "132M", 7.5: "132M",
+  11: "160M", 15: "160L", 18.5: "180M", 22: "180L", 30: "200L", 37: "200L",
+  45: "225M", 55: "250M", 75: "280M", 90: "280M", 110: "315M", 132: "315M",
+};
+
+export function calcRequiredMotorPower(
+  stationForces_kN: number[],
+  rollODs_mm: number[],
+  materialType: string,
+  targetLineSpeed_mpm = 20,
+  motorRpm = 1440,
+): MotorCalcResult {
+  const mat = materialType.toUpperCase();
+  const mu = MOTOR_FRICTION[mat] ?? 0.002;
+  const SF = MOTOR_SERVICE_FACTOR[mat] ?? 1.25;
+  const ETA_DRIVE = 0.92 * 0.95 * 0.99; // motor × gearbox × coupling = ~0.865
+
+  const v_ms = targetLineSpeed_mpm / 60;
+  const nStations = stationForces_kN.length;
+  const totalForce_N = stationForces_kN.reduce((s, f) => s + f * 1000, 0);
+  const avgForce_N = totalForce_N / Math.max(1, nStations);
+
+  // Deformation power: average force × speed × service factor
+  const P_deform_W = avgForce_N * v_ms * SF;
+  // Friction power: rolling friction at 4 bearing positions per stand
+  const P_fric_W = mu * totalForce_N * v_ms * 4;
+  const P_shaft_W = P_deform_W + P_fric_W;
+  const P_input_W = P_shaft_W / ETA_DRIVE;
+  const P_required_kW = P_input_W / 1000;
+
+  // Select standard IEC motor
+  const STD_MOTORS = [1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15, 18.5, 22, 30, 37, 45, 55, 75, 90, 110, 132];
+  const selectedKw = STD_MOTORS.find(p => p >= P_required_kW) ?? 132;
+  const frame = IEC_FRAME[selectedKw] ?? "315M";
+  const motorTorque_Nm = (selectedKw * 1000 * 9.55) / motorRpm;
+
+  // Gearbox ratio
+  const avgRollOD_m = rollODs_mm.length > 0
+    ? rollODs_mm.reduce((s, d) => s + d, 0) / rollODs_mm.length / 1000
+    : 0.12;
+  const rollCircumference_m = Math.PI * avgRollOD_m;
+  const rawRatio = (rollCircumference_m * motorRpm) / targetLineSpeed_mpm;
+  const STD_RATIOS = [10, 12.5, 16, 20, 25, 31.5, 40, 50];
+  const gearboxRatio = STD_RATIOS.find(r => r >= rawRatio * 0.95) ?? 50;
+  const actualLineSpeed_mpm = (rollCircumference_m * motorRpm) / gearboxRatio;
+  const outputRpm = motorRpm / gearboxRatio;
+
+  const warnings: string[] = [];
+  if (selectedKw < 3) warnings.push("Small motor (<3 kW) — verify no stall risk during startup");
+  if (P_required_kW > 45) warnings.push("High power (>45 kW) — consider multi-motor drive arrangement");
+  if (Math.abs(actualLineSpeed_mpm - targetLineSpeed_mpm) > 3)
+    warnings.push(`Line speed deviation: target ${targetLineSpeed_mpm} m/min, actual ${actualLineSpeed_mpm.toFixed(1)} m/min — verify gearbox ratio`);
+  if (mat === "SS") warnings.push("SS: Work hardening risk — VFD speed control strongly recommended");
+  if (mat === "TI") warnings.push("TI: Low forming speed mandatory — install VFD with 20–40% speed range");
+  if (mat === "HSLA") warnings.push("HSLA: High strength — VFD with torque-limit control recommended");
+
+  return {
+    deformationPowerKw: parseFloat((P_deform_W / 1000).toFixed(3)),
+    frictionPowerKw: parseFloat((P_fric_W / 1000).toFixed(3)),
+    shaftPowerKw: parseFloat((P_shaft_W / 1000).toFixed(3)),
+    totalRequiredKw: parseFloat(P_required_kW.toFixed(3)),
+    selectedMotorKw: selectedKw,
+    motorFrame: frame,
+    motorRpm,
+    motorTorqueNm: parseFloat(motorTorque_Nm.toFixed(1)),
+    driveEfficiency: parseFloat((ETA_DRIVE * 100).toFixed(1)),
+    serviceFactor: SF,
+    gearboxRatioRequired: parseFloat(rawRatio.toFixed(2)),
+    recommendedGearboxRatio: gearboxRatio,
+    outputShaftRpm: parseFloat(outputRpm.toFixed(1)),
+    lineSpeedTargetMpm: targetLineSpeed_mpm,
+    lineSpeedActualMpm: parseFloat(actualLineSpeed_mpm.toFixed(2)),
+    rollCircumferenceMm: parseFloat((rollCircumference_m * 1000).toFixed(1)),
+    vfdRecommended: ["SS", "TI", "HSLA", "HR"].includes(mat),
+    powerDensityKwPerStation: parseFloat((P_required_kW / Math.max(1, nStations)).toFixed(3)),
+    warnings,
+  };
+}
+
 export function generateRollTooling(
   stations: FlowerStation[],
   materialType: string,

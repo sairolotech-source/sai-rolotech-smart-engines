@@ -33,7 +33,7 @@ REASON: [one sentence why]
 Files:
 ${codeBundle}`;
 
-router.post("/api/ai-review", async (req: Request, res: Response) => {
+router.post("/ai-review", async (req: Request, res: Response) => {
   try {
     const { files, token } = req.body as {
       files?: { path: string; content: string }[];

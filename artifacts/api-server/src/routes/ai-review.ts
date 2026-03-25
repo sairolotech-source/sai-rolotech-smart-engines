@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -51,9 +52,8 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       return;
     }
 
-    const geminiApiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      res.status(503).json({ ok: false, error: "Gemini API key not configured on server" });
+    if (!openai) {
+      res.status(503).json({ ok: false, error: "AI not configured on server" });
       return;
     }
 
@@ -61,37 +61,22 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       .map(f => `\n========== FILE: ${f.path} ==========\n${f.content.slice(0, 40000)}`)
       .join("\n");
 
-    const messages = [{ role: "user", content: REVIEW_PROMPT(codeBundle) }];
+    const messages: { role: "user"; content: string }[] = [
+      { role: "user", content: REVIEW_PROMPT(codeBundle) },
+    ];
 
-    const apiRes = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${geminiApiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gemini-2.0-flash",
-          messages,
-          max_tokens: 1024,
-          temperature: 0.1,
-        }),
-        signal: AbortSignal.timeout(45000),
-      }
-    );
+    // Use same pattern as ai-chat.ts — max_completion_tokens, no temperature
+    const model = aiProvider === "gemini" ? "gemini-2.5-pro" : "gpt-4o-mini";
+    const completion = await openai.chat.completions.create({
+      model,
+      messages,
+      max_completion_tokens: 1024,
+    } as Parameters<typeof openai.chat.completions.create>[0]);
 
-    if (!apiRes.ok) {
-      const errText = await apiRes.text();
-      res.status(500).json({ ok: false, error: `Gemini API ${apiRes.status}: ${errText.slice(0, 200)}` });
-      return;
-    }
-
-    const data = await apiRes.json() as { choices: { message: { content: string } }[] };
-    const text = data.choices?.[0]?.message?.content ?? "";
+    const text = completion.choices?.[0]?.message?.content ?? "";
 
     if (!text) {
-      res.status(500).json({ ok: false, error: "Gemini empty response" });
+      res.status(500).json({ ok: false, error: "AI empty response" });
       return;
     }
 
@@ -110,7 +95,7 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       .map(l => l.replace(/^[-•*]\s*/, "").trim())
       .filter(l => l && l.toLowerCase() !== "none");
 
-    console.log(`[ai-review] Gemini review done — VERDICT: ${verdict}`);
+    console.log(`[ai-review] ${aiProvider} review done — VERDICT: ${verdict}`);
     res.json({ ok: true, verdict, reason, issues, warnings });
 
   } catch (err: unknown) {

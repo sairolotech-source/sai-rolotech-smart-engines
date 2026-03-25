@@ -757,70 +757,114 @@ function setupIPC(): void {
     };
   });
 
-  // ── Live Hardware (NVIDIA + CPU + RAM native) ────────────────────────────
-  let _cpuSample: { idle: number; total: number }[] = [];
+  // ── Live Hardware — background cache (NEVER blocks IPC) ─────────────────
+  type NvidiaStat = {
+    available: boolean; name: string; utilGpu: number; memUsed: number;
+    memTotal: number; tempC: number; powerW: number; clockMHz: number;
+  };
+  type HWCache = {
+    coreUtils: number[]; avgCpu: number; cpuModel: string;
+    cpuCores: number; cpuSpeedMHz: number;
+    totalRam: number; freeRam: number; usedRam: number; ramPct: number;
+    nvidia: NvidiaStat;
+  };
 
-  function sampleCpus() {
-    return os.cpus().map(cpu => {
-      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-      return { idle: cpu.times.idle, total };
+  const _nvDefault: NvidiaStat = { available: false, name: "", utilGpu: 0, memUsed: 0, memTotal: 0, tempC: 0, powerW: 0, clockMHz: 0 };
+  let _hwCache: HWCache | null = null;
+  let _cpuPrev: { idle: number; total: number }[] = [];
+
+  function _snapCpus() {
+    return os.cpus().map(c => {
+      const total = Object.values(c.times).reduce((a, b) => a + b, 0);
+      return { idle: c.times.idle, total };
     });
   }
 
-  ipcMain.handle("get-live-hardware", async () => {
-    // ── CPU utilization per core via two-sample delta ──
-    const s1 = sampleCpus();
-    await new Promise(r => setTimeout(r, 250));
-    const s2 = sampleCpus();
-    const coreUtils = s1.map((c, i) => {
-      const dTotal = s2[i].total - c.total;
-      const dIdle  = s2[i].idle  - c.idle;
-      return dTotal === 0 ? 0 : Math.round((1 - dIdle / dTotal) * 100);
-    });
-    const avgCpu = Math.round(coreUtils.reduce((a, b) => a + b, 0) / (coreUtils.length || 1));
-
-    // ── RAM (real system) ──
-    const totalRam = os.totalmem();
-    const freeRam  = os.freemem();
-    const usedRam  = totalRam - freeRam;
-    const ramPct   = Math.round((usedRam / totalRam) * 100);
-
-    // ── CPU model ──
-    const cpus = os.cpus();
-    const cpuModel = cpus[0]?.model ?? "Unknown CPU";
-    const cpuCores = cpus.length;
-    const cpuSpeedMHz = cpus[0]?.speed ?? 0;
-
-    // ── NVIDIA GPU via nvidia-smi ──
-    let nvidia: {
-      available: boolean; name: string; utilGpu: number; memUsed: number;
-      memTotal: number; tempC: number; powerW: number; clockMHz: number;
-    } = { available: false, name: "", utilGpu: 0, memUsed: 0, memTotal: 0, tempC: 0, powerW: 0, clockMHz: 0 };
-
+  async function _refreshHW() {
     try {
-      const { exec } = await import("child_process");
-      const { promisify } = await import("util");
-      const execP = promisify(exec);
-      const { stdout } = await execP(
-        "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.current.graphics --format=csv,noheader,nounits",
-        { timeout: 4000 }
-      );
-      const parts = stdout.trim().split(",").map(s => s.trim());
-      if (parts.length >= 4) {
-        nvidia = {
-          available: true,
-          name:      parts[0] ?? "NVIDIA GPU",
-          utilGpu:   parseInt(parts[1] ?? "0", 10)   || 0,
-          memUsed:   parseInt(parts[2] ?? "0", 10)   || 0,
-          memTotal:  parseInt(parts[3] ?? "0", 10)   || 0,
-          tempC:     parseInt(parts[4] ?? "0", 10)   || 0,
-          powerW:    parseFloat(parts[5] ?? "0")     || 0,
-          clockMHz:  parseInt(parts[6] ?? "0", 10)   || 0,
-        };
+      // CPU per-core utilization (non-blocking compare against previous sample)
+      const snap = _snapCpus();
+      let coreUtils: number[] = [];
+      if (_cpuPrev.length === snap.length) {
+        coreUtils = snap.map((s, i) => {
+          const dT = s.total - _cpuPrev[i].total;
+          const dI = s.idle  - _cpuPrev[i].idle;
+          return dT === 0 ? 0 : Math.round((1 - dI / dT) * 100);
+        });
+      } else {
+        coreUtils = snap.map(() => 0);
       }
-    } catch { /* nvidia-smi not found or AMD/Intel GPU */ }
+      _cpuPrev = snap;
+      const avgCpu = coreUtils.length ? Math.round(coreUtils.reduce((a, b) => a + b, 0) / coreUtils.length) : 0;
 
-    return { coreUtils, avgCpu, cpuModel, cpuCores, cpuSpeedMHz, totalRam, freeRam, usedRam, ramPct, nvidia };
+      // RAM
+      const totalRam = os.totalmem();
+      const freeRam  = os.freemem();
+      const usedRam  = totalRam - freeRam;
+      const ramPct   = Math.round((usedRam / totalRam) * 100);
+
+      // CPU info
+      const cpus = os.cpus();
+      const cpuModel    = cpus[0]?.model ?? "Unknown CPU";
+      const cpuCores    = cpus.length;
+      const cpuSpeedMHz = cpus[0]?.speed ?? 0;
+
+      // NVIDIA (only refresh every 3rd tick to avoid thundering)
+      let nvidia = _hwCache?.nvidia ?? _nvDefault;
+      const now = Date.now();
+      if (!(_hwCache as any)?._nvidiaTs || now - ((_hwCache as any)?._nvidiaTs ?? 0) > 3000) {
+        try {
+          const { execFile } = await import("child_process");
+          nvidia = await new Promise<NvidiaStat>((resolve) => {
+            execFile(
+              "nvidia-smi",
+              ["--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,clocks.current.graphics", "--format=csv,noheader,nounits"],
+              { timeout: 2000 },
+              (err, stdout) => {
+                if (err || !stdout) { resolve(_nvDefault); return; }
+                const p = stdout.trim().split(",").map(s => s.trim());
+                if (p.length < 4) { resolve(_nvDefault); return; }
+                resolve({
+                  available: true,
+                  name:     p[0] ?? "NVIDIA GPU",
+                  utilGpu:  parseInt(p[1] ?? "0", 10) || 0,
+                  memUsed:  parseInt(p[2] ?? "0", 10) || 0,
+                  memTotal: parseInt(p[3] ?? "0", 10) || 0,
+                  tempC:    parseInt(p[4] ?? "0", 10) || 0,
+                  powerW:   parseFloat(p[5] ?? "0")   || 0,
+                  clockMHz: parseInt(p[6] ?? "0", 10) || 0,
+                });
+              }
+            );
+          });
+          (nvidia as any)._ts = now;
+        } catch { nvidia = _nvDefault; }
+      }
+
+      _hwCache = { coreUtils, avgCpu, cpuModel, cpuCores, cpuSpeedMHz, totalRam, freeRam, usedRam, ramPct, nvidia };
+      (_hwCache as any)._nvidiaTs = (nvidia as any)._ts ?? ((_hwCache as any)._nvidiaTs ?? 0);
+    } catch (e) {
+      console.error("[HW] background refresh error:", e);
+    }
+  }
+
+  // Warm up immediately, then refresh every 2s in background
+  _refreshHW();
+  const _hwTimer = setInterval(_refreshHW, 2000);
+  app.on("before-quit", () => clearInterval(_hwTimer));
+
+  // IPC returns cached data instantly — zero blocking
+  ipcMain.handle("get-live-hardware", () => {
+    return _hwCache ?? {
+      coreUtils: [], avgCpu: 0,
+      cpuModel: os.cpus()[0]?.model ?? "CPU",
+      cpuCores: os.cpus().length,
+      cpuSpeedMHz: os.cpus()[0]?.speed ?? 0,
+      totalRam: os.totalmem(), freeRam: os.freemem(),
+      usedRam: os.totalmem() - os.freemem(),
+      ramPct: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100),
+      nvidia: _nvDefault,
+    };
   });
 
   ipcMain.handle("check-for-updates", () => {

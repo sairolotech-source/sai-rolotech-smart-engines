@@ -1,0 +1,68 @@
+les\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\targets\targetFactory.ts:63:12)
+    at Packager.doBuild (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\packager.ts:457:41)
+    at executeFinally (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\builder-util@25.1.7\node_modules\builder-util\src\promise.ts:12:14)
+    at Packager.build (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\packager.ts:393:31)
+    at executeFinally (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\builder-util@25.1.7\node_modules\builder-util\src\promise.ts:12:14)
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ npx electron-builder --win nsis portable
+  • electron-builder  version=25.1.8 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • writing effective config  file=release\builder-effective-config.yaml
+  • executing @electron/rebuild  electronVersion=32.3.3 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=32.3.3 appOutDir=release\win-unpacked
+  • updating asar integrity executable resource  executablePath=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • default Electron icon is used  reason=application icon is not set
+  • signing with signtool.exe  path=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe archs=x64 oneClick=true perMachine=false
+  ⨯ cannot find specified resource "assets/icon.ico", nor relative to "C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\desktop\assets", neither relative to project dir ("C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\desktop")
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ ^C
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ git pull origin main
+remote: Enumerating objects: 16, done.
+remote: Counting objects: 100% (16/16), done.
+remote: Compressing objects: 100% (6/6), done.
+remote: Total 11 (delta 9), reused 7 (delta 5), pack-reused 0 (from 0)
+Unpacking objects: 100% (11/11), 2.82 KiB | 40.00 KiB/s, done.
+From https://github.com/sairolotech-source/sai-rolotech-smart-engines
+ * branch            main       -> FETCH_HEAD
+   2dfa4b5..fe6ea55  main       -> origin/main
+Updating 2dfa4b5..fe6ea55
+Fast-forward
+ artifacts/desktop/package.json                     |  5 ---
+ ...MMS-MINGW64-cd-sai-rolotech-s_1774422651844.txt | 37 ++++++++++++++++++++++
+ ...gines-exe-default-Electron-ic_1774422856825.txt | 36 +++++++++++++++++++++
+ 3 files changed, 73 insertions(+), 5 deletions(-)
+ create mode 100644 attached_assets/Pasted--sai-rolotech-DESKTOP-I3HOMMS-MINGW64-cd-sai-rolotech-s_1774422651844.txt
+ create mode 100644 attached_assets/Pasted-cked-SAI-Rolotech-Smart-Engines-exe-default-Electron-ic_1774422856825.txt
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ rm -rf release/
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ npx electron-builder --win nsis portable
+  • electron-builder  version=25.1.8 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • writing effective config  file=release\builder-effective-config.yaml
+  • executing @electron/rebuild  electronVersion=32.3.3 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=32.3.3 appOutDir=release\win-unpacked
+  • updating asar integrity executable resource  executablePath=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • default Electron icon is used  reason=application icon is not set
+  • signing with signtool.exe  path=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe archs=x64 oneClick=true perMachine=false
+  • downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-3.0.4.1/nsis-3.0.4.1.7z size=1.3 MB parts=1
+  • downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-3.0.4.1/nsis-3.0.4.1.7z duration=983ms
+  • signing with signtool.exe  path=release\win-unpacked\resources\elevate.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null

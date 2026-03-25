@@ -193,7 +193,7 @@ export async function autoPushToGitHub(reason = "auto"): Promise<{
     );
 
     const pushResult = await new Promise<{ ok: boolean; msg: string }>((resolve) => {
-      const pushEnv = {
+      const pushEnv: Record<string, string | undefined> = {
         ...process.env,
         GIT_ASKPASS: askpassPath,
         GIT_TERMINAL_PROMPT: "0",

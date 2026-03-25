@@ -271,7 +271,8 @@ export function stopAutoUpdate() {
 
 router.get("/system/git-status", async (_req: Request, res: Response) => {
   if (process.env["ELECTRON"] === "1") {
-    return res.json({ isElectron: true, message: "Git status not available in packaged app", localCommit: "N/A", githubCommit: "N/A", upToDate: true });
+    res.json({ isElectron: true, message: "Git status not available in packaged app", localCommit: "N/A", githubCommit: "N/A", upToDate: true });
+    return;
   }
   try {
     const [localRes, logRes, remoteRes] = await Promise.all([
@@ -459,7 +460,7 @@ router.post("/system/git-push", async (req: Request, res: Response) => {
           { mode: 0o700 }
         );
         pushRes = await new Promise<{ stdout: string; stderr: string; ok: boolean }>((resolve) => {
-          const pushEnv = { ...process.env, GIT_ASKPASS: askpassPath, GIT_TERMINAL_PROMPT: "0" };
+          const pushEnv: Record<string, string | undefined> = { ...process.env, GIT_ASKPASS: askpassPath, GIT_TERMINAL_PROMPT: "0" };
           delete pushEnv["REPLIT_SESSION"];
           delete pushEnv["REPLIT_ASKPASS_PID2_SESSION"];
           const cmd = `git -C "${REPO_ROOT}" -c core.askpass="${askpassPath}" -c credential.helper= push origin main`;
@@ -731,7 +732,7 @@ router.post("/system/git-tag", async (req: Request, res: Response) => {
     // Delete remote tag too (using askpass for auth)
     const delAskpassPath = `/tmp/sai-askpass-deltag-${process.pid}.sh`;
     fs.writeFileSync(delAskpassPath, `#!/bin/sh\necho "${ghToken}"\n`, { mode: 0o700 });
-    const delEnv = { ...process.env, GIT_ASKPASS: delAskpassPath, GIT_TERMINAL_PROMPT: "0" };
+    const delEnv: Record<string, string | undefined> = { ...process.env, GIT_ASKPASS: delAskpassPath, GIT_TERMINAL_PROMPT: "0" };
     delete delEnv["REPLIT_SESSION"];
     delete delEnv["REPLIT_ASKPASS_PID2_SESSION"];
     await new Promise<void>((resolve) => {
@@ -753,7 +754,7 @@ router.post("/system/git-tag", async (req: Request, res: Response) => {
     const askpassPath = `/tmp/sai-askpass-tag-${process.pid}.sh`;
     fs.writeFileSync(askpassPath, `#!/bin/sh\necho "${ghToken}"\n`, { mode: 0o700 });
 
-    const pushEnv = { ...process.env, GIT_ASKPASS: askpassPath, GIT_TERMINAL_PROMPT: "0" };
+    const pushEnv: Record<string, string | undefined> = { ...process.env, GIT_ASKPASS: askpassPath, GIT_TERMINAL_PROMPT: "0" };
     delete pushEnv["REPLIT_SESSION"];
     delete pushEnv["REPLIT_ASKPASS_PID2_SESSION"];
 

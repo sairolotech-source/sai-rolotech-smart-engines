@@ -52,8 +52,8 @@ router.get("/serial/ports", async (_req: Request, res: Response) => {
 router.post("/serial/connect", (req: Request, res: Response) => {
   if (!requireSerial(req, res)) return;
   const { path, baudRate = 115200, dataBits = 8, parity = "none", stopBits = 1 } = req.body;
-  if (!path) return res.status(400).json({ success: false, error: "COM port path required" });
-  if (activeConnections.has(path)) return res.json({ success: true, message: "Already connected", path });
+  if (!path) { res.status(400).json({ success: false, error: "COM port path required" }); return; }
+  if (activeConnections.has(path)) { res.json({ success: true, message: "Already connected", path }); return; }
 
   try {
     const port = new SerialPortClass({ path, baudRate: Number(baudRate), dataBits, parity, stopBits, autoOpen: false });
@@ -61,7 +61,7 @@ router.post("/serial/connect", (req: Request, res: Response) => {
     const buffer: string[] = [];
 
     port.open((err: any) => {
-      if (err) return res.status(500).json({ success: false, error: `Port open failed: ${err.message}` });
+      if (err) { res.status(500).json({ success: false, error: `Port open failed: ${err.message}` }); return; }
 
       parser.on("data", (line: string) => {
         buffer.push(`[RX] ${line.trim()}`);
@@ -83,11 +83,11 @@ router.post("/serial/disconnect", (req: Request, res: Response) => {
   if (!requireSerial(req, res)) return;
   const { path } = req.body;
   const conn = activeConnections.get(path);
-  if (!conn) return res.json({ success: true, message: "Not connected" });
+  if (!conn) { res.json({ success: true, message: "Not connected" }); return; }
 
   conn.port.close((err: any) => {
     activeConnections.delete(path);
-    if (err) return res.status(500).json({ success: false, error: String(err) });
+    if (err) { res.status(500).json({ success: false, error: String(err) }); return; }
     res.json({ success: true, message: `Disconnected from ${path}` });
   });
 });
@@ -96,12 +96,12 @@ router.post("/serial/send", (req: Request, res: Response) => {
   if (!requireSerial(req, res)) return;
   const { path, command } = req.body;
   const conn = activeConnections.get(path);
-  if (!conn) return res.status(400).json({ success: false, error: "Not connected to this port" });
-  if (!command) return res.status(400).json({ success: false, error: "Command required" });
+  if (!conn) { res.status(400).json({ success: false, error: "Not connected to this port" }); return; }
+  if (!command) { res.status(400).json({ success: false, error: "Command required" }); return; }
 
   const cmd = command.trim() + "\n";
   conn.port.write(cmd, (err: any) => {
-    if (err) return res.status(500).json({ success: false, error: String(err) });
+    if (err) { res.status(500).json({ success: false, error: String(err) }); return; }
     conn.buffer.push(`[TX] ${command.trim()}`);
     res.json({ success: true, sent: command.trim() });
   });
@@ -111,8 +111,8 @@ router.post("/serial/send-gcode", async (req: Request, res: Response) => {
   if (!requireSerial(req, res)) return;
   const { path, lines, delayMs = 100 } = req.body;
   const conn = activeConnections.get(path);
-  if (!conn) return res.status(400).json({ success: false, error: "Not connected to this port" });
-  if (!Array.isArray(lines) || lines.length === 0) return res.status(400).json({ success: false, error: "G-Code lines required" });
+  if (!conn) { res.status(400).json({ success: false, error: "Not connected to this port" }); return; }
+  if (!Array.isArray(lines) || lines.length === 0) { res.status(400).json({ success: false, error: "G-Code lines required" }); return; }
 
   res.json({ success: true, message: `Sending ${lines.length} lines to ${path}...`, total: lines.length });
 
@@ -131,9 +131,9 @@ router.post("/serial/send-gcode", async (req: Request, res: Response) => {
 router.post("/serial/buffer", (req: Request, res: Response) => {
   if (!requireSerial(req, res)) return;
   const { path } = req.body;
-  if (!path) return res.status(400).json({ success: false, error: "Path required" });
+  if (!path) { res.status(400).json({ success: false, error: "Path required" }); return; }
   const conn = activeConnections.get(path);
-  if (!conn) return res.status(400).json({ success: false, error: "Not connected" });
+  if (!conn) { res.status(400).json({ success: false, error: "Not connected" }); return; }
   const lines = [...conn.buffer];
   conn.buffer.length = 0;
   res.json({ success: true, lines });

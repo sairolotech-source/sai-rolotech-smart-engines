@@ -130,6 +130,9 @@ async function resolveStaleConflict(): Promise<boolean> {
 }
 
 async function checkAndPull(): Promise<{ updated: boolean; message: string }> {
+  if (process.env["ELECTRON"] === "1") {
+    return { updated: false, message: "Packaged Electron app — git update disabled" };
+  }
   lastAutoCheck = new Date().toISOString();
 
   try {
@@ -238,6 +241,10 @@ async function checkAndPull(): Promise<{ updated: boolean; message: string }> {
 }
 
 export function startAutoUpdate() {
+  if (process.env["ELECTRON"] === "1") {
+    logAuto("Packaged Electron app — auto-update (git) disabled", "info");
+    return;
+  }
   if (autoUpdateTimer) return;
   autoUpdateEnabled = true;
   logAuto(`Auto-update SHURU — har ${AUTO_CHECK_INTERVAL_MS / 60000} min mein check karega`, "success");
@@ -263,6 +270,9 @@ export function stopAutoUpdate() {
 }
 
 router.get("/system/git-status", async (_req: Request, res: Response) => {
+  if (process.env["ELECTRON"] === "1") {
+    return res.json({ isElectron: true, message: "Git status not available in packaged app", localCommit: "N/A", githubCommit: "N/A", upToDate: true });
+  }
   try {
     const [localRes, logRes, remoteRes] = await Promise.all([
       runGit("rev-parse HEAD"),

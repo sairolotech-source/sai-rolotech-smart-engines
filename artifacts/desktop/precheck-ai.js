@@ -1,13 +1,20 @@
 /**
- * SAI Rolotech Smart Engines - AI Pre-Build Code Reviewer
- * Gemini + DeepSeek dono se code review karwata hai before build
+ * SAI Rolotech Smart Engines — AI Pre-Build Code Reviewer
+ *
+ * Priority:
+ *   1. Replit server (Gemini — Replit ke credits, koi key nahi chahiye)
+ *   2. Client ki apni Gemini key (optional fallback)
+ *   3. Client ki apni DeepSeek key (optional fallback)
+ *   4. Sab fail → skip karo, build chalne do
  */
 
-const fs   = require("fs");
-const path = require("path");
-const http = require("https");
+"use strict";
+const fs    = require("fs");
+const path  = require("path");
+const https = require("https");
+const http  = require("http");
 
-// ── Colors for Windows CMD ────────────────────────────────────────────────────
+// ── ANSI Colors ───────────────────────────────────────────────────────────────
 const C = {
   reset:  "\x1b[0m",
   red:    "\x1b[31m",
@@ -16,39 +23,38 @@ const C = {
   cyan:   "\x1b[36m",
   bold:   "\x1b[1m",
   white:  "\x1b[37m",
+  blue:   "\x1b[34m",
 };
+const p = (color, msg) => process.stdout.write(color + msg + C.reset + "\n");
+const pass  = msg => p(C.green,        "  [PASS] " + msg);
+const fail  = msg => p(C.red,          "  [FAIL] " + msg);
+const warn  = msg => p(C.yellow,       "  [WARN] " + msg);
+const info  = msg => p(C.cyan,         "  [INFO] " + msg);
+const title = msg => p(C.bold+C.white, "\n  ── " + msg + " ──");
 
-function log(color, msg) { process.stdout.write(color + msg + C.reset + "\n"); }
-function pass(msg)  { log(C.green,  "  [PASS] " + msg); }
-function fail(msg)  { log(C.red,    "  [FAIL] " + msg); }
-function warn(msg)  { log(C.yellow, "  [WARN] " + msg); }
-function info(msg)  { log(C.cyan,   "  [INFO] " + msg); }
-function title(msg) { log(C.bold + C.white, "\n  " + msg); }
-
-// ── Load Config ───────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 const ROOT       = path.resolve(__dirname, "..", "..");
 const configPath = path.join(__dirname, "ai-review-config.json");
+let cfg = {};
+try { cfg = JSON.parse(fs.readFileSync(configPath, "utf8")); }
+catch { warn("ai-review-config.json nahi mila — defaults use kar raha hai"); }
 
-let cfg;
-try {
-  cfg = JSON.parse(fs.readFileSync(configPath, "utf8"));
-} catch (e) {
-  warn("ai-review-config.json nahi mila — AI review skip");
-  process.exit(0);
-}
+const REPLIT_URL   = (cfg.replit?.serverUrl  || "").replace(/\/$/, "");
+const REPLIT_TOKEN = cfg.replit?.token       || "sai-precheck-2026";
+const GEMINI_KEY   = cfg.gemini?.apiKey      || "";
+const GEMINI_MODEL = cfg.gemini?.model       || "gemini-2.5-pro";
+const DS_KEY       = cfg.deepseek?.apiKey    || "";
+const DS_MODEL     = cfg.deepseek?.model     || "deepseek-chat";
+const MAX_KB       = cfg.review?.maxFileSizeKB || 50;
+const SKIP_ALL     = cfg.review?.skipOnAllFail !== false;
 
-const GEMINI_KEY    = cfg.gemini?.apiKey   || "";
-const DEEPSEEK_KEY  = cfg.deepseek?.apiKey || "";
-const SKIP_NO_KEY   = cfg.review?.skipOnNoKey !== false;
-const MAX_KB        = cfg.review?.maxFileSizeKB || 50;
-const GEMINI_MODEL  = cfg.gemini?.model    || "gemini-2.5-pro";
-const DEEPSEEK_MODEL= cfg.deepseek?.model  || "deepseek-chat";
+// ── CLI flags ─────────────────────────────────────────────────────────────────
+const ONLY_GEMINI   = process.argv.includes("--only-gemini");
+const ONLY_DEEPSEEK = process.argv.includes("--only-deepseek");
+const ONLY_REPLIT   = process.argv.includes("--only-replit");
 
-const hasGemini   = GEMINI_KEY   && !GEMINI_KEY.startsWith("YOUR_");
-const hasDeepSeek = DEEPSEEK_KEY && !DEEPSEEK_KEY.startsWith("YOUR_");
-
-// ── Files to Review ───────────────────────────────────────────────────────────
-const FILES_TO_REVIEW = [
+// ── Files to review ───────────────────────────────────────────────────────────
+const FILES = [
   "artifacts/api-server/src/routes/github-update.ts",
   "artifacts/api-server/src/index.ts",
   "artifacts/desktop/src/main.ts",
@@ -57,28 +63,29 @@ const FILES_TO_REVIEW = [
   "artifacts/desktop/package.json",
 ];
 
-function readFile(relPath) {
-  const absPath = path.join(ROOT, relPath);
-  if (!fs.existsSync(absPath)) return null;
-  const stat = fs.statSync(absPath);
-  if (stat.size > MAX_KB * 1024) {
-    const content = fs.readFileSync(absPath, "utf8");
-    return content.slice(0, MAX_KB * 1024) + "\n\n[...file truncated at " + MAX_KB + "KB...]";
-  }
-  return fs.readFileSync(absPath, "utf8");
+function readFile(rel) {
+  const abs = path.join(ROOT, rel);
+  if (!fs.existsSync(abs)) return null;
+  const raw = fs.readFileSync(abs, "utf8");
+  return raw.length > MAX_KB * 1024
+    ? raw.slice(0, MAX_KB * 1024) + "\n\n[...truncated at " + MAX_KB + "KB...]"
+    : raw;
 }
 
-// ── HTTP POST helper ──────────────────────────────────────────────────────────
-function httpPost(hostname, path, headers, body) {
+// ── HTTP helper ───────────────────────────────────────────────────────────────
+function httpPost(urlStr, headers, body, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
+    const url  = new URL(urlStr);
+    const mod  = url.protocol === "https:" ? https : http;
     const data = JSON.stringify(body);
-    const opts = {
-      hostname, path,
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data), ...headers },
-      timeout: 60000,
-    };
-    const req = http.request(opts, (res) => {
+    const req  = mod.request({
+      hostname: url.hostname,
+      port:     url.port || (url.protocol === "https:" ? 443 : 80),
+      path:     url.pathname + url.search,
+      method:   "POST",
+      headers:  { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data), ...headers },
+      timeout:  timeoutMs,
+    }, (res) => {
       let raw = "";
       res.on("data", c => raw += c);
       res.on("end", () => {
@@ -87,210 +94,199 @@ function httpPost(hostname, path, headers, body) {
       });
     });
     req.on("error", reject);
-    req.on("timeout", () => { req.destroy(); reject(new Error("Request timeout")); });
+    req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
     req.write(data);
     req.end();
   });
 }
 
-// ── Build review prompt ───────────────────────────────────────────────────────
-function buildPrompt(codeBundle) {
-  return `You are a senior code reviewer for "SAI Rolotech Smart Engines" — a Windows Electron desktop app with an Express.js API server and React frontend.
+// ── Prompt ────────────────────────────────────────────────────────────────────
+function makePrompt(bundle) {
+  return `You are a senior code reviewer for "SAI Rolotech Smart Engines" (Windows Electron + Express.js + React).
 
-Review the following source files and find ONLY critical bugs that would cause:
-1. Application hang or freeze on startup (especially git operations, network timeouts)
-2. Windows build failures (NSIS, native modules, path issues)
-3. Crash-causing TypeScript/JavaScript errors
-4. Security vulnerabilities (exposed keys, auth bypass)
-5. Missing ELECTRON env checks in Electron-packaged builds
+Find ONLY real bugs causing:
+1. Startup hang/freeze (git ops without ELECTRON check, network timeouts)
+2. Windows build failures (NSIS, native modules, paths)
+3. Crash-level JS/TS errors
+4. Security issues (exposed keys, auth bypass)
 
-Format your response EXACTLY like this:
+Respond EXACTLY:
 
 CRITICAL_ISSUES:
-- [filename]: [issue description]
-(or "none" if no critical issues)
+- [file]: [issue]
+(or: none)
 
 WARNINGS:
-- [filename]: [warning description]
-(or "none" if no warnings)
+- [file]: [warning]
+(or: none)
 
-VERDICT: PASS or FAIL
-REASON: [one sentence]
+VERDICT: PASS
+REASON: [one line]
 
-Files to review:
-${codeBundle}`;
+FILES:
+${bundle}`;
 }
 
-// ── Gemini Review ─────────────────────────────────────────────────────────────
-async function reviewWithGemini(prompt) {
+// ── Parse AI text ─────────────────────────────────────────────────────────────
+function parse(text, src) {
+  const verdict  = /VERDICT:\s*(PASS|FAIL)/i.exec(text)?.[1]?.toUpperCase() ?? "UNKNOWN";
+  const reason   = /REASON:\s*(.+)/i.exec(text)?.[1]?.trim() ?? "";
+  const critBlk  = /CRITICAL_ISSUES:([\s\S]*?)(?:WARNINGS:|VERDICT:)/i.exec(text)?.[1] ?? "";
+  const warnBlk  = /WARNINGS:([\s\S]*?)(?:VERDICT:|$)/i.exec(text)?.[1] ?? "";
+  const issues   = critBlk.split("\n").map(l=>l.replace(/^[-•*]\s*/,"").trim()).filter(l=>l&&l.toLowerCase()!=="none");
+  const warnings = warnBlk.split("\n").map(l=>l.replace(/^[-•*]\s*/,"").trim()).filter(l=>l&&l.toLowerCase()!=="none");
+  return { src, verdict, reason, issues, warnings };
+}
+
+// ── Print result ──────────────────────────────────────────────────────────────
+function printResult(r) {
+  const ok = r.verdict === "PASS";
+  p(ok ? C.green+C.bold : C.red+C.bold, `\n  ┌── ${r.src}: ${r.verdict} ${"─".repeat(30)}`);
+  if (r.reason) info("Reason  : " + r.reason);
+  if (r.issues.length)   { p(C.red,    "  Critical:"); r.issues.forEach(i => p(C.red,    "    ✗ " + i)); }
+  else                     pass("No critical issues");
+  if (r.warnings.length) { p(C.yellow, "  Warnings:"); r.warnings.forEach(w => p(C.yellow,"    ⚠ " + w)); }
+  else                     pass("No warnings");
+  p(ok ? C.green : C.red, "  └" + "─".repeat(45));
+}
+
+// ── Method 1: Replit server ───────────────────────────────────────────────────
+async function reviewViaReplit(bundle) {
+  if (!REPLIT_URL) throw new Error("Replit URL not configured");
   const res = await httpPost(
-    "generativelanguage.googleapis.com",
-    `/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
+    REPLIT_URL + "/api/ai-review",
     {},
-    {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-    }
+    { files: [{ path: "bundle", content: bundle }], token: REPLIT_TOKEN },
+    45000
+  );
+  if (res.status !== 200) throw new Error("Replit server HTTP " + res.status + ": " + JSON.stringify(res.body).slice(0,100));
+  if (!res.body?.ok)      throw new Error(res.body?.error || "Replit server error");
+  const b = res.body;
+  return {
+    src: "Replit Gemini (Server)",
+    verdict:  (b.verdict || "UNKNOWN").toUpperCase(),
+    reason:   b.reason   || "",
+    issues:   b.issues   || [],
+    warnings: b.warnings || [],
+  };
+}
+
+// ── Method 2: Client's own Gemini ─────────────────────────────────────────────
+async function reviewViaGemini(prompt) {
+  if (!GEMINI_KEY) throw new Error("Gemini key not set");
+  const res = await httpPost(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
+    {},
+    { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 1024 } },
+    60000
   );
   if (res.status !== 200) throw new Error("Gemini HTTP " + res.status);
   const text = res.body?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini empty response");
-  return text;
+  return parse(text, "Gemini (Client Key)");
 }
 
-// ── DeepSeek Review ───────────────────────────────────────────────────────────
-async function reviewWithDeepSeek(prompt) {
+// ── Method 3: Client's own DeepSeek ───────────────────────────────────────────
+async function reviewViaDeepSeek(prompt) {
+  if (!DS_KEY) throw new Error("DeepSeek key not set");
   const res = await httpPost(
-    "api.deepseek.com",
-    "/v1/chat/completions",
-    { Authorization: "Bearer " + DEEPSEEK_KEY },
-    {
-      model: DEEPSEEK_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.1,
-      max_tokens: 1024,
-    }
+    "https://api.deepseek.com/v1/chat/completions",
+    { Authorization: "Bearer " + DS_KEY },
+    { model: DS_MODEL, messages: [{ role: "user", content: prompt }], temperature: 0.1, max_tokens: 1024 },
+    60000
   );
   if (res.status !== 200) throw new Error("DeepSeek HTTP " + res.status);
   const text = res.body?.choices?.[0]?.message?.content;
   if (!text) throw new Error("DeepSeek empty response");
-  return text;
+  return parse(text, "DeepSeek (Client Key)");
 }
-
-// ── Parse AI Response ─────────────────────────────────────────────────────────
-function parseReview(text, source) {
-  const verdict    = /VERDICT:\s*(PASS|FAIL)/i.exec(text)?.[1]?.toUpperCase() || "UNKNOWN";
-  const reason     = /REASON:\s*(.+)/i.exec(text)?.[1]?.trim() || "";
-  const critBlock  = /CRITICAL_ISSUES:([\s\S]*?)(?:WARNINGS:|VERDICT:)/i.exec(text)?.[1] || "";
-  const warnBlock  = /WARNINGS:([\s\S]*?)(?:VERDICT:|$)/i.exec(text)?.[1] || "";
-
-  const crits = critBlock.split("\n")
-    .map(l => l.replace(/^[-•*]\s*/, "").trim())
-    .filter(l => l && l.toLowerCase() !== "none");
-
-  const warns = warnBlock.split("\n")
-    .map(l => l.replace(/^[-•*]\s*/, "").trim())
-    .filter(l => l && l.toLowerCase() !== "none");
-
-  return { source, verdict, reason, crits, warns };
-}
-
-// ── Print Review Result ───────────────────────────────────────────────────────
-function printResult(r) {
-  const icon = r.verdict === "PASS" ? "✓" : r.verdict === "FAIL" ? "✗" : "?";
-  const color = r.verdict === "PASS" ? C.green : r.verdict === "FAIL" ? C.red : C.yellow;
-  log(color + C.bold, `\n  ┌─ ${r.source} Review: ${icon} ${r.verdict} ─────────────`);
-  if (r.reason) info("Reason : " + r.reason);
-  if (r.crits.length > 0) {
-    log(C.red, "  Critical Issues:");
-    r.crits.forEach(c => log(C.red, "    ✗ " + c));
-  } else {
-    pass("No critical issues");
-  }
-  if (r.warns.length > 0) {
-    log(C.yellow, "  Warnings:");
-    r.warns.forEach(w => log(C.yellow, "    ⚠ " + w));
-  } else {
-    pass("No warnings");
-  }
-  log(color, "  └─────────────────────────────────────────\n");
-}
-
-// ── CLI flags ─────────────────────────────────────────────────────────────────
-const ONLY_GEMINI   = process.argv.includes("--only-gemini");
-const ONLY_DEEPSEEK = process.argv.includes("--only-deepseek");
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  log(C.bold + C.cyan, "\n  ╔══════════════════════════════════════════╗");
-  log(C.bold + C.cyan, "  ║   SAI Rolotech AI Pre-Build Code Review  ║");
-  log(C.bold + C.cyan, "  ╚══════════════════════════════════════════╝");
+  p(C.bold+C.cyan, "\n  ╔═══════════════════════════════════════════════╗");
+  p(C.bold+C.cyan, "  ║   SAI Rolotech — AI Pre-Build Code Reviewer   ║");
+  p(C.bold+C.cyan, "  ║   Gemini (Replit) → Gemini (Own) → DeepSeek  ║");
+  p(C.bold+C.cyan, "  ╚═══════════════════════════════════════════════╝");
 
-  if (!hasGemini && !hasDeepSeek) {
-    if (SKIP_NO_KEY) {
-      warn("Koi AI key nahi hai (ai-review-config.json check karo) — AI review skip");
-      warn("Keys add karo: https://aistudio.google.com (Gemini free) | https://platform.deepseek.com (DeepSeek)");
+  // Load files
+  title("Source files load ho rahe hain");
+  let bundle = "";
+  for (const f of FILES) {
+    const c = readFile(f);
+    if (c) { bundle += `\n========== ${f} ==========\n${c}`; pass(f); }
+    else     warn(f + " — not found, skip");
+  }
+
+  const prompt  = makePrompt(bundle);
+  const results = [];
+  let   anyFail = false;
+
+  // ── Try 1: Replit Server ────────────────────────────────────────────────
+  if (!ONLY_GEMINI && !ONLY_DEEPSEEK) {
+    title("Method 1: Replit Server (Gemini — no key needed)");
+    try {
+      const r = await reviewViaReplit(bundle);
+      results.push(r);
+      printResult(r);
+      if (r.verdict === "FAIL") anyFail = true;
+      if (!anyFail) { printFinal(results, anyFail); return; }
+    } catch (e) {
+      warn("Replit server unavailable: " + e.message);
+      warn("Next method try kar raha hai...");
+    }
+  }
+
+  // ── Try 2: Client's Gemini ──────────────────────────────────────────────
+  if (!ONLY_DEEPSEEK && !ONLY_REPLIT && GEMINI_KEY) {
+    title("Method 2: Gemini (Client Key)");
+    try {
+      const r = await reviewViaGemini(prompt);
+      results.push(r);
+      printResult(r);
+      if (r.verdict === "FAIL") anyFail = true;
+    } catch (e) {
+      warn("Gemini (client) fail: " + e.message);
+    }
+  }
+
+  // ── Try 3: Client's DeepSeek ────────────────────────────────────────────
+  if (!ONLY_GEMINI && !ONLY_REPLIT && DS_KEY) {
+    title("Method 3: DeepSeek (Client Key)");
+    try {
+      const r = await reviewViaDeepSeek(prompt);
+      results.push(r);
+      printResult(r);
+      if (r.verdict === "FAIL") anyFail = true;
+    } catch (e) {
+      warn("DeepSeek (client) fail: " + e.message);
+    }
+  }
+
+  printFinal(results, anyFail);
+}
+
+function printFinal(results, anyFail) {
+  p(C.bold, "\n  ══════════════ FINAL VERDICT ══════════════");
+  if (results.length === 0) {
+    if (SKIP_ALL) {
+      warn("Koi AI review complete nahi hua — build proceed");
       process.exit(0);
     } else {
-      fail("AI keys required hain lekin koi nahi mila!");
+      fail("AI review required lekin koi kaam nahi aaya!");
       process.exit(1);
     }
   }
-
-  // Build code bundle
-  title("Source files load ho rahe hain...");
-  let codeBundle = "";
-  let loadedCount = 0;
-  for (const f of FILES_TO_REVIEW) {
-    const content = readFile(f);
-    if (content) {
-      codeBundle += `\n\n========== FILE: ${f} ==========\n${content}`;
-      loadedCount++;
-      pass(f + " (" + Math.round(content.length / 1024) + " KB)");
-    } else {
-      warn(f + " — not found, skip");
-    }
-  }
-  info(`${loadedCount} files loaded — AI review start ho raha hai...`);
-
-  const prompt = buildPrompt(codeBundle);
-  const results = [];
-  let anyFail = false;
-
-  // ── Gemini Review ────────────────────────────────────────────────────────
-  if (hasGemini && !ONLY_DEEPSEEK) {
-    title("Gemini (" + GEMINI_MODEL + ") code review kar raha hai...");
-    try {
-      const text = await reviewWithGemini(prompt);
-      const result = parseReview(text, "Gemini");
-      results.push(result);
-      printResult(result);
-      if (result.verdict === "FAIL") anyFail = true;
-    } catch (e) {
-      warn("Gemini review fail: " + e.message + " — skip");
-    }
-  } else {
-    warn("Gemini key nahi — skip (ai-review-config.json mein add karo)");
-  }
-
-  // ── DeepSeek Review ──────────────────────────────────────────────────────
-  if (hasDeepSeek && !ONLY_GEMINI) {
-    title("DeepSeek (" + DEEPSEEK_MODEL + ") code review kar raha hai...");
-    try {
-      const text = await reviewWithDeepSeek(prompt);
-      const result = parseReview(text, "DeepSeek");
-      results.push(result);
-      printResult(result);
-      if (result.verdict === "FAIL") anyFail = true;
-    } catch (e) {
-      warn("DeepSeek review fail: " + e.message + " — skip");
-    }
-  } else {
-    warn("DeepSeek key nahi — skip (ai-review-config.json mein add karo)");
-  }
-
-  // ── Final Verdict ────────────────────────────────────────────────────────
-  log(C.bold, "\n  ══════════════ FINAL VERDICT ══════════════");
-  if (results.length === 0) {
-    warn("Koi AI review nahi hua — build proceed karo");
-    process.exit(0);
-  }
-
   const passes = results.filter(r => r.verdict === "PASS").length;
   const fails  = results.filter(r => r.verdict === "FAIL").length;
-
   if (anyFail) {
-    log(C.red + C.bold, `  ✗ ${fails}/${results.length} AI ne FAIL kaha — build rok diya!`);
-    log(C.red, "  Upar wale critical issues fix karo phir dobara chalao.\n");
+    p(C.red+C.bold, `  ✗ ${fails}/${results.length} AI ne FAIL kaha — build rok diya!`);
+    p(C.red,        "  Upar wale issues fix karo, phir dobara PRECHECK.bat chalao.\n");
     process.exit(1);
   } else {
-    log(C.green + C.bold, `  ✓ ${passes}/${results.length} AI ne PASS diya — build safe hai!`);
-    log(C.green, "  BUILD.bat chal sakti hai.\n");
+    p(C.green+C.bold, `  ✓ ${passes}/${results.length} AI ne PASS diya — code safe hai!`);
+    p(C.green,        "  BUILD.bat ab chal sakti hai.\n");
     process.exit(0);
   }
 }
 
-main().catch(e => {
-  warn("AI review unexpected error: " + e.message);
-  process.exit(0); // Error pe build rokna nahi
-});
+main().catch(e => { warn("Unexpected: " + e.message); process.exit(0); });

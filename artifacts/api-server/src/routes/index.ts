@@ -25,6 +25,7 @@ import githubUpdateRouter, { startAutoUpdate } from "./github-update";
 import installRouter from "./install";
 import serialRouter from "./serial";
 import { licenseRouter, adminRouter } from "./license-admin";
+import aiReviewRouter from "./ai-review";
 import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
@@ -36,6 +37,9 @@ router.use(authRouter);
 // License & Admin routes — own auth, no requireAuth needed
 router.use("/license", licenseRouter);
 router.use("/admin", adminRouter);
+
+// AI Pre-build review — own token auth (used by PRECHECK.bat)
+router.use(aiReviewRouter);
 
 // Public install script — no auth (PowerShell: irm <url>/api/install | iex)
 router.use(installRouter);

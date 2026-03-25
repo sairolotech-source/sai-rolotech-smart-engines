@@ -3,6 +3,14 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
+import {
+  runMultiSourceUpdate,
+  tryGitPull,
+  tryGitHubArchive,
+  tryGoogleDriveUpdate,
+  getDriveManifest,
+  uploadUpdateToDrive,
+} from "../lib/multi-source-updater";
 
 const router: IRouter = Router();
 const execAsync = promisify(exec);
@@ -886,6 +894,222 @@ router.get("/system/auto-update/status", async (_req: Request, res: Response) =>
     lastResult: lastAutoResult,
     log: autoUpdateLog.slice(-20),
   });
+});
+
+// ── Multi-Source Update Endpoints ─────────────────────────────────────────────
+
+/**
+ * GET /api/system/update-sources
+ * Sabhi update sources ka status — GitHub, Archive, Google Drive
+ */
+router.get("/system/update-sources", async (_req: Request, res: Response) => {
+  try {
+    const sources: {
+      id: string;
+      name: string;
+      description: string;
+      priority: number;
+      status: "available" | "unknown" | "no-package";
+      detail?: string;
+    }[] = [];
+
+    // Source 1: GitHub git pull
+    let githubStatus: "available" | "unknown" = "unknown";
+    let githubDetail = "";
+    try {
+      const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/commits/main`, {
+        headers: { "User-Agent": "SaiRolotech/1.0" },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (ghRes.ok) {
+        const data = await ghRes.json() as { sha?: string };
+        githubStatus = "available";
+        githubDetail = `Latest: ${data.sha?.slice(0, 10) ?? "?"}`;
+      } else {
+        githubDetail = `HTTP ${ghRes.status}`;
+      }
+    } catch (err) {
+      githubDetail = `Not reachable: ${String(err).slice(0, 60)}`;
+    }
+    sources.push({
+      id: "git-pull",
+      name: "GitHub (git pull)",
+      description: "Standard git fetch + pull from sairolotech-source/sai-rolotech-smart-engines",
+      priority: 1,
+      status: githubStatus,
+      detail: githubDetail,
+    });
+
+    // Source 2: GitHub Archive ZIP
+    let archiveStatus: "available" | "unknown" = "unknown";
+    let archiveDetail = "";
+    try {
+      const archiveUrl = `https://codeload.github.com/${GITHUB_REPO}/zip/refs/heads/main`;
+      const headRes = await fetch(archiveUrl, {
+        method: "HEAD",
+        headers: { "User-Agent": "SaiRolotech/1.0" },
+        signal: AbortSignal.timeout(6000),
+      });
+      archiveStatus = headRes.ok || headRes.status === 302 ? "available" : "unknown";
+      archiveDetail = headRes.ok ? "Archive endpoint reachable" : `HTTP ${headRes.status}`;
+    } catch (err) {
+      archiveDetail = `Not reachable: ${String(err).slice(0, 60)}`;
+    }
+    sources.push({
+      id: "github-archive",
+      name: "GitHub Archive ZIP",
+      description: "Direct HTTPS ZIP download of main branch — bypasses git protocol issues",
+      priority: 2,
+      status: archiveStatus,
+      detail: archiveDetail,
+    });
+
+    // Source 3: Google Drive
+    let driveStatus: "available" | "no-package" | "unknown" = "unknown";
+    let driveDetail = "";
+    try {
+      const manifest = await getDriveManifest();
+      if (manifest) {
+        driveStatus = "available";
+        driveDetail = `Package: v${manifest.version} — ${manifest.archiveName} (${new Date(manifest.timestamp).toLocaleDateString("en-IN")})`;
+      } else {
+        driveStatus = "no-package";
+        driveDetail = "Drive connected but no update package uploaded yet";
+      }
+    } catch (err) {
+      driveDetail = `Drive error: ${String(err).slice(0, 80)}`;
+    }
+    sources.push({
+      id: "google-drive",
+      name: "Google Drive Archive",
+      description: "Update package stored in Google Drive 'SAI-Rolotech-Updates' folder",
+      priority: 3,
+      status: driveStatus as "available" | "unknown" | "no-package",
+      detail: driveDetail,
+    });
+
+    const available = sources.filter(s => s.status === "available").length;
+
+    res.json({
+      ok: true,
+      summary: `${available}/${sources.length} sources available`,
+      primarySource: sources.find(s => s.status === "available")?.id ?? "none",
+      sources,
+      autoUpdateEnabled,
+      lastCheck: lastAutoCheck,
+      lastResult: lastAutoResult,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+/**
+ * POST /api/system/multi-update
+ * Manually trigger multi-source update (tries all sources in order)
+ */
+router.post("/system/multi-update", async (req: Request, res: Response) => {
+  if (process.env["ELECTRON"] === "1") {
+    res.json({ ok: false, message: "Git update disabled in packaged Electron app" });
+    return;
+  }
+  try {
+    const { skipGit, skipArchive, skipDrive, forceDrive } = req.body ?? {};
+
+    logAuto("Manual multi-source update triggered...", "info");
+    const result = await runMultiSourceUpdate({ skipGit, skipArchive, skipDrive, forceDrive });
+
+    if (result.updated && result.sourceUsed !== "git-pull") {
+      logAuto(`Multi-update: ${result.finalMessage}`, "success");
+      // Run pnpm install if not already done
+      await runShell(
+        "pnpm install --prefer-frozen-lockfile 2>&1 || pnpm install --no-frozen-lockfile 2>&1",
+        120000,
+      );
+    }
+
+    logAuto(
+      result.updated
+        ? `UPDATE SUCCESS via ${result.sourceUsed}: ${result.finalMessage}`
+        : `UPDATE FAILED: ${result.finalMessage}`,
+      result.updated ? "success" : "error",
+    );
+
+    if (result.updated) {
+      scheduleServerRestart(5);
+    }
+
+    res.json({
+      ok: result.updated,
+      sourceUsed: result.sourceUsed,
+      attempts: result.attempts,
+      message: result.finalMessage,
+      willRestart: result.updated,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+/**
+ * POST /api/system/push-to-drive
+ * Current code ka snapshot Google Drive pe upload karo (future fallback ke liye)
+ */
+router.post("/system/push-to-drive", async (req: Request, res: Response) => {
+  try {
+    const version: string = (req.body?.version as string) || `manual-${new Date().toISOString().slice(0, 10)}`;
+    logAuto(`Google Drive pe update package upload ho raha — v${version}`, "info");
+
+    const result = await uploadUpdateToDrive(version);
+
+    logAuto(
+      result.ok ? `Drive upload done: ${result.message}` : `Drive upload fail: ${result.message}`,
+      result.ok ? "success" : "error",
+    );
+
+    res.json({ ok: result.ok, message: result.message, fileId: result.fileId });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+/**
+ * POST /api/system/test-sources
+ * Test each source individually without updating
+ */
+router.post("/system/test-sources", async (_req: Request, res: Response) => {
+  try {
+    const results = await Promise.allSettled([
+      tryGitPull(),
+      tryGitHubArchive(),
+      tryGoogleDriveUpdate(),
+    ]);
+
+    res.json({
+      ok: true,
+      note: "Test only — no files were changed (git-pull actually ran but archive/drive were simulated)",
+      results: results.map((r) => r.status === "fulfilled" ? r.value : { ok: false, message: String(r.reason) }),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+/**
+ * GET /api/system/drive-manifest
+ * Google Drive pe stored latest update package info
+ */
+router.get("/system/drive-manifest", async (_req: Request, res: Response) => {
+  try {
+    const manifest = await getDriveManifest();
+    if (!manifest) {
+      res.json({ ok: true, hasPackage: false, message: "Koi update package Drive pe nahi hai — push-to-drive se upload karo" });
+      return;
+    }
+    res.json({ ok: true, hasPackage: true, manifest });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
 });
 
 export default router;

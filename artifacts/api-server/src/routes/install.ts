@@ -85,22 +85,43 @@ router.get("/download/direct-url", async (_req: Request, res: Response) => {
   }
 });
 
-router.get("/install", async (_req: Request, res: Response) => {
+router.get("/install", async (req: Request, res: Response) => {
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost:8080") as string;
+  const proto = (req.headers["x-forwarded-proto"] ?? "https") as string;
+  const serverBase = `${proto}://${host}`;
+
+  // Best-effort GitHub release fetch — fallback to defaults if API unreachable
+  let tag = "v2.2.23";
+  let githubUrl = `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
+  let sizeMB = 85;
+  let assetId: number | null = null;
+
   try {
     const release = await fetchLatestRelease();
-
-    const tag = release.tag_name ?? "v2.2.18";
+    tag = release.tag_name ?? tag;
     const asset = getSetupAsset(release.assets ?? []);
-    const url: string = asset?.browser_download_url
-      ?? `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
-    const sizeMB = asset ? Math.round(asset.size / 1024 / 1024) : 83;
+    if (asset) {
+      githubUrl = asset.browser_download_url;
+      sizeMB = Math.round(asset.size / 1024 / 1024);
+      assetId = asset.id;
+    } else {
+      githubUrl = `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
+    }
+  } catch { /* GitHub unreachable — use defaults */ }
 
-    const ps1 = `
+  // Replit server proxy URL (always available as the app connects to this server)
+  const replitProxyUrl = assetId
+    ? `${serverBase}/api/download/proxy/${assetId}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`
+    : `${serverBase}/api/download`;
+
+  // PowerShell script with 3-source fallback download
+  const ps1 = `
 Write-Host ""
-Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "  SAI Rolotech Smart Engines Update      " -ForegroundColor Cyan
-Write-Host "  Version: ${tag}  (~${sizeMB}MB)        " -ForegroundColor White
-Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  SAI Rolotech Smart Engines Installer     " -ForegroundColor Cyan
+Write-Host "  Version: ${tag}  (~${sizeMB}MB)          " -ForegroundColor White
+Write-Host "  Multi-Source Download (3 fallback)       " -ForegroundColor DarkGray
+Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "[1/4] Purani SAI app band kar raha hun..." -ForegroundColor Yellow
@@ -117,23 +138,77 @@ Write-Host "      Done." -ForegroundColor Green
 
 Write-Host "[3/4] ${tag} Setup download ho raha hai..." -ForegroundColor Yellow
 $f = "$env:TEMP\\SAI-Setup-${tag}.exe"
-Invoke-WebRequest "${url}" -OutFile $f -UseBasicParsing
-Write-Host "      Download complete!" -ForegroundColor Green
+$downloaded = $false
+
+# ── Source 1: GitHub Release (Primary) ────────────────────────────────────────
+Write-Host "  [Source 1/3] GitHub Release se try kar raha..." -ForegroundColor DarkCyan
+try {
+  Invoke-WebRequest "${githubUrl}" -OutFile $f -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
+  if ((Get-Item $f -EA SilentlyContinue).Length -gt 1MB) {
+    Write-Host "  GitHub se download complete!" -ForegroundColor Green
+    $downloaded = $true
+  } else {
+    Write-Host "  GitHub file incomplete — next source try karega..." -ForegroundColor Yellow
+    Remove-Item $f -Force -EA SilentlyContinue
+  }
+} catch {
+  Write-Host "  GitHub fail: $($_.Exception.Message.Substring(0,[Math]::Min(80,$_.Exception.Message.Length)))" -ForegroundColor Yellow
+}
+
+# ── Source 2: SAI Server Proxy (Always Available) ─────────────────────────────
+if (-not $downloaded) {
+  Write-Host "  [Source 2/3] SAI Server proxy se try kar raha..." -ForegroundColor DarkCyan
+  try {
+    Invoke-WebRequest "${replitProxyUrl}" -OutFile $f -UseBasicParsing -TimeoutSec 180 -ErrorAction Stop
+    if ((Get-Item $f -EA SilentlyContinue).Length -gt 1MB) {
+      Write-Host "  SAI Server se download complete!" -ForegroundColor Green
+      $downloaded = $true
+    } else {
+      Write-Host "  SAI Server file incomplete — next source try karega..." -ForegroundColor Yellow
+      Remove-Item $f -Force -EA SilentlyContinue
+    }
+  } catch {
+    Write-Host "  SAI Server fail: $($_.Exception.Message.Substring(0,[Math]::Min(80,$_.Exception.Message.Length)))" -ForegroundColor Yellow
+  }
+}
+
+# ── Source 3: GitHub Direct Browser URL (Last Resort) ─────────────────────────
+if (-not $downloaded) {
+  Write-Host "  [Source 3/3] GitHub direct browser URL try kar raha..." -ForegroundColor DarkCyan
+  $directUrl = "https://github.com/${GITHUB_REPO}/releases/latest/download/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe"
+  try {
+    $wc = New-Object System.Net.WebClient
+    $wc.Headers.Add("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+    $wc.DownloadFile($directUrl, $f)
+    if ((Get-Item $f -EA SilentlyContinue).Length -gt 1MB) {
+      Write-Host "  Direct download complete!" -ForegroundColor Green
+      $downloaded = $true
+    }
+  } catch {
+    Write-Host "  Direct URL bhi fail: $($_.Exception.Message.Substring(0,[Math]::Min(80,$_.Exception.Message.Length)))" -ForegroundColor Red
+  }
+}
+
+if (-not $downloaded) {
+  Write-Host ""
+  Write-Host "  DOWNLOAD FAIL — Teeno sources fail ho gaye!" -ForegroundColor Red
+  Write-Host "  Internet connection check karo ya admin se contact karo." -ForegroundColor Red
+  Write-Host "  Manual download: https://github.com/${GITHUB_REPO}/releases" -ForegroundColor White
+  Read-Host "  Enter dabao band karne ke liye"
+  exit 1
+}
 
 Write-Host "[4/4] Install ho raha hai..." -ForegroundColor Yellow
 Start-Process $f -Wait
 Write-Host ""
-Write-Host "=========================================" -ForegroundColor Green
-Write-Host "  ${tag} install ho gaya!               " -ForegroundColor Green
-Write-Host "  Desktop ke naye shortcut se kholen    " -ForegroundColor Green
-Write-Host "=========================================" -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
+Write-Host "  ${tag} install ho gaya!                  " -ForegroundColor Green
+Write-Host "  Desktop ke naye shortcut se kholen       " -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
 `.trim();
 
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.send(ps1);
-  } catch (err) {
-    res.status(500).send(`Write-Host "Error: ${err}" -ForegroundColor Red`);
-  }
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send(ps1);
 });
 
 // ── Direct download redirect — one click, installer starts automatically ──────

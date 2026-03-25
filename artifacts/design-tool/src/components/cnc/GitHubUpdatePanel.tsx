@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Github, RefreshCw, Download, Upload, CheckCircle2,
   AlertTriangle, Clock, GitBranch, GitCommit, Loader2,
-  Wifi, WifiOff, Info, ChevronDown, ChevronRight, Zap
+  Wifi, WifiOff, Info, ChevronDown, ChevronRight, Zap,
+  CloudUpload, HardDrive, ShieldCheck, Layers, Archive
 } from "lucide-react";
 
 interface AutoUpdateInfo {
@@ -52,6 +53,40 @@ interface PushResult {
   error?: string;
 }
 
+interface UpdateSource {
+  id: string;
+  name: string;
+  description: string;
+  priority: number;
+  status: "available" | "unknown" | "no-package";
+  detail?: string;
+}
+
+interface UpdateSourcesResult {
+  ok: boolean;
+  summary: string;
+  primarySource: string;
+  sources: UpdateSource[];
+  autoUpdateEnabled: boolean;
+  lastCheck: string;
+  lastResult: string;
+}
+
+interface MultiUpdateResult {
+  ok: boolean;
+  sourceUsed: string | null;
+  attempts: { source: string; ok: boolean; message: string }[];
+  message: string;
+  willRestart?: boolean;
+}
+
+interface DriveManifestResult {
+  ok: boolean;
+  hasPackage: boolean;
+  manifest?: { version: string; timestamp: string; archiveName: string };
+  message?: string;
+}
+
 export function GitHubUpdatePanel() {
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -66,6 +101,16 @@ export function GitHubUpdatePanel() {
   const [autoUpdateStatus, setAutoUpdateStatus] = useState<AutoUpdateStatus | null>(null);
   const [autoUpdateLoading, setAutoUpdateLoading] = useState(false);
   const [showAutoLog, setShowAutoLog] = useState(false);
+
+  // Multi-source update state
+  const [updateSources, setUpdateSources] = useState<UpdateSourcesResult | null>(null);
+  const [loadingSources, setLoadingSources] = useState(false);
+  const [multiUpdating, setMultiUpdating] = useState(false);
+  const [multiUpdateResult, setMultiUpdateResult] = useState<MultiUpdateResult | null>(null);
+  const [drivePushing, setDrivePushing] = useState(false);
+  const [drivePushResult, setDrivePushResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [driveManifest, setDriveManifest] = useState<DriveManifestResult | null>(null);
+  const [showSourcesExpanded, setShowSourcesExpanded] = useState(false);
 
   const token = localStorage.getItem("cnc_token") ?? "";
 
@@ -155,7 +200,61 @@ export function GitHubUpdatePanel() {
     setAutoUpdateLoading(false);
   };
 
-  useEffect(() => { void checkStatus(); void fetchAutoStatus(); }, [checkStatus, fetchAutoStatus]);
+  // ── Multi-Source Update Functions ──────────────────────────────────────────
+
+  const checkUpdateSources = useCallback(async () => {
+    setLoadingSources(true);
+    try {
+      const [sourcesRes, manifestRes] = await Promise.all([
+        fetch("/api/system/update-sources", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/system/drive-manifest", { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const sourcesData = await sourcesRes.json() as UpdateSourcesResult;
+      const manifestData = await manifestRes.json() as DriveManifestResult;
+      setUpdateSources(sourcesData);
+      setDriveManifest(manifestData);
+    } catch { /* ignore */ }
+    setLoadingSources(false);
+  }, [token]);
+
+  const runMultiUpdate = async () => {
+    setMultiUpdating(true);
+    setMultiUpdateResult(null);
+    try {
+      const res = await fetch("/api/system/multi-update", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json() as MultiUpdateResult;
+      setMultiUpdateResult(data);
+      if (data.ok) { await checkStatus(); await checkUpdateSources(); }
+    } catch {
+      setMultiUpdateResult({ ok: false, sourceUsed: null, attempts: [], message: "Multi-update request fail hua" });
+    }
+    setMultiUpdating(false);
+  };
+
+  const pushToDrive = async () => {
+    setDrivePushing(true);
+    setDrivePushResult(null);
+    try {
+      const version = `v${new Date().toISOString().slice(0, 10)}-manual`;
+      const res = await fetch("/api/system/push-to-drive", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ version }),
+      });
+      const data = await res.json() as { ok: boolean; message: string };
+      setDrivePushResult(data);
+      if (data.ok) await checkUpdateSources();
+    } catch {
+      setDrivePushResult({ ok: false, message: "Drive push fail hua" });
+    }
+    setDrivePushing(false);
+  };
+
+  useEffect(() => { void checkStatus(); void fetchAutoStatus(); void checkUpdateSources(); }, [checkStatus, fetchAutoStatus, checkUpdateSources]);
 
   useEffect(() => {
     if (!autoCheck) return;
@@ -464,6 +563,166 @@ export function GitHubUpdatePanel() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* ── MULTI-SOURCE FALLBACK UPDATE ──────────────────────────────── */}
+        <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 overflow-hidden">
+          <div className="px-3 py-2.5 bg-sky-500/10 border-b border-sky-500/20 flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
+            <span className="text-[11px] font-bold text-sky-300">Multi-Source Fallback Update</span>
+            <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+              3 SOURCES
+            </span>
+          </div>
+
+          <div className="p-3 space-y-3">
+            <p className="text-[10px] text-zinc-400">
+              <b className="text-sky-300">Agar GitHub fail ho tab bhi update milega!</b>{" "}
+              Teen sources ek ke baad ek try hote hain — pehla kaam karne wala use hota hai.
+            </p>
+
+            {/* Source Status Cards */}
+            <div>
+              <button
+                onClick={() => setShowSourcesExpanded(p => !p)}
+                className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-zinc-200 mb-2 transition-colors"
+              >
+                {showSourcesExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                <Layers className="w-3 h-3" />
+                Update Sources Status
+                {updateSources && <span className="text-sky-400 ml-1">({updateSources.summary})</span>}
+                {loadingSources && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+              </button>
+
+              {showSourcesExpanded && updateSources && (
+                <div className="space-y-1.5">
+                  {updateSources.sources.map((src) => (
+                    <div key={src.id} className={`flex items-start gap-2 p-2 rounded-lg border text-[10px] ${
+                      src.status === "available"
+                        ? "border-emerald-500/25 bg-emerald-500/5"
+                        : src.status === "no-package"
+                          ? "border-amber-500/25 bg-amber-500/5"
+                          : "border-zinc-700/30 bg-zinc-900/30"
+                    }`}>
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${
+                        src.status === "available" ? "bg-emerald-500/20 text-emerald-400"
+                          : src.status === "no-package" ? "bg-amber-500/20 text-amber-400"
+                          : "bg-zinc-700/30 text-zinc-500"
+                      }`}>{src.priority}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {src.id === "git-pull" && <Github className="w-3 h-3 text-zinc-400" />}
+                          {src.id === "github-archive" && <Archive className="w-3 h-3 text-blue-400" />}
+                          {src.id === "google-drive" && <HardDrive className="w-3 h-3 text-green-400" />}
+                          <span className="font-semibold text-zinc-200">{src.name}</span>
+                          <span className={`text-[8px] px-1 py-0.5 rounded font-bold ml-auto ${
+                            src.status === "available" ? "bg-emerald-500/20 text-emerald-400"
+                              : src.status === "no-package" ? "bg-amber-500/20 text-amber-400"
+                              : "bg-zinc-700/40 text-zinc-500"
+                          }`}>
+                            {src.status === "available" ? "✅ READY" : src.status === "no-package" ? "⚠ NO PKG" : "❓ UNKNOWN"}
+                          </span>
+                        </div>
+                        {src.detail && <p className="text-[9px] text-zinc-500 mt-0.5 truncate">{src.detail}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Multi-Source Update Button */}
+            <button
+              onClick={() => void runMultiUpdate()}
+              disabled={multiUpdating}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-300 text-[11px] font-semibold hover:bg-sky-500/30 transition-colors disabled:opacity-50 w-full justify-center"
+            >
+              {multiUpdating
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Multi-Source Update ho raha hai...</>
+                : <><ShieldCheck className="w-4 h-4" /> Multi-Source Update Chalao (Fallback Safe)</>}
+            </button>
+
+            {multiUpdateResult && (
+              <div className={`rounded-lg border p-3 ${multiUpdateResult.ok ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {multiUpdateResult.ok ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-red-400" />}
+                  <span className={`text-[11px] font-bold ${multiUpdateResult.ok ? "text-emerald-300" : "text-red-300"}`}>
+                    {multiUpdateResult.ok
+                      ? `✅ Update ho gaya via: ${multiUpdateResult.sourceUsed ?? "?"}`
+                      : "❌ Sabhi sources fail ho gaye"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-zinc-400 mb-2">{multiUpdateResult.message}</p>
+                {multiUpdateResult.attempts.length > 0 && (
+                  <div className="space-y-1">
+                    {multiUpdateResult.attempts.map((a, i) => (
+                      <div key={i} className={`flex items-center gap-1.5 text-[9px] ${a.ok ? "text-emerald-400" : "text-zinc-500"}`}>
+                        {a.ok ? "✅" : "❌"} <span className="font-mono">{a.source}</span>: {a.message.slice(0, 70)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {multiUpdateResult.ok && multiUpdateResult.willRestart && (
+                  <div className="mt-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                    <p className="text-[10px] text-amber-300">
+                      <Zap className="w-3 h-3 inline mr-1" />
+                      Server restart ho raha hai — thoda wait karo, phir refresh karo
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Drive Backup Section */}
+            <div className="border-t border-sky-500/10 pt-3">
+              <div className="flex items-center gap-2 mb-2">
+                <HardDrive className="w-3 h-3 text-green-400" />
+                <span className="text-[10px] font-bold text-zinc-300">Google Drive Backup (Source 3)</span>
+                {driveManifest?.hasPackage && driveManifest.manifest && (
+                  <span className="ml-auto text-[8px] text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
+                    v{driveManifest.manifest.version}
+                  </span>
+                )}
+              </div>
+              <p className="text-[9px] text-zinc-500 mb-2">
+                Current code ka snapshot Drive pe save karo — agar GitHub kabhi bhi down ho to Drive se update milega.
+              </p>
+              {driveManifest && !driveManifest.hasPackage && (
+                <p className="text-[9px] text-amber-400 mb-2 bg-amber-500/10 px-2 py-1.5 rounded border border-amber-500/20">
+                  ⚠ Drive pe abhi koi backup nahi — "Push to Drive" dabao ek backup banane ke liye
+                </p>
+              )}
+              {driveManifest?.hasPackage && driveManifest.manifest && (
+                <p className="text-[9px] text-green-400 mb-2 bg-green-500/10 px-2 py-1.5 rounded border border-green-500/20">
+                  ✅ Drive backup ready — {new Date(driveManifest.manifest.timestamp).toLocaleDateString("en-IN")} ko upload hua
+                </p>
+              )}
+              <button
+                onClick={() => void pushToDrive()}
+                disabled={drivePushing}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 text-[10px] font-semibold hover:bg-green-500/25 transition-colors disabled:opacity-50 w-full justify-center"
+              >
+                {drivePushing
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Drive pe upload ho raha hai...</>
+                  : <><CloudUpload className="w-3.5 h-3.5" /> Current Code Push to Drive (Backup)</>}
+              </button>
+              {drivePushResult && (
+                <div className={`mt-2 text-[10px] rounded px-2 py-1.5 border ${drivePushResult.ok ? "text-green-300 border-green-500/20 bg-green-500/5" : "text-red-300 border-red-500/20 bg-red-500/5"}`}>
+                  {drivePushResult.ok ? "✅" : "❌"} {drivePushResult.message}
+                </div>
+              )}
+            </div>
+
+            {/* Refresh sources button */}
+            <button
+              onClick={() => void checkUpdateSources()}
+              disabled={loadingSources}
+              className="flex items-center gap-1.5 text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              {loadingSources ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              Sources refresh karo
+            </button>
           </div>
         </div>
 

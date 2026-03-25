@@ -108,7 +108,7 @@ if %errorlevel% neq 0 (
     echo  [ERROR] TypeScript compile fail!
     pause & exit /b 1
 )
-call npx electron-builder --win nsis portable
+call npx electron-builder --win portable
 if %errorlevel% neq 0 (
     echo  [ERROR] EXE build fail! Admin rights se chalayein.
     pause & exit /b 1

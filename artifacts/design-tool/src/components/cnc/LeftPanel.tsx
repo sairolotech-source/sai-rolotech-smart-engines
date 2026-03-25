@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   useCncStore,
   type LatheToolConfig,
@@ -382,6 +382,29 @@ export function LeftPanel() {
       setStripLoading(false);
     }
   }, [geometry, materialThickness, materialType, stripBendRadius, setError]);
+
+  // ── Auto Shaft Diameter Calculation ──────────────────────────────────────────
+  // Based on Roll OD ratio rule: shaft = 25–30% of roll OD (industry standard)
+  const [autoShaft, setAutoShaft] = useState(true);
+
+  function calcAutoShaftFromProfile(rollOD: number, stripW: number): number {
+    const STD = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100, 110, 120];
+    const rollBased = rollOD * 0.28;
+    const stripBased = stripW * 0.22;
+    const estimate = Math.max(rollBased, stripBased, 25);
+    return STD.find(s => s >= estimate) ?? 100;
+  }
+
+  const profileWidth = geometry
+    ? (geometry.boundingBox.maxX - geometry.boundingBox.minX)
+    : 150;
+  const autoShaftValue = calcAutoShaftFromProfile(rollDiameter, profileWidth);
+
+  useEffect(() => {
+    if (autoShaft) {
+      setShaftDiameter(autoShaftValue);
+    }
+  }, [autoShaft, autoShaftValue, setShaftDiameter]);
 
   const matProps = MATERIAL_DATABASE[materialType];
   const keyway = getKeywaySizeForShaft(shaftDiameter);
@@ -1281,8 +1304,36 @@ export function LeftPanel() {
                 <input type="number" value={rollDiameter} onChange={(e) => setRollDiameter(parseFloat(e.target.value) || 150)} className={inputCls} />
               </div>
               <div>
-                <label className="text-[10px] text-zinc-500 block mb-0.5">Shaft Dia (mm)</label>
-                <input type="number" value={shaftDiameter} onChange={(e) => setShaftDiameter(parseFloat(e.target.value) || 40)} className={inputCls} />
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[10px] text-zinc-500">Shaft Dia (mm)</label>
+                  <button
+                    onClick={() => setAutoShaft(!autoShaft)}
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border transition-colors ${autoShaft ? "bg-green-700 hover:bg-green-600 text-green-100 border-green-600" : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300 border-zinc-600"}`}
+                    title={autoShaft ? "Auto mode: shaft calculated from Roll OD (28% rule). Click to override manually." : "Manual mode. Click to switch to auto."}
+                  >
+                    {autoShaft ? "AUTO" : "Manual"}
+                  </button>
+                </div>
+                {autoShaft ? (
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={shaftDiameter}
+                      readOnly
+                      className={`${inputCls} opacity-70 cursor-not-allowed bg-green-950/40 border-green-700/50 text-green-300`}
+                    />
+                    <div className="text-[9px] text-green-500 mt-0.5">
+                      Ø{rollDiameter}×28% = {(rollDiameter*0.28).toFixed(0)}mm → ISO Ø{shaftDiameter}
+                    </div>
+                  </div>
+                ) : (
+                  <input
+                    type="number"
+                    value={shaftDiameter}
+                    onChange={(e) => setShaftDiameter(parseFloat(e.target.value) || 40)}
+                    className={inputCls}
+                  />
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -1314,16 +1365,27 @@ export function LeftPanel() {
             <div className="bg-zinc-800 rounded p-2 border border-zinc-700 text-[10px] text-zinc-400 space-y-1">
               <div className="text-zinc-300 font-semibold mb-1">Auto-Calculated Values</div>
               <div className="flex justify-between">
-                <span>Keyway Size:</span>
-                <span className="text-zinc-200 font-medium">{keyway.width}×{keyway.height} mm</span>
+                <span>Shaft Dia (ISO):</span>
+                <span className="text-green-300 font-bold">Ø{shaftDiameter} mm {autoShaft ? "(auto)" : "(manual)"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Keyway (DIN 6885-A):</span>
+                <span className="text-yellow-300 font-medium">{keyway.width}×{keyway.height} mm</span>
+              </div>
+              <div className="flex justify-between">
+                <span>ISO Fit Shaft / Bore:</span>
+                <span className="text-cyan-300 font-medium">h6 / H7</span>
               </div>
               <div className="flex justify-between">
                 <span>Roll Gap:</span>
                 <span className="text-zinc-200 font-medium">{(materialThickness + clearance).toFixed(3)} mm</span>
               </div>
               <div className="flex justify-between">
-                <span>Bore Dia:</span>
-                <span className="text-zinc-200 font-medium">{shaftDiameter} mm</span>
+                <span>Surface (bearing seat):</span>
+                <span className="text-zinc-300 font-medium">Ra 0.8 µm</span>
+              </div>
+              <div className="text-[9px] text-zinc-600 pt-1 border-t border-zinc-700">
+                Full keyway + locknut + tolerance → Generate Roll Tooling
               </div>
             </div>
           </div>

@@ -335,6 +335,15 @@ export interface CamPlan {
   coolantMode: string;
 }
 
+export interface KeywaySpec {
+  widthMm: number;
+  heightMm: number;
+  shaftDepthT1Mm: number;
+  hubDepthT2Mm: number;
+  standard: string;
+  length: string;
+}
+
 export interface ShaftCalcResult {
   requiredDiaMm: number;
   selectedDiaMm: number;
@@ -343,6 +352,13 @@ export interface ShaftCalcResult {
   combinedStressMpa: number;
   safetyFactor: number;
   deflectionMm: number;
+  keyway?: KeywaySpec;
+  toleranceFit?: { shaft: string; bore: string; interference: string };
+  surfaceFinish?: { bearingSeat: string; keywaySurface: string; rollBody: string };
+  recommendedMaterial?: string;
+  locknuts?: string;
+  stressConcentrationKf?: number;
+  shaftYieldMpa?: number;
 }
 
 export interface BearingSpec {

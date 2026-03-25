@@ -2008,7 +2008,121 @@ export function RollToolingView() {
                 </div>
                 <div className="text-[10px] text-zinc-300 mt-1">
                   <span className="text-amber-400 font-bold">Shaft-to-Bearing fit:</span>{" "}
-                  k6 interference fit on shaft | H7 clearance fit in housing
+                  h6 shaft (ground Ra 0.8µm) | H7 bore in housing — ISO 286
+                </div>
+              </div>
+            )}
+
+            {/* ── Shaft Engineering Design — Per Station ─────────────────────── */}
+            {rollTooling.some(rt => rt.shaftCalc?.keyway) && (
+              <div className="bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-gradient-to-r from-zinc-800/80 to-zinc-900/80 border-b border-zinc-700 flex items-center gap-3">
+                  <span className="text-xs font-bold text-zinc-100">Shaft Engineering Design — Per Station</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 font-semibold">Auto from Profile</span>
+                  <span className="text-[9px] text-zinc-500">Shigley's MSS | DIN 6885-A | DIN 981 | ISO 286</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px]">
+                    <thead>
+                      <tr className="border-b border-zinc-800 bg-zinc-800/40">
+                        {[
+                          "Stn",
+                          "Ø Selected\n(ISO mm)",
+                          "Material\n(Auto)",
+                          "Yield\n(MPa)",
+                          "SF\nActual",
+                          "Keyway b×h\n(DIN 6885-A)",
+                          "t1 Shaft\n(mm)",
+                          "t2 Hub\n(mm)",
+                          "Key Length\n(min–max)",
+                          "Shaft Fit\n(ISO h6)",
+                          "Bore Fit\n(ISO H7)",
+                          "Locknut\n(DIN 981)",
+                          "Deflection\n(mm)",
+                        ].map(h => (
+                          <th key={h} className="px-2 py-2 text-left text-zinc-500 font-semibold whitespace-pre-line text-[9px]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rollTooling.map((rt, i) => {
+                        const sc = rt.shaftCalc;
+                        if (!sc) return null;
+                        const kw = sc.keyway;
+                        const tf = sc.toleranceFit;
+                        const stnId = rt.stationId ?? `S${i + 1}`;
+                        const sfOk = sc.safetyFactor >= 2.5;
+                        return (
+                          <tr key={i} className={`border-b border-zinc-800/50 ${i % 2 === 0 ? "bg-zinc-900/30" : ""}`}>
+                            <td className="px-2 py-1.5 font-bold text-zinc-300">{stnId}</td>
+                            <td className="px-2 py-1.5 font-bold text-green-300 font-mono">Ø{sc.selectedDiaMm}</td>
+                            <td className="px-2 py-1.5 text-amber-300" title={sc.recommendedMaterial}>
+                              {sc.recommendedMaterial?.split(" ")[0] ?? "C45"}
+                              <span className="text-zinc-500 ml-1">{sc.recommendedMaterial?.match(/\(([^)]+)\)/)?.[1] ?? ""}</span>
+                            </td>
+                            <td className="px-2 py-1.5 text-zinc-300 font-mono">{sc.shaftYieldMpa}</td>
+                            <td className="px-2 py-1.5 font-bold font-mono" style={{ color: sfOk ? "#34d399" : "#f87171" }}>
+                              {sc.safetyFactor}
+                              {!sfOk && <span className="text-[8px] ml-1 text-red-400">LOW</span>}
+                            </td>
+                            <td className="px-2 py-1.5 text-yellow-300 font-bold font-mono">
+                              {kw ? `${kw.widthMm}×${kw.heightMm}` : "—"}
+                            </td>
+                            <td className="px-2 py-1.5 text-yellow-200 font-mono">{kw ? kw.shaftDepthT1Mm : "—"}</td>
+                            <td className="px-2 py-1.5 text-orange-300 font-mono">{kw ? kw.hubDepthT2Mm : "—"}</td>
+                            <td className="px-2 py-1.5 text-zinc-400 font-mono text-[9px]">{kw ? kw.length : "—"}</td>
+                            <td className="px-2 py-1.5 text-cyan-300 font-mono text-[9px]">
+                              {tf ? tf.shaft.split(" ")[0] : `Ø${sc.selectedDiaMm}h6`}
+                            </td>
+                            <td className="px-2 py-1.5 text-sky-300 font-mono text-[9px]">
+                              {tf ? tf.bore.split(" ")[0] : `Ø${sc.selectedDiaMm}H7`}
+                            </td>
+                            <td className="px-2 py-1.5 text-purple-300 text-[9px]" title={sc.locknuts}>
+                              {sc.locknuts?.split(" ")[0] ?? "—"}
+                            </td>
+                            <td className="px-2 py-1.5 font-mono" style={{ color: sc.deflectionMm > 0.05 ? "#f87171" : "#34d399" }}>
+                              {sc.deflectionMm.toFixed(4)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Surface Finish + Formula Notes */}
+                <div className="px-4 py-3 border-t border-zinc-800 grid grid-cols-2 gap-4 text-[9px]">
+                  <div>
+                    <div className="text-zinc-500 uppercase tracking-wide mb-1.5 font-semibold">Surface Finish Specs</div>
+                    <div className="space-y-1 text-zinc-400">
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Bearing seat (h6 zone):</span>
+                        <span className="text-cyan-300 font-mono font-bold">Ra 0.8µm — Ground</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Keyway slot:</span>
+                        <span className="text-yellow-300 font-mono">Ra 1.6µm — Milled</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Shaft body:</span>
+                        <span className="text-zinc-300 font-mono">Ra 3.2µm — Turned</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Roll bore (H7 zone):</span>
+                        <span className="text-sky-300 font-mono">Ra 1.6µm — Reamed</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-zinc-500 uppercase tracking-wide mb-1.5 font-semibold">Design Formula (Shigley's MSS)</div>
+                    <div className="font-mono text-zinc-400 leading-relaxed">
+                      <div>d = ∛[ (16/π×τ) × √((Kf×M)²+T²) ]</div>
+                      <div className="text-zinc-500">Kf = 1.6 (end-milled keyway)</div>
+                      <div className="text-zinc-500">SF = 2.5 (roll forming standard)</div>
+                      <div className="text-zinc-500">M = F×L/4 | T = P×9.55/RPM</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

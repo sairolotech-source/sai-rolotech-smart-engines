@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useCncStore, type RollTypeInfo } from "../../store/useCncStore";
+import { useCncStore, type RollTypeInfo, type RollToolingResult } from "../../store/useCncStore";
 import {
   Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight,
   RefreshCw, Settings, BarChart3, AlertTriangle, CheckCircle2,
@@ -303,7 +303,7 @@ function StationFlowBar({ stations, currentIdx, onSelect, rollTooling }: {
   stations: number[];
   currentIdx: number;
   onSelect: (i: number) => void;
-  rollTooling: ReturnType<typeof useCncStore>["rollTooling"];
+  rollTooling: RollToolingResult[];
 }) {
   const n = stations.length;
   return (
@@ -344,7 +344,9 @@ function StationFlowBar({ stations, currentIdx, onSelect, rollTooling }: {
 
 // ─── Main Simulator Component ─────────────────────────────────────────────────
 export function RollFormingSimulator() {
-  const { rollTooling, stations, materialType, stripThickness, profileWidth } = useCncStore();
+  const { rollTooling, stations, materialType, materialThickness, geometry } = useCncStore();
+  const stripThickness = materialThickness;
+  const profileWidth = geometry ? (geometry.boundingBox.maxX - geometry.boundingBox.minX) : 0;
 
   const bendAngles = useMemo(() => {
     if (stations.length > 0) return stations.map(s => s.totalAngle ?? 0);
@@ -749,7 +751,7 @@ export function RollFormingSimulator() {
                     <div className="flex items-center gap-2 mt-0.5">
                       <input
                         type="number" step="0.01"
-                        value={ov?.[key as keyof ManualOverride] ?? val}
+                        value={Number(ov?.[key as keyof ManualOverride] ?? val)}
                         onChange={e => setOverride(currentIdx, key as keyof ManualOverride, parseFloat(e.target.value))}
                         disabled={!ov?.enabled}
                         className="w-28 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-200 focus:outline-none focus:border-indigo-500 disabled:opacity-40"

@@ -12,19 +12,30 @@ function getRpId(): string {
   return h === "localhost" || h === "127.0.0.1" ? "localhost" : h;
 }
 
-function makeChallenge(): Uint8Array {
-  const arr  = new Uint8Array(32);
+function makeChallenge(): ArrayBuffer {
+  const buf  = new ArrayBuffer(32);
+  const arr  = new Uint8Array(buf);
   const seed = "sai-rolotech-passkey-challenge-2024";
   for (let i = 0; i < 32; i++) arr[i] = seed.charCodeAt(i % seed.length) ^ (i * 13 + 7);
-  return arr;
+  return buf;
+}
+
+function encodeStr(s: string): ArrayBuffer {
+  const encoded = new TextEncoder().encode(s);
+  const buf = new ArrayBuffer(encoded.length);
+  new Uint8Array(buf).set(encoded);
+  return buf;
 }
 
 function b64encode(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
 
-function b64decode(str: string): Uint8Array {
-  return Uint8Array.from(atob(str), c => c.charCodeAt(0));
+function b64decode(str: string): ArrayBuffer {
+  const arr = Uint8Array.from(atob(str), c => c.charCodeAt(0));
+  const buf = new ArrayBuffer(arr.length);
+  new Uint8Array(buf).set(arr);
+  return buf;
 }
 
 function parseError(err: unknown): string {
@@ -69,7 +80,7 @@ export async function registerBiometric(userEmail: string): Promise<{ ok: boolea
         challenge: makeChallenge(),
         rp: { name: RP_NAME, id: getRpId() },
         user: {
-          id: new TextEncoder().encode("sai-platform-" + userEmail),
+          id: encodeStr("sai-platform-" + userEmail),
           name: userEmail,
           displayName: "SAI Engineer",
         },
@@ -147,7 +158,7 @@ export async function registerCrossDevice(userEmail: string): Promise<{ ok: bool
         challenge: makeChallenge(),
         rp: { name: RP_NAME, id: getRpId() },
         user: {
-          id: new TextEncoder().encode("sai-crossdev-" + userEmail),
+          id: encodeStr("sai-crossdev-" + userEmail),
           name: userEmail,
           displayName: "SAI Engineer (Mobile)",
         },

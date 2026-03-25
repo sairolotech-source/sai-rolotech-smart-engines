@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { useCncStore } from "../../store/useCncStore";
+import { useCncStore, type StationProfile, type RollToolingResult } from "../../store/useCncStore";
 
 const PHASE_COLORS: Record<string, { bg: string; border: string; text: string; label: string }> = {
   ENTRY:       { bg: "#1e3a5f", border: "#3b82f6", text: "#60a5fa", label: "ENTRY" },
@@ -147,8 +147,8 @@ function StationCard({
   idx: number;
   total: number;
   bendAngle: number;
-  station: ReturnType<typeof useCncStore>["stations"][0] | undefined;
-  rt: ReturnType<typeof useCncStore>["rollTooling"][0] | undefined;
+  station: StationProfile | undefined;
+  rt: RollToolingResult | undefined;
 }) {
   const phase = getPhase(idx, total);
   const pc = PHASE_COLORS[phase];

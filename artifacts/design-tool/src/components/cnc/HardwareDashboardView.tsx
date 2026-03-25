@@ -237,15 +237,6 @@ export function HardwareDashboardView() {
         </div>
         <Bar value={pct} color={color} height={12} />
         <div className="grid grid-cols-3 gap-2">
-          {isElectron ? [
-            { l: "Used", v: fmtGB(usedBytes) },
-            { l: "Free", v: fmtGB(totalBytes - usedBytes) },
-            { l: "Total", v: fmtGB(totalBytes) },
-          ] : [
-            { l: "Used", v: `${jsHeap.usedMB} MB` },
-            { l: "Free", v: `${jsHeap.limitMB - jsHeap.usedMB} MB` },
-            { l: "Limit", v: `${jsHeap.limitMB} MB` },
-          ]}
           {(isElectron ? [
             { l: "Used", v: fmtGB(usedBytes) },
             { l: "Free", v: fmtGB(totalBytes - usedBytes) },

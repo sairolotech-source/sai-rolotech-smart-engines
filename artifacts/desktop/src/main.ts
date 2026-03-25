@@ -264,7 +264,7 @@ async function createMainWindow(): Promise<void> {
       allowRunningInsecureContent: false,
     },
 
-    icon: getAssetPath("icon.ico"),
+    ...(fs.existsSync(getAssetPath("icon.ico")) ? { icon: getAssetPath("icon.ico") } : {}),
   });
 
   // -- Load content --
@@ -288,10 +288,18 @@ async function createMainWindow(): Promise<void> {
           req.setTimeout(2000, () => { req.destroy(); resolve(false); });
         });
         if (ok) {
-          await mainWindow.webContents.session.clearCache();
           await mainWindow.loadURL(serverUrl);
           loaded = true;
           console.log(`[App] Frontend loaded from API server (attempt ${i + 1})`);
+          // Cache sirf version change pe clear hoga — background mein, non-blocking
+          const versionFile = path.join(app.getPath("userData"), "last-version.txt");
+          const lastVersion = fs.existsSync(versionFile) ? fs.readFileSync(versionFile, "utf8").trim() : "";
+          if (lastVersion !== APP_VERSION) {
+            mainWindow.webContents.session.clearCache().then(() => {
+              fs.writeFileSync(versionFile, APP_VERSION, "utf8");
+              console.log(`[App] Cache cleared for new version ${APP_VERSION}`);
+            }).catch(() => {});
+          }
         } else {
           console.log(`[App] Waiting for API server... attempt ${i + 1}/${maxRetries}`);
           await new Promise(r => setTimeout(r, 1500));
@@ -385,7 +393,7 @@ async function createMainWindow(): Promise<void> {
       detail:    `Reason: ${reason}\n\nClick Reload to continue working. Your last saved data is safe.`,
       buttons:   ["Reload App", "Close Application"],
       defaultId: 0,
-      icon:      getAssetPath("icon.ico"),
+      ...(fs.existsSync(getAssetPath("icon.ico")) ? { icon: getAssetPath("icon.ico") } : {}),
     }).then(({ response }) => {
       if (response === 0) {
         if (mainWindow) {
@@ -1492,7 +1500,7 @@ async function showRegistrationForm(prefilledKey?: string): Promise<{ name: stri
     width: 480, height: 520,
     resizable: false, minimizable: false, maximizable: false, closable: true,
     frame: true, title: "SAI Rolotech  -  Software Registration",
-    backgroundColor: "#0a0a1a", icon: getAssetPath("icon.ico"),
+    backgroundColor: "#0a0a1a", ...(fs.existsSync(getAssetPath("icon.ico")) ? { icon: getAssetPath("icon.ico") } : {}),
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
   win.setMenu(null);
@@ -1648,7 +1656,7 @@ async function verifyLicense(): Promise<boolean> {
     // Show "Registering..." message
     const loadingWin = new BrowserWindow({
       width: 360, height: 160, resizable: false, frame: false,
-      backgroundColor: "#0a0a1a", alwaysOnTop: true, icon: getAssetPath("icon.ico"),
+      backgroundColor: "#0a0a1a", alwaysOnTop: true, ...(fs.existsSync(getAssetPath("icon.ico")) ? { icon: getAssetPath("icon.ico") } : {}),
       webPreferences: { nodeIntegration: false, contextIsolation: true },
     });
     loadingWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(

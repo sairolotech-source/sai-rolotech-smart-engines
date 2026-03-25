@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { getAllKeysForFallback, markKeyFailedById, getDeepseekKey } from "../../hooks/usePersonalAIKey";
 import {
   Download, ZoomIn, ZoomOut, Maximize2, FileText, Image as ImageIcon,
   Layers, Grid, Ruler, RefreshCw, Settings, ChevronDown, ChevronUp, Info,
@@ -806,10 +807,19 @@ Example: "Bhai, yeh profile dekh ke lag raha hai 8 stations perfect rahenge. Mat
     try {
       const res = await fetch("/api/chatbot/master-designer", {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ message: msg, history: proChat.slice(-8).map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.text })), projectContext: systemPrompt }),
+        body: JSON.stringify({
+          message: msg,
+          history: proChat.slice(-8).map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.text })),
+          projectContext: systemPrompt,
+          personalGeminiKeys: getAllKeysForFallback(),
+          personalDeepseekKey: getDeepseekKey() || undefined,
+        }),
       });
       if (!res.ok) throw new Error("AI error");
-      const data = await res.json() as { response: string };
+      const data = await res.json() as { response: string; failedKeyIds?: string[] };
+      if (data.failedKeyIds?.length) {
+        for (const id of data.failedKeyIds) markKeyFailedById(id);
+      }
       const { cleaned, actions } = parseActions(data.response);
 
       // Apply all non-pipeline actions immediately

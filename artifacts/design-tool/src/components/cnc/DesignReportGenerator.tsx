@@ -827,7 +827,7 @@ export function DesignReportGenerator({ onClose }: { onClose: () => void }) {
         {
           badge: "GEM",
           name: "Google Gemini",
-          model: "gemini-2.5-flash",
+          model: "gemini-2.5-pro",
           role: "Primary Reasoning — Forming Calculations & Report Insights",
           badgeColor: [37, 99, 235],
         },

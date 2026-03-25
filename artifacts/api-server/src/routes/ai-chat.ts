@@ -143,7 +143,7 @@ ${SAI_CONFIDENTIALITY_RULES}`;
       const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${entry.key}` },
-        body: JSON.stringify({ model: "gemini-2.0-flash", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        body: JSON.stringify({ model: "gemini-2.5-flash", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
         signal: AbortSignal.timeout(15000),
       });
       if (!res.ok) {

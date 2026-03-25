@@ -4,6 +4,7 @@ import {
   Send, Bot, Loader2, ArrowLeft, Sparkles, Wifi, WifiOff, AlertTriangle,
   Wrench, Shield, Cpu, ChevronDown,
 } from "lucide-react";
+import { getAllKeysForFallback, markKeyFailedById, getDeepseekKey } from "../../hooks/usePersonalAIKey";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -141,12 +142,17 @@ export function MasterDesignerChatbot() {
           message: msg,
           history: messages.slice(-10),
           projectContext: contextNote,
+          personalGeminiKeys: getAllKeysForFallback(),
+          personalDeepseekKey: getDeepseekKey() || undefined,
         }),
       });
 
-      let data: { response: string; mode: string; provider: string };
+      let data: { response: string; mode: string; provider: string; failedKeyIds?: string[] };
       if (!res.ok) throw new Error("API error");
       data = await res.json();
+      if (data.failedKeyIds?.length) {
+        for (const id of data.failedKeyIds) markKeyFailedById(id);
+      }
 
       const providerMap: Record<string, string> = {
         "gemini-flash": "Gemini Flash", "claude-haiku": "Claude Haiku",

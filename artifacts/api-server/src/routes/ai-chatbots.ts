@@ -18,7 +18,7 @@ function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
     gemini: {
       key: process.env["AI_INTEGRATIONS_GEMINI_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"] ?? "https://generativelanguage.googleapis.com"}/v1beta/openai/chat/completions`,
-      model: "gemini-3.1-pro",
+      model: "gemini-2.5-pro",
       maxTokens: 4096,
       format: "openai",
     },
@@ -91,51 +91,33 @@ async function callExternalAI(
       return data.content?.[0]?.text ?? null;
     }
 
-    const geminiModels = provider === "gemini"
-      ? ["gemini-3.1-pro", "gemini-2.5-pro"]
-      : [cfg.model];
+    const activeModel = provider === "gemini" ? "gemini-2.5-pro" : cfg.model;
 
-    for (const model of geminiModels) {
-      try {
-        const response = await fetch(cfg.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${cfg.key}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...messages,
-            ],
-            max_tokens: cfg.maxTokens,
-            temperature: 0.5,
-          }),
-          signal: AbortSignal.timeout(15000),
-        });
+    try {
+      const response = await fetch(cfg.url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${cfg.key}`,
+        },
+        body: JSON.stringify({
+          model: activeModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages,
+          ],
+          max_tokens: cfg.maxTokens,
+          temperature: 0.5,
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
 
-        if (!response.ok) {
-          if (provider === "gemini" && model === "gemini-3.1-pro") {
-            console.log("[AI] gemini-3.1-pro unavailable — falling back to gemini-2.5-pro");
-            continue;
-          }
-          return null;
-        }
-        const data = await response.json() as { choices: { message: { content: string } }[] };
-        const result = data.choices?.[0]?.message?.content ?? null;
-        if (result) return result;
-        if (provider === "gemini" && model === "gemini-3.1-pro") continue;
-        return null;
-      } catch {
-        if (provider === "gemini" && model === "gemini-3.1-pro") {
-          console.log("[AI] gemini-3.1-pro error — falling back to gemini-2.5-pro");
-          continue;
-        }
-        return null;
-      }
+      if (!response.ok) return null;
+      const data = await response.json() as { choices: { message: { content: string } }[] };
+      return data.choices?.[0]?.message?.content ?? null;
+    } catch {
+      return null;
     }
-    return null;
   } catch {
     return null;
   }
@@ -349,7 +331,7 @@ async function getOnlineExpertResponse(
   chatMessages.push({ role: "user", content: message });
 
   const providerChain: { provider: AIProvider; label: string }[] = [
-    { provider: "gemini", label: "gemini-3.1-pro" },
+    { provider: "gemini", label: "gemini-2.5-pro" },
     { provider: "sambanova", label: "sambanova-llama-70b" },
     { provider: "openrouter", label: "deepseek-r1" },
     { provider: "anthropic", label: "claude-opus" },

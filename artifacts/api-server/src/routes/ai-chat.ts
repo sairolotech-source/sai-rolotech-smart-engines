@@ -89,22 +89,16 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   ];
 
   if (aiProvider === "gemini") {
-    for (const model of ["gemini-3.1-pro", "gemini-2.5-pro"]) {
-      try {
-        const response = await openai.chat.completions.create({
-          model,
-          messages,
-          max_completion_tokens: 8192,
-        });
-        const text = response.choices?.[0]?.message?.content;
-        if (text) return text;
-        if (model === "gemini-3.1-pro") continue;
-      } catch {
-        if (model === "gemini-3.1-pro") {
-          console.log("[AI] gemini-3.1-pro unavailable — falling back to gemini-2.5-pro");
-          continue;
-        }
-      }
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gemini-2.5-pro",
+        messages,
+        max_completion_tokens: 8192,
+      });
+      const text = response.choices?.[0]?.message?.content;
+      if (text) return text;
+    } catch {
+      console.log("[AI] gemini-2.5-pro unavailable — using offline response");
     }
     return offlineResponse(message, style, language);
   }

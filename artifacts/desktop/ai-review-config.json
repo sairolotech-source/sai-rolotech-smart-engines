@@ -1,0 +1,18 @@
+{
+  "_comment": "AI Review Config - apni API keys yahan daalo",
+  "gemini": {
+    "apiKey": "YOUR_GEMINI_API_KEY_HERE",
+    "model": "gemini-2.5-pro",
+    "_hint": "https://aistudio.google.com/app/apikey se free key lo"
+  },
+  "deepseek": {
+    "apiKey": "YOUR_DEEPSEEK_API_KEY_HERE",
+    "model": "deepseek-chat",
+    "_hint": "https://platform.deepseek.com se key lo (bahut sasta hai)"
+  },
+  "review": {
+    "maxFileSizeKB": 50,
+    "skipOnNoKey": true,
+    "_skipOnNoKey_hint": "true = key nahi hai to AI review skip karo aur build chalne do"
+  }
+}

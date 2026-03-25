@@ -1,0 +1,20 @@
+uilding server...
+
+  dist\index.cjs  2.0mb
+
+Done in 361ms
+copying frontend to dist/public...
+frontend copied successfully.
+
+C:\Windows\System32\sai-rolotech-smart-engines>cd artifacts\desktop && npx tsc -p tsconfig.json && npx electron-builder --win nsis portablestart "" "C:\Windows\System32\sai-rolotech-smart-engines\artifacts\desktop\release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe"
+  ⨯ Unsupported arch \Windows\System32\sai-rolotech-smart-engines\artifacts\desktop\release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe  failedTask=build stackTrace=Error: Unsupported arch \Windows\System32\sai-rolotech-smart-engines\artifacts\desktop\release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe
+    at archFromString (C:\Windows\System32\sai-rolotech-smart-engines\node_modules\.pnpm\builder-util@25.1.7\node_modules\builder-util\src\arch.ts:49:13)
+    at processTargets (C:\Windows\System32\sai-rolotech-smart-engines\node_modules\.pnpm\electron-builder@25.1.8\node_modules\electron-builder\src\builder.ts:72:44)
+    at normalizeOptions (C:\Windows\System32\sai-rolotech-smart-engines\node_modules\.pnpm\electron-builder@25.1.8\node_modules\electron-builder\src\builder.ts:90:5)
+    at build (C:\Windows\System32\sai-rolotech-smart-engines\node_modules\.pnpm\electron-builder@25.1.8\node_modules\electron-builder\src\builder.ts:211:24)
+    at C:\Windows\System32\sai-rolotech-smart-engines\node_modules\.pnpm\electron-builder@25.1.8\node_modules\electron-builder\src\cli\cli.ts:52:19
+
+C:\Windows\System32\sai-rolotech-smart-engines\artifacts\desktop>start "" "C:\Windows\System32\sai-rolotech-smart-engines\artifacts\desktop\release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe"
+The system cannot find the file C:\Windows\System32\sai-rolotech-smart-engines\artifacts\desktop\release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe.
+
+C:\Windows\System32\sai-rolotech-smart-engines\artifacts\desktop>start "" "C:\Windows\System32\sai-rolotech-smart-engines\artifacts\desktop\release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe"

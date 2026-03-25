@@ -27,9 +27,14 @@ router.post("/accuracy/validate", (req: Request, res: Response) => {
     const t = parseFloat(String(thickness ?? 1.0));
     const mat = (material ?? "GI").toUpperCase();
 
-    if (t < 0.3 || t > 10) {
-      issues.push({ layer: 1, level: "error", message: `Thickness ${t}mm is outside recommended range 0.3–10mm` });
+    if (t < 0.3) {
+      issues.push({ layer: 1, level: "error", message: `Thickness ${t}mm is below minimum 0.3mm for roll forming` });
       score -= 15;
+    } else if (t > 6.0) {
+      issues.push({ layer: 1, level: "warning", message: `Thickness ${t}mm is heavy gauge (>6mm) — verify machine capacity and reduce forming speeds` });
+      score -= 8;
+    } else if (t > 3.0) {
+      issues.push({ layer: 1, level: "info", message: `Thickness ${t}mm is thick gauge (>3mm) — reduce cutting speeds 8%, feeds 10%` });
     }
 
     if (stations && stations.length > 0) {

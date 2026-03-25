@@ -283,11 +283,12 @@ router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolin
     const stations = Math.max(1, Math.min(30, parseInt(String(numStations)) || 5));
     const prefix = stationPrefix || "S";
     const thickness = parseFloat(String(materialThickness)) || 1.0;
-    const rollDia = parseFloat(String(rollDiameter)) || 150;
+    // rollDiameter is accepted for API compatibility; actual OD is computed from geometry via calcRollOD
+    void rollDiameter;
     const shaftDia = parseFloat(String(shaftDiameter)) || 40;
     const clr = parseFloat(String(clearance)) || 0.05;
     const matType = String(materialType || "GI").toUpperCase();
-    const sectionType = openSectionType || "C-Section";
+    const sectionLabel = openSectionType || "C-Section";  // stored for response only
     const gcodeProfile = resolveGcodeProfile(postProcessorId);
     const mKw = parseFloat(String((req.body as RollToolingBody).motorKw)) || 11;
     const mRpm = parseFloat(String((req.body as RollToolingBody).motorRpm)) || 1440;
@@ -346,6 +347,7 @@ router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolin
       bom,
       machineData,
       motorCalc,
+      sectionType: sectionLabel,
       sectionModelUsed: sectionModel ?? "auto",
       modelNote: sectionModel === "closed"
         ? "Closed Section AI (Model B): clearance tightened 10% for weld seam and ovality control"
@@ -412,11 +414,12 @@ router.post("/cam-plan", (req: Request, res: Response) => {
     const stations = Math.max(1, Math.min(30, parseInt(String(numStations)) || 5));
     const prefix = stationPrefix || "S";
     const thickness = parseFloat(String(materialThickness)) || 1.0;
-    const rollDia = parseFloat(String(rollDiameter)) || 150;
+    void rollDiameter;  // OD is computed from geometry; accepted for API compatibility
     const shaftDia = parseFloat(String(shaftDiameter)) || 40;
     const clr = parseFloat(String(clearance)) || 0.05;
     const matType = String(materialType || "GI").toUpperCase();
-    const sectionType = String(openSectionType || "C-Section");
+    const sectionLabel = openSectionType || "C-Section";
+    void sectionLabel;  // stored in body for reference; routing uses sectionModel
     const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness);
     const rollTooling = generateRollTooling(flowerResult.stations, matType, thickness, shaftDia, clr, 11, 1440);
     const camPlans = rollTooling.map(rt => ({
@@ -450,11 +453,11 @@ router.post("/bom", (req: Request, res: Response) => {
     const stations = Math.max(1, Math.min(30, parseInt(String(numStations)) || 5));
     const prefix = stationPrefix || "S";
     const thickness = parseFloat(String(materialThickness)) || 1.0;
-    const rollDia = parseFloat(String(rollDiameter)) || 150;
+    void rollDiameter;  // OD is computed from geometry; accepted for API compatibility
     const shaftDia = parseFloat(String(shaftDiameter)) || 40;
     const clr = parseFloat(String(clearance)) || 0.05;
     const matType = String(materialType || "GI").toUpperCase();
-    const sectionType = String(openSectionType || "C-Section");
+    void openSectionType;  // accepted for API compatibility; not used in BOM calculation
     const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, thickness);
     const rollTooling = generateRollTooling(flowerResult.stations, matType, thickness, shaftDia, clr, 11, 1440);
     const bom = calcBomFromTooling(rollTooling, matType);

@@ -605,11 +605,13 @@ export function generateRollTooling(
 
     const standPitch = calcStandPitch(rollWidth, bearing.widthMm);
 
-    const E = 210000;
-    const L = rollWidth / 1000;
+    // Simply-supported beam model: δ = F·L³ / (48·E·I)
+    // E in MPa (×1e6 → Pa), L in m, I in m⁴ → result in m → ×1000 = mm
+    const E = 210000;  // MPa (steel elastic modulus)
+    const L = rollWidth / 1000;  // m (effective span = roll width)
     const F = formingForceN;
-    const I_shaft = Math.PI * (effectiveShaft / 1000) ** 4 / 64;
-    const deflection = (F * L ** 3) / (3 * E * 1e6 * I_shaft) * 1000;
+    const I_shaft = Math.PI * (effectiveShaft / 1000) ** 4 / 64;  // m⁴
+    const deflection = (F * L ** 3) / (48 * E * 1e6 * I_shaft) * 1000;  // mm
 
     const concentricityTolerance = 0.02 * upperRollOD / 100;
 

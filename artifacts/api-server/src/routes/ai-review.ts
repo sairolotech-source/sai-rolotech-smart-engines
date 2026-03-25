@@ -1,5 +1,4 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -33,6 +32,8 @@ REASON: [one sentence why]
 Files:
 ${codeBundle}`;
 
+const REVIEW_TOKEN = "sai-precheck-2026";
+
 router.post("/ai-review", async (req: Request, res: Response) => {
   try {
     const { files, token } = req.body as {
@@ -40,7 +41,7 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       token?: string;
     };
 
-    if (token !== "sai-precheck-2026") {
+    if (token !== REVIEW_TOKEN) {
       res.status(401).json({ ok: false, error: "Invalid precheck token" });
       return;
     }
@@ -50,8 +51,9 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       return;
     }
 
-    if (aiProvider !== "gemini" || !openai) {
-      res.status(503).json({ ok: false, error: "Gemini AI not available on this server" });
+    const geminiApiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      res.status(503).json({ ok: false, error: "Gemini API key not configured on server" });
       return;
     }
 
@@ -59,18 +61,43 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       .map(f => `\n========== FILE: ${f.path} ==========\n${f.content.slice(0, 40000)}`)
       .join("\n");
 
-    const completion = await openai.chat.completions.create({
-      model: "gemini-2.5-pro",
-      messages: [{ role: "user", content: REVIEW_PROMPT(codeBundle) }],
-      temperature: 0.1,
-      max_tokens: 1024,
-    });
+    const messages = [{ role: "user", content: REVIEW_PROMPT(codeBundle) }];
 
-    const text = completion.choices[0]?.message?.content ?? "";
+    const apiRes = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${geminiApiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gemini-2.0-flash",
+          messages,
+          max_tokens: 1024,
+          temperature: 0.1,
+        }),
+        signal: AbortSignal.timeout(45000),
+      }
+    );
 
-    // Parse response
-    const verdict = /VERDICT:\s*(PASS|FAIL)/i.exec(text)?.[1]?.toUpperCase() ?? "UNKNOWN";
-    const reason  = /REASON:\s*(.+)/i.exec(text)?.[1]?.trim() ?? "";
+    if (!apiRes.ok) {
+      const errText = await apiRes.text();
+      res.status(500).json({ ok: false, error: `Gemini API ${apiRes.status}: ${errText.slice(0, 200)}` });
+      return;
+    }
+
+    const data = await apiRes.json() as { choices: { message: { content: string } }[] };
+    const text = data.choices?.[0]?.message?.content ?? "";
+
+    if (!text) {
+      res.status(500).json({ ok: false, error: "Gemini empty response" });
+      return;
+    }
+
+    // Parse structured response
+    const verdict  = /VERDICT:\s*(PASS|FAIL)/i.exec(text)?.[1]?.toUpperCase() ?? "UNKNOWN";
+    const reason   = /REASON:\s*(.+)/i.exec(text)?.[1]?.trim() ?? "";
 
     const critBlock = /CRITICAL_ISSUES:([\s\S]*?)(?:WARNINGS:|VERDICT:)/i.exec(text)?.[1] ?? "";
     const warnBlock = /WARNINGS:([\s\S]*?)(?:VERDICT:|$)/i.exec(text)?.[1] ?? "";
@@ -83,9 +110,12 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       .map(l => l.replace(/^[-•*]\s*/, "").trim())
       .filter(l => l && l.toLowerCase() !== "none");
 
-    res.json({ ok: true, verdict, reason, issues, warnings, rawText: text });
+    console.log(`[ai-review] Gemini review done — VERDICT: ${verdict}`);
+    res.json({ ok: true, verdict, reason, issues, warnings });
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[ai-review] Error:", msg);
     res.status(500).json({ ok: false, error: msg });
   }
 });

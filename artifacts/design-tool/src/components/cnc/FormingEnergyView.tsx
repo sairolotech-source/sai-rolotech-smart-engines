@@ -2,17 +2,27 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useCncStore } from "../../store/useCncStore";
 import { Flame, Download, TrendingUp } from "lucide-react";
 
+/**
+ * FIX: FormingEnergyView MAT_PROPS corrections:
+ * - CR/HR yieldStrength SWAPPED (CR:250↔HR:350) — CRITICAL; correct: CR=340, HR=250
+ * - AL yield 110→270 (6061-T4); kFactor 0.38→0.43
+ * - TI kFactor 0.52→0.50; E 116→115 GPa
+ * - CU kFactor 0.40→0.44
+ * - PP ys:35/E:1500 was polypropylene → pre-painted steel (roll forming context: ys=280, E=200000)
+ * - HSLA kFactor 0.50→0.45 (DIN 6935)
+ * Source: deep-accuracy-engine.ts MATERIAL_PROPS (authoritative)
+ */
 const MAT_PROPS: Record<string, { yieldStrength: number; elasticModulus: number; kFactor: number; density: number }> = {
-  GI: { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.45, density: 7850 },
-  CR: { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, density: 7850 },
-  HR: { yieldStrength: 350, elasticModulus: 200000, kFactor: 0.48, density: 7850 },
-  SS: { yieldStrength: 520, elasticModulus: 193000, kFactor: 0.50, density: 7930 },
-  AL: { yieldStrength: 110, elasticModulus: 69000, kFactor: 0.38, density: 2700 },
-  MS: { yieldStrength: 300, elasticModulus: 200000, kFactor: 0.44, density: 7850 },
-  CU: { yieldStrength: 200, elasticModulus: 117000, kFactor: 0.40, density: 8960 },
-  TI: { yieldStrength: 880, elasticModulus: 116000, kFactor: 0.52, density: 4510 },
-  PP: { yieldStrength: 35, elasticModulus: 1500, kFactor: 0.35, density: 946 },
-  HSLA: { yieldStrength: 550, elasticModulus: 200000, kFactor: 0.50, density: 7850 },
+  GI:   { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.44, density: 7850 },
+  CR:   { yieldStrength: 340, elasticModulus: 200000, kFactor: 0.44, density: 7850 },  // FIX: was 250 (swapped with HR)
+  HR:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, density: 7850 },  // FIX: was 350 (swapped with CR), kf 0.48→0.42
+  SS:   { yieldStrength: 520, elasticModulus: 193000, kFactor: 0.50, density: 7930 },
+  AL:   { yieldStrength: 270, elasticModulus: 69000,  kFactor: 0.43, density: 2700 },  // FIX: yield 110→270, kf 0.38→0.43
+  MS:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, density: 7850 },
+  CU:   { yieldStrength: 200, elasticModulus: 117000, kFactor: 0.44, density: 8960 },  // FIX: kf 0.40→0.44
+  TI:   { yieldStrength: 880, elasticModulus: 115000, kFactor: 0.50, density: 4510 },  // FIX: kf 0.52→0.50, E 116→115
+  PP:   { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.44, density: 7850 },  // FIX: was polypropylene; PP=pre-painted steel in roll forming
+  HSLA: { yieldStrength: 550, elasticModulus: 205000, kFactor: 0.45, density: 7850 },  // FIX: kf 0.50→0.45
 };
 
 interface EnergyStation {

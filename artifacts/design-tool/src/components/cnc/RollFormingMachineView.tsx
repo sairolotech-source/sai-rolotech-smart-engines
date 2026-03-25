@@ -25,8 +25,8 @@ const MATERIALS: Record<string, { color: string; sheen: string; name: string; ys
   GI:   { color: "#c8d8c8", sheen: "#e8f4e8", name: "GI (Galvanized Steel)", ys: 280 },
   SS:   { color: "#d0d8e0", sheen: "#eef2f8", name: "Stainless Steel", ys: 520 },
   AL:   { color: "#d0c890", sheen: "#ece8c0", name: "Aluminium", ys: 110 },
-  CR:   { color: "#c0c8d0", sheen: "#dce4ec", name: "Cold Rolled (CR)", ys: 250 },
-  HR:   { color: "#c8b880", sheen: "#e4d4a0", name: "Hot Rolled (HR)", ys: 350 },
+  CR:   { color: "#c0c8d0", sheen: "#dce4ec", name: "Cold Rolled (CR)", ys: 340 },  // FIX: was 250 (swapped with HR)
+  HR:   { color: "#c8b880", sheen: "#e4d4a0", name: "Hot Rolled (HR)", ys: 250 },  // FIX: was 350 (swapped with CR)
   MS:   { color: "#b8c0c8", sheen: "#d4dce4", name: "Mild Steel", ys: 300 },
 };
 

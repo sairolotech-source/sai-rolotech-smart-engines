@@ -9,13 +9,16 @@ interface MatFEA {
 }
 
 const MATS: Record<string, MatFEA> = {
-  GI:   { name: "Galvanized Iron",    yieldMPa: 240, utsMPa: 350, E_GPa: 200, n: 0.18, K_MPa: 530, elongPct: 28, density: 7850, poisson: 0.3 },
-  CR:   { name: "Cold Rolled Steel",  yieldMPa: 280, utsMPa: 400, E_GPa: 200, n: 0.22, K_MPa: 580, elongPct: 32, density: 7850, poisson: 0.3 },
+  // FIX: Yield strengths updated to roll forming supply condition (DIN EN 10327 / ASTM A653)
+  // GI: 240→280 (Z275 std), CR: 280→340 (consistent with engine), AL: 110→270 (6061-T4 design value),
+  // HSLA: 420→550 (HSLA 550 by definition); SS left at 310 (annealed 2B, correct for roll forming supply)
+  GI:   { name: "Galvanized Iron",    yieldMPa: 280, utsMPa: 380, E_GPa: 200, n: 0.18, K_MPa: 560, elongPct: 28, density: 7850, poisson: 0.3 },
+  CR:   { name: "Cold Rolled Steel",  yieldMPa: 340, utsMPa: 440, E_GPa: 200, n: 0.22, K_MPa: 650, elongPct: 28, density: 7850, poisson: 0.3 },  // FIX: was 280
   HR:   { name: "Hot Rolled Steel",   yieldMPa: 250, utsMPa: 420, E_GPa: 200, n: 0.24, K_MPa: 590, elongPct: 30, density: 7850, poisson: 0.3 },
   SS:   { name: "Stainless 304",      yieldMPa: 310, utsMPa: 620, E_GPa: 193, n: 0.35, K_MPa: 900, elongPct: 40, density: 8000, poisson: 0.29 },
-  AL:   { name: "Aluminium 6061",     yieldMPa: 110, utsMPa: 200, E_GPa: 70,  n: 0.20, K_MPa: 280, elongPct: 15, density: 2700, poisson: 0.33 },
+  AL:   { name: "Aluminium 6061-T4",  yieldMPa: 270, utsMPa: 310, E_GPa: 69,  n: 0.20, K_MPa: 430, elongPct: 16, density: 2700, poisson: 0.33 },  // FIX: was 110 (annealed)
   MS:   { name: "Mild Steel",         yieldMPa: 250, utsMPa: 410, E_GPa: 200, n: 0.17, K_MPa: 530, elongPct: 26, density: 7850, poisson: 0.3 },
-  HSLA: { name: "HSLA 550",           yieldMPa: 420, utsMPa: 550, E_GPa: 200, n: 0.14, K_MPa: 780, elongPct: 18, density: 7850, poisson: 0.3 },
+  HSLA: { name: "HSLA 550",           yieldMPa: 550, utsMPa: 650, E_GPa: 205, n: 0.14, K_MPa: 930, elongPct: 15, density: 7850, poisson: 0.3 },  // FIX: was 420
   DP:   { name: "Dual Phase DP780",   yieldMPa: 380, utsMPa: 780, E_GPa: 200, n: 0.16, K_MPa: 820, elongPct: 20, density: 7850, poisson: 0.3 },
   Ti:   { name: "Titanium Ti-6Al-4V", yieldMPa: 880, utsMPa: 950, E_GPa: 114, n: 0.10, K_MPa: 1200, elongPct: 14, density: 4430, poisson: 0.34 },
 };

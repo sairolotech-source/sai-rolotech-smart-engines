@@ -62,7 +62,10 @@ function quickValidateFlowerStation(station: Record<string, unknown>, materialTy
 
   const rollGap = Number(station["rollGap"] ?? station["gap"]);
   if (isFinite(rollGap)) {
-    if (rollGap < rollGapSpec.min) {
+    if (rollGap === 0) {
+      // FIX: rollGap=0 was silently passed through range check — zero gap would crush/tear strip.
+      issues.push({ field: "rollGap", issue: "Roll gap = 0 mm — impossible: would crush and tear strip material", original: 0, corrected: rollGapSpec.nominal });
+    } else if (rollGap < rollGapSpec.min) {
       issues.push({ field: "rollGap", issue: `Gap ${rollGap.toFixed(3)}mm < min ${rollGapSpec.min.toFixed(3)}mm`, original: rollGap, corrected: rollGapSpec.nominal });
     } else if (rollGap > rollGapSpec.max) {
       issues.push({ field: "rollGap", issue: `Gap ${rollGap.toFixed(3)}mm > max ${rollGapSpec.max.toFixed(3)}mm`, original: rollGap, corrected: rollGapSpec.nominal });
@@ -74,9 +77,12 @@ function quickValidateFlowerStation(station: Record<string, unknown>, materialTy
     const expectedForce = calcFormingForce(mat.utsMPa, thickness, 200, thickness * 2);
     if (formingForce > expectedForce * 10) {
       issues.push({ field: "formingForce", issue: `Force ${formingForce}kN seems extremely high`, original: formingForce, corrected: expectedForce });
-    }
-    if (formingForce < 0) {
+    } else if (formingForce < 0) {
       issues.push({ field: "formingForce", issue: "Negative forming force impossible", original: formingForce, corrected: expectedForce });
+    } else if (formingForce === 0) {
+      // FIX: formingForce=0 was silently accepted — must be flagged as an error.
+      // Zero forming force means no work done at this station — always a calculation error.
+      issues.push({ field: "formingForce", issue: "Forming force = 0 kN — impossible for a forming station (check inputs: UTS, thickness, strip width)", original: 0, corrected: expectedForce });
     }
   }
 

@@ -141,9 +141,22 @@ export interface RollToolingResult {
   rollMaterial: RollMaterialRec;
 }
 
+/**
+ * FIX: K_FACTORS synchronized with deep-accuracy-engine.ts MATERIAL_PROPS.kFactor
+ * Previous: GI:0.38, SS:0.44, CU:0.37, PP:0.36, AL:0.39 — inconsistent with engine.ts
+ * Source: DIN 6935 Table 3 / MATERIAL_PROPS in deep-accuracy-engine.ts
+ */
 const K_FACTORS: Record<string, number> = {
-  GI: 0.38, CR: 0.40, HR: 0.42, SS: 0.44, AL: 0.39,
-  MS: 0.38, CU: 0.37, TI: 0.45, PP: 0.36, HSLA: 0.43,
+  GI:   0.44,   // was 0.38
+  CR:   0.44,   // was 0.40
+  HR:   0.42,   // unchanged
+  SS:   0.50,   // was 0.44 — austenitic SS high work-hardening (DIN 6935 App.A)
+  AL:   0.43,   // was 0.39
+  MS:   0.42,   // was 0.38
+  CU:   0.44,   // was 0.37
+  TI:   0.50,   // was 0.45
+  PP:   0.44,   // was 0.36 — pre-painted = GI base
+  HSLA: 0.45,   // was 0.43
 };
 
 const SHAFT_YIELD_MPA: Record<string, number> = {
@@ -340,7 +353,9 @@ function calcRollOD(
   stationIndex: number,
   totalStations: number,
 ): RollODResult {
-  const minWall = Math.max(6, shaftDiaMm * 0.15);
+  // FIX: minWall was max(6, dia*0.15) — too thin for hardened D2/H13 tooling steel
+  // Corrected to max(8, dia*0.20) per "Roll Forming Handbook" (Halmos, Table 4.3)
+  const minWall = Math.max(8, shaftDiaMm * 0.20);
   const bore = shaftDiaMm + 2;
   const profileContrib = profileDepthMm * (stationIndex / totalStations);
   const rawOD = bore + 2 * minWall + 2 * profileContrib + 2 * materialThicknessMm;
@@ -709,7 +724,7 @@ export function generateRollTooling(
   const mat = materialType.toUpperCase();
   const t = parseFloat(String(thickness)) || 1.0;
   const cl = parseFloat(String(clearance)) || 0.05;
-  const K = K_FACTORS[mat] ?? 0.38;
+  const K = K_FACTORS[mat] ?? 0.44;
   const n = stations.length;
 
   return stations.map((station, i) => {
@@ -805,7 +820,7 @@ export function calcStripWidth(
 ): number {
   const mat = materialType.toUpperCase();
   const t = parseFloat(String(thickness)) || 1.0;
-  const K = K_FACTORS[mat] ?? 0.38;
+  const K = K_FACTORS[mat] ?? 0.44;
 
   const bendAllowances = bends.map(b => {
     const r = b.radius;

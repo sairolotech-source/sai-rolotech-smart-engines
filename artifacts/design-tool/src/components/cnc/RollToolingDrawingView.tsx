@@ -38,7 +38,8 @@ function computeStations(totalAngle: number, count: number): StationData[] {
   return stations;
 }
 
-function computeBendAllowance(t: number, angle: number, kFactor = 0.33): number {
+// FIX: default kFactor was 0.33 (old ANSI press-brake standard) — for roll forming, DIN 6935 GI=0.44
+function computeBendAllowance(t: number, angle: number, kFactor = 0.44): number {
   const R = t; // 1×t inner radius
   return (Math.PI / 180) * (R + kFactor * t) * angle;
 }
@@ -831,7 +832,7 @@ export default function RollToolingDrawingView() {
                 ))}
                 {/* Notes */}
                 <text x="75" y={bomY + 175} fontSize="9" fill="#475569">
-                  NOTES: 1) All dims mm | 2) Roll clearance = 1.05 × t = {(params.thickness * 1.05).toFixed(2)}mm | 3) Springback compensation +{params.springback}° at final station | 4) K-factor = 0.33 (GP/GI) | 5) Min bend R = {params.thickness}mm
+                  NOTES: 1) All dims mm | 2) Roll clearance = 1.05 × t = {(params.thickness * 1.05).toFixed(2)}mm | 3) Springback compensation +{params.springback}° at final station | 4) K-factor = 0.44 (GI/CR, DIN 6935) | 5) Min bend R = {params.thickness}mm
                 </text>
 
                 {/* Profile cross-section inset */}

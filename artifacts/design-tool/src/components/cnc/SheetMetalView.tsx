@@ -53,13 +53,15 @@ interface UnfoldResult {
 }
 
 const SM_MATERIALS: Record<MaterialSM, { label: string; ys: number; ts: number; density: number; defaultK: number; color: string }> = {
-  CR_mild: { label: "CR Mild Steel",     ys: 280, ts: 380, density: 7.85, defaultK: 0.33, color: "#94a3b8" },
-  GI_Z275: { label: "GI Steel Z275",     ys: 250, ts: 350, density: 7.85, defaultK: 0.35, color: "#a3e635" },
-  SS304:   { label: "Stainless 304",     ys: 215, ts: 505, density: 8.0,  defaultK: 0.38, color: "#cbd5e1" },
-  AL5052:  { label: "Aluminium 5052",    ys: 193, ts: 228, density: 2.68, defaultK: 0.40, color: "#93c5fd" },
-  AL6061:  { label: "Aluminium 6061-T6", ys: 276, ts: 310, density: 2.71, defaultK: 0.40, color: "#7dd3fc" },
-  CU110:   { label: "Copper C110",       ys: 69,  ts: 220, density: 8.94, defaultK: 0.42, color: "#fb923c" },
-  HSLA350: { label: "HSLA 350",          ys: 350, ts: 450, density: 7.85, defaultK: 0.30, color: "#f59e0b" },
+  // FIX: K-factors updated to DIN 6935 values for roll forming
+  // was: CR:0.33, GI:0.35, SS:0.38, AL:0.40, HSLA:0.30 (old ANSI press-brake values — wrong for roll forming)
+  CR_mild: { label: "CR Mild Steel",     ys: 280, ts: 380, density: 7.85, defaultK: 0.44, color: "#94a3b8" },
+  GI_Z275: { label: "GI Steel Z275",     ys: 250, ts: 350, density: 7.85, defaultK: 0.44, color: "#a3e635" },
+  SS304:   { label: "Stainless 304",     ys: 215, ts: 505, density: 8.0,  defaultK: 0.50, color: "#cbd5e1" },
+  AL5052:  { label: "Aluminium 5052",    ys: 193, ts: 228, density: 2.68, defaultK: 0.43, color: "#93c5fd" },
+  AL6061:  { label: "Aluminium 6061-T6", ys: 276, ts: 310, density: 2.71, defaultK: 0.43, color: "#7dd3fc" },
+  CU110:   { label: "Copper C110",       ys: 69,  ts: 220, density: 8.94, defaultK: 0.44, color: "#fb923c" },
+  HSLA350: { label: "HSLA 350",          ys: 350, ts: 450, density: 7.85, defaultK: 0.45, color: "#f59e0b" },
 };
 
 function calcBendAllowance(angle: number, radius: number, thickness: number, kFactor: number): number {
@@ -141,7 +143,7 @@ export function SheetMetalView() {
     baseWidth: 200,
     baseLength: 300,
     bendMethod: "k-factor",
-    kFactor: 0.33,
+    kFactor: 0.44,   // FIX: was 0.33 (old press-brake default) — roll forming DIN 6935 GI=0.44
     insideBendRadius: 2,
     bends: [],
   });

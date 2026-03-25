@@ -52,7 +52,7 @@ const TAB_GUIDES: Record<string, StepGuide> = {
       "Sab bharne ke baad 'Next' ya 'Flower' tab pe jayein",
     ],
     tips: [
-      "GP/GI ke liye K-factor 0.33 rakkhein",
+      "GI ke liye K-factor 0.44 rakkhein (DIN 6935)",   // FIX: was 0.33 — DIN 6935 GI=0.44
       "Thickness 0.3–3.0mm ke beech honi chahiye",
       "Roll diameter typical: 100–200mm",
     ],

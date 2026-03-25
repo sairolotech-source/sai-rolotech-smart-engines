@@ -238,7 +238,7 @@ export function RollDesignSuite() {
   const { materialThickness: thickness, materialType, stations } = useCncStore();
   const [subTab, setSubTab] = useState<SubTab>("od-gap");
   const [profileDepth, setProfileDepth] = useState(50);
-  const [kFactor, setKFactor] = useState(0.35);
+  const [kFactor, setKFactor] = useState(0.44);  // FIX: was 0.35 — DIN 6935 GI/CR=0.44
   const [bendAngle, setBendAngle] = useState(90);
   const [bendRadius, setBendRadius] = useState(2.0);
   const [targetPasses, setTargetPasses] = useState(8);

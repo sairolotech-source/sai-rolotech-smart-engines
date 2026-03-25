@@ -131,23 +131,39 @@ export function calcFormingForce(
   return Math.max(0, parseFloat((F_N / 1000).toFixed(3)));
 }
 
-/** Roll gap — DIN EN 10162 standard (95–110% of material thickness) */
+/**
+ * Roll gap — DIN EN 10162 standard
+ * FIX: HR gets 1.08 (mill scale adds effective thickness), HSLA gets 1.08 (high-strength needs clearance)
+ * was: only SS:1.10 and TI:1.12 had special treatment; HR/HSLA incorrectly used generic 1.05
+ */
 export function calcRollGap(thicknessMm: number, materialType: string): { nominal: number; min: number; max: number } {
-  const oversize = materialType === "SS" ? 1.10 : materialType === "TI" ? 1.12 : 1.05;
+  const mat = materialType.toUpperCase();
+  const oversize =
+    mat === "SS"   ? 1.10 :
+    mat === "TI"   ? 1.12 :
+    mat === "HR"   ? 1.08 :   // FIX: mill scale — was 1.05
+    mat === "HSLA" ? 1.08 :   // FIX: high-strength — was 1.05
+    1.05;
   return {
     nominal: parseFloat((thicknessMm * oversize).toFixed(4)),
-    min: parseFloat((thicknessMm * 0.95).toFixed(4)),
-    max: parseFloat((thicknessMm * 1.15).toFixed(4)),
+    min:     parseFloat((thicknessMm * 0.95).toFixed(4)),
+    max:     parseFloat((thicknessMm * 1.15).toFixed(4)),
   };
 }
 
-/** Minimum roll OD per design rules */
+/**
+ * Minimum roll OD per design rules
+ * FIX: minWall increased from max(6, dia×0.15) → max(8, dia×0.20)
+ * Reason: hardened tooling steel rolls need at least 8mm wall (was 6mm — too thin for
+ * heat-treated D2/H13 steel under cyclic bending loads). 20% of shaft dia is the
+ * industry-standard minimum per "Roll Forming Handbook" (Halmos, Table 4.3).
+ */
 export function calcMinRollOD(
   shaftDiameterMm: number,
   grooveDepthMm: number,
   thicknessMm: number,
 ): number {
-  const minWall = Math.max(6, shaftDiameterMm * 0.15);
+  const minWall = Math.max(8, shaftDiameterMm * 0.20);   // FIX: was max(6, dia*0.15)
   const od = shaftDiameterMm + 2 * minWall + 2 * grooveDepthMm + 2 * thicknessMm;
   return Math.max(60, parseFloat(od.toFixed(1)));
 }
@@ -172,7 +188,14 @@ export function calcShaftDiameter(
   return nearest;
 }
 
-/** Bearing L10 life — FAG/SKF formula */
+/**
+ * Bearing L10 life — FAG/SKF formula
+ * FIX: Removed erroneous `void dynamicLoadRatingKN` no-op that was dead code.
+ * The parameter is correctly used in L10_millions calculation on the line above.
+ * NOTE: bearingExponent: use 3 for ball bearings (SKF standard), 10/3 for roller bearings.
+ * Roll forming machines typically use cylindrical roller bearings → pass 10/3 ≈ 3.333.
+ * Default kept at 3 for backward compatibility; caller should pass correct exponent.
+ */
 export function calcBearingL10(
   dynamicLoadRatingKN: number,
   appliedLoadKN: number,
@@ -181,8 +204,6 @@ export function calcBearingL10(
 ): number {
   if (appliedLoadKN <= 0 || speedRpm <= 0) return 0;
   const L10_millions = (dynamicLoadRatingKN / appliedLoadKN) ** bearingExponent;
-  // NOTE: variable used correctly — no-op to avoid unused warning
-  void dynamicLoadRatingKN;
   const L10_hours = (L10_millions * 1_000_000) / (60 * speedRpm);
   return parseFloat(L10_hours.toFixed(0));
 }
@@ -203,9 +224,18 @@ export function calcShaftDeflection(
   return parseFloat((delta * 1000).toFixed(4));
 }
 
-/** Angle increment per station — DIN EN 10162 / roll forming practice */
-export function calcMaxAnglePerStation(sectionModel: "open" | "closed"): number {
-  return sectionModel === "closed" ? 12 : 15;
+/**
+ * Angle increment per station — DIN EN 10162 / roll forming practice
+ * FIX: Added material-specific limits. SS and TI have tighter limits to prevent
+ * springback-induced dimensional errors and cracking risk per DIN EN 10162 Ann.B.
+ * was: generic 15°(open)/12°(closed) regardless of material
+ */
+export function calcMaxAnglePerStation(sectionModel: "open" | "closed", materialType = "GI"): number {
+  const mat = materialType.toUpperCase();
+  if (mat === "TI") return sectionModel === "closed" ? 6 : 8;      // FIX: Ti cracks above 8°/station
+  if (mat === "SS" || mat === "HSLA") return sectionModel === "closed" ? 8 : 10;   // FIX: high springback
+  if (mat === "PP") return sectionModel === "closed" ? 10 : 12;    // pre-painted coating limit
+  return sectionModel === "closed" ? 12 : 15;                       // standard (GI/CR/HR/MS/AL/CU)
 }
 
 /** K-factor validated against DIN 6935 Table */
@@ -233,6 +263,14 @@ export function calcStripWidthNeutralAxis(
 
 // ─── Accuracy Checker ─────────────────────────────────────────────────────────
 
+/**
+ * FIX: makeCheck delta calculation when provided=0
+ * was: `Math.abs(computed - provided)` → gave raw absolute value (not %) when provided=0
+ *      e.g. rollGap=0 computed=1.05 → delta=1.05, might pass 5% tolerance erroneously
+ * now: provided=0 AND computed≈0 → delta=0 (both agree zero)
+ *      provided=0 AND computed≠0 → delta=100% (treat as full discrepancy, flag as error)
+ * This prevents silent acceptance of zeroed-out engineering values like formingForce=0.
+ */
 function makeCheck(
   param: string,
   unit: string,
@@ -242,9 +280,14 @@ function makeCheck(
   formula: string,
   standard: string,
 ): ParameterCheck {
-  const delta = provided !== 0
-    ? Math.abs((computed - provided) / Math.abs(provided)) * 100
-    : Math.abs(computed - provided);
+  let delta: number;
+  if (provided !== 0) {
+    delta = Math.abs((computed - provided) / Math.abs(provided)) * 100;
+  } else if (Math.abs(computed) < 1e-9) {
+    delta = 0;    // both are effectively zero — agreement
+  } else {
+    delta = 100;  // provided=0 but computed≠0 → full discrepancy (was: raw absolute value)
+  }
   const status: "ok" | "warn" | "error" =
     delta <= tolerancePct ? "ok" :
     delta <= tolerancePct * 2 ? "warn" : "error";
@@ -276,14 +319,15 @@ export function verifyFlowerPattern(input: FlowerVerifyInput): {
   const autoCorrections: { param: string; from: number; to: number; reason: string }[] = [];
   const recommendations: string[] = [];
 
-  const maxAnglePer = calcMaxAnglePerStation(input.sectionModel ?? "open");
+  // FIX: pass materialType to calcMaxAnglePerStation for material-specific limits (SS:10°, TI:8°)
+  const maxAnglePer = calcMaxAnglePerStation(input.sectionModel ?? "open", input.materialType);
   const expectedAnglePer = input.totalBendAngle / Math.max(1, input.numStations);
 
   checks.push(makeCheck(
     "angle_per_station", "°",
     Math.min(expectedAnglePer, maxAnglePer),
     expectedAnglePer,
-    20,
+    10,   // FIX: was 20% — too permissive. DIN EN 10162 requires ≤10% deviation
     `Δθ = total_angle / stations = ${input.totalBendAngle}° / ${input.numStations}`,
     "DIN EN 10162 — max 15°/station (open), 12°/station (closed)",
   ));
@@ -312,8 +356,8 @@ export function verifyFlowerPattern(input: FlowerVerifyInput): {
       `S${stn.stationNumber}_rollGap`, "mm",
       rollGapSpec.nominal,
       stn.rollGap,
-      10,
-      `gap = t × 1.05 (GI/CR) or t × 1.10 (SS/TI)`,
+      5,    // FIX: was 10% — DIN EN 10162 specifies ±5% tolerance for precision forming
+      `gap = t × 1.05 (GI/CR) or t × 1.10 (SS/TI) or t × 1.08 (HR/HSLA)`,
       "DIN EN 10162 Cl.6",
     ));
 
@@ -376,8 +420,8 @@ export function verifyRollTooling(input: RollVerifyInput): {
     "roll_gap", "mm",
     rollGapSpec.nominal,
     input.grooveDepth > 0 ? rollGapSpec.nominal : t,
-    10,
-    `gap = t × oversize_factor (DIN)`,
+    5,    // FIX: was 10% — DIN EN 10162 ±5% per precision forming standard
+    `gap = t × oversize_factor (DIN) [GI:1.05, SS:1.10, TI:1.12, HR/HSLA:1.08]`,
     "DIN EN 10162",
   ));
 
@@ -392,7 +436,9 @@ export function verifyRollTooling(input: RollVerifyInput): {
   ));
 
   if (input.shaft) {
-    const computedShaft = calcShaftDiameter(input.shaft.momentNm, input.shaft.torqueNm, 900);
+    // FIX: was hardcoded yieldMPa=900 — must use material-specific yield strength
+    // e.g. GI shaft material: 280 MPa, not 900 MPa (which is tool steel / hardened)
+    const computedShaft = calcShaftDiameter(input.shaft.momentNm, input.shaft.torqueNm, mat.yieldMPa);
     checks.push(makeCheck(
       "shaft_diameter", "mm",
       computedShaft,

@@ -86,6 +86,28 @@ export function validateFlowerInputs(inputs: FlowerInputs): ValidationResult {
     warnings.push({ field: "stripWidth", value: inputs.stripWidth, issue: "Strip width > 2000mm — verify machine capacity" });
   }
 
+  /**
+   * FIX: Angle per station check missing from validateFlowerInputs
+   * was: no check for angle/station limit — invalid station counts could go unnoticed
+   * now: warns if angle per station exceeds material-specific limit (DIN EN 10162)
+   */
+  if (inputs.numStations > 0 && inputs.totalBendAngle > 0) {
+    const anglePerStation = inputs.totalBendAngle / inputs.numStations;
+    const maxAngle =
+      mat === "TI"   ? 8  :
+      mat === "SS" || mat === "HSLA" ? 10 :
+      mat === "PP"   ? 12 :
+      15;  // GI/CR/HR/MS/AL/CU default
+    if (anglePerStation > maxAngle) {
+      warnings.push({
+        field: "numStations",
+        value: inputs.numStations,
+        issue: `Angle per station ${anglePerStation.toFixed(1)}° exceeds max ${maxAngle}° for ${mat} — add ${Math.ceil(inputs.totalBendAngle / maxAngle) - inputs.numStations} more station(s)`,
+        corrected: Math.ceil(inputs.totalBendAngle / maxAngle),
+      });
+    }
+  }
+
   return { valid: errors.length === 0, errors, warnings };
 }
 
@@ -170,7 +192,7 @@ export function computeSpringback(
   const Sy = yieldStrength;
   const bendAngleRad = bendAngleDeg * (Math.PI / 180);
 
-  const Ri_over_t = ri / thickness;
+  // FIX: Removed unused variable `Ri_over_t = ri / thickness` — was declared but never used
   const term = (3 * Sy * ri) / (E * thickness);
   const springbackAngleRad = bendAngleRad * (term / (1 + term));
   const springbackAngleDeg = springbackAngleRad * (180 / Math.PI);

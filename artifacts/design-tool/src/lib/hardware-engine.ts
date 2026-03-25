@@ -87,18 +87,27 @@ const HARDENING = {
   BRASS: { K: 530, n: 0.35 }, SPRING: { K: 1600, n: 0.08 }, NI200: { K: 600, n: 0.38 },
 };
 
+/**
+ * FIX: MAT_PROPS corrections (DIN 6935 / ASTM):
+ * - CR/HR yield strengths were SWAPPED (CR:250 should be 340, HR:350 should be 250) — CRITICAL
+ * - AL yield 110→270 MPa (5052-H32 design value), kf 0.38→0.43
+ * - TI kf 0.52→0.50, E 116→115 GPa
+ * - CU kf 0.40→0.44
+ * - PP ys 35/E 1500 (polypropylene) → 280/200000 (pre-painted steel in roll forming context)
+ * - HSLA kf 0.50→0.45 (consistent with deep-accuracy-engine.ts)
+ */
 const MAT_PROPS = {
-  GI: { ys: 280, E: 200000, kf: 0.45, nu: 0.30 },
-  CR: { ys: 250, E: 200000, kf: 0.42, nu: 0.30 },
-  HR: { ys: 350, E: 200000, kf: 0.48, nu: 0.30 },
-  SS: { ys: 520, E: 193000, kf: 0.50, nu: 0.28 },
-  AL: { ys: 110, E: 69000, kf: 0.38, nu: 0.33 },
-  MS: { ys: 300, E: 200000, kf: 0.44, nu: 0.30 },
-  CU: { ys: 200, E: 117000, kf: 0.40, nu: 0.34 },
-  TI: { ys: 880, E: 116000, kf: 0.52, nu: 0.34 },
-  PP: { ys: 35, E: 1500, kf: 0.35, nu: 0.40 },
-  HSLA: { ys: 550, E: 200000, kf: 0.50, nu: 0.30 },
-  DP600: { ys: 380, E: 210000, kf: 0.33, nu: 0.30 },
+  GI:     { ys: 280, E: 200000, kf: 0.44, nu: 0.30 },
+  CR:     { ys: 340, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: was 250 (swapped with HR)
+  HR:     { ys: 250, E: 200000, kf: 0.42, nu: 0.30 },  // FIX: was 350 (swapped with CR), kf 0.48→0.42
+  SS:     { ys: 520, E: 193000, kf: 0.50, nu: 0.28 },
+  AL:     { ys: 270, E: 69000,  kf: 0.43, nu: 0.33 },  // FIX: yield 110→270, kf 0.38→0.43
+  MS:     { ys: 250, E: 200000, kf: 0.42, nu: 0.30 },
+  CU:     { ys: 200, E: 117000, kf: 0.44, nu: 0.34 },  // FIX: kf 0.40→0.44
+  TI:     { ys: 880, E: 115000, kf: 0.50, nu: 0.34 },  // FIX: kf 0.52→0.50, E 116→115
+  PP:     { ys: 280, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: PP=pre-painted steel, not polypropylene
+  HSLA:   { ys: 550, E: 205000, kf: 0.45, nu: 0.30 },  // FIX: kf 0.50→0.45, E+5 GPa
+  DP600:  { ys: 380, E: 210000, kf: 0.33, nu: 0.30 },
   DP780: { ys: 500, E: 210000, kf: 0.31, nu: 0.30 },
   TRIP780: { ys: 500, E: 210000, kf: 0.32, nu: 0.30 },
   DUPLEX: { ys: 500, E: 200000, kf: 0.38, nu: 0.30 },

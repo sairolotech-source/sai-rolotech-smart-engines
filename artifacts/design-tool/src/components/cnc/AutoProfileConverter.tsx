@@ -103,7 +103,7 @@ const uid = () => `s${_id++}`;
 /* ─── Component ────────────────────────────────────────────────────────── */
 export function AutoProfileConverter() {
   const [thickness, setThickness] = useState(1.2);
-  const [kFactor, setKFactor] = useState(0.33);
+  const [kFactor, setKFactor] = useState(0.44);  // FIX: was 0.33 (old ANSI press-brake) — DIN 6935 GI=0.44
   const [segs, setSegs] = useState<Segment[]>(DEFAULT_SEGS);
   const [showLayers, setShowLayers] = useState({ center: true, inner: true, outer: true, dims: true });
   const svgRef = useRef<SVGSVGElement>(null);

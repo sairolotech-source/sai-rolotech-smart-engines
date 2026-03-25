@@ -33,29 +33,32 @@ router.post("/analyze-profile", (req: Request<unknown, unknown, AnalyzeProfileBo
     const mat = (material || "GI").toUpperCase();
     const bendCount = bends.length;
     const maxBendAngle = bends.reduce((m, b) => Math.max(m, Math.abs(b.bend_angle || 0)), 0);
-    const isSS = mat === "SS";
+    const isSS   = mat === "SS";
+    const isHSLA = mat === "HSLA";   // FIX: HSLA was not handled — same high-strength behavior as SS
+    const isTI   = mat === "TI";
     const isThin = t < 0.5;
     const isThick = t > 3.0;
     const hasObtuse = bends.some(b => Math.abs(b.bend_angle || 0) > 120);
 
     // Pass count: base (2 per bend) + material & geometry penalties
     let suggestedPasses = Math.max(bendCount * 2, 3);
-    if (isThin) suggestedPasses += 2;          // thin sheet needs gradual forming
-    if (isThick) suggestedPasses += 1;         // thick plate needs extra force pass
-    if (isSS) suggestedPasses += 2;            // SS springback compensation
-    if (bendCount > 6) suggestedPasses += 2;   // highly complex profile
+    if (isThin) suggestedPasses += 2;                 // thin sheet needs gradual forming
+    if (isThick) suggestedPasses += 1;                // thick plate needs extra force pass
+    if (isSS || isHSLA) suggestedPasses += 2;         // FIX: HSLA needs same +2 as SS (high-strength springback)
+    if (isTI) suggestedPasses += 4;                   // FIX: Titanium — extremely springback-prone, needs +4 passes
+    if (bendCount > 6) suggestedPasses += 2;          // highly complex profile
     bends.forEach(b => {
       if (Math.abs(b.bend_angle || 0) > 120) suggestedPasses += 1; // obtuse bends need extra
     });
 
     // Risk level: multi-factor assessment (not just bend count)
-    // HIGH: truly complex — SS with many bends, or very thin, or 6+ bends
-    // MEDIUM: moderately complex — SS simple, or 4-5 bends in GI/MS, or thin
+    // HIGH: truly complex — SS/HSLA/TI with bends, or very thin, or 6+ bends
+    // MEDIUM: moderately complex — SS/HSLA simple, or 4-5 bends in GI/MS, or thin
     // LOW: standard profiles — ≤3 bends, normal material/thickness
     let riskLevel: string;
-    if (bendCount >= 6 || (isSS && bendCount >= 4) || isThin || (hasObtuse && bendCount >= 4)) {
+    if (bendCount >= 6 || ((isSS || isHSLA || isTI) && bendCount >= 4) || isThin || (hasObtuse && bendCount >= 4)) {
       riskLevel = "high";
-    } else if (bendCount >= 4 || isSS || isThick || (hasObtuse && bendCount >= 2)) {
+    } else if (bendCount >= 4 || isSS || isHSLA || isTI || isThick || (hasObtuse && bendCount >= 2)) {
       riskLevel = "medium";
     } else {
       riskLevel = "low";
@@ -72,20 +75,43 @@ router.post("/analyze-profile", (req: Request<unknown, unknown, AnalyzeProfileBo
 
 /**
  * CLOSED SECTION AI — Model B
- * 
+ *
  * Dedicated rule set for closed profiles (tubes, square hollow sections, HSS):
- * - Max 12°/station (tighter than open: prevents ovality build-up)
- * - Springback compensation: 2.5% per degree (softer — closed sections spring less)
+ * - Max angle/station: material-specific (GI/CR:12°, SS/HSLA:8°, TI:6°, PP:10°)
+ * - Springback compensation: material-specific (SS:4.5%, TI:5.5%, GI:2.0%, CR:2.5%)
  * - Pass zone: 40% entry / 40% major / 20% calibration (longer calibration for ID/OD tolerance)
  * - Weld seam alignment: calibration passes enforce edge alignment
  * - Ovality check: flags if any station angle would produce >0.5% ovality deviation
  * - Fin pass: final stations use reduced forming force for seam closure
+ *
+ * FIX: springback was hardcoded 2.5% for all materials — wrong.
+ *   SS needs 4-5% (high work-hardening), TI needs 5-6% (extremely springback-prone),
+ *   GI only needs 1.5-2.5% (lower yield), HR needs 2-3% (mill scale effect).
+ * FIX: max angle per station was hardcoded 12° — now material-specific per DIN EN 10162 Ann.B.
  */
-function applyClosedSectionRules(stations: FlowerStation[]): FlowerStation[] {
+function applyClosedSectionRules(stations: FlowerStation[], materialType = "GI"): FlowerStation[] {
+  const mat = materialType.toUpperCase();
   const nStations = stations.length;
+
+  // Material-specific springback fraction for closed sections
+  const springbackPct =
+    mat === "TI"   ? 0.055 :   // FIX: Ti 5.5% (was 2.5%)
+    mat === "SS"   ? 0.045 :   // FIX: SS 4.5% (was 2.5%)
+    mat === "HSLA" ? 0.030 :   // HSLA 3.0%
+    mat === "CR"   ? 0.025 :   // CR 2.5%
+    mat === "HR"   ? 0.028 :   // HR 2.8% (mill scale effect)
+    mat === "AL"   ? 0.018 :   // AL 1.8% (lower springback in compression)
+    0.020;                     // GI/MS/CU/PP: 2.0% (was 2.5%)
+
+  // Material-specific max angle per closed section station
+  const maxAngleDeg =
+    mat === "TI"   ? 6  :   // FIX: Ti max 6°/station closed
+    mat === "SS" || mat === "HSLA" ? 8  :   // FIX: high-strength 8°/station
+    mat === "PP"   ? 10 :   // pre-painted 10°/station
+    12;                     // GI/CR/HR/MS/AL/CU: 12°/station
+
   return stations.map((st, i) => {
-    const maxAngleDeg = 12; // Closed section: max 12°/station
-    const totalDeg = Math.abs(st.bendAngle); // bendAngle is already in degrees
+    const totalDeg = Math.abs(st.bendAngle);
     const scaleFactor = totalDeg > maxAngleDeg ? maxAngleDeg / totalDeg : 1;
     const isCalibration = i >= Math.floor(nStations * 0.8);
     const isFinPass = i >= Math.floor(nStations * 0.9);
@@ -95,7 +121,7 @@ function applyClosedSectionRules(stations: FlowerStation[]): FlowerStation[] {
     const ovalityDeviation = totalDeg * scaleFactor * 0.04; // %
 
     const newBendAngle = parseFloat((st.bendAngle * scaleFactor * finScale).toFixed(2));
-    const newSpringback = parseFloat((Math.abs(newBendAngle) * 0.025).toFixed(2));
+    const newSpringback = parseFloat((Math.abs(newBendAngle) * springbackPct).toFixed(2));
 
     return {
       ...st,
@@ -192,8 +218,8 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
 
     if (sectionModel === "closed") {
       // Closed Section AI (Model B) — dedicated model with ovality/weld-seam/fin-pass logic
-      processedStations = applyClosedSectionRules(result.stations);
-      modelNote = "Closed Section AI (Model B): max 12°/station, ovality check, weld-seam alignment, fin-pass forming reduction, 2.5% springback compensation";
+      processedStations = applyClosedSectionRules(result.stations, matType);   // FIX: pass matType for material-specific springback
+      modelNote = `Closed Section AI (Model B): max ${matType === "TI" ? 6 : matType === "SS" || matType === "HSLA" ? 8 : 12}°/station, ovality check, weld-seam alignment, fin-pass forming reduction, material-specific springback compensation`;
     } else if (sectionModel === "open") {
       // Open Section AI (Model A) — dedicated model with edge-wave/flare/twist detection
       processedStations = applyOpenSectionRules(result.stations);

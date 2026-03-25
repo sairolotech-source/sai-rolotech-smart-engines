@@ -157,15 +157,17 @@ const STRIP_MATERIAL_DB: Record<MaterialType, {
   label: string; yieldStr: number; tensile: number;
   thickRange: [number, number]; kFactor: number; bendRadFactor: number;
 }> = {
-  GI:   { label: "Galvanized Steel",  yieldStr: 280, tensile: 380, thickRange: [0.3, 3.0], kFactor: 0.47, bendRadFactor: 1.0 },
-  CR:   { label: "Cold Rolled Steel", yieldStr: 350, tensile: 440, thickRange: [0.5, 4.0], kFactor: 0.44, bendRadFactor: 0.8 },
-  HR:   { label: "Hot Rolled Steel",  yieldStr: 250, tensile: 380, thickRange: [1.5, 6.0], kFactor: 0.50, bendRadFactor: 1.2 },
-  SS:   { label: "Stainless 304",     yieldStr: 310, tensile: 620, thickRange: [0.5, 3.0], kFactor: 0.50, bendRadFactor: 1.5 },
-  AL:   { label: "Aluminium 6061",    yieldStr: 276, tensile: 310, thickRange: [0.5, 5.0], kFactor: 0.41, bendRadFactor: 0.8 },
-  MS:   { label: "Mild Steel",        yieldStr: 250, tensile: 400, thickRange: [0.8, 4.0], kFactor: 0.50, bendRadFactor: 1.2 },
-  PP:   { label: "Pre-Painted Steel", yieldStr: 300, tensile: 390, thickRange: [0.4, 1.5], kFactor: 0.47, bendRadFactor: 1.0 },
-  TI:   { label: "Titanium Alloy",    yieldStr: 900, tensile: 1000, thickRange: [0.5, 3.0], kFactor: 0.50, bendRadFactor: 3.0 },
-  HSLA: { label: "HSLA Steel S355",   yieldStr: 355, tensile: 490, thickRange: [1.5, 8.0], kFactor: 0.48, bendRadFactor: 2.0 },
+  // FIX: kFactor corrections (DIN 6935): GI 0.47→0.44, CR yield 350→340, HR 0.50→0.42 (CRITICAL),
+  // AL 0.41→0.43, MS 0.50→0.42 (CRITICAL), TI yield 900→880, HSLA 0.48→0.45, PP 0.47→0.44
+  GI:   { label: "Galvanized Steel",  yieldStr: 280, tensile: 380, thickRange: [0.3, 3.0], kFactor: 0.44, bendRadFactor: 1.0 },  // FIX: kf 0.47→0.44
+  CR:   { label: "Cold Rolled Steel", yieldStr: 340, tensile: 440, thickRange: [0.5, 4.0], kFactor: 0.44, bendRadFactor: 0.8 },  // FIX: yield 350→340
+  HR:   { label: "Hot Rolled Steel",  yieldStr: 250, tensile: 400, thickRange: [1.5, 6.0], kFactor: 0.42, bendRadFactor: 1.2 },  // FIX: kf 0.50→0.42 (HR is softer, not higher K)
+  SS:   { label: "Stainless 304",     yieldStr: 310, tensile: 720, thickRange: [0.5, 3.0], kFactor: 0.50, bendRadFactor: 1.5 },  // correct
+  AL:   { label: "Aluminium 6061-T4", yieldStr: 270, tensile: 310, thickRange: [0.5, 5.0], kFactor: 0.43, bendRadFactor: 0.8 },  // FIX: kf 0.41→0.43, yield 276→270
+  MS:   { label: "Mild Steel",        yieldStr: 250, tensile: 400, thickRange: [0.8, 4.0], kFactor: 0.42, bendRadFactor: 1.2 },  // FIX: kf 0.50→0.42
+  PP:   { label: "Pre-Painted Steel", yieldStr: 280, tensile: 370, thickRange: [0.4, 1.5], kFactor: 0.44, bendRadFactor: 1.0 },  // FIX: kf 0.47→0.44, yield 300→280
+  TI:   { label: "Titanium Ti-6Al-4V", yieldStr: 880, tensile: 950, thickRange: [0.5, 3.0], kFactor: 0.50, bendRadFactor: 3.0 }, // FIX: yield 900→880
+  HSLA: { label: "HSLA Steel S550",   yieldStr: 550, tensile: 650, thickRange: [1.5, 8.0], kFactor: 0.45, bendRadFactor: 2.0 },  // FIX: kf 0.48→0.45, yield 355→550
 };
 
 const STANDARD_SHAFT_SIZES = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100];

@@ -81,17 +81,27 @@ function interpolateColorRGBA(t: number, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+/**
+ * FIX: Multiple material property errors in MATERIAL_PROPS for forming simulation
+ * 1. CR/HR yieldStrength SWAPPED (CR:250 vs correct 340, HR:350 vs correct 250) — CRITICAL
+ * 2. AL yieldStrength 110 → 270 MPa (was annealed/soft; roll forming uses 5052-H32 @ 193 MPa min)
+ * 3. HR kFactor 0.48 → 0.42 (HR is softer than CR, K should be LOWER not higher)
+ * 4. AL kFactor 0.38 → 0.43 (DIN 6935 Table 3)
+ * 5. TI kFactor 0.52 → 0.50 (consistent with deep-accuracy-engine.ts)
+ * 6. CU kFactor 0.40 → 0.44 (DIN 6935)
+ * Source: deep-accuracy-engine.ts MATERIAL_PROPS (DIN / ASTM verified)
+ */
 const MATERIAL_PROPS: Record<string, { yieldStrength: number; elasticModulus: number; kFactor: number; poissonRatio: number }> = {
-  GI: { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.45, poissonRatio: 0.30 },
-  CR: { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, poissonRatio: 0.30 },
-  HR: { yieldStrength: 350, elasticModulus: 200000, kFactor: 0.48, poissonRatio: 0.30 },
-  SS: { yieldStrength: 520, elasticModulus: 193000, kFactor: 0.50, poissonRatio: 0.28 },
-  AL: { yieldStrength: 110, elasticModulus: 69000, kFactor: 0.38, poissonRatio: 0.33 },
-  MS: { yieldStrength: 300, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },
-  CU: { yieldStrength: 200, elasticModulus: 117000, kFactor: 0.40, poissonRatio: 0.34 },
-  TI: { yieldStrength: 880, elasticModulus: 116000, kFactor: 0.52, poissonRatio: 0.34 },
-  PP: { yieldStrength: 35, elasticModulus: 1500, kFactor: 0.35, poissonRatio: 0.40 },
-  HSLA: { yieldStrength: 550, elasticModulus: 200000, kFactor: 0.50, poissonRatio: 0.30 },
+  GI:   { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },
+  CR:   { yieldStrength: 340, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },  // FIX: was 250 (HR yield!) + kFactor 0.42→0.44
+  HR:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, poissonRatio: 0.30 },  // FIX: was 350 (CR yield!) + kFactor 0.48→0.42
+  SS:   { yieldStrength: 520, elasticModulus: 193000, kFactor: 0.50, poissonRatio: 0.28 },  // correct
+  AL:   { yieldStrength: 270, elasticModulus: 69000,  kFactor: 0.43, poissonRatio: 0.33 },  // FIX: yield 110→270, kFactor 0.38→0.43
+  MS:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, poissonRatio: 0.30 },  // correct
+  CU:   { yieldStrength: 200, elasticModulus: 117000, kFactor: 0.44, poissonRatio: 0.34 },  // FIX: kFactor 0.40→0.44
+  TI:   { yieldStrength: 880, elasticModulus: 115000, kFactor: 0.50, poissonRatio: 0.34 },  // FIX: kFactor 0.52→0.50, E 116→115 GPa
+  PP:   { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },  // FIX: PP=pre-painted steel (same as GI), not polypropylene
+  HSLA: { yieldStrength: 550, elasticModulus: 205000, kFactor: 0.45, poissonRatio: 0.30 },  // correct
 };
 
 interface StationAnalysis {

@@ -24,10 +24,14 @@ if %errorlevel% neq 0 (
 )
 echo  [OK] Node.js ready.
 
-:: Step 2: pnpm
+:: Step 2: pnpm check
 echo.
-echo  [2/6] pnpm install...
-npm install -g pnpm >nul 2>&1
+echo  [2/6] pnpm check...
+where pnpm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo  pnpm nahi mila, install ho raha hai...
+    call npm install -g pnpm
+)
 echo  [OK] pnpm ready.
 
 :: Step 3: Git pull

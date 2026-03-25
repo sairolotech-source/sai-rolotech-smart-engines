@@ -1,0 +1,372 @@
+Microsoft Windows [Version 10.0.26200.8037]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Windows\System32>cd /d "C:\Users\sai rolotech\sai-rolotech-smart-engines"
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>git pull origin main
+remote: Enumerating objects: 27, done.
+remote: Counting objects: 100% (27/27), done.
+remote: Compressing objects: 100% (9/9), done.
+remote: Total 22 (delta 18), reused 17 (delta 13), pack-reused 0 (from 0)
+Unpacking objects: 100% (22/22), 78.57 KiB | 705.00 KiB/s, done.
+From https://github.com/sairolotech-source/sai-rolotech-smart-engines
+ * branch            main       -> FETCH_HEAD
+   fe6ea55..fc04fdb  main       -> origin/main
+Updating fe6ea55..fc04fdb
+Fast-forward
+ artifacts/desktop/BUILD.bat                        |  83 +++++++++++++--------
+ ...er-25-1-8-node-modules-app-bu_1774423368128.txt |  28 +++++++
+ ...5-1-8-dmg-builder-25-1-8-node_1774423554394.txt |  68 +++++++++++++++++
+ .../Screenshot_2024-11-19_113830_1774423731794.png | Bin 0 -> 85894 bytes
+ 4 files changed, 148 insertions(+), 31 deletions(-)
+ create mode 100644 attached_assets/Pasted-ilder-lib-25-1-8-dmg-builder-25-1-8-node-modules-app-bu_1774423368128.txt
+ create mode 100644 attached_assets/Pasted-les-pnpm-app-builder-lib-25-1-8-dmg-builder-25-1-8-node_1774423554394.txt
+ create mode 100644 attached_assets/Screenshot_2024-11-19_113830_1774423731794.png
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>artifacts\desktop\BUILD.bat
+
+ =====================================================
+  SAI Rolotech Smart Engines v2.2.23 - Auto Builder
+  Features: Auto Mode, Hardware Dashboard, NVIDIA GPU
+ =====================================================
+
+ [1/6] Node.js check...
+ [OK] Node.js ready.
+
+ [2/6] pnpm install...
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>
+C:\Users\sai rolotech\sai-rolotech-smart-engines>cmd /k artifacts\desktop\BUILD.bat
+
+ =====================================================
+  SAI Rolotech Smart Engines v2.2.23 - Auto Builder
+  Features: Auto Mode, Hardware Dashboard, NVIDIA GPU
+ =====================================================
+
+ [1/6] Node.js check...
+ [OK] Node.js ready.
+
+ [2/6] pnpm install...
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>git pull origin main
+remote: Enumerating objects: 9, done.
+remote: Counting objects: 100% (9/9), done.
+remote: Compressing objects: 100% (1/1), done.
+remote: Total 5 (delta 4), reused 5 (delta 4), pack-reused 0 (from 0)
+Unpacking objects: 100% (5/5), 689 bytes | 16.00 KiB/s, done.
+From https://github.com/sairolotech-source/sai-rolotech-smart-engines
+ * branch            main       -> FETCH_HEAD
+   fc04fdb..f0a22b0  main       -> origin/main
+Updating fc04fdb..f0a22b0
+Fast-forward
+ artifacts/desktop/BUILD.bat | 5 -----
+ 1 file changed, 5 deletions(-)
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>artifacts\desktop\BUILD.bat
+
+ =====================================================
+  SAI Rolotech Smart Engines v2.2.23 - Auto Builder
+  Features: Auto Mode, Hardware Dashboard, NVIDIA GPU
+ =====================================================
+
+ [1/6] Node.js check...
+ [OK] Node.js ready.
+
+ [2/6] pnpm install...
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>git pull origin main
+remote: Enumerating objects: 6, done.
+remote: Counting objects: 100% (6/6), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 4 (delta 2), reused 4 (delta 2), pack-reused 0 (from 0)
+Unpacking objects: 100% (4/4), 1.49 KiB | 33.00 KiB/s, done.
+From https://github.com/sairolotech-source/sai-rolotech-smart-engines
+ * branch            main       -> FETCH_HEAD
+   f0a22b0..3177c36  main       -> origin/main
+Updating f0a22b0..3177c36
+Fast-forward
+ ...10-0-26200-8037-c-Microsoft-C_1774426855784.txt | 51 ++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
+ create mode 100644 attached_assets/Pasted-Microsoft-Windows-Version-10-0-26200-8037-c-Microsoft-C_1774426855784.txt
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>artifacts\desktop\BUILD.bat
+
+ =====================================================
+  SAI Rolotech Smart Engines v2.2.23 - Auto Builder
+  Features: Auto Mode, Hardware Dashboard, NVIDIA GPU
+ =====================================================
+
+ [1/6] Node.js check...
+ [OK] Node.js ready.
+
+ [2/6] pnpm install...
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>git pull origin main
+remote: Enumerating objects: 9, done.
+remote: Counting objects: 100% (9/9), done.
+remote: Compressing objects: 100% (1/1), done.
+remote: Total 5 (delta 4), reused 5 (delta 4), pack-reused 0 (from 0)
+Unpacking objects: 100% (5/5), 820 bytes | 39.00 KiB/s, done.
+From https://github.com/sairolotech-source/sai-rolotech-smart-engines
+ * branch            main       -> FETCH_HEAD
+   3177c36..1f28d8f  main       -> origin/main
+Updating 3177c36..1f28d8f
+Fast-forward
+ artifacts/desktop/BUILD.bat | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>artifacts\desktop\BUILD.bat
+
+ =====================================================
+  SAI Rolotech Smart Engines v2.2.23 - Auto Builder
+  Features: Auto Mode, Hardware Dashboard, NVIDIA GPU
+ =====================================================
+
+ [1/6] Node.js check...
+ [OK] Node.js ready.
+
+ [2/6] pnpm check...
+ [OK] pnpm ready.
+
+ [3/6] GitHub se latest code le raha hai...
+From https://github.com/sairolotech-source/sai-rolotech-smart-engines
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+ [OK] Code updated.
+
+ [4/6] Packages install ho rahe hain...
+Scope: all 11 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm…
+│ 'sh' is not recognized as an internal or external command,
+│ operable program or batch file.
+└─ Failed in 58ms at C:\Users\sai rolotech\sai-rolotech-smart-engines
+ ELIFECYCLE  Command failed with exit code 1.
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>cd /d "C:\Users\sai rolotech\sai-rolotech-smart-engines"
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>pnpm install --ignore-scripts
+Scope: all 11 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+Done in 1.7s using pnpm v10.33.0
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>cd artifacts\design-tool && pnpm run build && cd ..\..
+
+> @workspace/design-tool@0.0.0 build C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\design-tool
+> vite build --config vite.config.ts
+
+vite v7.3.1 building client environment for production...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+[plugin vite:esbuild] src/components/manual-drawing/ManualDrawingView.tsx: This case clause will never be evaluated because it duplicates an earlier case clause
+871 |            addHistory("prompt", "Specify leader start point:");
+872 |            break;
+873 |          case "MTEXT":
+    |               ^
+874 |            setPhase({
+875 |              command: "MTEXT",
+
+✓ 3925 modules transformed.
+dist/public/index.html                                         7.29 kB │ gzip:     2.60 kB
+dist/public/assets/index-DuTYB8SC.css                        340.13 kB │ gzip:    41.29 kB
+dist/public/assets/appVersion-BpXHD3og.js                      0.27 kB │ gzip:     0.23 kB
+dist/public/assets/vendor-utils-Br7yJ0sj.js                    0.66 kB │ gzip:     0.41 kB
+dist/public/assets/FactoryAIView-D9CXm_gY.js                   0.88 kB │ gzip:     0.49 kB
+dist/public/assets/engineering-scale-BVfemUmt.js               1.28 kB │ gzip:     0.56 kB
+dist/public/assets/AccuracyBadge-CWrlTmuM.js                   1.35 kB │ gzip:     0.67 kB
+dist/public/assets/not-found-D9Hxr_19.js                       1.59 kB │ gzip:     0.61 kB
+dist/public/assets/useAccuracyScoring-CCcr7blD.js              2.47 kB │ gzip:     1.04 kB
+dist/public/assets/auto-backup-eatKAI9R.js                     3.05 kB │ gzip:     1.45 kB
+dist/public/assets/KeyboardShortcutOverlay-CZCvTOdw.js         3.45 kB │ gzip:     1.37 kB
+dist/public/assets/vendor-react-d4_JG4mF.js                    3.66 kB │ gzip:     1.38 kB
+dist/public/assets/UpdateNotification-CIeCk1WU.js              3.71 kB │ gzip:     1.45 kB
+dist/public/assets/OnboardingTutorial-D3Nh_pEf.js              3.97 kB │ gzip:     1.87 kB
+dist/public/assets/webauthn-CJHo-pbx.js                        4.02 kB │ gzip:     1.39 kB
+dist/public/assets/ToolpathSimulator-CJUx77Ux.js               4.15 kB │ gzip:     1.92 kB
+dist/public/assets/ExportHistoryPanel-O64KARcs.js              4.82 kB │ gzip:     1.72 kB
+dist/public/assets/ProjectShare-BCaRnE-V.js                    4.96 kB │ gzip:     1.88 kB
+dist/public/assets/index-DgYVfWjd.js                           4.99 kB │ gzip:     2.24 kB
+dist/public/assets/ForgotPasswordPage-Bg1yMIyv.js              5.19 kB │ gzip:     1.85 kB
+dist/public/assets/FlowerPatternCombined-FSICLyIj.js           5.31 kB │ gzip:     1.74 kB
+dist/public/assets/SectionModelSelector-7eb6hgq5.js            5.31 kB │ gzip:     2.01 kB
+dist/public/assets/post-processors-BkSSYbJo.js                 6.51 kB │ gzip:     1.54 kB
+dist/public/assets/gpu-tier-BLGm8vll.js                        6.73 kB │ gzip:     2.32 kB
+dist/public/assets/ProfileCanvas-DuYn8B7o.js                   6.75 kB │ gzip:     2.75 kB
+dist/public/assets/DesignHistory-CdPuovwL.js                   7.00 kB │ gzip:     2.33 kB
+dist/public/assets/AutoBackupPanel-CpQTS9yp.js                 7.52 kB │ gzip:     2.34 kB
+dist/public/assets/Html-JA2CinwR.js                            7.75 kB │ gzip:     3.13 kB
+dist/public/assets/RollScannerView-DivT638f.js                 8.03 kB │ gzip:     2.60 kB
+dist/public/assets/RFSpreadsheetView-Cn5HuDZ6.js               8.05 kB │ gzip:     2.54 kB
+dist/public/assets/RollGapView-C2jLbd0b.js                     8.29 kB │ gzip:     2.76 kB
+dist/public/assets/CADFinderView-DfIZFSs_.js                   8.33 kB │ gzip:     2.71 kB
+dist/public/assets/CageFormingView-Bae8hkeR.js                 8.37 kB │ gzip:     2.50 kB
+dist/public/assets/DownhillFormingView-BNoDf9HE.js             8.60 kB │ gzip:     2.50 kB
+dist/public/assets/FlowerPattern3DView-hyieSOp2.js             8.74 kB │ gzip:     3.24 kB
+dist/public/assets/ProfileScanView-Bo3sBS7Z.js                 8.76 kB │ gzip:     2.64 kB
+dist/public/assets/WireRollingView-CDj2nJd7.js                 8.77 kB │ gzip:     2.60 kB
+dist/public/assets/DrawingDiesView-B45aa8fP.js                 8.80 kB │ gzip:     2.56 kB
+dist/public/assets/StripWidthView-DCZzHO3y.js                  9.06 kB │ gzip:     2.68 kB
+dist/public/assets/RollLifecycleView-Drqksx7C.js               9.08 kB │ gzip:     2.83 kB
+dist/public/assets/RFTrapezeView-DknFnIiY.js                   9.14 kB │ gzip:     2.78 kB
+dist/public/assets/ElectronAutoUpdate-Db_OA8YM.js              9.15 kB │ gzip:     2.56 kB
+dist/public/assets/SystemInfoPanel-D_lzSp6z.js                 9.28 kB │ gzip:     2.27 kB
+dist/public/assets/AssemblyCheckView-5e2v8DOD.js               9.75 kB │ gzip:     2.89 kB
+dist/public/assets/CuttingEffects3D-CK_8f0GZ.js               10.03 kB │ gzip:     3.37 kB
+dist/public/assets/CamberPredictionView-CPSDP-Jh.js           10.28 kB │ gzip:     3.35 kB
+dist/public/assets/MasterDesignerChatbot-CMG4P_A3.js          10.56 kB │ gzip:     3.87 kB
+dist/public/assets/SaveProjectModal-5tZz3yN1.js               10.86 kB │ gzip:     3.61 kB
+dist/public/assets/RFDTMView-BbB3p0ka.js                      10.89 kB │ gzip:     3.11 kB
+dist/public/assets/SpringbackView-CkRJm0r9.js                 10.94 kB │ gzip:     3.22 kB
+dist/public/assets/gpu-compute-pipeline-C6eRVsps.js           10.95 kB │ gzip:     4.47 kB
+dist/public/assets/RollToolingExportPanel-C24iAqJb.js         10.97 kB │ gzip:     3.47 kB
+dist/public/assets/FormingEnergyView-Cp-xUrZG.js              11.13 kB │ gzip:     3.45 kB
+dist/public/assets/GoogleDrivePanel-CslA0mhH.js               11.37 kB │ gzip:     3.05 kB
+dist/public/assets/DrawingVisionView-CEHnr9Kl.js              11.53 kB │ gzip:     4.04 kB
+dist/public/assets/SmartRollsView-NxjoSPt6.js                 12.00 kB │ gzip:     2.84 kB
+dist/public/assets/AdminPanel-D5vd69Yj.js                     12.01 kB │ gzip:     3.69 kB
+dist/public/assets/RollFormingMachineView-CboS-qsm.js         12.11 kB │ gzip:     4.22 kB
+dist/public/assets/MaterialDatabaseView-B3iqUN9K.js           12.51 kB │ gzip:     3.67 kB
+dist/public/assets/RollToolingDrawingView-DPSUPCtK.js         12.83 kB │ gzip:     4.38 kB
+dist/public/assets/MachineBOMPanel-WQtAxcJ9.js                13.06 kB │ gzip:     4.69 kB
+dist/public/assets/RFTubesView-YSwL2qnw.js                    13.35 kB │ gzip:     3.96 kB
+dist/public/assets/LicenseKeyScreen-I67n_dRp.js               13.36 kB │ gzip:     4.01 kB
+dist/public/assets/DimensionConfirmationPanel-BlKBDFuk.js     13.49 kB │ gzip:     3.82 kB
+dist/public/assets/LoadCalculator-DvMw3BGU.js                 13.54 kB │ gzip:     4.16 kB
+dist/public/assets/CostEstimatorView-CQ_VY_0L.js              13.56 kB │ gzip:     2.96 kB
+dist/public/assets/ProfileLibrary-DksY9OcL.js                 13.63 kB │ gzip:     4.30 kB
+dist/public/assets/StationControlPanel-DqGMxAR4.js            13.79 kB │ gzip:     4.28 kB
+dist/public/assets/RollFlowerDesignerView-BGG-7-WR.js         14.31 kB │ gzip:     4.40 kB
+dist/public/assets/AIChatbotsView-DYjUkLT8.js                 15.07 kB │ gzip:     4.41 kB
+dist/public/assets/MaterialAnalyzerView-B6eGJNnv.js           15.14 kB │ gzip:     4.62 kB
+dist/public/assets/AutoProfileConverter-gHNkraPc.js           15.18 kB │ gzip:     4.38 kB
+dist/public/assets/GeometryEditPanel-BgUfY-lQ.js              15.41 kB │ gzip:     4.51 kB
+dist/public/assets/hardware-engine-BenCSBo1.js                15.69 kB │ gzip:     5.77 kB
+dist/public/assets/HardwareDashboardView-vMsxD2tQ.js          16.23 kB │ gzip:     4.32 kB
+dist/public/assets/DesktopInstallView-Qzp-yWbJ.js             16.25 kB │ gzip:     4.58 kB
+dist/public/assets/AdminDashboard3D-DJ4AuZBG.js               16.68 kB │ gzip:     5.20 kB
+dist/public/assets/DigitalTwinView-I3b3g-9E.js                16.80 kB │ gzip:     4.62 kB
+dist/public/assets/GuardrailReportGenerator-Br49iL5r.js       16.84 kB │ gzip:     5.14 kB
+dist/public/assets/AssemblyDrawingView-BU1jN-z6.js            17.35 kB │ gzip:     5.06 kB
+dist/public/assets/GitHubUpdatePanel-BSHXUcR6.js              17.40 kB │ gzip:     4.35 kB
+dist/public/assets/DemoDownloadPage-XqLAKZZQ.js               17.43 kB │ gzip:     4.85 kB
+dist/public/assets/SpecificationSheet-CZmkUo5b.js             17.78 kB │ gzip:     4.71 kB
+dist/public/assets/ValidationPipelinePanel-BcfxaFpt.js        17.86 kB │ gzip:     6.34 kB
+dist/public/assets/Dashboard-DwvfLBMx.js                      18.65 kB │ gzip:     5.09 kB
+dist/public/assets/SystemSetupPanel-IJoEXyxa.js               18.67 kB │ gzip:     5.41 kB
+dist/public/assets/RFClosedSectionView-DnlNoizt.js            18.82 kB │ gzip:     4.49 kB
+dist/public/assets/RollDataFileGenerator-Cx5krdpk.js          19.19 kB │ gzip:     6.04 kB
+dist/public/assets/DXFImportView-BimXrsyh.js                  19.24 kB │ gzip:     6.39 kB
+dist/public/assets/SheetMetalView-qaEOTyPy.js                 21.05 kB │ gzip:     5.27 kB
+dist/public/assets/DemoCChannelPanel-DMmcL3nb.js              21.62 kB │ gzip:     6.05 kB
+dist/public/assets/GCodeVerificationView-BDvdItGu.js          21.71 kB │ gzip:     7.43 kB
+dist/public/assets/RollToolCollisionCalc-BTad3Omz.js          21.84 kB │ gzip:     6.18 kB
+dist/public/assets/JobPackageExport-BEzIAsT1.js               21.88 kB │ gzip:     7.48 kB
+dist/public/assets/LatheSimulator3D-Dr4fTQUH.js               22.32 kB │ gzip:     6.64 kB
+dist/public/assets/purify.es-CovBOfck.js                      22.58 kB │ gzip:     8.67 kB
+dist/public/assets/MachineLoadCalculator-Cp5y4Tlc.js          23.19 kB │ gzip:     6.54 kB
+dist/public/assets/RollCuttingSafetyCalc-ClX-AYGl.js          23.31 kB │ gzip:     5.95 kB
+dist/public/assets/DemoVideo-CNEIMS2Q.js                      23.41 kB │ gzip:     5.19 kB
+dist/public/assets/RollBlankCalculator-SH-4Djg3.js            23.57 kB │ gzip:     6.43 kB
+dist/public/assets/SafetyPanelView-DjzKt750.js                23.67 kB │ gzip:     6.65 kB
+dist/public/assets/FEASimulationView--ERVad-t.js              23.75 kB │ gzip:     7.28 kB
+dist/public/assets/AdvancedCAMView-DtY5ljuy.js                24.26 kB │ gzip:     8.56 kB
+dist/public/assets/ContextualGuide-DLnbrMJ7.js                24.60 kB │ gzip:     7.66 kB
+dist/public/assets/DesignReportGenerator-CLtjc9vU.js          24.61 kB │ gzip:     8.15 kB
+dist/public/assets/RealMukablaView-C42KsFAa.js                26.71 kB │ gzip:     7.69 kB
+dist/public/assets/RollKnowledgeHub-cmSPFbjm.js               27.13 kB │ gzip:     8.14 kB
+dist/public/assets/ERPIntegrationView-B_RFVBNP.js             27.58 kB │ gzip:     7.44 kB
+dist/public/assets/GCodeSimulatorView-icU7-nnL.js             28.29 kB │ gzip:     8.85 kB
+dist/public/assets/OfflineAIView-BdFxLd6-.js                  28.33 kB │ gzip:     7.15 kB
+dist/public/assets/LoginPage-BRVE6y97.js                      28.70 kB │ gzip:     6.49 kB
+dist/public/assets/FlowerPatternView-B0509g8C.js              29.31 kB │ gzip:     8.56 kB
+dist/public/assets/LandingPage-D8OvhHN0.js                    29.77 kB │ gzip:     7.31 kB
+dist/public/assets/RollFormingSimulator-DERgHEL3.js           30.44 kB │ gzip:     8.16 kB
+dist/public/assets/RightPanel-CMsDb3l_.js                     30.79 kB │ gzip:     7.88 kB
+dist/public/assets/ToolLibraryView-CcETGFIo.js                31.21 kB │ gzip:     6.48 kB
+dist/public/assets/DemoVideoCenter-CjXQaXE0.js                31.30 kB │ gzip:     7.57 kB
+dist/public/assets/FormAxisComparisonView-B-Js0lJh.js         32.32 kB │ gzip:     7.47 kB
+dist/public/assets/FormingSimulationView-BXA72bcM.js          32.65 kB │ gzip:    10.59 kB
+dist/public/assets/RollDesignSuite-D92osEbu.js                32.87 kB │ gzip:     9.56 kB
+dist/public/assets/AutoCADEngineeringDrawing-wDgaB81c.js      34.91 kB │ gzip:    11.72 kB
+dist/public/assets/MillingSimulator3D-BCMqzIM3.js             35.28 kB │ gzip:    10.48 kB
+dist/public/assets/WizardMode-B_cqOnML.js                     36.85 kB │ gzip:    10.06 kB
+dist/public/assets/BuddyCRMDashboard-C-FBAGuJ.js              37.61 kB │ gzip:    10.13 kB
+dist/public/assets/RollToolingCalculator-CG4-wrle.js          42.07 kB │ gzip:    10.93 kB
+dist/public/assets/Troubleshooting-Dg8luhVv.js                43.87 kB │ gzip:    12.78 kB
+dist/public/assets/FiveAxisCAMPanel-DuOYQ3yp.js               45.20 kB │ gzip:    11.54 kB
+dist/public/assets/AutoCncPlanner-Dc08Cd-R.js                 47.43 kB │ gzip:    13.61 kB
+dist/public/assets/TestingEngineView-Da__Q8-e.js              47.96 kB │ gzip:    12.82 kB
+dist/public/assets/vendor-ui-C0MjNN1j.js                      52.34 kB │ gzip:    17.27 kB
+dist/public/assets/TurningView-uF8oYtv2.js                    52.46 kB │ gzip:    13.38 kB
+dist/public/assets/TurnAxisCAMOperationsView-Dx4SaWbY.js      53.97 kB │ gzip:    13.61 kB
+dist/public/assets/MillingOperationsView-Dd3Ri-c2.js          58.44 kB │ gzip:    13.89 kB
+dist/public/assets/SolidCAMToolDB-D07__v7H.js                 59.99 kB │ gzip:    12.92 kB
+dist/public/assets/ProLatheSimulator-pdq5SF1t.js              67.78 kB │ gzip:    16.17 kB
+dist/public/assets/LeftPanel-Eng4bd9x.js                      83.28 kB │ gzip:    19.11 kB
+dist/public/assets/Home-Ds8AoK6X.js                           93.52 kB │ gzip:    24.04 kB
+dist/public/assets/jszip.min-EktM7m7p.js                      97.16 kB │ gzip:    30.10 kB
+dist/public/assets/ManualDrawingView-BFGayuvh.js             117.94 kB │ gzip:    30.90 kB
+dist/public/assets/proxy-xZcPKV40.js                         125.79 kB │ gzip:    41.29 kB
+dist/public/assets/UltraDashboard-CKDle75w.js                146.26 kB │ gzip:    50.46 kB
+dist/public/assets/index.es-D2vPoM34.js                      158.93 kB │ gzip:    53.09 kB
+dist/public/assets/GizmoViewport-D0OEzdK4.js                 194.90 kB │ gzip:    61.63 kB
+dist/public/assets/html2canvas.esm-DXEQVQnt.js               201.04 kB │ gzip:    47.43 kB
+dist/public/assets/RollToolingView-CZC616pE.js               213.69 kB │ gzip:    52.75 kB
+dist/public/assets/Studio3DView-BZOcF3js.js                  228.23 kB │ gzip:    57.24 kB
+dist/public/assets/ReactKonvaCore-BEw-cSE_.js                310.23 kB │ gzip:    94.94 kB
+dist/public/assets/index-apcLF6FF.js                         337.21 kB │ gzip:   108.37 kB
+dist/public/assets/jspdf.es.min-BCEoZhmO.js                  386.10 kB │ gzip:   126.37 kB
+dist/public/assets/AccuracyMonitor-lTi1lI6K.js               403.66 kB │ gzip:   111.04 kB
+dist/public/assets/vendor-3d-JgDXC1dZ.js                     724.76 kB │ gzip:   187.54 kB
+dist/public/assets/index-DFLBea7M.js                       6,013.53 kB │ gzip: 2,138.60 kB
+
+(!) Some chunks are larger than 2000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 18.35s
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>cd artifacts\api-server && pnpm run build && cd ..\..
+
+> @workspace/api-server@0.0.0 build C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\api-server
+> tsx --tsconfig tsconfig.json build.ts
+
+building server...
+
+  dist\index.cjs  2.0mb
+
+Done in 597ms
+copying frontend to dist/public...
+frontend copied successfully.
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines>cd artifacts\desktop && npx tsc -p tsconfig.json && npx electron-builder --win nsis portable
+  • electron-builder  version=25.1.8 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • writing effective config  file=release\builder-effective-config.yaml
+  • executing @electron/rebuild  electronVersion=32.3.3 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=32.3.3 appOutDir=release\win-unpacked
+  • updating asar integrity executable resource  executablePath=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • default Electron icon is used  reason=application icon is not set
+  • signing with signtool.exe  path=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe archs=x64 oneClick=true perMachine=false
+  • signing with signtool.exe  path=release\win-unpacked\resources\elevate.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • signing with signtool.exe  path=release\__uninstaller-nsis-@workspacedesktop.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • signing with signtool.exe  path=release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building block map  blockMapFile=release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe.blockmap
+  • building        target=portable file=release\SAI-Rolotech-Smart-Engines-Portable-2.2.23.exe archs=x64
+  • signing with signtool.exe  path=release\SAI-Rolotech-Smart-Engines-Portable-2.2.23.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+
+C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\desktop>

@@ -64,8 +64,8 @@ export function validateFlowerInputs(inputs: FlowerInputs): ValidationResult {
     warnings.push({ field: "thickness", value: inputs.thickness, issue: `Exceeds maximum ${limits.maxT}mm for ${mat} — check machine capacity`, corrected: limits.maxT });
   }
 
-  if (!Number.isInteger(inputs.numStations) && !Number.isFinite(inputs.numStations)) {
-    errors.push({ field: "numStations", value: inputs.numStations, issue: "Number of stations must be a finite number", corrected: 5 });
+  if (!Number.isFinite(inputs.numStations) || !Number.isInteger(inputs.numStations)) {
+    errors.push({ field: "numStations", value: inputs.numStations, issue: "Number of stations must be a finite integer", corrected: 5 });
   } else if (inputs.numStations < 2) {
     warnings.push({ field: "numStations", value: inputs.numStations, issue: "Minimum 2 stations recommended for progressive forming" });
   } else if (inputs.numStations > 30) {
@@ -101,8 +101,8 @@ export function validateFlowerOutputs(
     warnings.push({ field: "springbackAngle", value: outputs.springbackAngle, issue: "Springback angle out of typical range 0–20°" });
   }
 
-  if (outputs.compensatedAngle <= outputs.bendAngle) {
-    errors.push({ field: "compensatedAngle", value: outputs.compensatedAngle, issue: "Compensated angle must be > bend angle (springback not applied)" });
+  if (outputs.compensatedAngle < outputs.bendAngle) {
+    errors.push({ field: "compensatedAngle", value: outputs.compensatedAngle, issue: "Compensated angle must be >= bend angle (springback not applied)" });
   }
 
   const minGap = t * 0.95;

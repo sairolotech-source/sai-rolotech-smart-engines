@@ -16,13 +16,15 @@ interface GenerateGcodeBody {
   geometry: ProfileGeometry;
   numStations: number | string;
   stationPrefix?: string;
+  materialType?: string;
+  materialThickness?: number | string;
   config?: Partial<GcodeConfig>;
   machineProfile?: MachineProfile;
 }
 
 router.post("/generate-gcode", (req: Request<unknown, unknown, GenerateGcodeBody>, res: Response) => {
   try {
-    const { geometry, numStations, stationPrefix, config, machineProfile } = req.body;
+    const { geometry, numStations, stationPrefix, materialType, materialThickness, config, machineProfile } = req.body;
 
     if (!geometry || !geometry.segments || geometry.segments.length === 0) {
       res.status(400).json({ error: "No geometry provided" });
@@ -31,8 +33,10 @@ router.post("/generate-gcode", (req: Request<unknown, unknown, GenerateGcodeBody
 
     const stations = Math.max(1, Math.min(30, parseInt(String(numStations)) || 5));
     const prefix = stationPrefix || "S";
+    const matType = materialType ?? (config as Record<string, unknown>)?.material as string ?? "GI";
+    const matThickness = parseFloat(String(materialThickness ?? 1.0)) || 1.0;
 
-    const flowerResult = generateFlowerPattern(geometry, stations, prefix);
+    const flowerResult = generateFlowerPattern(geometry, stations, prefix, matType, matThickness);
 
     const baseConfig = (config as Record<string, unknown>)?.controller === "Delta 2X" ||
       (config as Record<string, unknown>)?.controllerType === "delta_2x"

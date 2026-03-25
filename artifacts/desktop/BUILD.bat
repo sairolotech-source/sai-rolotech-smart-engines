@@ -14,15 +14,14 @@ set "ROOT=%cd%"
 set "DESKTOP=%ROOT%\artifacts\desktop"
 set "RELEASE=%DESKTOP%\release"
 
-:: Step 0: Purani app band karo (lock problem fix)
-echo  [0/7] Purani app band kar raha hai...
+:: Step 0: Cleanup - purani app band karo + pura release folder delete karo
+echo  [0/7] Cleanup...
 taskkill /f /im "SAI Rolotech Smart Engines.exe" 2>nul
 taskkill /f /im "electron.exe" 2>nul
 timeout /t 2 /nobreak >nul
-:: Purana win-unpacked delete karo (d3dcompiler lock fix)
-if exist "%RELEASE%\win-unpacked" (
-    echo  [0/7] Purana build folder hata raha hai...
-    rmdir /s /q "%RELEASE%\win-unpacked" 2>nul
+if exist "%RELEASE%" (
+    echo  [0/7] Purana release folder hata raha hai (cached config clear)...
+    rmdir /s /q "%RELEASE%" 2>nul
 )
 echo  [OK] Cleanup done.
 
@@ -51,24 +50,19 @@ if %errorlevel% neq 0 (
 )
 echo  [OK] pnpm ready.
 
-:: Step 3: Windows ke liye package.json preinstall fix (sh.exe Windows pe nahi hota)
+:: Step 3: GitHub se latest code (force update - koi conflict nahi)
 echo.
-echo  [3/7] Windows compatibility patch...
-node -e "try{var fs=require('fs');var p=JSON.parse(fs.readFileSync('package.json','utf8'));if(p.scripts&&p.scripts.preinstall&&p.scripts.preinstall.indexOf('sh ')===0){p.scripts.preinstall='echo preinstall ok';fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('[OK] Preinstall fixed.');}else{console.log('[OK] Already compatible.');}}catch(e){console.log('patch skip:',e.message);}"
-echo  [OK] Patch done.
+echo  [3/7] GitHub se latest code le raha hai...
+git fetch origin main 2>&1
+git reset --hard origin/main 2>&1
+echo  [OK] Code latest ho gaya.
 
-:: Step 4: Git pull (latest code)
+:: Step 4: Packages install
 echo.
-echo  [4/7] GitHub se latest code le raha hai...
-git pull origin main 2>&1
-echo  [OK] Code updated.
-
-:: Step 5: Packages install
-echo.
-echo  [5/7] Packages install ho rahe hain...
+echo  [4/7] Packages install ho rahe hain...
 call pnpm install
 if %errorlevel% neq 0 (
-    echo  [WARN] pnpm install failed — retrying with --no-frozen-lockfile...
+    echo  [WARN] Retrying...
     call pnpm install --no-frozen-lockfile
     if %errorlevel% neq 0 (
         echo  [ERROR] Package install fail!
@@ -77,9 +71,9 @@ if %errorlevel% neq 0 (
 )
 echo  [OK] Packages ready.
 
-:: Step 6a: API Server build (startup hang fix - PEHLE build karo)
+:: Step 5: API Server build (startup hang fix)
 echo.
-echo  [6/7] API Server build ho raha hai...
+echo  [5/7] API Server build ho raha hai...
 cd /d "%ROOT%\artifacts\api-server"
 call pnpm run build
 if %errorlevel% neq 0 (
@@ -88,9 +82,9 @@ if %errorlevel% neq 0 (
 )
 echo  [OK] API Server ready.
 
-:: Step 6b: Frontend build
+:: Step 6: Frontend build
 echo.
-echo  [6b/7] Frontend build ho raha hai...
+echo  [6/7] Frontend build ho raha hai...
 cd /d "%ROOT%\artifacts\design-tool"
 call pnpm run build
 if %errorlevel% neq 0 (
@@ -99,18 +93,18 @@ if %errorlevel% neq 0 (
 )
 echo  [OK] Frontend ready.
 
-:: Step 7: Electron EXE
+:: Step 7: Electron Portable EXE (NSIS disabled)
 echo.
-echo  [7/7] Windows EXE ban raha hai (3-5 min)...
+echo  [7/7] Windows Portable EXE ban raha hai (3-5 min)...
 cd /d "%DESKTOP%"
 call npx tsc -p tsconfig.json
 if %errorlevel% neq 0 (
     echo  [ERROR] TypeScript compile fail!
     pause & exit /b 1
 )
-call npx electron-builder --win portable
+call npx electron-builder --win --config.win.target=portable
 if %errorlevel% neq 0 (
-    echo  [ERROR] EXE build fail! Admin rights se chalayein.
+    echo  [ERROR] EXE build fail!
     pause & exit /b 1
 )
 
@@ -118,11 +112,9 @@ if %errorlevel% neq 0 (
 echo.
 echo  =====================================================
 echo   BUILD COMPLETE! v2.2.23
-echo   EXE tayaar hai!
+echo   SAI-Rolotech-Smart-Engines-Portable-2.2.23.exe
 echo  =====================================================
 echo.
 
-:: Release folder automatically kholo
 start "" explorer "%RELEASE%"
-
 pause

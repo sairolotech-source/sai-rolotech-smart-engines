@@ -215,14 +215,20 @@ function calcRollOD(
   const profileContrib = profileDepthMm * (stationIndex / totalStations);
   const rawOD = bore + 2 * minWall + 2 * profileContrib + 2 * materialThicknessMm;
   const upperOD = Math.max(rawOD, shaftDiaMm * 2.5, 80);
-  const lowerOD = upperOD + 2 * materialThicknessMm;
+  // Lower roll is the counter (web) roll — it fits INSIDE the profile groove.
+  // Its OD is the upper roll OD minus 2× profile depth minus 2× material thickness.
+  // Clamped so lowerOD is always ≤ upperOD and ≥ shaft * 2 (minimum usable roll).
+  const lowerOD = Math.max(
+    upperOD - 2 * profileContrib - 2 * materialThicknessMm,
+    Math.max(shaftDiaMm * 2.0, 60),
+  );
 
   return {
     upperOD: parseFloat(upperOD.toFixed(1)),
     lowerOD: parseFloat(lowerOD.toFixed(1)),
     profileDepth: parseFloat(profileContrib.toFixed(2)),
     minWallThickness: parseFloat(minWall.toFixed(2)),
-    formula: `OD = bore(${bore.toFixed(0)}) + 2×wall(${minWall.toFixed(1)}) + 2×profileDepth(${profileContrib.toFixed(1)}) + 2×t(${materialThicknessMm}) = ${upperOD.toFixed(1)}mm`,
+    formula: `upperOD = bore(${bore.toFixed(0)}) + 2×wall(${minWall.toFixed(1)}) + 2×profileDepth(${profileContrib.toFixed(1)}) + 2×t(${materialThicknessMm}) = ${upperOD.toFixed(1)}mm | lowerOD = upperOD − 2×profileDepth − 2×t = ${lowerOD.toFixed(1)}mm`,
   };
 }
 

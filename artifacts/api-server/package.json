@@ -8,7 +8,9 @@
     "start": "NODE_ENV=production tsx --tsconfig tsconfig.json src/index.ts",
     "build": "tsx --tsconfig tsconfig.json build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --tsconfig tsconfig.json src/tests/calc-validator.test.ts"
+    "test": "tsx --tsconfig tsconfig.json src/tests/calc-validator.test.ts && tsx --tsconfig tsconfig.json src/tests/engineering-integration.test.ts",
+    "test:calc": "tsx --tsconfig tsconfig.json src/tests/calc-validator.test.ts",
+    "test:integration": "tsx --tsconfig tsconfig.json src/tests/engineering-integration.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",

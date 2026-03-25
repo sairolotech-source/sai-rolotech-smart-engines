@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Monitor, Brain, FolderOpen, Settings2, Wifi, WifiOff, Bell, Cpu, CircuitBoard } from "lucide-react";
+import { Monitor, Brain, FolderOpen, Settings2, Wifi, WifiOff, Bell, Cpu, CircuitBoard, Shield } from "lucide-react";
 import { SystemInfoPanel } from "./SystemInfoPanel";
 import { AIChatPanel } from "./AIChatPanel";
 import { FileManagerPanel } from "./FileManagerPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { OfflineAIPanel } from "./OfflineAIPanel";
 import { HardwareMonitorPanel } from "./HardwareMonitorPanel";
+import { WatchdogPanel } from "./WatchdogPanel";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 
-type DashTab = "system" | "hardware" | "chat" | "localai" | "files" | "settings";
+type DashTab = "system" | "hardware" | "chat" | "localai" | "files" | "settings" | "watchdog";
 
 const DASH_TABS: { id: DashTab; label: string; icon: React.ReactNode }[] = [
   { id: "system",   label: "System Info", icon: <Monitor className="w-4 h-4" /> },
@@ -17,6 +18,7 @@ const DASH_TABS: { id: DashTab; label: string; icon: React.ReactNode }[] = [
   { id: "localai",  label: "Local AI",    icon: <Cpu className="w-4 h-4" /> },
   { id: "files",    label: "File Manager",icon: <FolderOpen className="w-4 h-4" /> },
   { id: "settings", label: "Settings",    icon: <Settings2 className="w-4 h-4" /> },
+  { id: "watchdog", label: "Auto Sync",   icon: <Shield className="w-4 h-4" /> },
 ];
 
 function NetworkBanner({ isOnline }: { isOnline: boolean }) {
@@ -130,6 +132,11 @@ export function UltraDashboard() {
         {activeTab === "settings" && (
           <div className="h-full overflow-y-auto">
             <SettingsPanel />
+          </div>
+        )}
+        {activeTab === "watchdog" && (
+          <div className="h-full overflow-hidden">
+            <WatchdogPanel />
           </div>
         )}
       </div>

@@ -27,6 +27,8 @@ import serialRouter from "./serial";
 import { licenseRouter, adminRouter } from "./license-admin";
 import aiReviewRouter from "./ai-review";
 import { requireAuth } from "../middleware/auth";
+import systemWatchdogRouter from "./system-watchdog";
+import { startWatchdog } from "../lib/system-watchdog";
 
 const router: IRouter = Router();
 
@@ -66,8 +68,10 @@ router.use(smartToolSelectorRouter);
 router.use(gcodeSafetyRouter);
 router.use(githubUpdateRouter);
 router.use(serialRouter);
+router.use(systemWatchdogRouter);
 
 startAutoBackup(600);
 startAutoUpdate();
+startWatchdog();
 
 export default router;

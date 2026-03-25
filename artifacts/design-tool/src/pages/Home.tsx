@@ -83,6 +83,9 @@ const ThicknessRangeEngine = lazy(() => import("../components/cnc/ThicknessRange
 const GeometryRecognitionEngine = lazy(() => import("../components/cnc/GeometryRecognitionEngine").then(m => ({ default: m.GeometryRecognitionEngine })));
 const PassAngleProgressionView = lazy(() => import("../components/cnc/PassAngleProgressionView").then(m => ({ default: m.PassAngleProgressionView })));
 const EngineeringFormulaCalculator = lazy(() => import("../components/cnc/EngineeringFormulaCalculator").then(m => ({ default: m.EngineeringFormulaCalculator })));
+const DesignRuleEngine = lazy(() => import("../components/cnc/DesignRuleEngine").then(m => ({ default: m.DesignRuleEngine })));
+const DefectPredictionEngine = lazy(() => import("../components/cnc/DefectPredictionEngine").then(m => ({ default: m.DefectPredictionEngine })));
+const MachineFitmentEngine = lazy(() => import("../components/cnc/MachineFitmentEngine").then(m => ({ default: m.MachineFitmentEngine })));
 const RFSpreadsheetView = lazy(() => import("../components/cnc/RFSpreadsheetView").then(m => ({ default: m.RFSpreadsheetView })));
 const DrawingDiesView = lazy(() => import("../components/cnc/DrawingDiesView").then(m => ({ default: m.DrawingDiesView })));
 const CageFormingView = lazy(() => import("../components/cnc/CageFormingView").then(m => ({ default: m.CageFormingView })));
@@ -149,6 +152,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "roll-gap": "analysis", "cost-estimator": "analysis", camber: "analysis",
   "forming-energy": "analysis", "material-db": "analysis", "rf-dtm": "analysis",
   "thickness-range": "analysis", "geometry-recognition": "analysis", "pass-angle-engine": "analysis", "formula-calculator": "analysis",
+  "design-rule-engine": "analysis", "defect-prediction": "analysis", "machine-fitment": "analysis",
   twin: "simulation", studio3d: "simulation",
   "rf-tubes": "formaxis-modules", "rf-trapeze": "formaxis-modules", "drawing-dies": "formaxis-modules",
   "cage-forming": "formaxis-modules", "wire-rolling": "formaxis-modules",
@@ -315,6 +319,9 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "geometry-recognition", label: "Geometry Recognition", icon: <Eye className="w-4 h-4" />, desc: "Auto-detect bends, symmetry, difficulty level, risk flags (springback/twist/edge-wave)" },
         { id: "pass-angle-engine", label: "Pass Angle Engine", icon: <BarChart2 className="w-4 h-4" />, desc: "Station-by-station forming angle schedule — Gemini Pro + DIN 6935 rule engine" },
         { id: "formula-calculator", label: "Engineering Formula Calculator", icon: <Calculator className="w-4 h-4" />, desc: "BA/BD · Neutral Axis · Station Count · Springback · Pass Angles · Roll OD · Face Width · Spacer — all DIN 6935 formulas in one interactive tool" },
+        { id: "design-rule-engine", label: "Design Rule Engine", icon: <ShieldCheck className="w-4 h-4" />, desc: "Engineering safety validation — min bend radius, crack risk, twist risk, flange collapse, pass progression, thickness compatibility" },
+        { id: "defect-prediction", label: "Defect Prediction Engine", icon: <AlertTriangle className="w-4 h-4" />, desc: "Predict twist, edge wave, flare, wrinkling, marking, camber, over-forming — rule-based risk assessment with prevention measures" },
+        { id: "machine-fitment", label: "Machine Fitment Engine", icon: <Cog className="w-4 h-4" />, desc: "Shaft dia · Max OD · Stand spacing · Spacer feasibility · Motor HP · Roll interference · Assembly sequence — production machine compatibility" },
       ],
     },
     {
@@ -459,6 +466,9 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "geometry-recognition": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><GeometryRecognitionEngine /></div></Suspense>;
       case "pass-angle-engine": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><PassAngleProgressionView /></div></Suspense>;
       case "formula-calculator": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-auto animate-fade-slide-in"><EngineeringFormulaCalculator /></div></Suspense>;
+      case "design-rule-engine": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-auto animate-fade-slide-in"><DesignRuleEngine /></div></Suspense>;
+      case "defect-prediction": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-auto animate-fade-slide-in"><DefectPredictionEngine /></div></Suspense>;
+      case "machine-fitment": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-auto animate-fade-slide-in"><MachineFitmentEngine /></div></Suspense>;
       case "rf-spreadsheet": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RFSpreadsheetView /></div></Suspense>;
       case "drawing-dies": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DrawingDiesView /></div></Suspense>;
       case "cage-forming": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><CageFormingView /></div></Suspense>;

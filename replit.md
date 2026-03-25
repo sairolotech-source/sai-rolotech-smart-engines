@@ -133,6 +133,27 @@ The project is structured as a pnpm workspace monorepo containing `api-server`, 
 - 📚 — Tutorial Replay
 - ⚙/★/👁 — Role Switcher (Admin/Engineer/Viewer)
 
+## v2.2.23 — Multi-Engine Architecture (March 2026)
+
+**New Specialized Engineering Engines (Analysis sidebar — 7 total new modules):**
+
+1. **Thickness Range Engine** (`ThicknessRangeEngine.tsx`) — Min/Nom/Max thickness, roll gap range, shim/spacer calc, traffic-light tooling status
+2. **Geometry Recognition Engine** (`GeometryRecognitionEngine.tsx`) — Auto bend detection, Easy/Medium/Complex/Expert classification, 5-risk matrix
+3. **Pass Angle Engine** (`PassAngleProgressionView.tsx` + `roll-pass-engine.ts`) — Gemini 2.5 Pro + DIN 6935 rule fallback, CSV export
+4. **Engineering Formula Calculator** (`EngineeringFormulaCalculator.tsx`) — 9 interactive sections: BA/BD, Neutral Axis, Station Count, Springback, Pass Angles, Roll Gap, Roll OD, Face Width, Spacer
+5. **Design Rule Engine** (`DesignRuleEngine.tsx`) — 9 engineering safety rules: min bend radius, crack risk, twist risk, thickness compatibility, station count, pass progression, flange collapse, springback, gauge warning
+6. **Defect Prediction Engine** (`DefectPredictionEngine.tsx`) — 7 defect types: twist, edge wave, flare, wrinkling, marking/scratching, camber, local over-forming — probability-based risk assessment with root causes, prevention, detection
+7. **Machine Fitment Engine** (`MachineFitmentEngine.tsx`) — 9 machine checks: shaft dia, max roll OD, station capacity, spacer feasibility, width, motor HP, upper/lower interference, assembly sequence, thickness capacity — 5 machine presets
+
+**Store Enhancements:**
+- `useCncStore.ts`: Added `minThickness`, `maxThickness`, `bendRadius` state fields with setters
+- `setMaterialThickness` now auto-recalculates min/max (±10% of nominal)
+- WizardMode Step 2 enhanced with min/nom/max thickness range card + tooling compatibility indicator
+
+**AI Ultra Validation System:**
+- `validation-rules.ts`: ULTRA (3441 chars) + SHORT (411 chars) rule sets injected into ALL AI system prompts (9 injection points)
+- Enforces DIN 6935 formula checks, material standard verification, safety validation before every AI response
+
 ## Engineering Bug Fixes — Session 4 (2026-03-25) — Tool & AI Autopilot
 
 **56 bugs fixed across Tool Library, AI Design, Springback, Camber, Testing Engine**

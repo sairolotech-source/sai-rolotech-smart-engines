@@ -607,13 +607,19 @@ function StepMaterial({ onDone, onBack }: { onDone: () => void; onBack: () => vo
             </div>
           ))}
         </div>
-        <div className="mt-2 pt-2 border-t border-zinc-800/50 flex items-center justify-between text-[10px] text-zinc-500">
-          <span>Range spread: <span className="font-mono text-zinc-300">{(maxThickness - minThickness).toFixed(2)} mm</span></span>
-          <span>Ratio: <span className={`font-mono font-bold ${maxThickness / minThickness <= 1.20 ? "text-emerald-400" : maxThickness / minThickness <= 1.35 ? "text-amber-400" : "text-red-400"}`}>{(maxThickness / minThickness).toFixed(2)}×</span></span>
-          <span className={`font-semibold ${maxThickness / minThickness <= 1.20 ? "text-emerald-400" : maxThickness / minThickness <= 1.35 ? "text-amber-400" : "text-red-400"}`}>
-            {maxThickness / minThickness <= 1.20 ? "✓ Same tooling OK" : maxThickness / minThickness <= 1.35 ? "⚠ Review needed" : "✗ Separate tooling"}
-          </span>
-        </div>
+        {(() => {
+          const ratio = minThickness > 0 ? maxThickness / minThickness : 1.0;
+          const color = ratio <= 1.20 ? "text-emerald-400" : ratio <= 1.35 ? "text-amber-400" : "text-red-400";
+          return (
+            <div className="mt-2 pt-2 border-t border-zinc-800/50 flex items-center justify-between text-[10px] text-zinc-500">
+              <span>Range spread: <span className="font-mono text-zinc-300">{(maxThickness - minThickness).toFixed(2)} mm</span></span>
+              <span>Ratio: <span className={`font-mono font-bold ${color}`}>{ratio.toFixed(2)}×</span></span>
+              <span className={`font-semibold ${color}`}>
+                {ratio <= 1.20 ? "✓ Same tooling OK" : ratio <= 1.35 ? "⚠ Review needed" : "✗ Separate tooling"}
+              </span>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="rt-card p-3 space-y-2">

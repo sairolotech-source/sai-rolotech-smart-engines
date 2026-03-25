@@ -5,6 +5,52 @@ import { SAI_CONFIDENTIALITY_RULES, SAI_ERROR_BRAND } from "../lib/ai-confidenti
 
 type AIProvider = "nvidia" | "kimi" | "sambanova" | "gemini" | "anthropic" | "openrouter";
 
+interface PersonalGeminiKeyEntry { id: string; key: string; label: string }
+
+async function tryPersonalKeys(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  personalGeminiKeys: PersonalGeminiKeyEntry[],
+  personalDeepseekKey?: string,
+): Promise<{ text: string | null; failedKeyIds: string[]; provider: string }> {
+  const failedKeyIds: string[] = [];
+  const msgs = [{ role: "system", content: systemPrompt }, ...messages];
+
+  for (const entry of personalGeminiKeys) {
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${entry.key}` },
+        body: JSON.stringify({ model: "gemini-2.5-pro", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) { failedKeyIds.push(entry.id); continue; }
+      const data = await res.json() as { choices: { message: { content: string } }[] };
+      const text = data.choices?.[0]?.message?.content;
+      if (text) return { text, failedKeyIds, provider: `personal-gemini:${entry.label}` };
+      failedKeyIds.push(entry.id);
+    } catch { failedKeyIds.push(entry.id); }
+  }
+
+  if (personalDeepseekKey) {
+    try {
+      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${personalDeepseekKey}` },
+        body: JSON.stringify({ model: "deepseek-chat", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        const data = await res.json() as { choices: { message: { content: string } }[] };
+        const text = data.choices?.[0]?.message?.content;
+        if (text) return { text, failedKeyIds, provider: "personal-deepseek" };
+      }
+    } catch { /* ignore */ }
+  }
+
+  return { text: null, failedKeyIds, provider: "" };
+}
+
 interface ProviderConfig {
   key: string | undefined;
   url: string;
@@ -323,12 +369,26 @@ async function getOnlineExpertResponse(
   category: ChatbotCategory,
   message: string,
   history: ChatbotMessage[],
-): Promise<{ text: string; mode: "online" | "offline"; provider?: string }> {
+  personalGeminiKeys: PersonalGeminiKeyEntry[] = [],
+  personalDeepseekKey?: string,
+): Promise<{ text: string; mode: "online" | "offline"; provider?: string; failedKeyIds?: string[] }> {
   const config = CHATBOT_CONFIGS.find(c => c.id === category);
   if (!config) return { text: "Expert not found.", mode: "offline" };
 
   const chatMessages = history.slice(-8).map(e => ({ role: e.role, content: e.content }));
   chatMessages.push({ role: "user", content: message });
+
+  if (personalGeminiKeys.length > 0 || personalDeepseekKey) {
+    const personal = await tryPersonalKeys(config.systemPrompt, chatMessages, personalGeminiKeys, personalDeepseekKey);
+    if (personal.text) {
+      return { text: personal.text, mode: "online", provider: personal.provider, failedKeyIds: personal.failedKeyIds };
+    }
+    if (personal.failedKeyIds.length > 0) {
+      return await getOnlineExpertResponse(category, message, history, [], undefined).then(r => ({
+        ...r, failedKeyIds: personal.failedKeyIds,
+      }));
+    }
+  }
 
   const providerChain: { provider: AIProvider; label: string }[] = [
     { provider: "gemini", label: "gemini-2.5-pro" },
@@ -388,10 +448,12 @@ router.post("/ai/chatbot/:category", async (req: Request, res: Response) => {
       return;
     }
 
-    const { message, history, forceOffline } = req.body as {
+    const { message, history, forceOffline, personalGeminiKeys, personalDeepseekKey } = req.body as {
       message: string;
       history?: ChatbotMessage[];
       forceOffline?: boolean;
+      personalGeminiKeys?: PersonalGeminiKeyEntry[];
+      personalDeepseekKey?: string;
     };
 
     if (!message?.trim()) {
@@ -402,21 +464,27 @@ router.post("/ai/chatbot/:category", async (req: Request, res: Response) => {
     let responseText: string;
     let mode: "online" | "offline";
     let provider = "offline-engine";
+    let failedKeyIds: string[] | undefined;
 
     if (forceOffline) {
       responseText = getOfflineExpertResponse(category, message);
       mode = "offline";
     } else {
-      const result = await getOnlineExpertResponse(category, message, history ?? []);
+      const result = await getOnlineExpertResponse(
+        category, message, history ?? [],
+        personalGeminiKeys ?? [], personalDeepseekKey,
+      );
       responseText = result.text;
       mode = result.mode;
       provider = result.provider ?? "unknown";
+      failedKeyIds = result.failedKeyIds;
     }
 
     res.json({
       response: responseText,
       mode,
       provider,
+      failedKeyIds,
       chatbot: { id: config.id, name: config.name, icon: config.icon },
     });
   } catch (err) {
@@ -678,10 +746,12 @@ Generated by Sai Rolotech Smart Engines Quality System (Offline Engine)`;
 
 router.post("/chatbot/master-designer", async (req: Request, res: Response) => {
   try {
-    const { message, history, projectContext } = req.body as {
+    const { message, history, projectContext, personalGeminiKeys, personalDeepseekKey } = req.body as {
       message: string;
       history: { role: string; content: string }[];
       projectContext?: string;
+      personalGeminiKeys?: PersonalGeminiKeyEntry[];
+      personalDeepseekKey?: string;
     };
 
     if (!message?.trim()) {
@@ -720,13 +790,22 @@ When answering:
     const msgs = (history || []).slice(-8).map(m => ({ role: m.role, content: m.content }));
     msgs.push({ role: "user", content: message });
 
-    const providers: AIProvider[] = ["gemini", "sambanova", "openrouter", "anthropic"];
     let response: string | null = null;
     let usedProvider = "offline-engine";
+    let failedKeyIds: string[] | undefined;
 
-    for (const provider of providers) {
-      response = await callExternalAI(provider, systemPrompt, msgs);
-      if (response) { usedProvider = provider; break; }
+    if ((personalGeminiKeys?.length ?? 0) > 0 || personalDeepseekKey) {
+      const personal = await tryPersonalKeys(systemPrompt, msgs, personalGeminiKeys ?? [], personalDeepseekKey);
+      if (personal.text) { response = personal.text; usedProvider = personal.provider; }
+      if (personal.failedKeyIds.length > 0) failedKeyIds = personal.failedKeyIds;
+    }
+
+    if (!response) {
+      const providers: AIProvider[] = ["gemini", "sambanova", "openrouter", "anthropic"];
+      for (const provider of providers) {
+        response = await callExternalAI(provider, systemPrompt, msgs);
+        if (response) { usedProvider = provider; break; }
+      }
     }
 
     if (!response) {
@@ -739,6 +818,7 @@ When answering:
       response,
       mode: usedProvider === "offline-engine" ? "offline" : "online",
       provider: usedProvider,
+      failedKeyIds,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

@@ -123,6 +123,7 @@ async function callInternetFallback(
   style: string,
   language: string,
   personalGeminiKeys: PersonalGeminiKeyEntry[],
+  personalDeepseekKey?: string,
 ): Promise<{ text: string | null; failedKeyIds: string[] }> {
   const systemPrompt = `You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing.
 Response style: ${style}. Language: ${language}.
@@ -163,6 +164,22 @@ ${SAI_CONFIDENTIALITY_RULES}`;
     }
   }
 
+  if (personalDeepseekKey) {
+    try {
+      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${personalDeepseekKey}` },
+        body: JSON.stringify({ model: "deepseek-chat", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        const data = await res.json() as { choices: { message: { content: string } }[] };
+        const text = data.choices?.[0]?.message?.content;
+        if (text) { console.log("[AI Fallback] Responded via Personal DeepSeek key"); return { text, failedKeyIds }; }
+      }
+    } catch { console.log("[AI Fallback] Personal DeepSeek key error"); }
+  }
+
   const staticProviders = [
     {
       key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"],
@@ -200,11 +217,12 @@ const router: IRouter = Router();
 
 router.post("/ai/chat", async (req: Request, res: Response) => {
   try {
-    const { message, forceOffline, history, personalGeminiKeys } = req.body as {
+    const { message, forceOffline, history, personalGeminiKeys, personalDeepseekKey } = req.body as {
       message: string;
       forceOffline?: boolean;
       history?: ConversationEntry[];
       personalGeminiKeys?: PersonalGeminiKeyEntry[];
+      personalDeepseekKey?: string;
     };
     if (!message?.trim()) {
       res.status(400).json({ error: "message required" });
@@ -222,8 +240,10 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
     const keys = personalGeminiKeys ?? [];
     let failedKeyIds: string[] = [];
 
+    const dsKey = personalDeepseekKey || undefined;
+
     if (isOffline) {
-      const { text: fallback, failedKeyIds: fk } = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, keys);
+      const { text: fallback, failedKeyIds: fk } = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, keys, dsKey);
       failedKeyIds = fk;
       if (fallback) {
         responseText = fallback;
@@ -237,7 +257,7 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
         responseText = await onlineResponse(message, contextHistory, settings.responseStyle, settings.language);
         mode = "online";
       } catch {
-        const { text: fallback, failedKeyIds: fk } = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, keys);
+        const { text: fallback, failedKeyIds: fk } = await callInternetFallback(message, contextHistory, settings.responseStyle, settings.language, keys, dsKey);
         failedKeyIds = fk;
         if (fallback) {
           responseText = fallback;

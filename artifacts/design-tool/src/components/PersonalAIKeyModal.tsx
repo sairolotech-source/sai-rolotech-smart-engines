@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Key, Eye, EyeOff, CheckCircle2, Trash2, X, ExternalLink, ShieldCheck, Plus, RefreshCw, Star } from "lucide-react";
-import { usePersonalAIKey } from "@/hooks/usePersonalAIKey";
+import { usePersonalAIKey, getDeepseekKey, saveDeepseekKey, clearDeepseekKey } from "@/hooks/usePersonalAIKey";
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
@@ -46,6 +46,11 @@ export function PersonalAIKeyModal({ open, onClose }: Props) {
   const [testing, setTesting] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
   const [showAddForm, setShowAddForm] = useState(false);
+  const [deepseekKey, setDeepseekKeyState] = useState<string>(() => getDeepseekKey());
+  const [newDeepseekVal, setNewDeepseekVal] = useState("");
+  const [showDeepseekKey, setShowDeepseekKey] = useState(false);
+  const [testingDeepseek, setTestingDeepseek] = useState(false);
+  const [deepseekTestResult, setDeepseekTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   if (!open) return null;
 
@@ -99,6 +104,48 @@ export function PersonalAIKeyModal({ open, onClose }: Props) {
   const handleSwap = (id: string, label: string) => {
     setActive(id);
     toast({ title: `"${label}" Active Ho Gayi 🔄`, description: "Ab ye key use hogi" });
+  };
+
+  const handleSaveDeepseek = () => {
+    const val = newDeepseekVal.trim();
+    if (!val) { toast({ title: "Key Daalo", description: "DeepSeek key field khali hai", variant: "destructive" }); return; }
+    if (!val.startsWith("sk-")) { toast({ title: "Format Galat", description: "DeepSeek key 'sk-' se shuru hoti hai", variant: "destructive" }); return; }
+    saveDeepseekKey(val);
+    setDeepseekKeyState(val);
+    setNewDeepseekVal("");
+    setDeepseekTestResult(null);
+    toast({ title: "DeepSeek Key Save Ho Gayi ✅", description: "Ab AI chat mein DeepSeek bhi fallback karega" });
+  };
+
+  const handleTestDeepseek = async (key: string) => {
+    setTestingDeepseek(true);
+    setDeepseekTestResult({ ok: false, msg: "Testing..." });
+    try {
+      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: "deepseek-chat", messages: [{ role: "user", content: "OK" }], max_tokens: 5 }),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (res.ok) {
+        setDeepseekTestResult({ ok: true, msg: "✅ DeepSeek chal rahi hai" });
+        toast({ title: "DeepSeek Key Theek Hai ✅", description: "Connected!" });
+      } else {
+        setDeepseekTestResult({ ok: false, msg: `❌ Error ${res.status} — platform.deepseek.com se check karein` });
+        toast({ title: "DeepSeek Key Kaam Nahi Kar Rahi", description: `HTTP ${res.status}`, variant: "destructive" });
+      }
+    } catch {
+      setDeepseekTestResult({ ok: false, msg: "❌ Network error ya key check karein" });
+    } finally {
+      setTestingDeepseek(false);
+    }
+  };
+
+  const handleClearDeepseek = () => {
+    clearDeepseekKey();
+    setDeepseekKeyState("");
+    setDeepseekTestResult(null);
+    toast({ title: "DeepSeek Key Hata Di" });
   };
 
   return (
@@ -243,6 +290,75 @@ export function PersonalAIKeyModal({ open, onClose }: Props) {
               Koi key save nahi — "Nai Key Add Karo" dabayein
             </div>
           )}
+
+          <div className="mt-2 rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-3 flex flex-col gap-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-md bg-cyan-500/20 flex items-center justify-center">
+                <span className="text-[10px]">🤖</span>
+              </div>
+              <p className="text-xs font-semibold text-cyan-300">DeepSeek API Key</p>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-medium">AI Fallback</span>
+            </div>
+
+            {deepseekKey ? (
+              <div className="flex flex-col gap-2">
+                <div className="font-mono text-[10px] text-white/30 bg-white/3 rounded-lg px-2 py-1">
+                  {deepseekKey.slice(0, 5)}••••••••••••••••{deepseekKey.slice(-4)}
+                </div>
+                {deepseekTestResult && (
+                  <p className={`text-[10px] ${deepseekTestResult.ok ? "text-emerald-400" : "text-red-400"}`}>{deepseekTestResult.msg}</p>
+                )}
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => handleTestDeepseek(deepseekKey)}
+                    disabled={testingDeepseek}
+                    className="flex-1 py-1.5 rounded-lg text-[11px] font-medium bg-white/5 border border-white/8 text-white/50 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-40"
+                  >
+                    {testingDeepseek ? "Testing..." : "Test Karo"}
+                  </button>
+                  <button
+                    onClick={handleClearDeepseek}
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] bg-red-500/5 border border-red-500/15 text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] text-white/35 leading-relaxed">
+                  platform.deepseek.com se free key lo — AI chat mein Gemini ke baad DeepSeek try hoga
+                </p>
+                <div className="relative">
+                  <input
+                    type={showDeepseekKey ? "text" : "password"}
+                    value={newDeepseekVal}
+                    onChange={e => setNewDeepseekVal(e.target.value)}
+                    placeholder="sk-... (DeepSeek Platform se)"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 pr-10 text-xs text-white/80 placeholder:text-white/20 focus:outline-none focus:border-cyan-500/40 transition-colors font-mono"
+                  />
+                  <button
+                    onClick={() => setShowDeepseekKey(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                  >
+                    {showDeepseekKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300">
+                    Key Kahan Se Milegi? <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <button
+                    onClick={handleSaveDeepseek}
+                    disabled={!newDeepseekVal.trim()}
+                    className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Save Karo
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -2,7 +2,18 @@ import { useState, useCallback } from "react";
 
 const KEYS_STORAGE = "sai_gemini_keys";
 const ACTIVE_STORAGE = "sai_active_gemini_key";
+const DEEPSEEK_KEY_STORAGE = "sai_deepseek_key";
 export const MAX_KEYS = 8;
+
+export function saveDeepseekKey(key: string) {
+  try { localStorage.setItem(DEEPSEEK_KEY_STORAGE, key); } catch {}
+}
+export function getDeepseekKey(): string {
+  try { return localStorage.getItem(DEEPSEEK_KEY_STORAGE) ?? ""; } catch { return ""; }
+}
+export function clearDeepseekKey() {
+  try { localStorage.removeItem(DEEPSEEK_KEY_STORAGE); } catch {}
+}
 
 export interface SavedKey {
   id: string;

@@ -5,6 +5,7 @@ import {
   Loader2, MessageCircle, ArrowLeft, Shield, Wifi, WifiOff,
   BarChart3, Sparkles,
 } from "lucide-react";
+import { getAllKeysForFallback, markKeyFailedById, getDeepseekKey } from "../../hooks/usePersonalAIKey";
 
 type ChatbotCategory = "design" | "manufacturing" | "material" | "quality" | "process";
 
@@ -91,11 +92,17 @@ export function AIChatbotsView() {
         body: JSON.stringify({
           message: msg,
           history: chatHistories[activeBot],
+          personalGeminiKeys: getAllKeysForFallback(),
+          personalDeepseekKey: getDeepseekKey() || undefined,
         }),
       });
 
       if (!res.ok) throw new Error("Failed to get response");
-      const data = await res.json();
+      const data = await res.json() as { response: string; mode: string; provider: string; failedKeyIds?: string[] };
+
+      if (data.failedKeyIds?.length) {
+        for (const id of data.failedKeyIds) markKeyFailedById(id);
+      }
 
       const providerMap: Record<string, string> = {
         "gemini-flash": "Gemini Flash",
@@ -121,7 +128,7 @@ export function AIChatbotsView() {
         role: "assistant",
         content: data.response,
         timestamp: new Date().toISOString(),
-        mode: data.mode,
+        mode: (data.mode === "online" ? "online" : "offline") as "online" | "offline",
         provider: providerLabel,
         sourceTag,
       };

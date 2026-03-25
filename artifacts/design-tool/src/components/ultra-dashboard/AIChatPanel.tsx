@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, Trash2, Bot, User, Wifi, WifiOff, Loader2, Brain } from "lucide-react";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { authFetch, getApiUrl } from "../../lib/auth-fetch";
-import { getAllKeysForFallback, markKeyFailedById } from "../../hooks/usePersonalAIKey";
+import { getAllKeysForFallback, markKeyFailedById, getDeepseekKey } from "../../hooks/usePersonalAIKey";
 
 interface ChatMessage {
   id: string;
@@ -111,6 +111,7 @@ export function AIChatPanel() {
           message: text,
           forceOffline: forceOffline || !network.isOnline,
           personalGeminiKeys: getAllKeysForFallback(),
+          personalDeepseekKey: getDeepseekKey() || undefined,
         }),
       });
       const data = await r.json() as {

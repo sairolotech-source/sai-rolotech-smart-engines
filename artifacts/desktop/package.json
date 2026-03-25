@@ -80,8 +80,8 @@
       "requestedExecutionLevel": "requireAdministrator"
     },
     "nsis": {
-      "oneClick": true,
-      "allowToChangeInstallationDirectory": false,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
       "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
@@ -91,6 +91,7 @@
       "license": "installers/license.txt",
       "language": 1033,
       "perMachine": false,
+      "deleteAppDataOnUninstall": false,
       "runAfterFinish": true
     },
     "portable": {

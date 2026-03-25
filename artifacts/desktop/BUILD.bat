@@ -18,9 +18,10 @@ set "RELEASE=%DESKTOP%\release"
 echo  [0/7] Cleanup...
 taskkill /f /im "SAI Rolotech Smart Engines.exe" 2>nul
 taskkill /f /im "electron.exe" 2>nul
+taskkill /f /im "node.exe" /fi "WINDOWTITLE eq SAI*" 2>nul
 timeout /t 2 /nobreak >nul
 if exist "%RELEASE%" (
-    echo  [0/7] Purana release folder hata raha hai (cached config clear)...
+    echo  [0/7] Purana release folder hata raha hai...
     rmdir /s /q "%RELEASE%" 2>nul
 )
 echo  [OK] Cleanup done.
@@ -60,9 +61,10 @@ echo  [OK] Code latest ho gaya.
 :: Step 4: Packages install
 echo.
 echo  [4/7] Packages install ho rahe hain...
-call pnpm install
+cd /d "%ROOT%"
+call pnpm install --frozen-lockfile
 if %errorlevel% neq 0 (
-    echo  [WARN] Retrying...
+    echo  [WARN] Frozen lockfile fail, retry without frozen...
     call pnpm install --no-frozen-lockfile
     if %errorlevel% neq 0 (
         echo  [ERROR] Package install fail!
@@ -71,7 +73,7 @@ if %errorlevel% neq 0 (
 )
 echo  [OK] Packages ready.
 
-:: Step 5: API Server build (startup hang fix)
+:: Step 5: API Server build
 echo.
 echo  [5/7] API Server build ho raha hai...
 cd /d "%ROOT%\artifacts\api-server"
@@ -93,16 +95,36 @@ if %errorlevel% neq 0 (
 )
 echo  [OK] Frontend ready.
 
-:: Step 7: Electron Portable EXE (NSIS disabled)
+:: Step 7: TypeScript compile + EXE build
 echo.
-echo  [7/7] Windows Portable EXE ban raha hai (3-5 min)...
+echo  [7/7] Windows EXE ban raha hai (3-5 min)...
 cd /d "%DESKTOP%"
 call npx tsc -p tsconfig.json
 if %errorlevel% neq 0 (
     echo  [ERROR] TypeScript compile fail!
     pause & exit /b 1
 )
-call npx electron-builder --win --config.win.target=portable
+
+:: Build choice - PORTABLE (default) ya INSTALLER
+set "BUILD_TYPE=portable"
+echo.
+echo  Build type chuno:
+echo  [1] Portable EXE (recommended - koi install nahi chahiye)
+echo  [2] NSIS Installer (proper install with shortcuts)
+echo  [3] Dono banao
+echo.
+set /p CHOICE="Choice (default=1): "
+if "%CHOICE%"=="2" set "BUILD_TYPE=nsis"
+if "%CHOICE%"=="3" set "BUILD_TYPE=all"
+
+if "%BUILD_TYPE%"=="portable" (
+    call npx electron-builder --win --config.win.target=portable
+) else if "%BUILD_TYPE%"=="nsis" (
+    call npx electron-builder --win nsis
+) else (
+    call npx electron-builder --win nsis portable
+)
+
 if %errorlevel% neq 0 (
     echo  [ERROR] EXE build fail!
     pause & exit /b 1
@@ -112,7 +134,14 @@ if %errorlevel% neq 0 (
 echo.
 echo  =====================================================
 echo   BUILD COMPLETE! v2.2.23
-echo   SAI-Rolotech-Smart-Engines-Portable-2.2.23.exe
+if "%BUILD_TYPE%"=="portable" (
+    echo   SAI-Rolotech-Smart-Engines-Portable-2.2.23.exe
+) else if "%BUILD_TYPE%"=="nsis" (
+    echo   SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe
+) else (
+    echo   Portable + NSIS Installer - dono ready!
+)
+echo   Folder: %RELEASE%
 echo  =====================================================
 echo.
 

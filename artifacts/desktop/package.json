@@ -39,7 +39,6 @@
     "appId": "com.saisai-rolotech-smart-engines.rollformingai",
     "productName": "SAI Rolotech Smart Engines",
     "copyright": "Copyright (c) 2026 SAI Rolotech Smart Engines",
-    "icon": "assets/icon",
     "directories": {
       "output": "release",
       "buildResources": "assets"
@@ -82,7 +81,6 @@
           ]
         }
       ],
-      "icon": "assets/icon.ico",
       "publisherName": "SAI Rolotech Smart Engines",
       "verifyUpdateCodeSignature": false,
       "requestedExecutionLevel": "requireAdministrator"
@@ -91,9 +89,6 @@
       "oneClick": true,
       "allowToChangeInstallationDirectory": false,
       "allowElevation": true,
-      "installerIcon": "assets/icon.ico",
-      "uninstallerIcon": "assets/icon.ico",
-      "installerHeaderIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "SAI Rolotech Smart Engines",

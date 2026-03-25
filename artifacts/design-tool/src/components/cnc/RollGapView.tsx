@@ -29,7 +29,7 @@ export function RollGapView() {
 
   const springbackFactors: Record<string, number> = {
     GI: 1.03, CR: 1.025, HR: 1.04, SS: 1.06, AL: 1.035,
-    MS: 1.03, CU: 1.02, TI: 1.08, PP: 1.15, HSLA: 1.055,
+    MS: 1.03, CU: 1.02, TI: 1.08, PP: 1.03, HSLA: 1.055,  // FIX: PP 1.15→1.03 (PP=pre-painted steel/GI substrate; 1.15 was AL's value — wrong material!)
   };
   const sbFactor = springbackComp ? (springbackFactors[materialType] ?? 1.03) : 1.0;
 

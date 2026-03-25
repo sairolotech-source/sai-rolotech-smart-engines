@@ -43,15 +43,15 @@ const MATERIAL_LIMITS: Record<string, {
 }> = {
   GI:   { yieldMPa: 280, tensileMPa: 380, minThick: 0.3, maxThick: 3.0, minBendRt: 1.0, maxAnglePerPass: 15, elongPct: 28, springbackPct: 3, maxFormingSpeed: 30, density: 7850 },
   CR:   { yieldMPa: 340, tensileMPa: 440, minThick: 0.2, maxThick: 3.0, minBendRt: 0.8, maxAnglePerPass: 12, elongPct: 32, springbackPct: 2.5, maxFormingSpeed: 35, density: 7850 },
-  HR:   { yieldMPa: 250, tensileMPa: 390, minThick: 1.0, maxThick: 8.0, minBendRt: 1.5, maxAnglePerPass: 12, elongPct: 30, springbackPct: 4, maxFormingSpeed: 20, density: 7850 },
+  HR:   { yieldMPa: 250, tensileMPa: 420, minThick: 1.0, maxThick: 8.0, minBendRt: 1.5, maxAnglePerPass: 12, elongPct: 30, springbackPct: 4, maxFormingSpeed: 20, density: 7850 },  // FIX: tensile 390→420 (SPHC IS 2062 / JIS G3131)
   SS:   { yieldMPa: 310, tensileMPa: 620, minThick: 0.3, maxThick: 3.0, minBendRt: 1.5, maxAnglePerPass: 10, elongPct: 40, springbackPct: 6, maxFormingSpeed: 15, density: 8000 },
   AL:   { yieldMPa: 270, tensileMPa: 310, minThick: 0.3, maxThick: 5.0, minBendRt: 1.0, maxAnglePerPass: 12, elongPct: 15, springbackPct: 3.5, maxFormingSpeed: 40, density: 2700 },
   MS:   { yieldMPa: 250, tensileMPa: 410, minThick: 0.3, maxThick: 6.0, minBendRt: 1.0, maxAnglePerPass: 12, elongPct: 26, springbackPct: 3, maxFormingSpeed: 25, density: 7850 },
   CU:   { yieldMPa: 200, tensileMPa: 300, minThick: 0.3, maxThick: 4.0, minBendRt: 0.8, maxAnglePerPass: 14, elongPct: 35, springbackPct: 2, maxFormingSpeed: 20, density: 8960 },
   TI:   { yieldMPa: 880, tensileMPa: 950, minThick: 0.5, maxThick: 3.0, minBendRt: 3.0, maxAnglePerPass: 6, elongPct: 14, springbackPct: 8, maxFormingSpeed: 8, density: 4430 },
   HSLA: { yieldMPa: 550, tensileMPa: 650, minThick: 0.5, maxThick: 6.0, minBendRt: 2.0, maxAnglePerPass: 10, elongPct: 18, springbackPct: 5.5, maxFormingSpeed: 15, density: 7850 },
-  PP:   { yieldMPa: 280, tensileMPa: 370, minThick: 0.3, maxThick: 3.0, minBendRt: 1.0, maxAnglePerPass: 15, elongPct: 28, springbackPct: 3, maxFormingSpeed: 25, density: 7850 },
-  DP:   { yieldMPa: 380, tensileMPa: 780, minThick: 0.5, maxThick: 3.0, minBendRt: 2.0, maxAnglePerPass: 8, elongPct: 20, springbackPct: 5, maxFormingSpeed: 12, density: 7850 },
+  PP:   { yieldMPa: 280, tensileMPa: 380, minThick: 0.3, maxThick: 3.0, minBendRt: 1.0, maxAnglePerPass: 15, elongPct: 28, springbackPct: 3, maxFormingSpeed: 25, density: 7850 },  // FIX: tensileMPa 370→380 (pre-painted GI base IS 277 Z275: UTS 380 MPa)
+  DP:   { yieldMPa: 490, tensileMPa: 780, minThick: 0.5, maxThick: 3.0, minBendRt: 2.0, maxAnglePerPass: 8, elongPct: 20, springbackPct: 5, maxFormingSpeed: 12, density: 7850 },  // FIX: yield 380→490 (DP780 min yield per EN 10338:2016)
 };
 
 const PROFILE_RULES: Record<string, { minBends: number; maxBends: number; symmetry: boolean; typicalAngle: number; desc: string }> = {

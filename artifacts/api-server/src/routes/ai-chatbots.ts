@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base";
 import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 import { SAI_CONFIDENTIALITY_RULES, SAI_ERROR_BRAND } from "../lib/ai-confidentiality";
+import { ULTRA_VALIDATION_RULES } from "../lib/validation-rules";
 
 type AIProvider = "nvidia" | "kimi" | "sambanova" | "gemini" | "anthropic" | "openrouter";
 
@@ -214,7 +215,8 @@ const CHATBOT_CONFIGS: ChatbotConfig[] = [
     nameHi: "डिज़ाइन एक्सपर्ट",
     icon: "✏️",
     color: "#3b82f6",
-    systemPrompt: `You are the Sai Rolotech Smart Engines Design Expert AI — specialized in roll forming profile design, DXF analysis, bend calculations, and power pattern optimization.
+    systemPrompt: `${ULTRA_VALIDATION_RULES}
+You are the Sai Rolotech Smart Engines Design Expert AI — specialized in roll forming profile design, DXF analysis, bend calculations, and power pattern optimization.
 Your expertise includes:
 - Profile cross-section design and optimization
 - DXF file interpretation and geometry analysis
@@ -233,7 +235,8 @@ ${SAI_CONFIDENTIALITY_RULES}`,
     nameHi: "मैन्युफैक्चरिंग एक्सपर्ट",
     icon: "⚙️",
     color: "#f59e0b",
-    systemPrompt: `You are the Sai Rolotech Smart Engines Manufacturing Expert AI — specialized in CNC machining, G-code programming, toolpath optimization, and machine operations.
+    systemPrompt: `${ULTRA_VALIDATION_RULES}
+You are the Sai Rolotech Smart Engines Manufacturing Expert AI — specialized in CNC machining, G-code programming, toolpath optimization, and machine operations.
 Your expertise includes:
 - G-code programming (Fanuc, Delta 2X, Siemens controllers)
 - Toolpath strategy and optimization
@@ -253,7 +256,8 @@ ${SAI_CONFIDENTIALITY_RULES}`,
     nameHi: "मटीरियल एक्सपर्ट",
     icon: "🔩",
     color: "#10b981",
-    systemPrompt: `You are the Sai Rolotech Smart Engines Material Expert AI — specialized in steel grades, tooling materials, surface treatments, and material selection for roll forming.
+    systemPrompt: `${ULTRA_VALIDATION_RULES}
+You are the Sai Rolotech Smart Engines Material Expert AI — specialized in steel grades, tooling materials, surface treatments, and material selection for roll forming.
 Your expertise includes:
 - Steel grades (AISI 304, 316, 1018, D2, M2, H13)
 - Material hardness (HRC/HRB) and heat treatment
@@ -273,7 +277,8 @@ ${SAI_CONFIDENTIALITY_RULES}`,
     nameHi: "क्वालिटी इंस्पेक्टर",
     icon: "🔍",
     color: "#ef4444",
-    systemPrompt: `You are the Sai Rolotech Smart Engines Quality Inspector AI — specialized in defect diagnosis, tolerance verification, and quality assurance for roll formed products.
+    systemPrompt: `${ULTRA_VALIDATION_RULES}
+You are the Sai Rolotech Smart Engines Quality Inspector AI — specialized in defect diagnosis, tolerance verification, and quality assurance for roll formed products.
 Your expertise includes:
 - Roll forming defects: twist, camber, bow, flare, edge wave, oil canning
 - Root cause analysis for each defect type
@@ -293,7 +298,8 @@ ${SAI_CONFIDENTIALITY_RULES}`,
     nameHi: "प्रोसेस ऑप्टिमाइज़र",
     icon: "📊",
     color: "#8b5cf6",
-    systemPrompt: `You are the Sai Rolotech Smart Engines Process Optimizer AI — specialized in production efficiency, line speed optimization, cost reduction, and workflow improvement.
+    systemPrompt: `${ULTRA_VALIDATION_RULES}
+You are the Sai Rolotech Smart Engines Process Optimizer AI — specialized in production efficiency, line speed optimization, cost reduction, and workflow improvement.
 Your expertise includes:
 - Roll forming line speed optimization
 - Production throughput analysis
@@ -760,7 +766,8 @@ router.post("/chatbot/master-designer", async (req: Request, res: Response) => {
       return;
     }
 
-    const systemPrompt = `You are the Master Designer — a roll forming expert with 50 years of deep hands-on industry experience. You have worked in roll forming plants across Asia, Europe and North America, designing thousands of profiles including C/U/Z channels, purlins, railings, gutters, automotive profiles, tubes and complex closed sections.
+    const systemPrompt = `${ULTRA_VALIDATION_RULES}
+You are the Master Designer — a roll forming expert with 50 years of deep hands-on industry experience. You have worked in roll forming plants across Asia, Europe and North America, designing thousands of profiles including C/U/Z channels, purlins, railings, gutters, automotive profiles, tubes and complex closed sections.
 
 Your personality:
 - Direct, confident and precise — you say "use 15° per pass for this material" not "you might want to consider..."

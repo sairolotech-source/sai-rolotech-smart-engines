@@ -23,11 +23,11 @@ interface MachineState {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MATERIALS: Record<string, { color: string; sheen: string; name: string; ys: number }> = {
   GI:   { color: "#c8d8c8", sheen: "#e8f4e8", name: "GI (Galvanized Steel)", ys: 280 },
-  SS:   { color: "#d0d8e0", sheen: "#eef2f8", name: "Stainless Steel", ys: 520 },
-  AL:   { color: "#d0c890", sheen: "#ece8c0", name: "Aluminium", ys: 110 },
+  SS:   { color: "#d0d8e0", sheen: "#eef2f8", name: "Stainless Steel", ys: 310 },  // FIX: 520→310 MPa (annealed 2B supply, not 1/4-hard)
+  AL:   { color: "#d0c890", sheen: "#ece8c0", name: "Aluminium", ys: 270 },        // FIX: 110→270 MPa (6061-T4 design value)
   CR:   { color: "#c0c8d0", sheen: "#dce4ec", name: "Cold Rolled (CR)", ys: 340 },  // FIX: was 250 (swapped with HR)
   HR:   { color: "#c8b880", sheen: "#e4d4a0", name: "Hot Rolled (HR)", ys: 250 },  // FIX: was 350 (swapped with CR)
-  MS:   { color: "#b8c0c8", sheen: "#d4dce4", name: "Mild Steel", ys: 300 },
+  MS:   { color: "#b8c0c8", sheen: "#d4dce4", name: "Mild Steel", ys: 250 },       // FIX: 300→250 MPa (IS 2062 E250)
 };
 
 const STATION_COUNT = 9;

@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base.js";
+import { ULTRA_VALIDATION_RULES } from "../lib/validation-rules";
 
 const router: IRouter = Router();
 
@@ -82,7 +83,8 @@ router.post("/ai/analyze", async (req: Request, res: Response) => {
       context?: string;
     };
 
-    const systemPrompt = `You are a precision roll forming and CNC engineering expert with 50 years of experience.
+    const systemPrompt = `${ULTRA_VALIDATION_RULES}
+You are a precision roll forming and CNC engineering expert with 50 years of experience.
 Analyze the provided ${type} data and give specific, actionable recommendations.
 Be concise but precise. Use engineering terminology. Reference relevant DIN/ISO standards where applicable.`;
 
@@ -141,7 +143,8 @@ router.post("/ai/quality-check", async (req: Request, res: Response): Promise<vo
     const { profile, stations, tooling, gcode, material, thickness } =
       req.body as Record<string, unknown>;
 
-    const systemPrompt = `You are a senior roll forming quality control engineer with 50 years of experience.
+    const systemPrompt = `${ULTRA_VALIDATION_RULES}
+You are a senior roll forming quality control engineer with 50 years of experience.
 Evaluate the provided design data and return a JSON quality report.
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanation.
 Format: {"experts":[{"expert":"Design Expert","score":88,"findings":["..."],"status":"pass"},...],"overallScore":87,"grade":"A","approved":true}

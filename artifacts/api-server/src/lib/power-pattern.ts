@@ -67,19 +67,22 @@ const SPRINGBACK_FACTORS: Record<string, number> = {
 /**
  * FIX #16–#18: UTS values — synchronized with deep-accuracy-engine.ts MATERIAL_PROPS.utsMPa
  * Previous: GI:340, CR:350, SS:600(CRITICAL!), AL:200, MS:360, HSLA:500
- * Fixed:    GI:350, CR:410, SS:720(+20%), AL:310, MS:400, HSLA:650
- * SS was 600 vs 720 MPa — 20% underestimate in forming force for stainless steel
+ * Fixed:    GI:380, CR:440, SS:620(annealed 2B!), AL:310, MS:410, HSLA:650
+ * SS was 720 (quarter-hard) → 620 (annealed 2B per ASTM A240/EN 10088-2)
+ * GI: 350→380 (IS 277 Z275/DIN EN 10346 S280GD); CR: 410→440 (IS 513 CR4/DIN EN 10130)
+ * HR: 400→420 (IS 10748/DIN EN 10025); MS: 400→410 (IS 2062 E250A)
+ * CU: 280→300 (Cu-ETP annealed 2B, DIN EN 1652)
  */
 const UTS: Record<string, number> = {
-  GI:   350,  // was 340
-  CR:   410,  // was 350 — cold-rolled per DIN EN 10130: 410 MPa
-  HR:   400,  // unchanged — hot-rolled per DIN EN 10025
-  SS:   720,  // was 600 — CRITICAL FIX: 304 SS per ASTM A240: 515-720 MPa, 720 for design
-  AL:   310,  // was 200 — 5052-H32 per ASTM B209: 228 MPa min, design: 310
-  MS:   400,  // was 360 — mild steel per IS 2062: 400 MPa
-  CU:   280,  // unchanged — Cu per DIN EN 1652: 280 MPa
+  GI:   380,  // FIX: was 350 — GI per IS 277 Z275 / DIN EN 10346 S280GD: UTS 380 MPa
+  CR:   440,  // FIX: was 410 — cold-rolled IS 513 CR4 / DIN EN 10130 DC01: UTS 440 MPa
+  HR:   420,  // FIX: was 400 — hot-rolled IS 10748 SPHC / DIN EN 10025: UTS 420 MPa
+  SS:   620,  // FIX: was 720 (quarter-hard!) — ASTM A240 SS304 annealed 2B: UTS 520–620 MPa
+  AL:   310,  // unchanged — 6061-T6 per ASTM B209: UTS 310 MPa
+  MS:   410,  // FIX: was 400 — mild steel IS 2062 E250A (Fe410): UTS 410 MPa
+  CU:   300,  // FIX: was 280 — Cu-ETP C11000 annealed: UTS 300 MPa (DIN EN 1652)
   TI:   950,  // unchanged — Grade 2 Ti per ASTM B265: 345 min, Gr5:950
-  PP:   350,  // was 180 — pre-painted steel same as GI base: 350 MPa
+  PP:   380,  // FIX: was 350 — pre-painted GI base per IS 277 Z275: UTS 380 MPa (same as GI)
   HSLA: 650,  // was 500 — HSLA per DIN EN 10149-2 S550MC: 650 MPa
 };
 
@@ -92,7 +95,7 @@ const YIELD_STRENGTH: Record<string, number> = {
   GI:   280,  // was 240 — GI per DIN EN 10327: 280 MPa
   CR:   340,  // was 280 — cold-rolled per DIN EN 10130 DC01: 280, DC04: 240; design: 340
   HR:   250,  // was 280 — FIXED: HR lower yield than CR per DIN EN 10025: 250 MPa
-  SS:   520,  // was 280 — CRITICAL FIX: 304SS per ASTM A240: 207 MPa min, design 520 MPa
+  SS:   310,  // FIX: was 520 (quarter-hard 1/4H!) — ASTM A240 SS304 annealed 2B supply: 310 MPa typical (min 205); roll forming always uses annealed 2B
   AL:   270,  // was 130 — 5052-H32 per ASTM B209: 193 MPa, design: 270
   MS:   250,  // was 280 — mild steel IS 2062 Gr A: 250 MPa
   CU:   200,  // was 150 — Cu per DIN EN 1652 R220: 200 MPa
@@ -113,7 +116,7 @@ const ELASTIC_MODULUS: Record<string, number> = {
   SS:   193000,   // MPa = 193 GPa (austenitic SS)
   AL:    70000,   // MPa = 70 GPa
   MS:   200000,   // MPa
-  CU:   120000,   // MPa = 120 GPa
+  CU:   117000,   // FIX: was 120000 (120 GPa) — Cu-ETP C11000 E = 117 GPa (DIN EN 1652 / our canon)
   TI:   115000,   // MPa = 115 GPa (was 115000, consistent)
   PP:   200000,   // was 1500 — CRITICAL FIX: PP=pre-painted steel, E=200 GPa not 1500 MPa
   HSLA: 205000,   // MPa = 205 GPa (slightly higher than mild steel)

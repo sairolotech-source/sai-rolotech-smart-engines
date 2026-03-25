@@ -158,13 +158,13 @@ const STRIP_MATERIAL_DB: Record<MaterialType, {
   thickRange: [number, number]; kFactor: number; bendRadFactor: number;
 }> = {
   // FIX: kFactor corrections (DIN 6935): GI 0.47→0.44, CR yield 350→340, HR 0.50→0.42 (CRITICAL),
-  // AL 0.41→0.43, MS 0.50→0.42 (CRITICAL), TI yield 900→880, HSLA 0.48→0.45, PP 0.47→0.44
-  GI:   { label: "Galvanized Steel",  yieldStr: 280, tensile: 380, thickRange: [0.3, 3.0], kFactor: 0.44, bendRadFactor: 1.0 },  // FIX: kf 0.47→0.44
-  CR:   { label: "Cold Rolled Steel", yieldStr: 340, tensile: 440, thickRange: [0.5, 4.0], kFactor: 0.44, bendRadFactor: 0.8 },  // FIX: yield 350→340
-  HR:   { label: "Hot Rolled Steel",  yieldStr: 250, tensile: 400, thickRange: [1.5, 6.0], kFactor: 0.42, bendRadFactor: 1.2 },  // FIX: kf 0.50→0.42 (HR is softer, not higher K)
-  SS:   { label: "Stainless 304",     yieldStr: 310, tensile: 720, thickRange: [0.5, 3.0], kFactor: 0.50, bendRadFactor: 1.5 },  // correct
-  AL:   { label: "Aluminium 6061-T4", yieldStr: 270, tensile: 310, thickRange: [0.5, 5.0], kFactor: 0.43, bendRadFactor: 0.8 },  // FIX: kf 0.41→0.43, yield 276→270
-  MS:   { label: "Mild Steel",        yieldStr: 250, tensile: 400, thickRange: [0.8, 4.0], kFactor: 0.42, bendRadFactor: 1.2 },  // FIX: kf 0.50→0.42
+  // AL 0.41→0.43, MS 0.50→0.44 (DIN 6935; NOT 0.42 which is HR), TI yield 900→880, HSLA 0.48→0.45, PP 0.47→0.44
+  GI:   { label: "Galvanized Steel",  yieldStr: 280, tensile: 380, thickRange: [0.3, 3.0], kFactor: 0.44, bendRadFactor: 1.0 },
+  CR:   { label: "Cold Rolled Steel", yieldStr: 340, tensile: 440, thickRange: [0.5, 4.0], kFactor: 0.44, bendRadFactor: 0.8 },
+  HR:   { label: "Hot Rolled Steel",  yieldStr: 250, tensile: 420, thickRange: [1.5, 6.0], kFactor: 0.42, bendRadFactor: 1.2 },  // FIX: tensile 400→420 MPa (IS 2062 HR)
+  SS:   { label: "Stainless 304",     yieldStr: 310, tensile: 720, thickRange: [0.5, 3.0], kFactor: 0.50, bendRadFactor: 1.5 },
+  AL:   { label: "Aluminium 6061-T4", yieldStr: 270, tensile: 310, thickRange: [0.5, 5.0], kFactor: 0.43, bendRadFactor: 0.8 },
+  MS:   { label: "Mild Steel",        yieldStr: 250, tensile: 410, thickRange: [0.8, 4.0], kFactor: 0.44, bendRadFactor: 1.2 },  // FIX: kf 0.42→0.44 (DIN 6935; 0.42 is HR not MS), tensile 400→410
   PP:   { label: "Pre-Painted Steel", yieldStr: 280, tensile: 370, thickRange: [0.4, 1.5], kFactor: 0.44, bendRadFactor: 1.0 },  // FIX: kf 0.47→0.44, yield 300→280
   TI:   { label: "Titanium Ti-6Al-4V", yieldStr: 880, tensile: 950, thickRange: [0.5, 3.0], kFactor: 0.50, bendRadFactor: 3.0 }, // FIX: yield 900→880
   HSLA: { label: "HSLA Steel S550",   yieldStr: 550, tensile: 650, thickRange: [1.5, 8.0], kFactor: 0.45, bendRadFactor: 2.0 },  // FIX: kf 0.48→0.45, yield 355→550

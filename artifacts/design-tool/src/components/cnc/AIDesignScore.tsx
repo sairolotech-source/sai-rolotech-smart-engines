@@ -146,7 +146,7 @@ function buildDesignPayload(state: ReturnType<typeof useCncStore.getState>) {
   const maxThinningRatio = stations.length > 0 ? 0.93 : 1.0;
   const springbackFactor: Record<string, number> = {
     GI: 1.05, CR: 1.08, HR: 1.12, SS: 1.20, AL: 1.15, MS: 1.06,
-    PP: 1.05, TI: 1.30, CU: 1.03, HSLA: 1.18,
+    PP: 1.06, TI: 1.25, CU: 1.08, HSLA: 1.14,  // FIX: PP 1.05→1.06, TI 1.30→1.25, CU 1.03→1.08, HSLA 1.18→1.14 (per useCncStore canonical values)
   };
 
   const firstRoll = rollTooling[0]?.rollProfile;

@@ -25,12 +25,12 @@ export const MATERIAL_PROPS: Record<string, {
   GI:   { yieldMPa: 280, utsMPa: 380,  elasticGPa: 210, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.05, minThickMm: 0.3,  maxThickMm: 4.0,  maxBendDeg: 180, densityKgM3: 7850 },  // FIX: utsMPa 350→380 (IS 277 Z275)
   CR:   { yieldMPa: 340, utsMPa: 440,  elasticGPa: 210, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.08, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 180, densityKgM3: 7850 },  // FIX: utsMPa 410→440 (IS 513 CR4)
   HR:   { yieldMPa: 250, utsMPa: 420,  elasticGPa: 210, nHardening: 0.18, kFactor: 0.42, springbackFactor: 1.12, minThickMm: 0.5,  maxThickMm: 6.0,  maxBendDeg: 150, densityKgM3: 7850 },  // FIX: utsMPa 400→420 (SPHC)
-  SS:   { yieldMPa: 520, utsMPa: 720,  elasticGPa: 193, nHardening: 0.47, kFactor: 0.50, springbackFactor: 1.20, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 120, densityKgM3: 7900 },
+  SS:   { yieldMPa: 310, utsMPa: 620,  elasticGPa: 193, nHardening: 0.47, kFactor: 0.50, springbackFactor: 1.20, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 120, densityKgM3: 7900 },  // FIX: yield 520→310, UTS 720→620 (annealed 2B supply condition per EN 10088-2; 520/720 is 1/4-hard cold-worked, incorrect for roll forming)
   AL:   { yieldMPa: 270, utsMPa: 310,  elasticGPa: 69,  nHardening: 0.20, kFactor: 0.43, springbackFactor: 1.15, minThickMm: 0.3,  maxThickMm: 4.0,  maxBendDeg: 150, densityKgM3: 2700 },
-  MS:   { yieldMPa: 250, utsMPa: 400,  elasticGPa: 210, nHardening: 0.18, kFactor: 0.42, springbackFactor: 1.06, minThickMm: 0.5,  maxThickMm: 5.0,  maxBendDeg: 160, densityKgM3: 7850 },
-  CU:   { yieldMPa: 200, utsMPa: 280,  elasticGPa: 120, nHardening: 0.35, kFactor: 0.44, springbackFactor: 1.08, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 180, densityKgM3: 8900 },
-  TI:   { yieldMPa: 880, utsMPa: 950,  elasticGPa: 114, nHardening: 0.05, kFactor: 0.50, springbackFactor: 1.25, minThickMm: 0.5,  maxThickMm: 3.0,  maxBendDeg: 90,  densityKgM3: 4500 },
-  PP:   { yieldMPa: 280, utsMPa: 360,  elasticGPa: 210, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.06, minThickMm: 1.0,  maxThickMm: 6.0,  maxBendDeg: 120, densityKgM3: 7850 },
+  MS:   { yieldMPa: 250, utsMPa: 410,  elasticGPa: 200, nHardening: 0.18, kFactor: 0.44, springbackFactor: 1.06, minThickMm: 0.5,  maxThickMm: 5.0,  maxBendDeg: 160, densityKgM3: 7850 },  // FIX: utsMPa 400→410 (IS 2062 Fe410), kFactor 0.42→0.44 (DIN 6935), E 210→200 GPa
+  CU:   { yieldMPa: 200, utsMPa: 300,  elasticGPa: 117, nHardening: 0.35, kFactor: 0.44, springbackFactor: 1.08, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 180, densityKgM3: 8960 },  // FIX: utsMPa 280→300 (C110 H02 half-hard), E 120→117 GPa, density 8900→8960
+  TI:   { yieldMPa: 880, utsMPa: 950,  elasticGPa: 114, nHardening: 0.05, kFactor: 0.50, springbackFactor: 1.25, minThickMm: 0.5,  maxThickMm: 3.0,  maxBendDeg: 90,  densityKgM3: 4510 },  // FIX: density 4500→4510 kg/m³ (Ti-6Al-4V)
+  PP:   { yieldMPa: 280, utsMPa: 370,  elasticGPa: 200, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.06, minThickMm: 1.0,  maxThickMm: 6.0,  maxBendDeg: 120, densityKgM3: 7850 },  // FIX: utsMPa 360→370 (pre-painted GI substrate), E 210→200 GPa
   HSLA: { yieldMPa: 550, utsMPa: 650,  elasticGPa: 210, nHardening: 0.14, kFactor: 0.45, springbackFactor: 1.14, minThickMm: 0.5,  maxThickMm: 4.0,  maxBendDeg: 120, densityKgM3: 7850 },
 };
 

@@ -95,9 +95,9 @@ const MATERIAL_PROPS: Record<string, { yieldStrength: number; elasticModulus: nu
   GI:   { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },
   CR:   { yieldStrength: 340, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },  // FIX: was 250 (HR yield!) + kFactor 0.42→0.44
   HR:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, poissonRatio: 0.30 },  // FIX: was 350 (CR yield!) + kFactor 0.48→0.42
-  SS:   { yieldStrength: 520, elasticModulus: 193000, kFactor: 0.50, poissonRatio: 0.28 },  // correct
+  SS:   { yieldStrength: 310, elasticModulus: 193000, kFactor: 0.50, poissonRatio: 0.28 },  // FIX: 520→310 MPa (annealed 2B; 520 is 1/4-hard cold-worked, wrong for roll forming supply)
   AL:   { yieldStrength: 270, elasticModulus: 69000,  kFactor: 0.43, poissonRatio: 0.33 },  // FIX: yield 110→270, kFactor 0.38→0.43
-  MS:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, poissonRatio: 0.30 },  // correct
+  MS:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },  // FIX: kFactor 0.42→0.44 (DIN 6935; 0.42 is HR value, MS=0.44)
   CU:   { yieldStrength: 200, elasticModulus: 117000, kFactor: 0.44, poissonRatio: 0.34 },  // FIX: kFactor 0.40→0.44
   TI:   { yieldStrength: 880, elasticModulus: 115000, kFactor: 0.50, poissonRatio: 0.34 },  // FIX: kFactor 0.52→0.50, E 116→115 GPa
   PP:   { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.44, poissonRatio: 0.30 },  // FIX: PP=pre-painted steel (same as GI), not polypropylene

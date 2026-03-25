@@ -128,6 +128,7 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
     MS: { minThick: 0.3, maxThick: 6.0, minRt: 1.0, maxAngle: 12, yieldMPa: 250 },
     CU: { minThick: 0.3, maxThick: 4.0, minRt: 0.8, maxAngle: 14, yieldMPa: 200 },
     TI: { minThick: 0.5, maxThick: 3.0, minRt: 3.0, maxAngle: 6, yieldMPa: 880 },
+    PP: { minThick: 0.3, maxThick: 1.2, minRt: 1.5, maxAngle: 12, yieldMPa: 280 },    // FIX: PP missing — Pre-Painted Steel; tighter maxThick (1.2mm) to protect coating
     HSLA: { minThick: 0.5, maxThick: 6.0, minRt: 2.0, maxAngle: 10, yieldMPa: 550 },  // FIX: 420→550
   };
 

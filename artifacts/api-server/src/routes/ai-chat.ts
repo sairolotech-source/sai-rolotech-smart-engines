@@ -5,6 +5,7 @@ import { setBackupInterval, createBackup } from "./backup";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base";
 import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 import { SAI_CONFIDENTIALITY_RULES, SAI_ERROR_BRAND } from "../lib/ai-confidentiality";
+import { ULTRA_VALIDATION_RULES, VALIDATION_RULES_SHORT } from "../lib/validation-rules";
 
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const MEMORY_FILE = path.join(DATA_DIR, "ai-memory.json");
@@ -76,7 +77,8 @@ async function onlineResponse(
   style: string,
   language: string
 ): Promise<string> {
-  const systemPrompt = `You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing. 
+  const systemPrompt = `${ULTRA_VALIDATION_RULES}
+You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing. 
 Response style: ${style}. Language: ${language}.
 Be accurate, concise when asked to be concise, detailed when asked for detail.
 Always be helpful and professional.
@@ -125,7 +127,8 @@ async function callInternetFallback(
   personalGeminiKeys: PersonalGeminiKeyEntry[],
   personalDeepseekKey?: string,
 ): Promise<{ text: string | null; failedKeyIds: string[] }> {
-  const systemPrompt = `You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing.
+  const systemPrompt = `${ULTRA_VALIDATION_RULES}
+You are the Sai Rolotech Smart Engines AI Assistant — an expert for roll forming, CNC machining, and industrial manufacturing.
 Response style: ${style}. Language: ${language}.
 Be accurate, concise when asked to be concise, detailed when asked for detail.
 ${SAI_CONFIDENTIALITY_RULES}`;

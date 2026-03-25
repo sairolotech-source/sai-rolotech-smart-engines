@@ -100,16 +100,16 @@ const MAT_PROPS = {
   GI:     { ys: 280, E: 200000, kf: 0.44, nu: 0.30 },
   CR:     { ys: 340, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: was 250 (swapped with HR)
   HR:     { ys: 250, E: 200000, kf: 0.42, nu: 0.30 },  // FIX: was 350 (swapped with CR), kf 0.48→0.42
-  SS:     { ys: 520, E: 193000, kf: 0.50, nu: 0.28 },
+  SS:     { ys: 310, E: 193000, kf: 0.50, nu: 0.28 },  // FIX: yield 520→310 MPa (annealed 2B supply per EN 10088-2 / ASTM A240; 520 is 1/4-hard cold-worked state)
   AL:     { ys: 270, E: 69000,  kf: 0.43, nu: 0.33 },  // FIX: yield 110→270, kf 0.38→0.43
   MS:     { ys: 250, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: kf 0.42→0.44 (DIN 6935 MS)
   CU:     { ys: 200, E: 117000, kf: 0.44, nu: 0.34 },  // FIX: kf 0.40→0.44
   TI:     { ys: 880, E: 115000, kf: 0.50, nu: 0.34 },  // FIX: kf 0.52→0.50, E 116→115
   PP:     { ys: 280, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: PP=pre-painted steel, not polypropylene
   HSLA:   { ys: 550, E: 205000, kf: 0.45, nu: 0.30 },  // FIX: kf 0.50→0.45, E+5 GPa
-  DP600:  { ys: 380, E: 210000, kf: 0.33, nu: 0.30 },
-  DP780: { ys: 500, E: 210000, kf: 0.31, nu: 0.30 },
-  TRIP780: { ys: 500, E: 210000, kf: 0.32, nu: 0.30 },
+  DP600:  { ys: 380, E: 210000, kf: 0.38, nu: 0.30 },  // FIX: kf 0.33→0.38 (AHSS roll forming guideline; DP600 K-factor typically 0.38–0.43)
+  DP780: { ys: 490, E: 210000, kf: 0.36, nu: 0.30 },  // FIX: yield 500→490 (EN 10338 min), kf 0.31→0.36 (AHSS roll forming guideline SME/AISI)
+  TRIP780: { ys: 500, E: 210000, kf: 0.36, nu: 0.30 },  // FIX: kf 0.32→0.36 (TRIP780 roll forming K-factor same as DP780; 0.32 underestimates neutral axis shift)
   DUPLEX: { ys: 500, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: kf 0.38→0.44 (Duplex SS 2205 ≈ SS grade)
   INCONEL: { ys: 500, E: 205000, kf: 0.34, nu: 0.31 },
   BRASS: { ys: 150, E: 110000, kf: 0.44, nu: 0.34 },

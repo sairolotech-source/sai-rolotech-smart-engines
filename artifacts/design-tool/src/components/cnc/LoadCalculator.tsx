@@ -336,7 +336,7 @@ export function LoadCalculator() {
                       className={inputCls}
                     />
                     <div className="text-[10px] text-zinc-600 mt-1">
-                      GI ≈ 280 · CR ≈ 340 · HR ≈ 250 · SS ≈ 520 · AL ≈ 270 MPa
+                      GI ≈ 280 · CR ≈ 340 · HR ≈ 250 · SS ≈ 310 · AL ≈ 270 MPa
                     </div>
                   </div>
                 </div>

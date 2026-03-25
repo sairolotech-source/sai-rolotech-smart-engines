@@ -55,11 +55,11 @@ interface MillResults {
 }
 
 const MATERIAL_PROPS: Record<SteelGrade, { ys: number; ts: number; E: number; label: string }> = {
-  CR:     { ys: 280, ts: 380, E: 210000, label: "Cold Rolled Steel" },
-  GI:     { ys: 250, ts: 350, E: 210000, label: "Galvanized Steel" },
+  CR:     { ys: 340, ts: 440, E: 210000, label: "Cold Rolled Steel" },  // FIX: ys 280→340 (IS 513 CR4), ts 380→440
+  GI:     { ys: 280, ts: 380, E: 210000, label: "Galvanized Steel" },   // FIX: ys 250→280 (IS 277 Z275), ts 350→380
   HSLA350:{ ys: 350, ts: 450, E: 210000, label: "HSLA 350" },
-  SS304:  { ys: 215, ts: 505, E: 193000, label: "Stainless 304" },
-  SS316:  { ys: 205, ts: 515, E: 193000, label: "Stainless 316" },
+  SS304:  { ys: 310, ts: 620, E: 193000, label: "Stainless 304" },      // FIX: ys 215→310 (annealed 2B, ASTM A240), ts 505→620
+  SS316:  { ys: 290, ts: 580, E: 193000, label: "Stainless 316" },      // FIX: ys 205→290 (annealed 2B, ASTM A240), ts 515→580
   AL6061: { ys: 276, ts: 310, E: 68900,  label: "Aluminium 6061-T6" },
   DX51D:  { ys: 140, ts: 270, E: 210000, label: "DX51D+Z Galv." },
 };

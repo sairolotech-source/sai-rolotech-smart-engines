@@ -4,7 +4,7 @@ const DEMO_PROFILE = {
   name: "C-Channel 200×75×20×2.0",
   depth: 200, flange: 75, lip: 20, thickness: 2.0,
   material: "GI (IS 277, Z180 Coating)",
-  yieldStrength: 250, uts: 370, kFactor: 0.38,
+  yieldStrength: 280, uts: 380, kFactor: 0.44,  // FIX: GI ys 250→280, kFactor 0.38→0.44 (DIN 6935)
   bendRadius: 2.0, springback: "3-5°",
   stripWidth: 402,
 };

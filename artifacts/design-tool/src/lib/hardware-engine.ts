@@ -102,7 +102,7 @@ const MAT_PROPS = {
   HR:     { ys: 250, E: 200000, kf: 0.42, nu: 0.30 },  // FIX: was 350 (swapped with CR), kf 0.48→0.42
   SS:     { ys: 520, E: 193000, kf: 0.50, nu: 0.28 },
   AL:     { ys: 270, E: 69000,  kf: 0.43, nu: 0.33 },  // FIX: yield 110→270, kf 0.38→0.43
-  MS:     { ys: 250, E: 200000, kf: 0.42, nu: 0.30 },
+  MS:     { ys: 250, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: kf 0.42→0.44 (DIN 6935 MS)
   CU:     { ys: 200, E: 117000, kf: 0.44, nu: 0.34 },  // FIX: kf 0.40→0.44
   TI:     { ys: 880, E: 115000, kf: 0.50, nu: 0.34 },  // FIX: kf 0.52→0.50, E 116→115
   PP:     { ys: 280, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: PP=pre-painted steel, not polypropylene
@@ -110,11 +110,11 @@ const MAT_PROPS = {
   DP600:  { ys: 380, E: 210000, kf: 0.33, nu: 0.30 },
   DP780: { ys: 500, E: 210000, kf: 0.31, nu: 0.30 },
   TRIP780: { ys: 500, E: 210000, kf: 0.32, nu: 0.30 },
-  DUPLEX: { ys: 500, E: 200000, kf: 0.38, nu: 0.30 },
+  DUPLEX: { ys: 500, E: 200000, kf: 0.44, nu: 0.30 },  // FIX: kf 0.38→0.44 (Duplex SS 2205 ≈ SS grade)
   INCONEL: { ys: 500, E: 205000, kf: 0.34, nu: 0.31 },
   BRASS: { ys: 150, E: 110000, kf: 0.44, nu: 0.34 },
   SPRING: { ys: 1200, E: 210000, kf: 0.28, nu: 0.29 },
-  NI200: { ys: 150, E: 207000, kf: 0.40, nu: 0.31 },
+  NI200: { ys: 150, E: 207000, kf: 0.44, nu: 0.31 },  // FIX: kf 0.40→0.44 (pure nickel, similar to CU/brass)
 };
 
 const MAT_SB = {

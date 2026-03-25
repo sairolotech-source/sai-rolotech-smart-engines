@@ -38,10 +38,10 @@ interface StationResult {
 }
 
 const TUBE_MATERIALS: Record<string, { ys: number; ts: number; E: number }> = {
-  "CR Steel": { ys: 280, ts: 380, E: 210000 },
-  "GI Steel": { ys: 250, ts: 350, E: 210000 },
-  "SS 304": { ys: 215, ts: 505, E: 193000 },
-  "SS 316": { ys: 205, ts: 515, E: 193000 },
+  "CR Steel": { ys: 340, ts: 420, E: 210000 },  // FIX: ys 280→340 (IS 513 CR4/CR2)
+  "GI Steel": { ys: 280, ts: 380, E: 210000 },  // FIX: ys 250→280 (IS 277 Z180)
+  "SS 304": { ys: 310, ts: 620, E: 193000 },    // FIX: ys 215→310, ts 505→620 (ASTM A240 2B)
+  "SS 316": { ys: 290, ts: 580, E: 193000 },    // FIX: ys 205→290, ts 515→580 (ASTM A240 316L)
   "AL 6061-T6": { ys: 276, ts: 310, E: 68900 },
   "Copper C110": { ys: 69, ts: 220, E: 117000 },
   "HSLA 350": { ys: 350, ts: 450, E: 210000 },

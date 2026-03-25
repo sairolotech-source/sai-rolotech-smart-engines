@@ -15,16 +15,16 @@ const STRIP_EDGE_COLOR = "#94a3b8";
 const PASS_LINE_COLOR = "#facc15";
 
 const MATERIAL_PROPS: Record<string, { yield: number; uts: number; elongation: number; color: string }> = {
-  GI:   { yield: 250,  uts: 320,  elongation: 22, color: "#b0bec5" },
-  CR:   { yield: 280,  uts: 350,  elongation: 20, color: "#90a4ae" },
-  HR:   { yield: 220,  uts: 300,  elongation: 25, color: "#a1887f" },
-  SS:   { yield: 310,  uts: 600,  elongation: 40, color: "#e0e0e0" },
-  AL:   { yield: 270,  uts: 310,  elongation: 12, color: "#fff8e1" },
+  GI:   { yield: 280,  uts: 380,  elongation: 22, color: "#b0bec5" },  // FIX: ys 250→280, uts 320→380 (IS 277 Z275)
+  CR:   { yield: 340,  uts: 440,  elongation: 28, color: "#90a4ae" },  // FIX: ys 280→340, uts 350→440 (IS 513 CR4)
+  HR:   { yield: 250,  uts: 420,  elongation: 22, color: "#a1887f" },  // FIX: ys 220→250, uts 300→420 (SPHC)
+  SS:   { yield: 310,  uts: 620,  elongation: 40, color: "#e0e0e0" },  // FIX: uts 600→620 (ASTM A240 2B)
+  AL:   { yield: 270,  uts: 310,  elongation: 16, color: "#fff8e1" },
   MS:   { yield: 250,  uts: 410,  elongation: 20, color: "#bdbdbd" },
-  CU:   { yield: 210,  uts: 320,  elongation: 35, color: "#ffcc80" },
-  TI:   { yield: 900,  uts: 1000, elongation: 10, color: "#ffe0b2" },
+  CU:   { yield: 200,  uts: 300,  elongation: 35, color: "#ffcc80" },  // FIX: ys 210→200 (C110 H02)
+  TI:   { yield: 880,  uts: 950,  elongation: 14, color: "#ffe0b2" },  // FIX: ys 900→880, uts 1000→950 (Ti-6Al-4V)
   HSLA: { yield: 550,  uts: 650,  elongation: 15, color: "#b0bec5" },
-  PP:   { yield: 35,   uts: 55,   elongation: 60, color: "#f3e5f5" },
+  PP:   { yield: 280,  uts: 370,  elongation: 28, color: "#f3e5f5" },  // FIX: ys 35→280, uts 55→370, elong 60→28 (Pre-Painted Steel, not polypropylene)
 };
 
 const ROLL_TYPE_COLORS: Record<string, string> = {
@@ -607,7 +607,7 @@ export function RollFormingSimulator() {
                   ["Roll Gap", `${rollGap.toFixed(3)} mm`, "#94a3b8"],
                   ["Springback", `+${springbackDeg.toFixed(2)}°`, "#f87171"],
                   ["Forming Force", `${formingForceN.toLocaleString()} N`, "#4ade80"],
-                  ["K-Factor", (rt?.kFactor ?? 0.42).toFixed(3), "#c084fc"],
+                  ["K-Factor", (rt?.kFactor ?? 0.44).toFixed(3), "#c084fc"],  // FIX: fallback 0.42→0.44 (DIN 6935)
                 ].map(([label, val, color]) => (
                   <div key={label as string} className="flex justify-between text-[10px] font-mono border-b border-zinc-800/60 pb-0.5">
                     <span className="text-zinc-500">{label}</span>

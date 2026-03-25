@@ -19,7 +19,7 @@ const MATS: Record<string, MatFEA> = {
   AL:   { name: "Aluminium 6061-T4",  yieldMPa: 270, utsMPa: 310, E_GPa: 69,  n: 0.20, K_MPa: 430, elongPct: 16, density: 2700, poisson: 0.33 },  // FIX: was 110 (annealed)
   MS:   { name: "Mild Steel",         yieldMPa: 250, utsMPa: 410, E_GPa: 200, n: 0.17, K_MPa: 530, elongPct: 26, density: 7850, poisson: 0.3 },
   HSLA: { name: "HSLA 550",           yieldMPa: 550, utsMPa: 650, E_GPa: 205, n: 0.14, K_MPa: 930, elongPct: 15, density: 7850, poisson: 0.3 },  // FIX: was 420
-  DP:   { name: "Dual Phase DP780",   yieldMPa: 380, utsMPa: 780, E_GPa: 200, n: 0.16, K_MPa: 820, elongPct: 20, density: 7850, poisson: 0.3 },
+  DP:   { name: "Dual Phase DP780",   yieldMPa: 490, utsMPa: 780, E_GPa: 200, n: 0.16, K_MPa: 820, elongPct: 20, density: 7850, poisson: 0.3 },  // FIX: 380→490 MPa (380 is DP600 yield, DP780 min yield is ~440-500 MPa per ASTM A1008)
   Ti:   { name: "Titanium Ti-6Al-4V", yieldMPa: 880, utsMPa: 950, E_GPa: 114, n: 0.10, K_MPa: 1200, elongPct: 14, density: 4430, poisson: 0.34 },
 };
 

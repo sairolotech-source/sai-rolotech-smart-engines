@@ -107,7 +107,7 @@ export function DrawingDiesView() {
     outputCornerR: 5,
     thickness: 1.5,
     material: "CR Steel",
-    yieldStrength: 280,
+    yieldStrength: 340,  // FIX: CR Steel yield 280→340 MPa (IS 513 CR4)
     numStages: 6,
     reductionPerPass: 15,
   });

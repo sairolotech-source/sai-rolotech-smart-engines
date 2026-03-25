@@ -155,8 +155,8 @@ function buildOfflineSuggestions(payload: Record<string, unknown>) {
       {
         id: "MATERIAL_FORMING", label: "Material & Forming", icon: "⚙️",
         suggestions: [
-          `${mat} at ${thk}mm: Yield strength = ${mat === "GI" ? "280" : mat === "SS" ? "520" : mat === "CR" ? "340" : "250"}MPa — verify forming force ${force}kN ≥ calculated minimum at station ${stationNum}.`,
-          `Station ${stationNum}: K-factor = ${mat === "GI" ? "0.44" : mat === "SS" ? "0.50" : "0.42"} for ${mat} — use in blank width calculation.`,
+          `${mat} at ${thk}mm: Yield strength = ${mat === "GI" ? "280" : mat === "SS" ? "520" : mat === "CR" ? "340" : mat === "HR" ? "250" : mat === "AL" ? "270" : mat === "HSLA" ? "550" : mat === "CU" ? "200" : mat === "TI" ? "880" : "250"}MPa — verify forming force ${force}kN ≥ calculated minimum at station ${stationNum}.`,
+          `Station ${stationNum}: K-factor = ${mat === "GI" ? "0.44" : mat === "SS" ? "0.50" : mat === "HR" ? "0.42" : mat === "AL" ? "0.43" : mat === "HSLA" ? "0.45" : mat === "TI" ? "0.50" : "0.44"} for ${mat} — use in blank width calculation.`,
           `${mat} elongation = ${mat === "GI" ? "22" : mat === "SS" ? "40" : "18"}% — adequate for ${delta.toFixed(1)}° forming at station ${stationNum}.`,
           `Station ${stationNum}: Apply ${mat === "SS" ? "chlorine-free" : "standard EP"} roll forming oil at ${speed}m/min line speed.`,
           `Coil temper: Use 1/4H for ${mat} to balance formability vs spring control at station ${stationNum} ${angle}° bend.`,

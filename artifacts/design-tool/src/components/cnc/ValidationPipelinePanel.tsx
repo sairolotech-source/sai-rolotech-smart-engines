@@ -120,15 +120,15 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
   }
 
   const MAT_LIMITS: Record<string, { minThick: number; maxThick: number; minRt: number; maxAngle: number; yieldMPa: number }> = {
-    GI: { minThick: 0.3, maxThick: 3.0, minRt: 1.0, maxAngle: 15, yieldMPa: 240 },
-    CR: { minThick: 0.2, maxThick: 3.0, minRt: 0.8, maxAngle: 12, yieldMPa: 280 },
+    GI: { minThick: 0.3, maxThick: 3.0, minRt: 1.0, maxAngle: 15, yieldMPa: 280 },  // FIX: 240→280
+    CR: { minThick: 0.2, maxThick: 3.0, minRt: 0.8, maxAngle: 12, yieldMPa: 340 },  // FIX: 280→340
     HR: { minThick: 1.0, maxThick: 8.0, minRt: 1.5, maxAngle: 12, yieldMPa: 250 },
     SS: { minThick: 0.3, maxThick: 3.0, minRt: 1.5, maxAngle: 10, yieldMPa: 310 },
-    AL: { minThick: 0.3, maxThick: 5.0, minRt: 1.0, maxAngle: 12, yieldMPa: 110 },
+    AL: { minThick: 0.3, maxThick: 5.0, minRt: 1.0, maxAngle: 12, yieldMPa: 270 },  // FIX: 110→270
     MS: { minThick: 0.3, maxThick: 6.0, minRt: 1.0, maxAngle: 12, yieldMPa: 250 },
     CU: { minThick: 0.3, maxThick: 4.0, minRt: 0.8, maxAngle: 14, yieldMPa: 200 },
     TI: { minThick: 0.5, maxThick: 3.0, minRt: 3.0, maxAngle: 6, yieldMPa: 880 },
-    HSLA: { minThick: 0.5, maxThick: 6.0, minRt: 2.0, maxAngle: 10, yieldMPa: 420 },
+    HSLA: { minThick: 0.5, maxThick: 6.0, minRt: 2.0, maxAngle: 10, yieldMPa: 550 },  // FIX: 420→550
   };
 
   if (layerId === 5) {

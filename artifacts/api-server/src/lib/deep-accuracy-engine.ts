@@ -22,9 +22,9 @@ export const MATERIAL_PROPS: Record<string, {
   minThickMm: number; maxThickMm: number; maxBendDeg: number;
   densityKgM3: number;
 }> = {
-  GI:   { yieldMPa: 280, utsMPa: 350,  elasticGPa: 210, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.05, minThickMm: 0.3,  maxThickMm: 4.0,  maxBendDeg: 180, densityKgM3: 7850 },
-  CR:   { yieldMPa: 340, utsMPa: 410,  elasticGPa: 210, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.08, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 180, densityKgM3: 7850 },
-  HR:   { yieldMPa: 250, utsMPa: 400,  elasticGPa: 210, nHardening: 0.18, kFactor: 0.42, springbackFactor: 1.12, minThickMm: 0.5,  maxThickMm: 6.0,  maxBendDeg: 150, densityKgM3: 7850 },
+  GI:   { yieldMPa: 280, utsMPa: 380,  elasticGPa: 210, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.05, minThickMm: 0.3,  maxThickMm: 4.0,  maxBendDeg: 180, densityKgM3: 7850 },  // FIX: utsMPa 350→380 (IS 277 Z275)
+  CR:   { yieldMPa: 340, utsMPa: 440,  elasticGPa: 210, nHardening: 0.22, kFactor: 0.44, springbackFactor: 1.08, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 180, densityKgM3: 7850 },  // FIX: utsMPa 410→440 (IS 513 CR4)
+  HR:   { yieldMPa: 250, utsMPa: 420,  elasticGPa: 210, nHardening: 0.18, kFactor: 0.42, springbackFactor: 1.12, minThickMm: 0.5,  maxThickMm: 6.0,  maxBendDeg: 150, densityKgM3: 7850 },  // FIX: utsMPa 400→420 (SPHC)
   SS:   { yieldMPa: 520, utsMPa: 720,  elasticGPa: 193, nHardening: 0.47, kFactor: 0.50, springbackFactor: 1.20, minThickMm: 0.3,  maxThickMm: 3.0,  maxBendDeg: 120, densityKgM3: 7900 },
   AL:   { yieldMPa: 270, utsMPa: 310,  elasticGPa: 69,  nHardening: 0.20, kFactor: 0.43, springbackFactor: 1.15, minThickMm: 0.3,  maxThickMm: 4.0,  maxBendDeg: 150, densityKgM3: 2700 },
   MS:   { yieldMPa: 250, utsMPa: 400,  elasticGPa: 210, nHardening: 0.18, kFactor: 0.42, springbackFactor: 1.06, minThickMm: 0.5,  maxThickMm: 5.0,  maxBendDeg: 160, densityKgM3: 7850 },

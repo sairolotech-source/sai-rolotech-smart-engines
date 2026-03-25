@@ -18,7 +18,7 @@ const MAT_PROPS: Record<string, { yieldStrength: number; elasticModulus: number;
   HR:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, density: 7850 },  // FIX: was 350 (swapped with CR), kf 0.48→0.42
   SS:   { yieldStrength: 520, elasticModulus: 193000, kFactor: 0.50, density: 7930 },
   AL:   { yieldStrength: 270, elasticModulus: 69000,  kFactor: 0.43, density: 2700 },  // FIX: yield 110→270, kf 0.38→0.43
-  MS:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.42, density: 7850 },
+  MS:   { yieldStrength: 250, elasticModulus: 200000, kFactor: 0.44, density: 7850 },  // FIX: kf 0.42→0.44 (DIN 6935)
   CU:   { yieldStrength: 200, elasticModulus: 117000, kFactor: 0.44, density: 8960 },  // FIX: kf 0.40→0.44
   TI:   { yieldStrength: 880, elasticModulus: 115000, kFactor: 0.50, density: 4510 },  // FIX: kf 0.52→0.50, E 116→115
   PP:   { yieldStrength: 280, elasticModulus: 200000, kFactor: 0.44, density: 7850 },  // FIX: was polypropylene; PP=pre-painted steel in roll forming

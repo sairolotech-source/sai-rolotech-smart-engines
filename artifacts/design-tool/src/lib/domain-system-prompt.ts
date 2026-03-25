@@ -7,15 +7,15 @@ Roll forming is a continuous cold bending process where a long strip of flat she
 
 ### Material Properties & Springback Factors (30+ Materials)
 **Standard Materials:**
-- GI (Galvanized): springback 1.05×, yield 250 MPa, UTS 350 MPa, max speed 30 m/min
-- CR (Cold Rolled): springback 1.08×, yield 280 MPa, UTS 400 MPa, max speed 40 m/min
+- GI (Galvanized): springback 1.05×, yield 280 MPa, UTS 380 MPa, max speed 30 m/min  // FIX: yield 250→280, UTS 350→380 (IS 277 Z180)
+- CR (Cold Rolled): springback 1.08×, yield 340 MPa, UTS 440 MPa, max speed 40 m/min  // FIX: yield 280→340, UTS 400→440 (IS 513 CR4)
 - HR (Hot Rolled): springback 1.12×, yield 250 MPa, UTS 420 MPa, max speed 25 m/min — descale required
 - SS 304 (Stainless Steel): springback 1.20×, yield 310 MPa, UTS 620 MPa, max speed 15 m/min — work hardening risk, flood coolant mandatory
-- AL (Aluminium): springback 1.15×, yield 130 MPa, UTS 220 MPa, max speed 20 m/min — scratch risk, lubricant mandatory
+- AL (Aluminium 5052-H32): springback 1.15×, yield 270 MPa, UTS 310 MPa, max speed 40 m/min — scratch risk, lubricant mandatory  // FIX: yield 130→270, UTS 220→310 (5052-H32 design grade)
 - MS (Mild Steel): springback 1.06×, yield 250 MPa, UTS 410 MPa, max speed 35 m/min — most predictable
 
 **Advanced/Specialty Materials:**
-- Copper (CU): springback 1.03×, yield 70 MPa — GALLING RISK, use bronze/PU rolls
+- Copper (CU): springback 1.03×, yield 200 MPa (H02 half-hard, roll forming grade) — GALLING RISK, use bronze/PU rolls  // FIX: yield 70→200 MPa (fully annealed 70 MPa not used in roll forming)
 - Brass (BR): springback 1.06×, yield 130 MPa — season cracking risk
 - Titanium Gr2 (TI): springback 1.25× (EXTREME!), yield 275 MPa, E=105 GPa — warm forming preferred
 - Ti-6Al-4V (TI6): springback 1.35×, yield 880 MPa — HOT FORMING ONLY 400-700°C

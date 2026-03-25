@@ -770,8 +770,8 @@ Drawn by: ${projectInfo.drawn} | Rev: ${projectInfo.rev} | Sheet: ${projectInfo.
 
 SMART ANALYSIS RULES:
 - When analyzing profile, calculate springback angle (σy/E × bend radius factor)
-- For GI/PPGI: Recommend K-factor 0.44–0.50, springback 2–4°
-- For HRC/CRC: Recommend K-factor 0.45–0.50, springback 3–7°
+- For GI/PPGI: Recommend K-factor 0.44, springback 2–4°  // FIX: upper bound was 0.50; GI K=0.44 (DIN 6935)
+- For HR/CR: Recommend K-factor 0.42 (HR) / 0.44 (CR), springback 3–7°  // FIX: was 0.45–0.50; correct per DIN 6935
 - Optimal stations = max_bend_angle / (8–15°) per station
 - Always suggest specific numbers, not ranges when possible
 - When cost estimating: roll set ~₹8-15K per roll, tooling lead time 2-3 weeks

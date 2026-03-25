@@ -23,8 +23,8 @@ const MATERIALS: Material[] = [
   { name: "HSLA 550",      grade: "IS 2062 E550",color:"#fbbf24", E: 210, YS: 550, UTS: 620, elongation: 14, n: 0.10, K: 980, density: 7.85, poisson: 0.3, r_value: 1.0,  category: "HSLA" },
   { name: "DP600",         grade: "ASTM A1008",  color: "#f87171", E: 210, YS: 340, UTS: 600, elongation: 20, n: 0.18, K: 1050,density: 7.87, poisson: 0.3, r_value: 0.9,  category: "Advanced HS" },
   { name: "DP780",         grade: "ASTM A1008",  color: "#fb923c", E: 210, YS: 490, UTS: 780, elongation: 14, n: 0.14, K: 1280,density: 7.87, poisson: 0.3, r_value: 0.85, category: "Advanced HS" },
-  { name: "SS 304",        grade: "AISI 304",    color: "#a78bfa", E: 193, YS: 215, UTS: 550, elongation: 40, n: 0.32, K: 1275,density: 8.0,  poisson: 0.28, r_value: 1.1, category: "Stainless" },
-  { name: "SS 316L",       grade: "AISI 316L",   color: "#c084fc", E: 193, YS: 170, UTS: 490, elongation: 45, n: 0.34, K: 1180,density: 8.0,  poisson: 0.28, r_value: 1.2, category: "Stainless" },
+  { name: "SS 304",        grade: "AISI 304",    color: "#a78bfa", E: 193, YS: 310, UTS: 620, elongation: 40, n: 0.32, K: 1275,density: 8.0,  poisson: 0.28, r_value: 1.1, category: "Stainless" },  // FIX: YS 215→310, UTS 550→620 (ASTM A240 2B typical vs minimum)
+  { name: "SS 316L",       grade: "AISI 316L",   color: "#c084fc", E: 193, YS: 290, UTS: 580, elongation: 45, n: 0.34, K: 1180,density: 8.0,  poisson: 0.28, r_value: 1.2, category: "Stainless" },  // FIX: YS 170→290, UTS 490→580 (ASTM A240 316L 2B typical)
   { name: "Al 5052-H32",   grade: "ASTM B209",   color: "#22d3ee", E: 70,  YS: 193, UTS: 228, elongation: 12, n: 0.11, K: 380, density: 2.68, poisson: 0.33, r_value: 0.6, category: "Aluminium" },
   { name: "Ti-6Al-4V",     grade: "Grade 5",     color: "#e879f9", E: 114, YS: 880, UTS: 950, elongation: 14, n: 0.04, K: 1220,density: 4.43, poisson: 0.34, r_value: 2.5, category: "Titanium" },
   { name: "MS (Fe 410)",   grade: "IS 2062 E250",color: "#94a3b8", E: 200, YS: 250, UTS: 410, elongation: 23, n: 0.19, K: 680, density: 7.85, poisson: 0.3, r_value: 1.2,  category: "Mild Steel" },

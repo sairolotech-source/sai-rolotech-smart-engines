@@ -1801,7 +1801,7 @@ export function RollToolingView() {
   }
 
   const passLine = rollTooling[0]?.rollProfile.passLineY ?? 0;
-  const matType = rollTooling[0]?.rollProfile.kFactor === 0.44 ? "GI" : rollTooling[0]?.rollProfile.kFactor === 0.42 ? "CR" : "HR";
+  const matType = rollTooling[0]?.rollProfile.kFactor === 0.44 ? "GI" : rollTooling[0]?.rollProfile.kFactor === 0.42 ? "HR" : "CR";  // FIX: kFactor 0.42 is HR not CR (DIN 6935); else fallback CR
 
   return (
     <div className="flex flex-col h-full bg-zinc-950 overflow-hidden">

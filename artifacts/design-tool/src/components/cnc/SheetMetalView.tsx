@@ -55,9 +55,9 @@ interface UnfoldResult {
 const SM_MATERIALS: Record<MaterialSM, { label: string; ys: number; ts: number; density: number; defaultK: number; color: string }> = {
   // FIX: K-factors updated to DIN 6935 values for roll forming
   // was: CR:0.33, GI:0.35, SS:0.38, AL:0.40, HSLA:0.30 (old ANSI press-brake values — wrong for roll forming)
-  CR_mild: { label: "CR Mild Steel",     ys: 280, ts: 380, density: 7.85, defaultK: 0.44, color: "#94a3b8" },
-  GI_Z275: { label: "GI Steel Z275",     ys: 250, ts: 350, density: 7.85, defaultK: 0.44, color: "#a3e635" },
-  SS304:   { label: "Stainless 304",     ys: 215, ts: 505, density: 8.0,  defaultK: 0.50, color: "#cbd5e1" },
+  CR_mild: { label: "CR Mild Steel",     ys: 340, ts: 440, density: 7.85, defaultK: 0.44, color: "#94a3b8" },  // FIX: ys 280→340, ts 380→440 (IS 513 CR4)
+  GI_Z275: { label: "GI Steel Z275",     ys: 280, ts: 380, density: 7.85, defaultK: 0.44, color: "#a3e635" },  // FIX: ys 250→280, ts 350→380 (IS 277 Z275)
+  SS304:   { label: "Stainless 304",     ys: 310, ts: 620, density: 8.0,  defaultK: 0.50, color: "#cbd5e1" },  // FIX: ys 215→310, ts 505→620 (ASTM A240 2B)
   AL5052:  { label: "Aluminium 5052",    ys: 193, ts: 228, density: 2.68, defaultK: 0.43, color: "#93c5fd" },
   AL6061:  { label: "Aluminium 6061-T6", ys: 276, ts: 310, density: 2.71, defaultK: 0.43, color: "#7dd3fc" },
   CU110:   { label: "Copper C110",       ys: 69,  ts: 220, density: 8.94, defaultK: 0.44, color: "#fb923c" },

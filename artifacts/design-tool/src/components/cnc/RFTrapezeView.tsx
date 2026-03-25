@@ -90,7 +90,7 @@ export function RFTrapezeView() {
     bottomWidth: 120,
     thickness: 0.5,
     material: "GI Steel",
-    yieldStrength: 250,
+    yieldStrength: 280,  // FIX: GI yield 250→280 MPa (IS 277 Z180)
     corrugationRadius: 3,
     coverWidth: 1000,
     overlap: 50,

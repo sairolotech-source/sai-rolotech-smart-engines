@@ -3,12 +3,12 @@ import { Zap, Activity, RotateCcw, Info, ChevronDown, ChevronRight, Link2 } from
 import { useCncStore } from "../../store/useCncStore";
 
 const MATERIAL_YIELD: Record<string, number> = {
-  GI: 280, CR: 310, HR: 250, SS: 520, AL: 270, MS: 250,
-  CU: 200, TI: 880, PP: 30, HSLA: 550,
+  GI: 280, CR: 340, HR: 250, SS: 520, AL: 270, MS: 250,  // FIX: CR 310→340
+  CU: 200, TI: 880, PP: 280, HSLA: 550,  // FIX: PP 30→280 (pre-painted steel, not polypropylene)
 };
 const MATERIAL_K: Record<string, number> = {
   GI: 1.8, CR: 2.0, HR: 1.6, SS: 2.5, AL: 1.5, MS: 1.7,
-  CU: 1.4, TI: 2.8, PP: 0.8, HSLA: 2.3,
+  CU: 1.4, TI: 2.8, PP: 1.8, HSLA: 2.3,  // FIX: PP machine load factor 0.8→1.8 (PP=Pre-Painted Steel ≈ GI, not polypropylene plastic)
 };
 
 interface Inputs {
@@ -336,7 +336,7 @@ export function LoadCalculator() {
                       className={inputCls}
                     />
                     <div className="text-[10px] text-zinc-600 mt-1">
-                      GI ≈ 250 · CR ≈ 280 · HR ≈ 250 · SS ≈ 310 · AL ≈ 130 MPa
+                      GI ≈ 280 · CR ≈ 340 · HR ≈ 250 · SS ≈ 520 · AL ≈ 270 MPa
                     </div>
                   </div>
                 </div>

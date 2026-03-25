@@ -108,7 +108,7 @@ export function CageFormingView() {
     finPassCount: 3,
     sizingCount: 3,
     material: "CR Steel",
-    yieldStrength: 280,
+    yieldStrength: 340,  // FIX: CR Steel yield 280→340 MPa (IS 513 CR4)
     stripWidth: 149.5,
     lineSpeed: 30,
   });

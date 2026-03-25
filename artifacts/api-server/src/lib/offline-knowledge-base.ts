@@ -572,12 +572,12 @@ BD = 2 × OSSB - BA  (Bend Deduction)
 **K-Factor by Material:**
 | Material | K-Factor | Reason |
 |----------|---------|--------|
-| GI (Galvanized) | 0.44–0.47 | Zinc coat effect |
-| Cold Rolled Steel | 0.42–0.44 | Good formability |
-| Hot Rolled Steel | 0.38–0.42 | Rougher, more deformation |
-| SS 304 | 0.40–0.44 | Work hardening |
-| Aluminium 6061 | 0.41–0.43 | Soft, consistent |
-| HSLA S355 | 0.48–0.50 | High strength |
+| GI (Galvanized) | 0.43–0.45 | Zinc coat effect |
+| Cold Rolled Steel | 0.43–0.45 | Good formability |
+| Hot Rolled Steel | 0.40–0.43 | Rougher, more deformation |
+| SS 304 | 0.48–0.52 | Work hardening / austenitic |
+| Aluminium 6061 | 0.41–0.44 | Soft, consistent |
+| HSLA S355 | 0.43–0.47 | High strength AHSS |
 
 **Worked Example — C-Channel 200×75×20mm, t=2.0mm, r=2.0mm, GI (K=0.44):**
 1. Web = 200mm
@@ -1546,7 +1546,7 @@ M30                            (17. End + reset)
     hindiKeywords: ["material", "dhatu", "loha", "tensile", "yield"],
     patterns: [/material.*prop|material.*db|steel.*grade|tensile.*strength|yield.*strength/i],
     weight: 1.0,
-    conciseResponse: "GI: UTS 350MPa, Yield 250MPa. CR: UTS 400MPa, Yield 280MPa. SS304: UTS 620MPa, Yield 310MPa. D2 tool: UTS 2050MPa after HT.",
+    conciseResponse: "GI: UTS 380MPa, Yield 280MPa. CR: UTS 440MPa, Yield 340MPa. SS304: UTS 620MPa, Yield 310MPa. D2 tool: UTS 2050MPa after HT.",  // FIX: GI yield 250→280 UTS 350→380; CR yield 280→340 UTS 400→440
     response: `**Material Properties Database — Roll Forming**
 
 **Strip/Sheet Materials:**

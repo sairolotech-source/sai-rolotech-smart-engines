@@ -54,13 +54,13 @@ const K_FACTOR_BY_MATERIAL: Partial<Record<MaterialType, number>> = {
   MS: 0.44,
   GI: 0.44,
   CR: 0.44,
-  HR: 0.44,
-  SS: 0.43,
-  AL: 0.40,
-  CU: 0.42,
-  TI: 0.45,
+  HR: 0.42,  // FIX: HR softer than CR → lower K (DIN 6935)
+  SS: 0.50,  // FIX: 0.43→0.50 (DIN 6935 stainless)
+  AL: 0.43,  // FIX: 0.40→0.43 (DIN 6935 aluminium)
+  CU: 0.44,  // FIX: 0.42→0.44 (DIN 6935)
+  TI: 0.50,  // FIX: 0.45→0.50 (DIN 6935 titanium)
   PP: 0.44,
-  HSLA: 0.44,
+  HSLA: 0.45, // FIX: 0.44→0.45 (DIN 6935 HSLA)
 };
 
 const SURFACE_FINISH_BY_MATERIAL: Partial<Record<MaterialType, string>> = {

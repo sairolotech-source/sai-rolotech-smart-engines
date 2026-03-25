@@ -631,8 +631,8 @@ export const MATERIAL_DATABASE: Record<MaterialType, MaterialProperties> = {
     springbackFactor: 1.05,
     minBendRadiusMultiplier: 1.0,
     crackingRisk: "low",
-    yieldStrength: 250,
-    tensileStrength: 350,
+    yieldStrength: 280,   // FIX: 250→280 MPa (IS 277 Z275)
+    tensileStrength: 380, // FIX: 350→380 MPa
     maxFormingSpeed: "30 m/min",
     notes: "Standard shutter/roofing material. Good formability. Zinc coating may flake at tight bends. At 3mm+ use larger roll OD.",
     minThickness: 0.3,
@@ -643,8 +643,8 @@ export const MATERIAL_DATABASE: Record<MaterialType, MaterialProperties> = {
     springbackFactor: 1.08,
     minBendRadiusMultiplier: 0.5,
     crackingRisk: "low",
-    yieldStrength: 280,
-    tensileStrength: 400,
+    yieldStrength: 340,   // FIX: 280→340 MPa (IS 513 CR4)
+    tensileStrength: 440, // FIX: 400→440 MPa
     maxFormingSpeed: "40 m/min",
     notes: "Excellent surface finish. Good for false ceiling channels. Low springback compared to HR. Above 3mm: calibration stand recommended.",
     minThickness: 0.3,
@@ -679,8 +679,8 @@ export const MATERIAL_DATABASE: Record<MaterialType, MaterialProperties> = {
     springbackFactor: 1.15,
     minBendRadiusMultiplier: 1.0,
     crackingRisk: "medium",
-    yieldStrength: 130,
-    tensileStrength: 220,
+    yieldStrength: 270,   // FIX: 130→270 MPa (6061-T4; was Al1050 annealed value)
+    tensileStrength: 310, // FIX: 220→310 MPa
     maxFormingSpeed: "20 m/min",
     notes: "Soft material but springback is significant. Low forming forces needed. Watch for surface scratches. Typical grades: 3003, 5052.",
     minThickness: 0.5,
@@ -703,8 +703,8 @@ export const MATERIAL_DATABASE: Record<MaterialType, MaterialProperties> = {
     springbackFactor: 1.08,
     minBendRadiusMultiplier: 0.5,
     crackingRisk: "low",
-    yieldStrength: 70,
-    tensileStrength: 220,
+    yieldStrength: 200,   // FIX: 70→200 MPa (C110 H02 half-hard roll forming grade; 70 is dead-soft/annealed)
+    tensileStrength: 300, // FIX: 220→300 MPa
     maxFormingSpeed: "25 m/min",
     notes: "Very soft, excellent formability. Low springback. Surface scratching risk — use polished rolls. Common grades: C11000, C12200.",
     minThickness: 0.3,
@@ -727,7 +727,7 @@ export const MATERIAL_DATABASE: Record<MaterialType, MaterialProperties> = {
     springbackFactor: 1.06,
     minBendRadiusMultiplier: 1.5,
     crackingRisk: "medium",
-    yieldStrength: 250,
+    yieldStrength: 280,   // FIX: 250→280 MPa (Pre-Painted = GI substrate IS 277 Z275)
     tensileStrength: 370,
     maxFormingSpeed: "20 m/min",
     notes: "Coating protection critical — no sharp edges, large radii, protective film during forming. Common for roofing/cladding.",
@@ -739,8 +739,8 @@ export const MATERIAL_DATABASE: Record<MaterialType, MaterialProperties> = {
     springbackFactor: 1.14,
     minBendRadiusMultiplier: 2.0,
     crackingRisk: "medium",
-    yieldStrength: 450,
-    tensileStrength: 550,
+    yieldStrength: 550,   // FIX: 450→550 MPa (HSLA 550 per IS 8500/EN 10025-4 S550)
+    tensileStrength: 650, // FIX: 550→650 MPa
     maxFormingSpeed: "18 m/min",
     notes: "High strength requires more forming force and stations. Significant springback. Grades: S355, S420, S460. Calibration stands essential.",
     minThickness: 1.0,

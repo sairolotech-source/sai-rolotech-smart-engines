@@ -1,68 +1,84 @@
 @echo off
-title SAI Rolotech Smart Engines v2.2.23 - Builder
+title SAI Rolotech Smart Engines v2.2.23 - Auto Builder
 color 0A
 echo.
 echo  =====================================================
-echo   SAI Rolotech Smart Engines v2.2.23 - EXE Builder
+echo   SAI Rolotech Smart Engines v2.2.23 - Auto Builder
 echo   Features: Auto Mode, Hardware Dashboard, NVIDIA GPU
 echo  =====================================================
 echo.
 
-echo  [Step 1] Checking Node.js...
+:: Root folder
+cd /d "%~dp0..\.."
+set "ROOT=%cd%"
+set "DESKTOP=%ROOT%\artifacts\desktop"
+set "RELEASE=%DESKTOP%\release"
+
+:: Step 1: Node.js check
+echo  [1/6] Node.js check...
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo  [ERROR] Node.js nahi mila!
-    echo  Yahan se install karein: https://nodejs.org
-    echo  Phir BUILD.bat dobara chalayein.
-    pause
-    exit /b 1
+    echo  https://nodejs.org se install karein phir dobara chalayein.
+    pause & exit /b 1
 )
 echo  [OK] Node.js ready.
 
+:: Step 2: pnpm
 echo.
-echo  [Step 2] pnpm install kar raha hai...
+echo  [2/6] pnpm install...
 npm install -g pnpm >nul 2>&1
 echo  [OK] pnpm ready.
 
+:: Step 3: Git pull
 echo.
-echo  [Step 3] Project ka latest code GitHub se le raha hai...
-cd /d "%~dp0..\.."
+echo  [3/6] GitHub se latest code le raha hai...
 git pull origin main
-if %errorlevel% neq 0 (
-    echo  [WARN] Git pull fail hua - local code use karega.
-)
 echo  [OK] Code updated.
 
+:: Step 4: Packages
 echo.
-echo  [Step 4] Packages install ho rahe hain...
+echo  [4/6] Packages install ho rahe hain...
 pnpm install
 if %errorlevel% neq 0 (
-    echo  [ERROR] Package install fail hua!
-    pause
-    exit /b 1
+    echo  [ERROR] Package install fail!
+    pause & exit /b 1
 )
-echo  [OK] Packages installed.
+echo  [OK] Packages ready.
 
+:: Step 5: Build frontend + backend
 echo.
-echo  [Step 5] v2.2.23 EXE build ho raha hai...
-echo  (Isme 3-5 minute lag sakte hain...)
-pnpm --filter @workspace/desktop run dist:all
+echo  [5/6] Frontend aur Backend build ho rahe hain...
+cd /d "%ROOT%\artifacts\design-tool"
+call pnpm run build
 if %errorlevel% neq 0 (
-    echo  [ERROR] Build fail hua!
-    pause
-    exit /b 1
+    echo  [ERROR] Frontend build fail!
+    pause & exit /b 1
+)
+cd /d "%ROOT%\artifacts\api-server"
+call pnpm run build
+echo  [OK] Frontend + Backend ready.
+
+:: Step 6: Electron EXE
+echo.
+echo  [6/6] Windows EXE ban raha hai (2-4 min)...
+cd /d "%DESKTOP%"
+call npx tsc -p tsconfig.json
+call npx electron-builder --win nsis portable
+if %errorlevel% neq 0 (
+    echo  [ERROR] EXE build fail!
+    pause & exit /b 1
 )
 
+:: Done - folder kholo
 echo.
 echo  =====================================================
 echo   BUILD COMPLETE! v2.2.23
-echo.
-echo   Aapka naya EXE yahan hai:
-echo   artifacts\desktop\release\
-echo.
-echo   Files:
-echo   - SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe
-echo   - SAI-Rolotech-Smart-Engines-Portable-2.2.23.exe
+echo   EXE tayaar hai!
 echo  =====================================================
 echo.
+
+:: Release folder automatically kholo
+explorer "%RELEASE%"
+
 pause

@@ -760,7 +760,7 @@ export function getKeywaySizeForShaft(shaftDia: number): { width: number; height
   return { width: 22, height: 14 };
 }
 
-export type AppTab = "wizard" | "setup" | "flower" | "roll" | "gcode" | "troubleshoot" | "twin" | "factory" | "ultra" | "studio3d" | "turner" | "manual-drawing" | "load-calc" | "report" | "ai-chatbots" | "forming-sim" | "springback" | "strip-width" | "roll-gap" | "cost-estimator" | "camber" | "material-db" | "forming-energy" | "specs" | "rf-tubes" | "rf-trapeze" | "smart-rolls" | "rf-dtm" | "rf-spreadsheet" | "drawing-dies" | "cage-forming" | "wire-rolling" | "profile-scan" | "roll-scanner" | "roll-lifecycle" | "cad-finder" | "downhill-forming" | "assembly-check" | "tool-library" | "geometry-edit" | "cam-operations" | "milling-operations" | "offline-ai" | "5axis-cam" | "formaxis-compare" | "rf-closed-section" | "sheet-metal" | "validation-pipeline" | "machine-bom" | "flower-3d" | "roll-export" | "admin-dashboard" | "master-designer" | "dimension-confirm" | "system-setup" | "desktop-install" | "real-mukabla" | "fea-simulation" | "gcode-verify" | "advanced-cam" | "erp-integration" | "dxf-import" | "gcode-simulator" | "roll-flower-designer" | "material-analyzer" | "auto-backup" | "demo-c-channel" | "station-control" | "testing-engine" | "rf-machine" | "pro-lathe-sim" | "roll-tooling-calc" | "roll-tooling-drawing" | "roll-blank-size" | "roll-cutting-safety" | "roll-tool-collision" | "solidcam-tooldb" | "drawing-vision" | "safety-panel" | "roll-design-suite" | "roll-knowledge-hub" | "auto-profile-converter" | "auto-cnc-planner" | "github-update" | "flower-combined" | "autocad-engineering-drawing" | "machine-load-calc" | "roll-data-files" | "buddy-crm" | "demo-videos" | "roll-forming-sim" | "hardware-dashboard" | "thickness-range" | "geometry-recognition" | "pass-angle-engine";
+export type AppTab = "wizard" | "setup" | "flower" | "roll" | "gcode" | "troubleshoot" | "twin" | "factory" | "ultra" | "studio3d" | "turner" | "manual-drawing" | "load-calc" | "report" | "ai-chatbots" | "forming-sim" | "springback" | "strip-width" | "roll-gap" | "cost-estimator" | "camber" | "material-db" | "forming-energy" | "specs" | "rf-tubes" | "rf-trapeze" | "smart-rolls" | "rf-dtm" | "rf-spreadsheet" | "drawing-dies" | "cage-forming" | "wire-rolling" | "profile-scan" | "roll-scanner" | "roll-lifecycle" | "cad-finder" | "downhill-forming" | "assembly-check" | "tool-library" | "geometry-edit" | "cam-operations" | "milling-operations" | "offline-ai" | "5axis-cam" | "formaxis-compare" | "rf-closed-section" | "sheet-metal" | "validation-pipeline" | "machine-bom" | "flower-3d" | "roll-export" | "admin-dashboard" | "master-designer" | "dimension-confirm" | "system-setup" | "desktop-install" | "real-mukabla" | "fea-simulation" | "gcode-verify" | "advanced-cam" | "erp-integration" | "dxf-import" | "gcode-simulator" | "roll-flower-designer" | "material-analyzer" | "auto-backup" | "demo-c-channel" | "station-control" | "testing-engine" | "rf-machine" | "pro-lathe-sim" | "roll-tooling-calc" | "roll-tooling-drawing" | "roll-blank-size" | "roll-cutting-safety" | "roll-tool-collision" | "solidcam-tooldb" | "drawing-vision" | "safety-panel" | "roll-design-suite" | "roll-knowledge-hub" | "auto-profile-converter" | "auto-cnc-planner" | "github-update" | "flower-combined" | "autocad-engineering-drawing" | "machine-load-calc" | "roll-data-files" | "buddy-crm" | "demo-videos" | "roll-forming-sim" | "hardware-dashboard" | "thickness-range" | "geometry-recognition" | "pass-angle-engine" | "formula-calculator";
 
 // ─── Open Section Profile Types ───────────────────────────────────────────────
 export type OpenSectionType =
@@ -891,6 +891,9 @@ interface CncState {
   numStations: number;
   stationPrefix: string;
   materialThickness: number;
+  minThickness: number;
+  maxThickness: number;
+  bendRadius: number;
   bendAllowanceMethod: "inside_radius" | "neutral_axis";
 
   stations: StationProfile[];
@@ -966,6 +969,8 @@ interface CncState {
   setNumStations: (n: number) => void;
   setStationPrefix: (p: string) => void;
   setMaterialThickness: (t: number) => void;
+  setMinThickness: (t: number) => void;
+  setMaxThickness: (t: number) => void;
   setBendAllowanceMethod: (m: "inside_radius" | "neutral_axis") => void;
   setStations: (s: StationProfile[]) => void;
   setSelectedStation: (n: number | null) => void;
@@ -1043,6 +1048,9 @@ export const useCncStore = create<CncState>()(persist((set) => ({
   numStations: 5,
   stationPrefix: "S",
   materialThickness: 1.0,
+  minThickness: 0.9,
+  maxThickness: 1.1,
+  bendRadius: 1.5,
   bendAllowanceMethod: "inside_radius",
   stations: [],
   selectedStation: null,
@@ -1159,8 +1167,15 @@ export const useCncStore = create<CncState>()(persist((set) => ({
   setMaterialThickness: (t) => set((state) => {
     const mat = MATERIAL_DATABASE[state.materialType];
     const isThicknessValid = t >= mat.minThickness && t <= mat.maxThickness;
-    return { materialThickness: t, isThicknessValid };
+    return {
+      materialThickness: t,
+      isThicknessValid,
+      minThickness: parseFloat((t * 0.9).toFixed(2)),
+      maxThickness: parseFloat((t * 1.1).toFixed(2)),
+    };
   }),
+  setMinThickness: (t) => set({ minThickness: Math.max(0.1, t) }),
+  setMaxThickness: (t) => set({ maxThickness: Math.max(0.1, t) }),
   setBendAllowanceMethod: (m) => set({ bendAllowanceMethod: m }),
   setStations: (s) => set({ stations: s }),
   setSelectedStation: (n) => set({ selectedStation: n }),

@@ -1,0 +1,985 @@
+Bilkul. Ab main aapko **full admin panel structure + exact field names + user roles + week-wise development roadmap** de raha hoon, taki aap Replit par is software ko properly banwa sako.
+
+---
+
+# 1) USER ROLES STRUCTURE
+
+Software me alag-alag roles hone chahiye.
+
+## A. Super Admin
+
+Ye highest level access hoga.
+
+### Permissions:
+
+* sab users dekh sakta hai
+* new users create kar sakta hai
+* material library edit kar sakta hai
+* machine library edit kar sakta hai
+* profile templates add kar sakta hai
+* system rules change kar sakta hai
+* export settings control kar sakta hai
+* full reports dekh sakta hai
+
+---
+
+## B. Admin
+
+Ye company level admin hoga.
+
+### Permissions:
+
+* company ke users manage kare
+* projects create/delete kare
+* materials use kare
+* machine templates assign kare
+* exports dekh sake
+* reports dekh sake
+* engineer approvals monitor kare
+
+---
+
+## C. Design Engineer
+
+Ye main working user hoga.
+
+### Permissions:
+
+* project create kare
+* profile draw kare
+* DXF import kare
+* material select kare
+* flower pattern generate kare
+* roll draft generate kare
+* warnings dekhe
+* manual override kare
+* export nikale
+
+---
+
+## D. Production Engineer
+
+Ye shop floor ya setup check ke liye useful hoga.
+
+### Permissions:
+
+* approved designs dekhe
+* tooling sheets dekhe
+* setup sheets dekhe
+* revision history dekhe
+* shop feedback add kare
+
+---
+
+## E. Viewer / Client
+
+Ye sirf dekh sake.
+
+### Permissions:
+
+* selected reports dekhe
+* PDF download kare
+* comments kar sake
+* edit na kare
+
+---
+
+# 2) ADMIN PANEL MODULES
+
+Admin panel ko simple nahi, **industrial control panel** ki tarah banana chahiye.
+
+---
+
+## Module 1 — Dashboard
+
+Yaha overall summary hogi.
+
+### Dashboard widgets:
+
+* total users
+* active projects
+* pending approvals
+* rejected designs
+* exported reports
+* recent warnings
+* most used materials
+* most used machine setup
+
+### Charts:
+
+* projects by month
+* materials usage
+* warning types frequency
+* station count trends
+
+---
+
+## Module 2 — User Management
+
+### Table fields:
+
+* user_id
+* full_name
+* email
+* mobile
+* company_name
+* role
+* status
+* created_on
+* last_login
+
+### Actions:
+
+* add user
+* edit user
+* deactivate user
+* reset password
+* assign role
+* assign company
+* view activity
+
+---
+
+## Module 3 — Material Master
+
+Ye bahut important module hai.
+
+### Exact fields:
+
+```text
+material_id
+material_name
+material_code
+category
+yield_strength
+tensile_strength
+elongation_percent
+density
+youngs_modulus
+poissons_ratio
+springback_factor
+recommended_k_factor
+minimum_bend_radius
+friction_factor
+hardness
+surface_type
+coating_type
+remarks
+is_active
+created_by
+updated_by
+created_at
+updated_at
+```
+
+### Actions:
+
+* add material
+* clone material
+* update properties
+* deactivate old material
+* import from CSV
+* export material list
+
+---
+
+## Module 4 — Machine Master
+
+### Exact fields:
+
+```text
+machine_id
+machine_name
+machine_code
+manufacturer
+line_type
+shaft_diameter
+shaft_material
+horizontal_center_distance
+vertical_center_distance
+max_roll_od
+min_roll_od
+max_face_width
+stand_spacing
+max_stations
+drive_type
+gearbox_side
+speed_range
+tolerance_class
+notes
+is_active
+created_by
+updated_by
+created_at
+updated_at
+```
+
+### Actions:
+
+* add machine
+* edit machine
+* duplicate machine template
+* assign default rules
+* archive machine
+
+---
+
+## Module 5 — Standard Profile Library
+
+### Exact fields:
+
+```text
+template_id
+template_name
+profile_family
+industry_type
+description
+default_material_id
+default_thickness
+default_station_count
+complexity_level
+profile_json
+preview_image
+is_active
+created_by
+updated_by
+created_at
+updated_at
+```
+
+### Profile family examples:
+
+* C channel
+* U channel
+* hat profile
+* shutter patti
+* false ceiling channel
+* solar structure section
+* door frame
+* custom section
+
+---
+
+## Module 6 — Engineering Rules Manager
+
+Ye software ka brain hoga.
+
+### Exact fields:
+
+```text
+rule_id
+rule_name
+rule_category
+input_condition_json
+output_action_json
+severity
+priority
+is_editable
+is_active
+created_by
+updated_by
+created_at
+updated_at
+```
+
+### Rule categories:
+
+* bend feasibility
+* springback
+* station estimation
+* pass aggression
+* flange stability
+* lip support
+* roll interference
+* thickness compatibility
+* machine fitment
+* export validation
+
+### Example:
+
+```text
+rule_name: High tensile low radius warning
+condition: material_yield_strength > 450 AND bend_radius < 1.5 * thickness
+action: show warning "Crack risk high"
+severity: high
+```
+
+---
+
+## Module 7 — Approval Workflow Manager
+
+### Exact fields:
+
+```text
+approval_id
+project_id
+submitted_by
+submitted_at
+reviewed_by
+reviewed_at
+approval_status
+review_comments
+revision_required
+final_lock_status
+```
+
+### Status options:
+
+* draft
+* under review
+* approved
+* rejected
+* revision required
+* locked for production
+
+---
+
+## Module 8 — Export Manager
+
+### Exact fields:
+
+```text
+export_id
+project_id
+export_type
+file_name
+file_path
+export_status
+exported_by
+exported_at
+version_no
+```
+
+### Export types:
+
+* PDF report
+* setup sheet
+* tooling sheet
+* BOM CSV
+* DXF
+* print drawing
+
+---
+
+## Module 9 — Audit Log
+
+Har industrial software me audit log hona chahiye.
+
+### Exact fields:
+
+```text
+log_id
+user_id
+action_type
+module_name
+record_id
+old_value_json
+new_value_json
+ip_address
+device_info
+timestamp
+```
+
+Ye future me bahut kaam aata hai.
+
+---
+
+# 3) PROJECT SIDE EXACT FIELD NAMES
+
+Ab project creation me jo exact fields hone chahiye wo ye hain:
+
+```text
+project_id
+project_code
+project_name
+client_name
+profile_name
+revision_number
+project_status
+assigned_engineer
+machine_id
+material_id
+min_thickness
+nominal_thickness
+max_thickness
+target_line_speed
+target_tolerance
+design_strategy
+notes
+created_by
+updated_by
+created_at
+updated_at
+```
+
+---
+
+# 4) PROFILE INPUT FIELD NAMES
+
+```text
+profile_id
+project_id
+input_mode
+profile_type
+overall_width
+overall_height
+strip_width
+developed_length
+inside_radius_default
+outside_radius_default
+bend_count
+flange_count
+lip_count
+symmetry_type
+complexity_level
+profile_json
+dxf_source_path
+preview_path
+```
+
+---
+
+# 5) FLOWER PATTERN EXACT FIELD NAMES
+
+```text
+flower_pattern_id
+project_id
+recommended_station_count
+selected_station_count
+pass_strategy
+springback_mode
+forming_mode
+balance_mode
+pattern_json
+risk_level
+generated_by
+generated_at
+```
+
+### pass_strategy values:
+
+* soft
+* balanced
+* aggressive
+* manual
+
+### forming_mode values:
+
+* symmetric
+* alternate
+* progressive_edge
+* progressive_center
+
+---
+
+# 6) STATION DETAIL FIELD NAMES
+
+Har station ke liye separate detail honi chahiye:
+
+```text
+station_id
+flower_pattern_id
+station_number
+pass_name
+left_bend_angle
+right_bend_angle
+web_shift
+flange_height_left
+flange_height_right
+lip_progress_left
+lip_progress_right
+estimated_springback
+risk_flag
+notes
+station_geometry_json
+```
+
+---
+
+# 7) ROLL DESIGN EXACT FIELD NAMES
+
+```text
+roll_design_id
+project_id
+station_number
+roll_code
+upper_roll_od
+lower_roll_od
+roll_bore
+keyway_width
+keyway_depth
+face_width
+working_width
+spacer_left
+spacer_right
+roll_material
+heat_treatment
+surface_finish
+upper_contour_json
+lower_contour_json
+assembly_sequence
+remarks
+design_status
+```
+
+---
+
+# 8) VALIDATION MODULE FIELD NAMES
+
+```text
+validation_id
+project_id
+station_number
+validation_group
+validation_code
+severity
+message
+recommended_fix
+validation_status
+created_at
+```
+
+### validation_group examples:
+
+* geometry
+* material
+* thickness
+* machine
+* roll
+* process
+
+### severity:
+
+* low
+* medium
+* high
+* critical
+
+---
+
+# 9) ADMIN PANEL PAGE FLOW
+
+## Admin Page 1 — Main Dashboard
+
+* summary cards
+* recent projects
+* recent warnings
+* quick actions
+
+## Admin Page 2 — Users
+
+* user table
+* add user form
+* role mapping
+
+## Admin Page 3 — Materials
+
+* material table
+* add/edit material popup
+* CSV import
+
+## Admin Page 4 — Machines
+
+* machine templates
+* edit config
+* assign defaults
+
+## Admin Page 5 — Standard Profiles
+
+* template cards
+* preview
+* edit geometry metadata
+
+## Admin Page 6 — Engineering Rules
+
+* rules table
+* enable/disable
+* severity set
+* priority order
+
+## Admin Page 7 — Approvals
+
+* pending review queue
+* approve/reject/revise buttons
+
+## Admin Page 8 — Reports & Exports
+
+* export history
+* failed export logs
+* download center
+
+## Admin Page 9 — Audit Logs
+
+* who changed what
+* when changed
+* before/after data
+
+---
+
+# 10) ENGINEER SIDE USER FLOW
+
+## Step 1
+
+Login
+
+## Step 2
+
+New project create
+
+## Step 3
+
+Profile draw ya import
+
+## Step 4
+
+Material choose
+
+## Step 5
+
+Thickness range add
+
+## Step 6
+
+Machine select
+
+## Step 7
+
+Geometry analyze
+
+## Step 8
+
+Flower pattern generate
+
+## Step 9
+
+Roll draft generate
+
+## Step 10
+
+Validation warnings dekho
+
+## Step 11
+
+Manual edits karo
+
+## Step 12
+
+Approval ke liye submit karo
+
+## Step 13
+
+PDF / setup sheet export karo
+
+---
+
+# 11) WEEK-WISE DEVELOPMENT ROADMAP
+
+Ab sabse useful part: **week-wise plan**.
+
+---
+
+## WEEK 1 — Project Setup + UI Base
+
+Kaam:
+
+* Replit project setup
+* frontend structure
+* backend structure
+* database schema initial setup
+* login/signup
+* dashboard base
+
+Deliverable:
+
+* software skeleton ready
+
+---
+
+## WEEK 2 — User Management + Admin Basics
+
+Kaam:
+
+* roles system
+* user management
+* admin dashboard
+* material master CRUD
+* machine master CRUD
+
+Deliverable:
+
+* admin panel base working
+
+---
+
+## WEEK 3 — Project Module
+
+Kaam:
+
+* new project wizard
+* project listing
+* project edit page
+* revision system basic
+* project status tracking
+
+Deliverable:
+
+* user project create/open kar sake
+
+---
+
+## WEEK 4 — Profile Drawing / Import Module
+
+Kaam:
+
+* 2D drawing canvas
+* line/arc/fillet/mirror tools
+* basic snap
+* dimension input
+* DXF import placeholder
+
+Deliverable:
+
+* profile capture possible
+
+---
+
+## WEEK 5 — Geometry Engine
+
+Kaam:
+
+* segments parsing
+* bend detection
+* flange detection
+* symmetry detection
+* profile complexity scoring
+
+Deliverable:
+
+* geometry analysis panel ready
+
+---
+
+## WEEK 6 — Material + Thickness Logic
+
+Kaam:
+
+* material mapping
+* thickness range engine
+* k-factor logic
+* bend allowance logic
+* developed strip length
+
+Deliverable:
+
+* strip width and feasibility logic ready
+
+---
+
+## WEEK 7 — Flower Pattern Generator
+
+Kaam:
+
+* station count estimation
+* pass strategy logic
+* bend progression logic
+* station-wise preview
+
+Deliverable:
+
+* basic flower pattern auto-generate
+
+---
+
+## WEEK 8 — Roll Draft Module
+
+Kaam:
+
+* station-wise upper/lower contour draft
+* face width estimate
+* OD estimate
+* spacer estimate
+
+Deliverable:
+
+* draft roll summary working
+
+---
+
+## WEEK 9 — Validation Engine
+
+Kaam:
+
+* springback rules
+* twist rules
+* edge wave rules
+* aggressive pass rules
+* machine fitment rules
+* thickness compatibility rules
+
+Deliverable:
+
+* red/yellow/green validation panel
+
+---
+
+## WEEK 10 — Export System
+
+Kaam:
+
+* PDF report
+* CSV export
+* tooling sheet
+* setup sheet
+* export history
+
+Deliverable:
+
+* usable engineering reports
+
+---
+
+## WEEK 11 — Approval Workflow
+
+Kaam:
+
+* submit for review
+* approve/reject/revision
+* comments
+* project lock after approval
+
+Deliverable:
+
+* controlled release flow
+
+---
+
+## WEEK 12 — Testing + Bug Fixing
+
+Kaam:
+
+* UI bugs
+* formula validation
+* role permission testing
+* sample profile testing
+* export testing
+
+Deliverable:
+
+* MVP stable release
+
+---
+
+# 12) PHASE 2 ROADMAP
+
+MVP ke baad ye add karo:
+
+## Phase 2 features
+
+* DXF full parser
+* standard profile templates
+* machine library intelligence
+* previous-job matching
+* tooling reuse suggestion
+* revision comparison
+* better roll contouring
+
+---
+
+# 13) PHASE 3 ROADMAP
+
+## Advanced features
+
+* AI recommendation assistant
+* defect prediction model
+* semi simulation
+* 3D preview
+* CNC drawing output
+* ERP integration
+* quotation/BOM integration
+
+---
+
+# 14) REPLIT KO DENE KE LIYE DEVELOPMENT PROMPT
+
+```text
+Build a modular industrial roll forming design software with a complete admin panel and engineer workflow.
+
+The app must include:
+1. Authentication and role-based access control
+2. User roles: Super Admin, Admin, Design Engineer, Production Engineer, Viewer
+3. Admin modules:
+   - user management
+   - material master
+   - machine master
+   - standard profile library
+   - engineering rules manager
+   - approval workflow
+   - export manager
+   - audit logs
+4. Engineer modules:
+   - create project
+   - draw/import profile
+   - select material
+   - define min, nominal, and max thickness
+   - select machine
+   - analyze profile geometry
+   - generate flower pattern
+   - generate draft roll tooling
+   - validate risks
+   - export reports
+5. Database must support:
+   - users
+   - projects
+   - materials
+   - profiles
+   - profile_segments
+   - machine_setups
+   - flower_patterns
+   - flower_pattern_stations
+   - roll_designs
+   - validations
+   - exports
+   - approvals
+   - audit_logs
+6. Include industrial UI with dashboard cards, engineering panels, warnings, and structured forms
+7. Use React + TypeScript frontend and Node.js or Python backend
+8. Use PostgreSQL with JSON fields for geometry and contour storage
+9. Make the app scalable for future AI recommendation and CAD/simulation features
+10. This is a semi-automatic engineering system, not a blind one-click final design tool
+```
+
+---
+
+# 15) MERI STRONG PRACTICAL ADVICE
+
+Aap pehle **MVP** me ye pakka complete karvao:
+
+* login + roles
+* project create
+* profile draw/import
+* material + thickness
+* geometry analysis
+* flower pattern
+* warnings
+* PDF export
+
+Uske baad:
+
+* roll contour
+* detailed tooling
+* approval workflow
+* AI suggestions
+
+Kyuki agar pehle hi sab kuch ek saath banaoge to bugs bahut aayenge.
+
+---
+
+# 16) FINAL SEEDHA PLAN
+
+Aapke software banane ka best order ye hai:
+
+**Admin setup → Project system → Profile editor → Material/thickness engine → Flower pattern → Validation → Export → Roll draft**
+
+Ye sabse sahi development order rahega.
+
+Agar chaho, next message me main aapke liye **exact SQL tables + API request/response format + full menu structure** bhi ready kar deta hoon.

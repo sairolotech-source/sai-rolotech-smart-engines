@@ -489,6 +489,7 @@ function StepProfile({ onDone }: { onDone: () => void }) {
 function StepMaterial({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
   const {
     materialType, setMaterialType, materialThickness, setMaterialThickness,
+    minThickness, setMinThickness, maxThickness, setMaxThickness,
     numStations, setNumStations, geometry, isThicknessValid,
   } = useCncStore();
   const network = useNetworkStatus();
@@ -564,7 +565,7 @@ function StepMaterial({ onDone, onBack }: { onDone: () => void; onBack: () => vo
         </div>
         <div>
           <label className="block text-xs font-semibold text-zinc-400 mb-2">
-            Thickness (mm)
+            Nominal Thickness (mm)
             <span className="ml-1 text-zinc-600 font-normal">range: {mat.minThickness}–{mat.maxThickness}</span>
           </label>
           <input
@@ -576,6 +577,42 @@ function StepMaterial({ onDone, onBack }: { onDone: () => void; onBack: () => vo
             onChange={(e) => setMaterialThickness(parseFloat(e.target.value) || 1)}
             className={`rt-input ${!validThickness ? "border-red-600/60" : ""}`}
           />
+        </div>
+      </div>
+
+      {/* Thickness Range — Min / Nominal / Max (per spec: Page 5 - Material & Thickness Screen) */}
+      <div className="rt-card p-3">
+        <div className="text-xs font-semibold text-zinc-400 mb-3 flex items-center gap-2">
+          <span>Thickness Range</span>
+          <span className="text-[10px] text-zinc-600 font-normal">(per DIN EN 10162 — for tooling compatibility check)</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Min Thickness", value: minThickness, set: (v: number) => { if (v > 0 && v <= materialThickness) setMinThickness(v); }, color: "text-blue-300" },
+            { label: "Nominal (active)", value: materialThickness, set: (v: number) => setMaterialThickness(v), color: "text-emerald-300" },
+            { label: "Max Thickness", value: maxThickness, set: (v: number) => { if (v >= materialThickness) setMaxThickness(v); }, color: "text-amber-300" },
+          ].map(({ label, value, set: setter, color }) => (
+            <div key={label}>
+              <label className={`block text-[10px] font-semibold mb-1 ${color}`}>{label}</label>
+              <input
+                type="number"
+                min={0.1}
+                max={10}
+                step={0.05}
+                value={value}
+                onChange={e => setter(parseFloat(e.target.value) || value)}
+                className="rt-input text-sm font-mono"
+              />
+              <div className="text-[10px] text-zinc-600 mt-0.5 font-mono">{value.toFixed(2)} mm</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 pt-2 border-t border-zinc-800/50 flex items-center justify-between text-[10px] text-zinc-500">
+          <span>Range spread: <span className="font-mono text-zinc-300">{(maxThickness - minThickness).toFixed(2)} mm</span></span>
+          <span>Ratio: <span className={`font-mono font-bold ${maxThickness / minThickness <= 1.20 ? "text-emerald-400" : maxThickness / minThickness <= 1.35 ? "text-amber-400" : "text-red-400"}`}>{(maxThickness / minThickness).toFixed(2)}×</span></span>
+          <span className={`font-semibold ${maxThickness / minThickness <= 1.20 ? "text-emerald-400" : maxThickness / minThickness <= 1.35 ? "text-amber-400" : "text-red-400"}`}>
+            {maxThickness / minThickness <= 1.20 ? "✓ Same tooling OK" : maxThickness / minThickness <= 1.35 ? "⚠ Review needed" : "✗ Separate tooling"}
+          </span>
         </div>
       </div>
 

@@ -19,7 +19,7 @@ import {
   ArrowLeftRight, Database, Flame, ChevronRight, Layers, Brain, Download,
   Circle, Triangle, Wand2, Table, Minus, ScanLine, FolderTree,
   TrendingDown, TrendingUp, ShieldCheck, Shield, Hexagon, Trophy, PlayCircle, Layers2,
-  Gauge, Crosshair, Eye, Key, Github, Bot, BarChart2,
+  Gauge, Crosshair, Eye, Key, Github, Bot, BarChart2, Calculator,
 } from "lucide-react";
 
 const LeftPanel = lazy(() => import("../components/cnc/LeftPanel").then(m => ({ default: m.LeftPanel })));
@@ -82,6 +82,7 @@ const RFDTMView = lazy(() => import("../components/cnc/RFDTMView").then(m => ({ 
 const ThicknessRangeEngine = lazy(() => import("../components/cnc/ThicknessRangeEngine").then(m => ({ default: m.ThicknessRangeEngine })));
 const GeometryRecognitionEngine = lazy(() => import("../components/cnc/GeometryRecognitionEngine").then(m => ({ default: m.GeometryRecognitionEngine })));
 const PassAngleProgressionView = lazy(() => import("../components/cnc/PassAngleProgressionView").then(m => ({ default: m.PassAngleProgressionView })));
+const EngineeringFormulaCalculator = lazy(() => import("../components/cnc/EngineeringFormulaCalculator").then(m => ({ default: m.EngineeringFormulaCalculator })));
 const RFSpreadsheetView = lazy(() => import("../components/cnc/RFSpreadsheetView").then(m => ({ default: m.RFSpreadsheetView })));
 const DrawingDiesView = lazy(() => import("../components/cnc/DrawingDiesView").then(m => ({ default: m.DrawingDiesView })));
 const CageFormingView = lazy(() => import("../components/cnc/CageFormingView").then(m => ({ default: m.CageFormingView })));
@@ -147,7 +148,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "forming-sim": "analysis", "roll-forming-sim": "analysis", springback: "analysis", "strip-width": "analysis",
   "roll-gap": "analysis", "cost-estimator": "analysis", camber: "analysis",
   "forming-energy": "analysis", "material-db": "analysis", "rf-dtm": "analysis",
-  "thickness-range": "analysis", "geometry-recognition": "analysis", "pass-angle-engine": "analysis",
+  "thickness-range": "analysis", "geometry-recognition": "analysis", "pass-angle-engine": "analysis", "formula-calculator": "analysis",
   twin: "simulation", studio3d: "simulation",
   "rf-tubes": "formaxis-modules", "rf-trapeze": "formaxis-modules", "drawing-dies": "formaxis-modules",
   "cage-forming": "formaxis-modules", "wire-rolling": "formaxis-modules",
@@ -313,6 +314,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "thickness-range", label: "Thickness Range Engine", icon: <Layers className="w-4 h-4" />, desc: "Min/Nom/Max thickness — roll gap range, shim/spacer calculation, tooling compatibility" },
         { id: "geometry-recognition", label: "Geometry Recognition", icon: <Eye className="w-4 h-4" />, desc: "Auto-detect bends, symmetry, difficulty level, risk flags (springback/twist/edge-wave)" },
         { id: "pass-angle-engine", label: "Pass Angle Engine", icon: <BarChart2 className="w-4 h-4" />, desc: "Station-by-station forming angle schedule — Gemini Pro + DIN 6935 rule engine" },
+        { id: "formula-calculator", label: "Engineering Formula Calculator", icon: <Calculator className="w-4 h-4" />, desc: "BA/BD · Neutral Axis · Station Count · Springback · Pass Angles · Roll OD · Face Width · Spacer — all DIN 6935 formulas in one interactive tool" },
       ],
     },
     {
@@ -456,6 +458,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "thickness-range": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><ThicknessRangeEngine /></div></Suspense>;
       case "geometry-recognition": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><GeometryRecognitionEngine /></div></Suspense>;
       case "pass-angle-engine": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><PassAngleProgressionView /></div></Suspense>;
+      case "formula-calculator": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-auto animate-fade-slide-in"><EngineeringFormulaCalculator /></div></Suspense>;
       case "rf-spreadsheet": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RFSpreadsheetView /></div></Suspense>;
       case "drawing-dies": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DrawingDiesView /></div></Suspense>;
       case "cage-forming": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><CageFormingView /></div></Suspense>;

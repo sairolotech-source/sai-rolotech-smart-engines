@@ -31,11 +31,21 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react":  ["react", "react-dom"],
-          "vendor-3d":     ["three"],
-          "vendor-ui":     ["lucide-react"],
-          "vendor-utils":  ["zustand", "immer"],
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-dom") || id.includes("react/"))          return "vendor-react";
+            if (id.includes("three"))                                        return "vendor-3d";
+            if (id.includes("jspdf"))                                        return "vendor-pdf";
+            if (id.includes("html2canvas"))                                  return "vendor-canvas";
+            if (id.includes("konva") || id.includes("react-konva"))          return "vendor-konva";
+            if (id.includes("lucide-react"))                                 return "vendor-icons";
+            if (id.includes("zustand") || id.includes("immer"))             return "vendor-state";
+            if (id.includes("framer-motion"))                                return "vendor-motion";
+            if (id.includes("recharts") || id.includes("d3-"))              return "vendor-charts";
+            if (id.includes("@radix-ui"))                                    return "vendor-radix";
+            if (id.includes("monaco-editor"))                                return "vendor-monaco";
+            return "vendor-misc";
+          }
         },
       },
     },

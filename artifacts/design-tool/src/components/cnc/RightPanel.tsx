@@ -9,6 +9,7 @@ import { AccuracyMonitor } from "./AccuracyMonitor";
 import { AIDesignScore } from "./AIDesignScore";
 import { AIDesignAnalyzer } from "./AIDesignAnalyzer";
 import { AIGcodeOptimizer } from "./AIGcodeOptimizer";
+import { DeepAccuracyShield } from "./DeepAccuracyShield";
 
 const GCODE_KEYWORDS = /\b(G[0-9]+|M[0-9]+|T[0-9]+|S[0-9]+|F[0-9]+)\b/g;
 const GCODE_COORDS = /([XYZIJKR]-?[0-9]+\.?[0-9]*)/g;
@@ -308,6 +309,9 @@ export function RightPanel() {
           </div>
         </div>
       )}
+
+      {/* Deep Accuracy Shield — offline formula + Gemini cross-verification, target ≥98% */}
+      <DeepAccuracyShield />
 
       {/* AI Design Score — holistic design quality gauge */}
       <AIDesignScore />

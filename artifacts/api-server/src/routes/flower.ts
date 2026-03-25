@@ -1,6 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { generateFlowerPattern, type FlowerStation } from "../lib/power-pattern";
 import type { ProfileGeometry } from "../lib/dxf-parser-util";
+import { validateFlowerInputs, validateFlowerOutputs } from "../lib/calc-validator";
+import { verifyFlowerPattern, MATERIAL_PROPS } from "../lib/deep-accuracy-engine";
 
 const router: IRouter = Router();
 
@@ -198,12 +200,66 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
       modelNote = "Open Section AI (Model A): max 15°/station, 3.0% springback compensation, edge-wave risk monitoring, flare-zone detection";
     }
 
+    // ── Deep Accuracy Verification (offline, synchronous) ──────────────────
+    const inputValidation = validateFlowerInputs({
+      thickness: matThickness,
+      numStations: stations,
+      totalBendAngle: processedStations.reduce((s, st) => s + Math.abs(st.bendAngle ?? 0), 0),
+      stripWidth: result.stripWidth ?? 200,
+      materialType: matType,
+    });
+
+    const deepResult = verifyFlowerPattern({
+      materialType: matType,
+      thickness: matThickness,
+      numStations: stations,
+      totalBendAngle: processedStations.reduce((s, st) => s + Math.abs(st.bendAngle ?? 0), 0),
+      stripWidth: result.stripWidth ?? 200,
+      sectionModel: sectionModel ?? "open",
+      stations: processedStations.map((st, i) => ({
+        stationNumber: i + 1,
+        bendAngle: Math.abs(st.bendAngle ?? 0),
+        rollDiameter: st.rollDiameter ?? 150,
+        rollGap: st.rollGap ?? matThickness,
+        formingForce: st.formingForce ?? 10,
+        springbackAngle: st.springbackAngle,
+      })),
+    });
+
+    const autoFixedStations = processedStations.map((st, i) => {
+      const fix = deepResult.autoCorrections.find(c => c.param === `S${i + 1}_rollGap`);
+      if (fix) {
+        return { ...st, rollGap: fix.to, _corrected: true };
+      }
+      return st;
+    });
+
+    const totalChecks = deepResult.checks.length || 1;
+    const passed = deepResult.checks.filter(c => c.status === "ok").length;
+    const accuracyScore = Math.min(100, Math.round(98 * (passed / totalChecks) + 2));
+
+    if (deepResult.autoCorrections.length > 0) {
+      console.log(`[flower] Deep verification: ${deepResult.autoCorrections.length} auto-corrections applied`);
+      for (const ac of deepResult.autoCorrections) {
+        console.log(`  [fix] ${ac.param}: ${ac.from} → ${ac.to} (${ac.reason})`);
+      }
+    }
+
     res.json({
       success: true,
       ...result,
-      stations: processedStations,
+      stations: autoFixedStations,
       sectionModelUsed: sectionModel ?? "auto",
       modelNote,
+      _verification: {
+        inputErrors: inputValidation.errors.length,
+        inputWarnings: inputValidation.warnings.length,
+        deepChecks: deepResult.checks.length,
+        autoCorrections: deepResult.autoCorrections.length,
+        accuracyScore,
+        recommendations: deepResult.recommendations.slice(0, 5),
+        status: inputValidation.valid && deepResult.autoCorrections.length === 0 ? "VERIFIED" : "AUTO_CORRECTED",
+      },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to generate power pattern";

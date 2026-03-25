@@ -27,7 +27,9 @@ import serialRouter from "./serial";
 import { licenseRouter, adminRouter } from "./license-admin";
 import aiReviewRouter from "./ai-review";
 import flowerSuggestionsRouter from "./flower-suggestions";
+import deepVerifyRouter from "./deep-verify";
 import { requireAuth } from "../middleware/auth";
+import { accuracyInterceptor } from "../middleware/accuracy-interceptor";
 import systemWatchdogRouter from "./system-watchdog";
 import { startWatchdog } from "../lib/system-watchdog";
 
@@ -48,6 +50,7 @@ router.use(aiReviewRouter);
 router.use(installRouter);
 
 router.use(requireAuth as any);
+router.use(accuracyInterceptor as any);
 router.use(dxfRouter);
 router.use(flowerRouter);
 router.use(gcodeRouter);
@@ -71,6 +74,7 @@ router.use(githubUpdateRouter);
 router.use(serialRouter);
 router.use(systemWatchdogRouter);
 router.use(flowerSuggestionsRouter);
+router.use(deepVerifyRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

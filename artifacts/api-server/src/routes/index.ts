@@ -32,6 +32,7 @@ import { requireAuth } from "../middleware/auth";
 import { accuracyInterceptor } from "../middleware/accuracy-interceptor";
 import systemWatchdogRouter from "./system-watchdog";
 import { startWatchdog } from "../lib/system-watchdog";
+import rollPassEngineRouter from "./roll-pass-engine";
 
 const router: IRouter = Router();
 
@@ -74,6 +75,7 @@ router.use(githubUpdateRouter);
 router.use(serialRouter);
 router.use(systemWatchdogRouter);
 router.use(flowerSuggestionsRouter);
+router.use(rollPassEngineRouter);
 router.use(deepVerifyRouter);
 
 startAutoBackup(600);

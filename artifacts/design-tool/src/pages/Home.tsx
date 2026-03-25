@@ -19,7 +19,7 @@ import {
   ArrowLeftRight, Database, Flame, ChevronRight, Layers, Brain, Download,
   Circle, Triangle, Wand2, Table, Minus, ScanLine, FolderTree,
   TrendingDown, TrendingUp, ShieldCheck, Shield, Hexagon, Trophy, PlayCircle, Layers2,
-  Gauge, Crosshair, Eye, Key, Github, Bot,
+  Gauge, Crosshair, Eye, Key, Github, Bot, BarChart2,
 } from "lucide-react";
 
 const LeftPanel = lazy(() => import("../components/cnc/LeftPanel").then(m => ({ default: m.LeftPanel })));
@@ -79,6 +79,9 @@ const RFTubesView = lazy(() => import("../components/cnc/RFTubesView").then(m =>
 const RFTrapezeView = lazy(() => import("../components/cnc/RFTrapezeView").then(m => ({ default: m.RFTrapezeView })));
 const SmartRollsView = lazy(() => import("../components/cnc/SmartRollsView").then(m => ({ default: m.SmartRollsView })));
 const RFDTMView = lazy(() => import("../components/cnc/RFDTMView").then(m => ({ default: m.RFDTMView })));
+const ThicknessRangeEngine = lazy(() => import("../components/cnc/ThicknessRangeEngine").then(m => ({ default: m.ThicknessRangeEngine })));
+const GeometryRecognitionEngine = lazy(() => import("../components/cnc/GeometryRecognitionEngine").then(m => ({ default: m.GeometryRecognitionEngine })));
+const PassAngleProgressionView = lazy(() => import("../components/cnc/PassAngleProgressionView").then(m => ({ default: m.PassAngleProgressionView })));
 const RFSpreadsheetView = lazy(() => import("../components/cnc/RFSpreadsheetView").then(m => ({ default: m.RFSpreadsheetView })));
 const DrawingDiesView = lazy(() => import("../components/cnc/DrawingDiesView").then(m => ({ default: m.DrawingDiesView })));
 const CageFormingView = lazy(() => import("../components/cnc/CageFormingView").then(m => ({ default: m.CageFormingView })));
@@ -144,6 +147,7 @@ const TAB_TO_CAT: Record<string, string> = {
   "forming-sim": "analysis", "roll-forming-sim": "analysis", springback: "analysis", "strip-width": "analysis",
   "roll-gap": "analysis", "cost-estimator": "analysis", camber: "analysis",
   "forming-energy": "analysis", "material-db": "analysis", "rf-dtm": "analysis",
+  "thickness-range": "analysis", "geometry-recognition": "analysis", "pass-angle-engine": "analysis",
   twin: "simulation", studio3d: "simulation",
   "rf-tubes": "formaxis-modules", "rf-trapeze": "formaxis-modules", "drawing-dies": "formaxis-modules",
   "cage-forming": "formaxis-modules", "wire-rolling": "formaxis-modules",
@@ -306,6 +310,9 @@ export default function Home({ onBackToDashboard }: HomeProps) {
         { id: "forming-energy", label: "Energy", icon: <Flame className="w-4 h-4" />, desc: "Forming energy & force charts" },
         { id: "material-db", label: "Materials", icon: <Database className="w-4 h-4" />, desc: "Material property database" },
         { id: "rf-dtm", label: "DTM Strain", icon: <Activity className="w-4 h-4" />, desc: "Dynamic Deformation Technology — real-time strain" },
+        { id: "thickness-range", label: "Thickness Range Engine", icon: <Layers className="w-4 h-4" />, desc: "Min/Nom/Max thickness — roll gap range, shim/spacer calculation, tooling compatibility" },
+        { id: "geometry-recognition", label: "Geometry Recognition", icon: <Eye className="w-4 h-4" />, desc: "Auto-detect bends, symmetry, difficulty level, risk flags (springback/twist/edge-wave)" },
+        { id: "pass-angle-engine", label: "Pass Angle Engine", icon: <BarChart2 className="w-4 h-4" />, desc: "Station-by-station forming angle schedule — Gemini Pro + DIN 6935 rule engine" },
       ],
     },
     {
@@ -446,6 +453,9 @@ export default function Home({ onBackToDashboard }: HomeProps) {
       case "rf-trapeze": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RFTrapezeView /></div></Suspense>;
       case "smart-rolls": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><SmartRollsView /></div></Suspense>;
       case "rf-dtm": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RFDTMView /></div></Suspense>;
+      case "thickness-range": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><ThicknessRangeEngine /></div></Suspense>;
+      case "geometry-recognition": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><GeometryRecognitionEngine /></div></Suspense>;
+      case "pass-angle-engine": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><PassAngleProgressionView /></div></Suspense>;
       case "rf-spreadsheet": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><RFSpreadsheetView /></div></Suspense>;
       case "drawing-dies": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><DrawingDiesView /></div></Suspense>;
       case "cage-forming": return <Suspense fallback={<LazyFallback />}><div className="flex-1 overflow-hidden animate-fade-slide-in"><CageFormingView /></div></Suspense>;

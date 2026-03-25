@@ -48,6 +48,15 @@ export interface BearingSpec {
   massKg: number;
 }
 
+export interface KeywaySpec {
+  widthMm: number;
+  heightMm: number;
+  shaftDepthT1Mm: number;
+  hubDepthT2Mm: number;
+  standard: string;
+  length: string;
+}
+
 export interface ShaftCalcResult {
   requiredDiaMm: number;
   selectedDiaMm: number;
@@ -56,6 +65,13 @@ export interface ShaftCalcResult {
   combinedStressMpa: number;
   safetyFactor: number;
   deflectionMm: number;
+  keyway: KeywaySpec;
+  toleranceFit: { shaft: string; bore: string; interference: string };
+  surfaceFinish: { bearingSeat: string; keywaySurface: string; rollBody: string };
+  recommendedMaterial: string;
+  locknuts: string;
+  stressConcentrationKf: number;
+  shaftYieldMpa: number;
 }
 
 export interface RollODResult {
@@ -135,6 +151,71 @@ const SHAFT_YIELD_MPA: Record<string, number> = {
 };
 const DEFAULT_SHAFT_YIELD = 400;
 
+interface KeywayRow { minDia: number; maxDia: number; b: number; h: number; t1: number; t2: number }
+const DIN6885_KEYWAY: KeywayRow[] = [
+  { minDia:  6, maxDia: 8,   b: 2,  h: 2,  t1: 1.2, t2: 1.0 },
+  { minDia:  8, maxDia: 10,  b: 3,  h: 3,  t1: 1.8, t2: 1.4 },
+  { minDia: 10, maxDia: 12,  b: 4,  h: 4,  t1: 2.5, t2: 1.8 },
+  { minDia: 12, maxDia: 17,  b: 5,  h: 5,  t1: 3.0, t2: 2.3 },
+  { minDia: 17, maxDia: 22,  b: 6,  h: 6,  t1: 3.5, t2: 2.8 },
+  { minDia: 22, maxDia: 30,  b: 8,  h: 7,  t1: 4.0, t2: 3.3 },
+  { minDia: 30, maxDia: 38,  b: 10, h: 8,  t1: 5.0, t2: 3.3 },
+  { minDia: 38, maxDia: 44,  b: 12, h: 8,  t1: 5.0, t2: 3.3 },
+  { minDia: 44, maxDia: 50,  b: 14, h: 9,  t1: 5.5, t2: 3.8 },
+  { minDia: 50, maxDia: 58,  b: 16, h: 10, t1: 6.0, t2: 4.3 },
+  { minDia: 58, maxDia: 65,  b: 18, h: 11, t1: 7.0, t2: 4.4 },
+  { minDia: 65, maxDia: 75,  b: 20, h: 12, t1: 7.5, t2: 4.9 },
+  { minDia: 75, maxDia: 85,  b: 22, h: 14, t1: 9.0, t2: 5.4 },
+  { minDia: 85, maxDia: 95,  b: 25, h: 14, t1: 9.0, t2: 5.4 },
+  { minDia: 95, maxDia: 110, b: 28, h: 16, t1:10.0, t2: 6.4 },
+  { minDia: 110, maxDia: 130,b: 32, h: 18, t1:11.0, t2: 7.4 },
+];
+
+interface LocknusRow { minDia: number; maxDia: number; thread: string; nut: string }
+const DIN981_LOCKNUT: LocknusRow[] = [
+  { minDia: 20, maxDia: 25, thread: "M20×1.5",  nut: "KM4"  },
+  { minDia: 25, maxDia: 30, thread: "M25×1.5",  nut: "KM5"  },
+  { minDia: 30, maxDia: 35, thread: "M30×1.5",  nut: "KM6"  },
+  { minDia: 35, maxDia: 40, thread: "M35×1.5",  nut: "KM7"  },
+  { minDia: 40, maxDia: 45, thread: "M40×1.5",  nut: "KM8"  },
+  { minDia: 45, maxDia: 50, thread: "M45×1.5",  nut: "KM9"  },
+  { minDia: 50, maxDia: 55, thread: "M50×1.5",  nut: "KM10" },
+  { minDia: 55, maxDia: 60, thread: "M55×2",    nut: "KM11" },
+  { minDia: 60, maxDia: 65, thread: "M60×2",    nut: "KM12" },
+  { minDia: 65, maxDia: 70, thread: "M65×2",    nut: "KM13" },
+  { minDia: 70, maxDia: 75, thread: "M70×2",    nut: "KM14" },
+  { minDia: 75, maxDia: 80, thread: "M75×2",    nut: "KM15" },
+  { minDia: 80, maxDia: 90, thread: "M80×2",    nut: "KM16" },
+  { minDia: 90, maxDia:100, thread: "M90×2",    nut: "KM18" },
+  { minDia:100, maxDia:120, thread: "M100×2",   nut: "KM20" },
+];
+
+function getKeyway(diaMm: number): KeywaySpec {
+  const row = DIN6885_KEYWAY.find(r => diaMm >= r.minDia && diaMm <= r.maxDia)
+    ?? DIN6885_KEYWAY[DIN6885_KEYWAY.length - 1]!;
+  return {
+    widthMm: row.b,
+    heightMm: row.h,
+    shaftDepthT1Mm: row.t1,
+    hubDepthT2Mm: row.t2,
+    standard: "DIN 6885-A (Parallel Key)",
+    length: `Min ${Math.round(diaMm * 1.5)}mm — Max ${Math.round(diaMm * 2.5)}mm`,
+  };
+}
+
+function getLocknut(diaMm: number): string {
+  const row = DIN981_LOCKNUT.find(r => diaMm >= r.minDia && diaMm < r.maxDia)
+    ?? DIN981_LOCKNUT[DIN981_LOCKNUT.length - 1]!;
+  return `${row.thread} (DIN 981 ${row.nut} + Tab Washer MB${row.nut.replace("KM","")})`;
+}
+
+function recommendShaftMaterial(combinedMomentNm: number): { material: string; yieldMpa: number } {
+  if (combinedMomentNm < 50)   return { material: "C45 (EN8) — Normalized", yieldMpa: 400 };
+  if (combinedMomentNm < 200)  return { material: "C45 (EN8) — Induction Hardened", yieldMpa: 550 };
+  if (combinedMomentNm < 600)  return { material: "42CrMo4 (EN19) — Q&T", yieldMpa: 650 };
+  return { material: "34CrNiMo6 (EN24) — Q&T", yieldMpa: 800 };
+}
+
 const DEEP_GROOVE_BEARINGS: BearingSpec[] = [
   { designation: "6205", boreMm: 25, odMm: 52, widthMm: 15, C_kN: 14.0, C0_kN: 7.8, massKg: 0.10 },
   { designation: "6206", boreMm: 30, odMm: 62, widthMm: 16, C_kN: 19.5, C0_kN: 11.2, massKg: 0.16 },
@@ -169,28 +250,62 @@ function calcShaftDiameter(
   motorKw: number,
   rpm: number,
   shaftYieldMpa = DEFAULT_SHAFT_YIELD,
-  safetyFactor = 2.0,
+  safetyFactor = 2.5,          // SF=2.5 per roll forming industry standard (shock + fatigue)
 ): ShaftCalcResult {
   const rollWidthM = rollWidthMm / 1000;
-  const tau_allow = (shaftYieldMpa / (safetyFactor * 2));
 
+  // Bending moment: simply supported beam, central point load
   const M_Nm = (formingForceN * rollWidthM) / 4;
+
+  // Torque from motor power
   const P_W = motorKw * 1000;
-  // T(Nm) = P(W) / ω = P(W) × 9.55 / rpm   [correct: P_W not P_kW here]
   const T_Nm = rpm > 0 ? (P_W * 9.55) / rpm : (formingForceN * 0.05);
 
-  const combinedMoment = Math.sqrt(M_Nm * M_Nm + T_Nm * T_Nm);
+  // Auto-recommend material based on load before stress calc
+  const combinedMomentRaw = Math.sqrt(M_Nm * M_Nm + T_Nm * T_Nm);
+  const matRec = recommendShaftMaterial(combinedMomentRaw);
+  const effectiveYield = Math.max(shaftYieldMpa, matRec.yieldMpa);
+
+  // Allowable shear stress (Maximum Shear Stress theory — Shigley's Eq 6-41)
+  const tau_allow = effectiveYield / (safetyFactor * 2);
+
+  // Keyway stress concentration factor Kf = 1.6 (ASME end-milled keyway)
+  const Kf = 1.6;
+
+  // Combined loading with Kf on bending side (Kf × M for fatigue, T static)
+  // d³ = (16/π × τ_allow) × √((Kf×M)² + T²)   [Shigley's Eq 6-41 variant]
+  const M_eff = Kf * M_Nm;
+  const combinedMoment = Math.sqrt(M_eff * M_eff + T_Nm * T_Nm);
   const d_req_m = Math.pow((16 * combinedMoment) / (Math.PI * tau_allow * 1e6), 1 / 3);
   const d_req_mm = d_req_m * 1000;
 
-  const standard = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100];
-  const selected = standard.find(d => d >= d_req_mm) ?? 100;
+  // Round up to nearest standard ISO shaft size
+  const standard = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100, 110, 120];
+  const selected = standard.find(d => d >= d_req_mm) ?? 120;
 
+  // Deflection check: simply supported shaft, central load (L/1000 limit per ISO)
   const I = Math.PI * Math.pow(selected / 1000, 4) / 64;
-  const E = 210e9;
+  const E = 210e9;   // Steel Young's modulus
   const deflection_mm = (formingForceN * Math.pow(rollWidthM, 3)) / (48 * E * I) * 1000;
 
+  // Actual combined equivalent stress at selected diameter (von Mises MSS form)
+  // σ_eq = (32/πd³) × √((Kf×M)² + T²)  [equivalent bending stress — Shigley's basis]
   const combinedStress = (32 * combinedMoment) / (Math.PI * Math.pow(selected / 1000, 3)) / 1e6;
+  // Actual SF = σ_yield / σ_eq  (how many times above yield we are)
+  const actualSF = parseFloat((effectiveYield / combinedStress).toFixed(2));
+
+  // ISO 286 IT6/IT7 tolerance lookup (µm) for shaft h6 and bore H7
+  const iso286It: { max: number; it6: number; it7: number }[] = [
+    { max:  18, it6:  11, it7:  18 },
+    { max:  30, it6:  13, it7:  21 },
+    { max:  50, it6:  16, it7:  25 },
+    { max:  80, it6:  19, it7:  30 },
+    { max: 120, it6:  22, it7:  35 },
+    { max: 180, it6:  25, it7:  40 },
+  ];
+  const isoRow = iso286It.find(r => selected <= r.max) ?? iso286It[iso286It.length - 1]!;
+  const it6 = isoRow.it6;   // h6 shaft: 0/−IT6
+  const it7 = isoRow.it7;   // H7 bore:  +IT7/0
 
   return {
     requiredDiaMm: parseFloat(d_req_mm.toFixed(2)),
@@ -198,8 +313,23 @@ function calcShaftDiameter(
     bendingMomentNm: parseFloat(M_Nm.toFixed(2)),
     torqueNm: parseFloat(T_Nm.toFixed(2)),
     combinedStressMpa: parseFloat(combinedStress.toFixed(2)),
-    safetyFactor: parseFloat((tau_allow / combinedStress).toFixed(2)),
+    safetyFactor: actualSF,
     deflectionMm: parseFloat(deflection_mm.toFixed(4)),
+    keyway: getKeyway(selected),
+    toleranceFit: {
+      shaft: `Ø${selected}h6 (0/−${it6}µm) — bearing seat ground to Ra 0.8µm`,
+      bore: `Ø${selected}H7 (+${it7}/0µm) — roll bore reamed/finished`,
+      interference: "H7/h6 = Clearance-to-transition fit — assembly by hand/light press",
+    },
+    surfaceFinish: {
+      bearingSeat: "Ra 0.8µm (Rz 3.2µm) — ground finish",
+      keywaySurface: "Ra 1.6µm (Rz 6.3µm) — milled",
+      rollBody: "Ra 3.2µm (Rz 12.5µm) — turned",
+    },
+    recommendedMaterial: matRec.material,
+    locknuts: getLocknut(selected),
+    stressConcentrationKf: Kf,
+    shaftYieldMpa: effectiveYield,
   };
 }
 
@@ -591,7 +721,7 @@ export function generateRollTooling(
       motorKw,
       rpm,
       DEFAULT_SHAFT_YIELD,
-      2.0,
+      2.5,             // SF=2.5 industry standard for roll forming
     );
 
     const effectiveShaft = Math.max(shaftDiameter, shaftCalc.selectedDiaMm);
@@ -695,23 +825,32 @@ export function calcBomFromTooling(
   const bom: { item: string; qty: number; spec: string; material: string }[] = [];
   for (const t of tooling) {
     const matSpec = `${t.rollMaterial.toolSteel} ${t.rollMaterial.hardnessHRC} | ${t.rollMaterial.surfaceTreatment}`;
+    const sc = t.shaftCalc;
+    const kw = sc.keyway;
+    const shaftSpec = `Ø${sc.selectedDiaMm}mm ${sc.recommendedMaterial} | ${sc.toleranceFit.shaft} | Keyway ${kw.widthMm}×${kw.heightMm}mm (${kw.standard}) t1=${kw.shaftDepthT1Mm} | ${sc.locknuts} | SF=${sc.safetyFactor}`;
     bom.push({
       item: `Upper Roll ${t.stationId} [${t.rollType.name}]`,
       qty: 1,
-      spec: `OD${t.upperRollOD}×ID${t.upperRollID}×W${t.upperRollWidth} | Shaft Ø${t.shaftCalc.selectedDiaMm} | ${t.bearing.designation} | Pitch ${t.standPitch.pitchMm}mm | Groove:${t.rollType.grooveShape} ${t.rollType.grooveAngleDeg}°`,
+      spec: `OD${t.upperRollOD}×ID${t.upperRollID}×W${t.upperRollWidth} | Bore:${sc.toleranceFit.bore} | ${t.bearing.designation} | Pitch ${t.standPitch.pitchMm}mm | Groove:${t.rollType.grooveShape} ${t.rollType.grooveAngleDeg}° | Surface:${sc.surfaceFinish.rollBody}`,
       material: matSpec,
     });
     bom.push({
       item: `Lower Roll ${t.stationId} [${t.rollType.name}]`,
       qty: 1,
-      spec: `OD${t.lowerRollOD}×ID${t.lowerRollID}×W${t.lowerRollWidth} | Shaft Ø${t.shaftCalc.selectedDiaMm} | Groove:${t.rollType.grooveShape} ${t.rollType.grooveAngleDeg}°`,
+      spec: `OD${t.lowerRollOD}×ID${t.lowerRollID}×W${t.lowerRollWidth} | Bore:${sc.toleranceFit.bore} | Groove:${t.rollType.grooveShape} ${t.rollType.grooveAngleDeg}° | Surface:${sc.surfaceFinish.rollBody}`,
       material: matSpec,
+    });
+    bom.push({
+      item: `Shaft ${t.stationId}`,
+      qty: 1,
+      spec: shaftSpec,
+      material: sc.recommendedMaterial,
     });
     bom.push({
       item: `Bearing Set ${t.stationId}`,
       qty: 4,
-      spec: `SKF/FAG ${t.bearing.designation} | Ø${t.bearing.boreMm}×${t.bearing.odMm}×${t.bearing.widthMm}mm | C=${t.bearing.C_kN}kN`,
-      material: "Bearing Steel 52100",
+      spec: `SKF/FAG ${t.bearing.designation} | Ø${t.bearing.boreMm}×${t.bearing.odMm}×${t.bearing.widthMm}mm | C=${t.bearing.C_kN}kN | Seat:${sc.surfaceFinish.bearingSeat}`,
+      material: "Bearing Steel 52100 (2RS Sealed)",
     });
   }
   return bom;

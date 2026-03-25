@@ -761,43 +761,69 @@ Roll Width = Face Width + 2×(Bearing Width + 5mm clearance)
 
   {
     id: "shaft_diameter",
-    keywords: ["shaft diameter", "shaft size", "shaft design", "shaft calculation", "torque shaft", "shaft formula"],
-    hindiKeywords: ["shaft", "dhura", "shaft size", "shaft diameter"],
-    patterns: [/shaft.*diameter|shaft.*size|shaft.*design|shaft.*calc/i],
+    keywords: ["shaft diameter", "shaft size", "shaft design", "shaft calculation", "torque shaft", "shaft formula", "keyway", "locknut", "shaft material", "shaft tolerance"],
+    hindiKeywords: ["shaft", "dhura", "shaft size", "shaft diameter", "keyway", "locknut"],
+    patterns: [/shaft.*diameter|shaft.*size|shaft.*design|shaft.*calc|shaft.*dim|keyway.*din|locknut.*shaft/i],
     weight: 1.5,
-    conciseResponse: "Shaft: d = ∛[16/(π×τ) × √(M²+T²)]. τ_allow = σ_yield/(2×SF). SF=2.5 for roll forming. Standard sizes: 25-100mm.",
-    response: `**Shaft Diameter Design — Combined Loading (Shigley's)**
+    conciseResponse: "Shaft: d = ∛[16/(π×τ) × √((Kf×M)²+T²)]. Kf=1.6 (keyway), SF=2.5. Material: C45→42CrMo4 by load. h6/H7 fit. DIN 6885 keyway + DIN 981 locknut auto-selected.",
+    response: `**Shaft Dimension Design — Roll Forming Engineering Standard**
 
-**Combined Bending + Torsion (Distortion Energy Theory):**
+**Formula (Shigley's MSS Theory + Keyway Kf):**
 \`\`\`
-d = ∛[ (16/(π × τ_allow)) × √(M² + T²) ]
+d = ∛[ (16/(π × τ_allow)) × √((Kf×M)² + T²) ]
 
-M = Bending moment from forming force (N·m)
-T = Torque = P×9550/RPM (N·m)
-τ_allow = σ_yield / (2 × SF)     [SF = 2.5 standard]
-\`\`\`
-
-**Torque-Only (simplified):**
-\`\`\`
-d = ∛[ (16 × T) / (π × τ_allow) ]   (in mm when T in N·mm)
+Kf = 1.6   (ASME end-milled keyway stress concentration)
+M  = F × L / 4   (simply-supported shaft, central load)
+T  = P(W) × 9.55 / RPM   (torque from motor)
+τ_allow = σ_yield / (2 × SF)
+SF = 2.5   (roll forming: shock + fatigue combined)
 \`\`\`
 
-**Allowable Shear Stress:**
-| Material | σ_yield (MPa) | τ_allow (MPa) |
-|----------|--------------|--------------|
-| C45 (EN8) normalized | 380 | 76 |
-| C45 hardened | 600 | 120 |
-| 42CrMo4 (EN19) | 900 | 180 |
-| EN31 (D series) | 1700 | 340 |
+**Material Selection by Load:**
+| Combined Moment | Material | σ_yield | Use |
+|-----------------|----------|---------|-----|
+| < 50 N·m | C45 (EN8) Normalized | 400 MPa | Light duty |
+| 50–200 N·m | C45 (EN8) Induction Hardened | 550 MPa | Standard |
+| 200–600 N·m | 42CrMo4 (EN19) Q&T | 650 MPa | Heavy duty |
+| > 600 N·m | 34CrNiMo6 (EN24) Q&T | 800 MPa | Extra heavy |
 
-**Standard Shaft Sizes:**
-20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100mm
+**Standard ISO Shaft Sizes:**
+20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100, 110, 120mm
 
-**Sizing Rules:**
-- Shaft/Roll OD ratio: 0.25 to 0.55 (min 25%, max 55% of roll OD)
-- Example: Roll OD 160mm → Shaft 40–88mm → Use 50mm standard
-- Shaft tolerance: h6 | Roll bore: H7 | Surface: Ra 0.8µm
-- **Keyway DIN 6885 (50mm shaft): 14×9mm key, 5.5mm depth in shaft**`
+**DIN 6885-A Parallel Keyway (auto-selected by shaft dia):**
+| Shaft Ø | b × h | t1 (shaft) | t2 (hub) |
+|---------|-------|-----------|---------|
+| 22–30mm | 8×7   | 4.0mm | 3.3mm |
+| 30–38mm | 10×8  | 5.0mm | 3.3mm |
+| 44–50mm | 14×9  | 5.5mm | 3.8mm |
+| 50–58mm | 16×10 | 6.0mm | 4.3mm |
+| 65–75mm | 20×12 | 7.5mm | 4.9mm |
+| 75–85mm | 22×14 | 9.0mm | 5.4mm |
+- Key length: 1.5× to 2.5× shaft diameter
+- Key material: C45 (same as shaft)
+- Width fit: N9/JS9 (interference/transition)
+
+**DIN 981 Locknut + Tab Washer (auto-selected):**
+| Shaft Ø | Thread | Locknut | Washer |
+|---------|--------|---------|--------|
+| 40mm | M40×1.5 | KM8 | MB8 |
+| 50mm | M50×1.5 | KM10 | MB10 |
+| 60mm | M60×2 | KM12 | MB12 |
+| 80mm | M80×2 | KM16 | MB16 |
+
+**ISO Tolerance Fits:**
+- Shaft (bearing seat): h6  → Surface Ra 0.8µm (ground)
+- Roll bore: H7           → Surface Ra 1.6µm (reamed)
+- Shaft body: Ra 3.2µm (turned)
+- Keyway slot: Ra 1.6µm (milled)
+
+**Deflection Limit:**
+- Max shaft deflection: L/1000 (ISO standard)
+- Formula: δ = FL³/(48EI) — simply supported central load
+
+**Shaft/Roll Ratio Rule:**
+- Shaft = 25–40% of Roll OD (standard)
+- Example: Roll OD 160mm → Shaft 40–65mm → Select 50mm`
   },
 
   {

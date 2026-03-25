@@ -51,6 +51,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("update-countdown", (_event, data) => callback(data));
   },
 
+  getLiveHardware: () => ipcRenderer.invoke("get-live-hardware"),
+
   showNotification: (title: string, message: string) =>
     ipcRenderer.send("show-notification", { title, message }),
 
@@ -84,6 +86,11 @@ declare global {
       onUpdateNotAvailable: (callback: () => void) => void;
       onUpdateCountdown: (callback: (data: { seconds: number; version: string }) => void) => void;
       quitAndInstall:    () => Promise<void>;
+      getLiveHardware:   () => Promise<{
+        coreUtils: number[]; avgCpu: number; cpuModel: string; cpuCores: number; cpuSpeedMHz: number;
+        totalRam: number; freeRam: number; usedRam: number; ramPct: number;
+        nvidia: { available: boolean; name: string; utilGpu: number; memUsed: number; memTotal: number; tempC: number; powerW: number; clockMHz: number };
+      }>;
       showNotification:  (title: string, message: string) => void;
       isElectron:        true;
       apiBaseUrl:        string;

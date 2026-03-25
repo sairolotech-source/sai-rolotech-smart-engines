@@ -1,6 +1,11 @@
 @echo off
 title SAI Rolotech Smart Engines v2.2.23 - Auto Builder
 color 0A
+:: Agar koi bhi error aaye, window band nahi hogi
+if "%1"=="" (
+    cmd /k "%~f0" RUNNING
+    exit /b
+)
 echo.
 echo  =====================================================
 echo   SAI Rolotech Smart Engines v2.2.23 - Auto Builder

@@ -369,15 +369,27 @@ export function ContextualGuide() {
     }
   }, [semiStep, setActiveTab]);
 
-  // Mode switcher
+  // Pending start signal — avoids race between stopPipeline abort flag + runAutoPipeline
+  const pendingStartRef = useRef<GuideMode | null>(null);
+
+  // Mode switcher — only updates state here, pipeline starts via useEffect below
   const switchMode = useCallback((mode: GuideMode) => {
     stopPipeline();
+    pendingStartRef.current = mode;
     setGuideMode(mode);
     setCompletedSteps([]);
     setAiResponse(null);
-    if (mode === "auto") runAutoPipeline();
-    if (mode === "semi") startSemiPipeline();
-  }, [stopPipeline, runAutoPipeline, startSemiPipeline]);
+  }, [stopPipeline]);
+
+  // Pipeline launcher — runs AFTER React re-render so abort flag is already cleared
+  useEffect(() => {
+    const pending = pendingStartRef.current;
+    if (!pending) return;
+    pendingStartRef.current = null;
+    autoAbortRef.current = false;
+    if (pending === "auto")  runAutoPipeline();
+    if (pending === "semi")  startSemiPipeline();
+  }, [guideMode, runAutoPipeline, startSemiPipeline]);
 
   // Pulse animation when tab changes to draw attention
   useEffect(() => {

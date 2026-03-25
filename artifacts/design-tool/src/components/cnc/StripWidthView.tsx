@@ -14,8 +14,8 @@ interface BendDeduction {
 }
 
 const K_FACTORS: Record<string, number> = {
-  GI: 0.45, CR: 0.42, HR: 0.48, SS: 0.50, AL: 0.38,
-  MS: 0.44, CU: 0.40, TI: 0.52, PP: 0.35, HSLA: 0.50,
+  GI: 0.44, CR: 0.44, HR: 0.42, SS: 0.50, AL: 0.43,
+  MS: 0.44, CU: 0.44, TI: 0.50, PP: 0.44, HSLA: 0.45,
 };
 
 function calcBendAllowance(angle: number, radius: number, thickness: number, kFactor: number): number {
@@ -45,7 +45,7 @@ export function StripWidthView() {
     return () => ro.disconnect();
   }, []);
 
-  const kFactor = K_FACTORS[materialType] ?? 0.45;
+  const kFactor = K_FACTORS[materialType] ?? 0.44;
 
   const bendDeductions: BendDeduction[] = useMemo(() => geometry.bendPoints.map((bp, i) => {
     const angle = bp.angle;

@@ -20,7 +20,7 @@ const MATERIAL_CAMBER: Record<string, { asymFactor: number; decayRate: number }>
   MS: { asymFactor: 0.013, decayRate: 0.5 },
   CU: { asymFactor: 0.008, decayRate: 0.35 },
   TI: { asymFactor: 0.030, decayRate: 0.65 },
-  PP: { asymFactor: 0.040, decayRate: 0.3 },
+  PP: { asymFactor: 0.012, decayRate: 0.5 },
   HSLA: { asymFactor: 0.022, decayRate: 0.6 },
 };
 
@@ -45,8 +45,8 @@ export function CamberPredictionView() {
   const profileCenter = allX.length > 1 ? (Math.max(...allX) + Math.min(...allX)) / 2 : 50;
   const halfWidth = Math.max(profileWidth / 2, 1);
 
-  const YIELD_MAP: Record<string, number> = { GI: 280, CR: 250, HR: 350, SS: 520, AL: 110, MS: 300, CU: 200, TI: 880, PP: 35, HSLA: 550 };
-  const E_MAP: Record<string, number> = { GI: 200000, CR: 200000, HR: 200000, SS: 193000, AL: 69000, MS: 200000, CU: 117000, TI: 116000, PP: 1500, HSLA: 200000 };
+  const YIELD_MAP: Record<string, number> = { GI: 280, CR: 340, HR: 250, SS: 520, AL: 270, MS: 250, CU: 200, TI: 880, PP: 280, HSLA: 550 };
+  const E_MAP: Record<string, number> = { GI: 200000, CR: 200000, HR: 200000, SS: 193000, AL: 69000, MS: 200000, CU: 117000, TI: 115000, PP: 200000, HSLA: 205000 };
   const sigmaY = YIELD_MAP[materialType] ?? 280;
   const E_mod = E_MAP[materialType] ?? 200000;
   const I_strip = (profileWidth * safeThickness ** 3) / 12;

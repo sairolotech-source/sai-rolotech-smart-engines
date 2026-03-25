@@ -138,10 +138,15 @@ function buildDesignPayload(state: ReturnType<typeof useCncStore.getState>) {
   const totalBends = stations.length > 0
     ? stations[stations.length - 1]?.bendAngles?.length ?? 0
     : 0;
-  const kFactor = 0.44;
+  const K_FACTOR_MAP: Record<string, number> = {
+    GI: 0.44, CR: 0.44, HR: 0.42, SS: 0.50, AL: 0.43,
+    MS: 0.44, CU: 0.44, TI: 0.50, PP: 0.44, HSLA: 0.45,
+  };
+  const kFactor = K_FACTOR_MAP[materialType] ?? 0.44;
   const maxThinningRatio = stations.length > 0 ? 0.93 : 1.0;
   const springbackFactor: Record<string, number> = {
     GI: 1.05, CR: 1.08, HR: 1.12, SS: 1.20, AL: 1.15, MS: 1.06,
+    PP: 1.05, TI: 1.30, CU: 1.03, HSLA: 1.18,
   };
 
   const firstRoll = rollTooling[0]?.rollProfile;

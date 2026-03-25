@@ -11,7 +11,7 @@ const MATERIAL_PRICES: Record<string, { pricePerKg: number; density: number; scr
   MS: { pricePerKg: 0.70, density: 7850, scrapRate: 0.035 },
   CU: { pricePerKg: 8.50, density: 8960, scrapRate: 0.02 },
   TI: { pricePerKg: 25.00, density: 4510, scrapRate: 0.015 },
-  PP: { pricePerKg: 1.20, density: 946, scrapRate: 0.05 },
+  PP: { pricePerKg: 0.95, density: 7850, scrapRate: 0.03 },
   HSLA: { pricePerKg: 1.10, density: 7850, scrapRate: 0.025 },
 };
 

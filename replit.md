@@ -133,6 +133,40 @@ The project is structured as a pnpm workspace monorepo containing `api-server`, 
 - 📚 — Tutorial Replay
 - ⚙/★/👁 — Role Switcher (Admin/Engineer/Viewer)
 
+## Engineering Bug Fixes — Session 4 (2026-03-25) — Tool & AI Autopilot
+
+**56 bugs fixed across Tool Library, AI Design, Springback, Camber, Testing Engine**
+
+### PP (Pre-Painted Steel) polypropylene confusion — CRITICAL (6 files)
+- `CostEstimatorView.tsx`: PP density 946→7850 kg/m³, price 1.20→0.95 $/kg, scrap 0.05→0.03
+- `testing-engine.ts`: PP entire row was polypropylene (yield=35, tensile=40, density=910, springback=15%) → pre-painted steel (yield=280, tensile=370, density=7850, springback=3%)
+- `SpringbackView.tsx`: PP ratio=0.15 (polymer) → 0.03 (steel); rValue=0.5→1.2; nValue=0.40→0.20
+- `hardware-engine.ts`: PP MAT_SB same correction; PP HARDENING K=60→500, n=0.10→0.20
+- `CamberPredictionView.tsx`: PP yield=35→280, PP E=1500→200000; PP camber asymFactor=0.040→0.012, decayRate=0.3→0.5
+
+### CR/HR Yield Strength SWAP — CRITICAL (1 more file)
+- `CamberPredictionView.tsx`: CR yield=250→340, HR yield=350→250 (systemic copy-paste error found again)
+
+### K-Factor Corrections (StripWidthView.tsx — 9 bugs)
+- GI: 0.45→0.44, CR: 0.42→0.44, HR: 0.48→0.42, AL: 0.38→0.43, CU: 0.40→0.44, TI: 0.52→0.50, PP: 0.35→0.44, HSLA: 0.50→0.45, fallback: 0.45→0.44
+
+### Material Yield/Tensile Corrections (testing-engine.ts)
+- GI: yield 240→280 MPa, tensile 350→380 MPa
+- CR: yield 280→340 MPa, tensile 400→440 MPa
+- HR: tensile 420→390 MPa (SPHC grade correct value)
+- AL: yield 110→270 MPa (6061-T4 design grade), tensile 200→310 MPa
+- HSLA: yield 420→550 MPa, tensile 550→650 MPa (can't have yield=tensile!)
+
+### AIDesignScore.tsx — K-factor + Springback
+- kFactor was hardcoded 0.44 → now per-material lookup (SS=0.50, TI=0.50, etc.)
+- Added missing springback factors: PP=1.05, TI=1.30, CU=1.03, HSLA=1.18
+
+### AdaptiveToolpath.ts — Cutting Speeds (matching SmartToolSelector)
+- GI: vc 120→160 m/min; CR: vc 160→180 m/min
+
+### CamberPredictionView.tsx — More Material Corrections
+- AL yield: 110→270 MPa; MS yield: 300→250 MPa; TI E: 116→115 GPa; HSLA E: 200→205 GPa
+
 ## Engineering Bug Fixes — Session 3 (2026-03-25)
 
 **K-Factor Corrections (DIN 6935 Roll Forming Standard)**

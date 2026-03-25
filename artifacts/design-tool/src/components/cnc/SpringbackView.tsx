@@ -20,7 +20,7 @@ const MATERIAL_SPRINGBACK: Record<string, { ratio: number; rValue: number; nValu
   MS: { ratio: 0.03, rValue: 1.1, nValue: 0.20 },
   CU: { ratio: 0.02, rValue: 0.8, nValue: 0.35 },
   TI: { ratio: 0.08, rValue: 1.5, nValue: 0.10 },
-  PP: { ratio: 0.15, rValue: 0.5, nValue: 0.40 },
+  PP: { ratio: 0.03, rValue: 1.2, nValue: 0.20 },
   HSLA: { ratio: 0.055, rValue: 1.3, nValue: 0.15 },
 };
 

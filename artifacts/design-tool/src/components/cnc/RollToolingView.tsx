@@ -13,6 +13,7 @@ import { GcodeStepVerifier } from "./GcodeStepVerifier";
 import { AIToolRecommender } from "./AIToolRecommender";
 import { CompletePackagePanel } from "./CompletePackagePanel";
 import { RollFlowerIntegratedView } from "./RollFlowerIntegratedView";
+import { FlowerStationSuggestions } from "./FlowerStationSuggestions";
 
 const UPPER_COLOR = "#3b82f6";
 const LOWER_COLOR = "#f97316";
@@ -1893,7 +1894,12 @@ export function RollToolingView() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-        {view === "integrated" && <RollFlowerIntegratedView />}
+        {view === "integrated" && (
+          <>
+            <RollFlowerIntegratedView />
+            <FlowerStationSuggestions />
+          </>
+        )}
 
         {view === "stations" && rollTooling.map((rt) => (
           <StationRollPair key={rt.stationNumber} rt={rt}

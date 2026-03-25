@@ -26,6 +26,7 @@ import installRouter from "./install";
 import serialRouter from "./serial";
 import { licenseRouter, adminRouter } from "./license-admin";
 import aiReviewRouter from "./ai-review";
+import flowerSuggestionsRouter from "./flower-suggestions";
 import { requireAuth } from "../middleware/auth";
 import systemWatchdogRouter from "./system-watchdog";
 import { startWatchdog } from "../lib/system-watchdog";
@@ -69,6 +70,7 @@ router.use(gcodeSafetyRouter);
 router.use(githubUpdateRouter);
 router.use(serialRouter);
 router.use(systemWatchdogRouter);
+router.use(flowerSuggestionsRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

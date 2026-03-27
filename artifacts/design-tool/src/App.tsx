@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter, useRoute } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCncStore, type AppTab } from "@/store/useCncStore";
-import { SplashScreen3D } from "@/components/SplashScreen3D";
+
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useThemeStore, applyTheme } from "@/store/useThemeStore";
 import { useRoleStore, ROLE_LABELS, ROLE_COLORS, type UserRole } from "@/store/useRoleStore";
@@ -223,7 +223,6 @@ type AppView = "landing" | "login" | "forgot" | "dashboard" | "workspace";
 function AuthGate() {
   const { user, initialized } = useAuthStore();
   const [view, setView] = useState<AppView>(user ? "dashboard" : "landing");
-  const [splashDone, setSplashDone] = useState(false);
   // License already stored? Instant skip karo — no screen flash
   const [licenseOk, setLicenseOk] = useState(() => !!localStorage.getItem("sai_lic_token"));
   const [showTutorial, setShowTutorial] = useState(false);
@@ -243,26 +242,24 @@ function AuthGate() {
     return undefined;
   }, [user]);
 
+  // React mount hote hi native splash hide karo + heavy libs background mein load karo
   useEffect(() => {
     const hide = (window as any).__hideSplashNative;
     if (typeof hide === "function") hide();
-  }, []);
 
-  const handleSplashComplete = useCallback(() => {
-    setSplashDone(true);
-    // Heavy libs — 3 second delay ke baad background mein load karo (UI hang na ho)
+    // Heavy libs — mount ke baad delay se load (UI hang na ho)
     const defer = (fn: () => void, ms: number) => setTimeout(fn, ms);
-    defer(() => startAutoBackup().catch(() => {}), 3000);
+    defer(() => startAutoBackup().catch(() => {}), 2000);
     defer(() => {
       initGPU().then(status => {
         console.log(`[GPU] ${status.dedicatedGPU ? "DEDICATED" : "Integrated"} | ~${status.vramGB}GB VRAM | Mode: ${status.renderingMode}`);
       }).catch(() => {});
-    }, 5000);
+    }, 4000);
     defer(() => {
       initHardware().then(hw => {
         console.log(`[CPU] ${hw.cpu.cores} cores | ${hw.recommended.workerPoolSize} workers`);
       }).catch(() => {});
-    }, 7000);
+    }, 6000);
   }, []);
 
   const [isDownloadPage] = useRoute("/download");
@@ -271,7 +268,7 @@ function AuthGate() {
 
   if (isAdminPage) return <Suspense fallback={<PageSpinner />}><AdminPanel /></Suspense>;
   if (isDemoVideoPage) return <Suspense fallback={<PageSpinner />}><DemoVideo /></Suspense>;
-  if (!initialized || !splashDone) return <SplashScreen3D onComplete={handleSplashComplete} />;
+  if (!initialized) return <PageSpinner />;
   if (isDownloadPage) return <Suspense fallback={<PageSpinner />}><DemoDownloadPage /></Suspense>;
 
   // ── License gate — splash ke baad, login se pehle ─────────────────────────

@@ -64,7 +64,7 @@ class GeminiKeyRotator {
       console.warn("[GeminiRotator] No Gemini keys found. Add GEMINI_KEY_1 to GEMINI_KEY_6.");
     } else {
       console.log(
-        `[GeminiRotator] ${this.keys.length} key(s) loaded. Model: gemini-2.5-flash`
+        `[GeminiRotator] ${this.keys.length} key(s) loaded. Model: gemini-3-flash-preview`
       );
     }
   }
@@ -135,7 +135,7 @@ class GeminiKeyRotator {
     contents: string | object;
     config?: object;
   }): Promise<string> {
-    const model = params.model ?? "gemini-2.5-flash";
+    const model = params.model ?? "gemini-3-flash-preview";
 
     for (let attempt = 0; attempt < this.keys.length + 1; attempt++) {
       const status = this.getActiveKey();
@@ -179,7 +179,7 @@ class GeminiKeyRotator {
     contents: string | object;
     config?: object;
   }): AsyncGenerator<string> {
-    const model = params.model ?? "gemini-2.5-flash";
+    const model = params.model ?? "gemini-3-flash-preview";
 
     for (let attempt = 0; attempt < this.keys.length + 1; attempt++) {
       const status = this.getActiveKey();

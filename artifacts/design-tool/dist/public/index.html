@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      html, body { background: #070710; margin: 0; }
       #splash-native {
         position: fixed; inset: 0; z-index: 99999;
         display: flex; flex-direction: column;
@@ -96,22 +97,12 @@
         // Hard failsafe — hide after 4s regardless
         setTimeout(window.__hideSplashNative, 4000);
 
-        // Unregister any old broken Service Workers silently
+        // Silently unregister ALL old Service Workers — no reload needed
+        // SW caching was causing stuck loading; we now serve directly from server
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
-          });
-          // After clearing old SW, reload once to serve fresh files
-          // Only do this if an old SW was actually controlling the page
-          if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.getRegistrations().then(function (regs) {
-              if (regs.length > 0) {
-                Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
-                  window.location.reload();
-                });
-              }
-            });
-          }
+          }).catch(function () {});
         }
       })();
     </script>

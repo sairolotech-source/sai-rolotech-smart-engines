@@ -216,7 +216,7 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       systeminformation:
-        specifier: ^5.25.11
+        specifier: ^5.31.5
         version: 5.31.5
       uuid:
         specifier: ^11.1.0

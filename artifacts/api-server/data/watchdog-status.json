@@ -1,45 +1,20 @@
 {
-  "startedAt": "2026-03-27T13:57:53.260Z",
+  "startedAt": "2026-03-27T14:06:02.865Z",
   "lastHealthCheck": null,
   "lastGitPush": null,
-  "lastGitPushResult": "failed: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote",
+  "lastGitPushResult": null,
   "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 1,
+  "gitPushErrors": 0,
   "apiPort": 8080,
   "isElectron": false,
   "logs": [
     {
-      "time": "01:57:53 pm",
+      "time": "02:06:02 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "01:58:03 pm",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "01:58:03 pm",
-      "type": "info",
-      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "01:58:03 pm",
-      "type": "warn",
-      "message": "Commit warning: fatal: Unable to create '/home/runner/workspace/.git/index.lock': File exists.\n\nAnother git process "
-    },
-    {
-      "time": "01:58:03 pm",
-      "type": "info",
-      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "01:58:03 pm",
-      "type": "error",
-      "message": "GitHub push FAIL: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at 8c4f"
     }
   ]
 }

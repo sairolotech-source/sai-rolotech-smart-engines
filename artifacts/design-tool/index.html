@@ -93,6 +93,10 @@
           }
         };
 
+        // Failsafe: always remove native splash after 3.5s even if React hasn't mounted
+        // Prevents permanent stuck-at-0% on slow connections or hidden tabs
+        setTimeout(window.__hideSplashNative, 3500);
+
         if ("serviceWorker" in navigator) {
           // Snapshot: did we already have a SW controller BEFORE this page load?
           // Used to distinguish SW update (reload needed) vs fresh install (no reload)

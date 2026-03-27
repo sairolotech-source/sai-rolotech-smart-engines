@@ -21,9 +21,9 @@ class GeminiKeyRotator {
   }
 
   private loadKeys() {
-    // Load up to 6 personal Gemini keys (GEMINI_KEY_1 ... GEMINI_KEY_6)
+    // Load up to 6 personal Gemini keys — accepts both GOOGLE_API_KEY_N and GEMINI_KEY_N
     for (let i = 1; i <= 6; i++) {
-      const key = process.env[`GEMINI_KEY_${i}`];
+      const key = process.env[`GOOGLE_API_KEY_${i}`] ?? process.env[`GEMINI_KEY_${i}`];
       if (key && key.trim().length > 0) {
         const idx = this.keys.length;
         this.keys.push({
@@ -64,7 +64,7 @@ class GeminiKeyRotator {
       console.warn("[GeminiRotator] No Gemini keys found. Add GEMINI_KEY_1 to GEMINI_KEY_6.");
     } else {
       console.log(
-        `[GeminiRotator] ${this.keys.length} key(s) loaded. Model: gemini-3-flash`
+        `[GeminiRotator] ${this.keys.length} key(s) loaded. Model: gemini-2.5-flash`
       );
     }
   }
@@ -135,7 +135,7 @@ class GeminiKeyRotator {
     contents: string | object;
     config?: object;
   }): Promise<string> {
-    const model = params.model ?? "gemini-3-flash";
+    const model = params.model ?? "gemini-2.5-flash";
 
     for (let attempt = 0; attempt < this.keys.length + 1; attempt++) {
       const status = this.getActiveKey();
@@ -179,7 +179,7 @@ class GeminiKeyRotator {
     contents: string | object;
     config?: object;
   }): AsyncGenerator<string> {
-    const model = params.model ?? "gemini-3-flash";
+    const model = params.model ?? "gemini-2.5-flash";
 
     for (let attempt = 0; attempt < this.keys.length + 1; attempt++) {
       const status = this.getActiveKey();

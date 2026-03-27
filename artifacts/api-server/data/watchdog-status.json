@@ -1,9 +1,9 @@
 {
   "startedAt": "2026-03-27T10:40:03.001Z",
-  "lastHealthCheck": null,
+  "lastHealthCheck": "2026-03-27T10:42:03.074Z",
   "lastGitPush": null,
   "lastGitPushResult": null,
-  "healthChecksPassed": 0,
+  "healthChecksPassed": 1,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
@@ -15,6 +15,16 @@
       "time": "10:40:03 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "10:40:13 am",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "10:42:03 am",
+      "type": "info",
+      "message": "Health: API OK"
     }
   ]
 }

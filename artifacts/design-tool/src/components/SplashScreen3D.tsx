@@ -32,29 +32,25 @@ export function SplashScreen3D({ onComplete, minDuration = 1200 }: SplashScreen3
 
     // Smooth progress from 0→100 over minDuration
     const cap = Math.min(minDuration, 1400);
-    const start = performance.now();
-    let raf: number;
+    const start = Date.now();
 
-    const tick = () => {
-      const p = Math.min((performance.now() - start) / cap, 1);
+    // setInterval works even in background tabs — unlike requestAnimationFrame
+    const iv = setInterval(() => {
+      const p = Math.min((Date.now() - start) / cap, 1);
       setProgress(Math.round(p * 100));
-      if (p < 1) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        if (!doneRef.current) {
-          doneRef.current = true;
-          setPhase("done");
-          setVisible(false);
-          setTimeout(onComplete, 500);
-        }
+      if (p >= 1 && !doneRef.current) {
+        doneRef.current = true;
+        clearInterval(iv);
+        setPhase("done");
+        setVisible(false);
+        setTimeout(onComplete, 500);
       }
-    };
-    raf = requestAnimationFrame(tick);
+    }, 30);
 
     return () => {
       clearTimeout(prefetch);
       clearTimeout(welcomeTimer);
-      cancelAnimationFrame(raf);
+      clearInterval(iv);
     };
   }, [onComplete, minDuration]);
 

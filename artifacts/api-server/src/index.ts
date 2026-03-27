@@ -89,21 +89,37 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
     : null;
   console.log("[server] index.html cached:", indexHtml ? `${indexHtml.length} bytes` : "NOT FOUND");
 
-  // JS/CSS assets — 1 saal cache (content-hash mein change aata hai toh browser download karta hai)
+  // JS/CSS assets — 1 saal cache (content-hash filename change hota hai automatically)
   app.use("/assets", express.static(path.join(FRONTEND_DIST, "assets"), {
     maxAge: "1y",
     immutable: true,
     etag: false,
     lastModified: false,
   }));
-  // Baaki static files (icons, manifest, sw.js) — short cache
+
+  // sw.js + manifest.json — HAMESHA no-cache (browser must always get latest version)
+  app.get("/sw.js", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Content-Type", "application/javascript");
+    res.sendFile(path.join(FRONTEND_DIST, "sw.js"));
+  });
+  app.get("/manifest.json", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Content-Type", "application/json");
+    res.sendFile(path.join(FRONTEND_DIST, "manifest.json"));
+  });
+
+  // Icons + other static files — 1 day (ok to cache, rarely change)
   app.use(express.static(FRONTEND_DIST, {
-    maxAge: "1h",
+    maxAge: "1d",
     etag: true,
   }));
+
+  // SPA fallback — index.html always no-cache (entry point must be fresh)
   app.use((_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
     if (indexHtml) {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.send(indexHtml);
     } else {
       res.status(503).send("Frontend not available. Path: " + indexHtmlPath);

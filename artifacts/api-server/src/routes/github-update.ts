@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import {
   runMultiSourceUpdate,
   tryGitPull,
@@ -411,6 +412,83 @@ router.post("/system/git-pull", async (_req: Request, res: Response) => {
     const message = err instanceof Error ? err.message : "Git pull failed";
     res.status(500).json({ ok: false, error: message });
   }
+});
+
+// ── GitHub Webhook — instant auto-update when GitHub gets a push ─────────────
+// GitHub → Settings → Webhooks → Add webhook
+// URL: https://YOUR-DOMAIN/api/system/github-webhook
+// Content-Type: application/json  |  Events: push  |  Secret: GITHUB_WEBHOOK_SECRET
+router.post("/system/github-webhook", async (req: Request, res: Response) => {
+  try {
+    const webhookSecret = process.env["GITHUB_WEBHOOK_SECRET"] ?? "";
+    const signature = req.headers["x-hub-signature-256"] as string ?? "";
+    const event = req.headers["x-github-event"] as string ?? "";
+
+    // HMAC verification (if secret is set)
+    if (webhookSecret) {
+      const rawBody = JSON.stringify(req.body);
+      const expected = "sha256=" + crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+        logAuto("Webhook rejected — invalid signature", "warn");
+        res.status(401).json({ ok: false, error: "Invalid webhook signature" });
+        return;
+      }
+    }
+
+    // Only handle push events to main branch
+    if (event !== "push") {
+      res.json({ ok: true, message: `Event '${event}' ignored — only 'push' handled` });
+      return;
+    }
+
+    const payload = req.body as { ref?: string; pusher?: { name?: string }; head_commit?: { id?: string; message?: string } };
+    const ref = payload.ref ?? "";
+    if (!ref.endsWith("/main") && ref !== "refs/heads/main") {
+      res.json({ ok: true, message: `Branch '${ref}' ignored — only main branch handled` });
+      return;
+    }
+
+    const pusher = payload.pusher?.name ?? "unknown";
+    const commitId = payload.head_commit?.id?.slice(0, 10) ?? "?";
+    const commitMsg = payload.head_commit?.message?.split("\n")[0]?.slice(0, 60) ?? "";
+    logAuto(`Webhook received! Push by '${pusher}' — commit: ${commitId} "${commitMsg}" — auto-pull shuru...`, "success");
+
+    // Respond immediately to GitHub (don't wait for pull to finish)
+    res.json({ ok: true, message: "Webhook received — pulling latest code...", commit: commitId, pusher });
+
+    // Pull in background — 2 sec delay (git needs to fully process on GitHub)
+    setTimeout(async () => {
+      try {
+        const result = await checkAndPull();
+        logAuto(`Webhook pull result: ${result.message}`, result.updated ? "success" : "info");
+      } catch (e: unknown) {
+        logAuto(`Webhook pull error: ${e instanceof Error ? e.message : String(e)}`, "error");
+      }
+    }, 2000);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Webhook error";
+    logAuto(`Webhook error: ${message}`, "error");
+    res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ── Webhook setup info ────────────────────────────────────────────────────────
+router.get("/system/github-webhook", (_req: Request, res: Response) => {
+  const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAIN"] ?? "your-domain";
+  const webhookSecret = process.env["GITHUB_WEBHOOK_SECRET"];
+  res.json({
+    ok: true,
+    webhookUrl: `https://${domain}/api/system/github-webhook`,
+    instructions: {
+      step1: "GitHub repo → Settings → Webhooks → Add webhook",
+      step2: `Payload URL: https://${domain}/api/system/github-webhook`,
+      step3: "Content type: application/json",
+      step4: "Which events: Just the push event",
+      step5: webhookSecret ? "Secret: GITHUB_WEBHOOK_SECRET (already set ✅)" : "Secret: Set GITHUB_WEBHOOK_SECRET in Replit Secrets (optional but recommended)",
+    },
+    secretConfigured: !!webhookSecret,
+    autoUpdateInterval: "5 min (fallback — webhook ke baad instant update hoga)",
+  });
 });
 
 router.post("/system/git-push", async (req: Request, res: Response) => {

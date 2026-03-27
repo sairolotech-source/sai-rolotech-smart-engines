@@ -228,6 +228,35 @@ Files fixed:
 
 - GI: yield 240→280 MPa, CR: yield 280→340 MPa, HSLA: yield 420→550 MPa, AL: yield 110→270 MPa, E 70→69 GPa
 
+## Performance Architecture (v2.2.0 — March 2026)
+
+**Production Build Serving:**
+- API Server (Express, port 5000) serves production-built frontend from `artifacts/design-tool/dist/public/`
+- Gzip compression enabled (vendor-misc: 6.6MB → 2.35MB on wire)
+- `/assets/*` — 1-year immutable cache headers (content-hashed filenames)
+- Workflow: `PORT=5000 pnpm --filter @workspace/api-server run dev`
+
+**Critical Chunk Splitting Fix:**
+- `@mlc-ai/web-llm` (14MB package) moved OUT of vendor-misc → lazy loaded only when WebLLM feature is used
+- `vendor-misc`: 6,612 KB → 562 KB (91.5% reduction)
+- Service Worker cached size: 8,796 KB → 2,916 KB (67% reduction)
+- `@capacitor/*` excluded from initial bundle (mobile-only)
+- Added: `vendor-ui-utils` (tailwind-merge, clsx, cva), `vendor-ui-extra` (embla, react-colorful)
+
+**Chunk Sizes (gzip) — Critical Path:**
+- `vendor-misc`: 187 KB gzip
+- `vendor-react`: 206 KB gzip
+- `vendor-3d`: 225 KB gzip
+- `@mlc-ai/web-llm` lazy chunk: 2.1 MB gzip (only on demand)
+
+**Other Performance Features:**
+- Service Worker: offline-first, PHASE 1 (critical shell) + PHASE 2 (background precache)
+- Splash screen duration: 1.2s max
+- Heavy GPU/hardware init deferred 3-7s after splash
+- License token check: skip screen instantly if `sai_lic_token` in localStorage
+- GitHub Webhook auto-update: `POST /api/system/github-webhook`
+- Watchdog auto-push every 5 minutes
+
 ## External Dependencies
 
 - **Authentication:** Offline Token Auth (no external provider)

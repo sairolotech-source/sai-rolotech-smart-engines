@@ -1,1 +1,0 @@
-import{a as o}from"./vendor-react-DlIOAtpZ.js";const r="v2.2.23";function p(){const[s,n]=o.useState(r);return o.useEffect(()=>{const e=window.electronAPI;e?.getAppInfo&&e.getAppInfo().then(t=>{t?.version&&n("v"+t.version)}).catch(()=>{})},[]),s}export{r as A,p as u};

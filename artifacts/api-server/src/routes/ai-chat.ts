@@ -185,7 +185,10 @@ ${SAI_CONFIDENTIALITY_RULES}`;
 
   const staticProviders = [
     {
-      key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"],
+      key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
+        ?? process.env["OPEN_ROUTER_"]
+        ?? process.env["OPEN_ROUTE"]
+        ?? process.env["OPENROUTER_API_KEY"],
       url: "https://openrouter.ai/api/v1/chat/completions",
       model: "deepseek/deepseek-r1:free",
       label: "OpenRouter DeepSeek R1",

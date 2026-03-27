@@ -1,6 +1,9 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
+import { geminiRotator } from "./gemini-rotator";
+
+export { geminiRotator };
 
 const openaiBaseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
 const openaiApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;

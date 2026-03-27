@@ -33,6 +33,7 @@ import { accuracyInterceptor } from "../middleware/accuracy-interceptor";
 import systemWatchdogRouter from "./system-watchdog";
 import { startWatchdog } from "../lib/system-watchdog";
 import rollPassEngineRouter from "./roll-pass-engine";
+import geminiKeysRouter from "./gemini-keys";
 
 const router: IRouter = Router();
 
@@ -77,6 +78,7 @@ router.use(systemWatchdogRouter);
 router.use(flowerSuggestionsRouter);
 router.use(rollPassEngineRouter);
 router.use(deepVerifyRouter);
+router.use("/gemini-keys", geminiKeysRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

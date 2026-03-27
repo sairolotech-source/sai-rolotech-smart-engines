@@ -1,12 +1,12 @@
 {
   "startedAt": "2026-03-27T18:47:10.330Z",
-  "lastHealthCheck": null,
-  "lastGitPush": null,
-  "lastGitPushResult": null,
-  "healthChecksPassed": 0,
+  "lastHealthCheck": "2026-03-27T18:51:10.394Z",
+  "lastGitPush": "2026-03-27T18:47:21.342Z",
+  "lastGitPushResult": "pushed → 3c5f1bc604",
+  "healthChecksPassed": 2,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 0,
+  "gitPushCount": 1,
   "gitPushErrors": 0,
   "apiPort": 5000,
   "isElectron": false,
@@ -15,6 +15,41 @@
       "time": "06:47:10 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "06:47:20 pm",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "06:47:20 pm",
+      "type": "info",
+      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
+    },
+    {
+      "time": "06:47:20 pm",
+      "type": "info",
+      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "06:47:21 pm",
+      "type": "success",
+      "message": "GitHub push DONE! 1 commit(s) — HEAD: 3c5f1bc604"
+    },
+    {
+      "time": "06:47:21 pm",
+      "type": "success",
+      "message": "Startup push: 1 commit(s) pushed"
+    },
+    {
+      "time": "06:49:10 pm",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "06:51:10 pm",
+      "type": "info",
+      "message": "Health: API OK"
     }
   ]
 }

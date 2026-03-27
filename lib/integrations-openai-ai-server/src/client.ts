@@ -5,7 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 const openaiBaseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
 const openaiApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 const geminiApiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-const geminiBaseURL = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai";
+const geminiBaseURL = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
 const anthropicApiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
 const anthropicBaseURL = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
 
@@ -17,7 +17,8 @@ if (openaiBaseURL && openaiApiKey) {
   _provider = "openai";
   console.log("[AI] OpenAI provider ready (gpt-5.2 / gpt-5.3-codex)");
 } else if (geminiApiKey) {
-  _openai = new OpenAI({ apiKey: geminiApiKey, baseURL: geminiBaseURL });
+  const fallbackURL = geminiBaseURL ?? "https://generativelanguage.googleapis.com/v1beta/openai";
+  _openai = new OpenAI({ apiKey: geminiApiKey, baseURL: fallbackURL });
   _provider = "gemini";
   console.log("[AI] Gemini provider ready (OpenAI-compatible mode)");
 } else {
@@ -37,8 +38,11 @@ if (anthropicApiKey) {
 
 let _gemini: GoogleGenAI | null = null;
 if (geminiApiKey) {
-  _gemini = new GoogleGenAI({ apiKey: geminiApiKey });
-  console.log("[AI] Gemini native provider ready (gemini-2.5-pro / gemini-2.0-flash)");
+  _gemini = new GoogleGenAI({
+    apiKey: geminiApiKey,
+    ...(geminiBaseURL ? { httpOptions: { apiVersion: "", baseUrl: geminiBaseURL } } : {}),
+  });
+  console.log("[AI] Gemini native provider ready (gemini-3.1-pro-preview / gemini-2.5-pro)");
 } else {
   console.warn("[AI] No Gemini key. Native Gemini features unavailable.");
 }

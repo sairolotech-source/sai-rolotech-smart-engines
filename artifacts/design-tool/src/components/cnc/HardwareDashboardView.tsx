@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Cpu, MemoryStick, Monitor, Zap, Activity, Server,
   RefreshCw, PlayCircle, Thermometer, Gauge, Layers,
-  Wifi, CheckCircle2, AlertCircle,
+  Wifi, CheckCircle2, AlertCircle, Battery, Signal, Usb, Send, Link,
 } from "lucide-react";
 import {
   getHardwareCapabilities,
@@ -96,6 +96,29 @@ export function HardwareDashboardView() {
   const [jsHeap, setJsHeap] = useState({ usedMB: 0, limitMB: 0, percent: 0 });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Battery ─────────────────────────────────────────────────────────────────
+  const [battery, setBattery] = useState<{ level: number; charging: boolean; timeLeft: number } | null>(null);
+
+  // ── Screen ──────────────────────────────────────────────────────────────────
+  const [screenInfo] = useState({
+    width: screen.width,
+    height: screen.height,
+    pixelRatio: window.devicePixelRatio,
+    colorDepth: screen.colorDepth,
+  });
+
+  // ── Network ─────────────────────────────────────────────────────────────────
+  const [network, setNetwork] = useState({ online: navigator.onLine, type: "unknown", speed: "" });
+
+  // ── WebSerial CNC ───────────────────────────────────────────────────────────
+  const webSerialSupported = "serial" in navigator;
+  const [serialConnected, setSerialConnected] = useState(false);
+  const [serialPort, setSerialPort] = useState<any>(null);
+  const [serialLog, setSerialLog] = useState<string[]>(["CNC connect karo..."]);
+  const [gcodeInput, setGcodeInput] = useState("G28\nG1 X10 Y10 F1000\nM114");
+  const [sendingGcode, setSendingGcode] = useState(false);
+  const serialLogRef = useRef<HTMLDivElement>(null);
+
   // ── Electron native polling ──────────────────────────────────────────────
   const pollElectron = useCallback(async () => {
     try {
@@ -130,8 +153,72 @@ export function HardwareDashboardView() {
       pollBrowser();
       intervalRef.current = setInterval(pollBrowser, 800);
     }
+
+    // Battery API
+    if ("getBattery" in navigator) {
+      (navigator as any).getBattery().then((bat: any) => {
+        const update = () => setBattery({ level: Math.round(bat.level * 100), charging: bat.charging, timeLeft: bat.dischargingTime });
+        update();
+        bat.addEventListener("levelchange", update);
+        bat.addEventListener("chargingchange", update);
+      }).catch(() => {});
+    }
+
+    // Network API
+    const conn = (navigator as any).connection || (navigator as any).mozConnection || null;
+    if (conn) {
+      const updateNet = () => setNetwork({ online: navigator.onLine, type: conn.effectiveType || conn.type || "unknown", speed: conn.downlink ? `${conn.downlink} Mbps` : "" });
+      updateNet();
+      conn.addEventListener("change", updateNet);
+    }
+    window.addEventListener("online", () => setNetwork(n => ({ ...n, online: true })));
+    window.addEventListener("offline", () => setNetwork(n => ({ ...n, online: false })));
+
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isElectron, pollElectron, pollBrowser]);
+
+  // ── Serial Log scroll ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (serialLogRef.current) serialLogRef.current.scrollTop = serialLogRef.current.scrollHeight;
+  }, [serialLog]);
+
+  const addSerialLog = (msg: string) => {
+    const t = new Date().toLocaleTimeString("en-IN", { hour12: false });
+    setSerialLog(prev => [...prev.slice(-80), `[${t}] ${msg}`]);
+  };
+
+  const connectSerial = async () => {
+    try {
+      addSerialLog("⏳ CNC machine se connect ho raha hai...");
+      const port = await (navigator as any).serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      setSerialPort(port); setSerialConnected(true);
+      addSerialLog("✅ CNC Connected! Baudrate: 115200");
+      const reader = port.readable?.getReader();
+      if (reader) {
+        const dec = new TextDecoder();
+        (async () => { try { while (true) { const { value, done } = await reader.read(); if (done) break; addSerialLog(`← ${dec.decode(value).trim()}`); } } catch {} })();
+      }
+    } catch (e: any) { addSerialLog(`❌ ${e.message}`); }
+  };
+
+  const disconnectSerial = async () => {
+    try { if (serialPort) { await serialPort.close(); setSerialPort(null); setSerialConnected(false); addSerialLog("🔌 Disconnected"); } } catch {}
+  };
+
+  const sendGcode = async () => {
+    if (!serialPort || !gcodeInput.trim()) return;
+    setSendingGcode(true);
+    try {
+      const writer = serialPort.writable.getWriter();
+      const enc = new TextEncoder();
+      const lines = gcodeInput.split("\n").map((l: string) => l.trim()).filter((l: string) => l && !l.startsWith(";"));
+      for (const line of lines) { await writer.write(enc.encode(line + "\n")); addSerialLog(`→ ${line}`); await new Promise(r => setTimeout(r, 60)); }
+      writer.releaseLock();
+      addSerialLog(`✅ ${lines.length} commands bheje!`);
+    } catch (e: any) { addSerialLog(`❌ Send error: ${e.message}`); }
+    setSendingGcode(false);
+  };
 
   // ── CPU Benchmark ─────────────────────────────────────────────────────────
   const runBenchmark = useCallback(() => {
@@ -495,6 +582,114 @@ export function HardwareDashboardView() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── Battery Card ─────────────────────────────────────────────────── */}
+      {battery && (
+        <div className="rounded-2xl p-4 space-y-3" style={{ background: battery.charging ? "rgba(34,197,94,0.05)" : battery.level < 20 ? "rgba(239,68,68,0.05)" : "rgba(245,158,11,0.05)", border: `1px solid ${battery.charging ? "rgba(34,197,94,0.25)" : battery.level < 20 ? "rgba(239,68,68,0.25)" : "rgba(245,158,11,0.25)"}` }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: battery.charging ? "rgba(34,197,94,0.15)" : "rgba(245,158,11,0.15)" }}>
+                <Battery className="w-4 h-4" style={{ color: battery.charging ? "#22c55e" : battery.level < 20 ? "#ef4444" : "#f59e0b" }} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">Battery</p>
+                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>{battery.charging ? "⚡ Charging" : "🔋 On Battery"}</p>
+              </div>
+            </div>
+            <span className="text-lg font-bold" style={{ color: battery.charging ? "#22c55e" : battery.level < 20 ? "#ef4444" : "#f59e0b" }}>{battery.level}%</span>
+          </div>
+          <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: "rgba(255,255,255,0.06)" }}>
+            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${battery.level}%`, background: battery.charging ? "#22c55e" : battery.level < 20 ? "#ef4444" : "#f59e0b" }} />
+          </div>
+          {!battery.charging && battery.timeLeft < Infinity && battery.timeLeft > 0 && (
+            <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Time remaining: ~{Math.round(battery.timeLeft / 60)} min</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Screen Resolution Card ───────────────────────────────────────── */}
+      <div className="rounded-2xl p-4 space-y-2" style={{ background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.2)" }}>
+        <div className="flex items-center gap-2 mb-2">
+          <Monitor className="w-4 h-4" style={{ color: "#06b6d4" }} />
+          <p className="text-xs font-bold" style={{ color: "#06b6d4" }}>Screen / Display</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { l: "Resolution", v: `${screenInfo.width} × ${screenInfo.height}` },
+            { l: "Pixel Ratio", v: `${screenInfo.pixelRatio}x` },
+            { l: "Color Depth", v: `${screenInfo.colorDepth}-bit` },
+            { l: "Viewport", v: `${window.innerWidth} × ${window.innerHeight}` },
+          ].map(({ l, v }) => (
+            <div key={l} className="rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-[11px] font-bold text-white">{v}</p>
+              <p className="text-[9px]" style={{ color: "rgba(255,255,255,0.35)" }}>{l}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Network Card ─────────────────────────────────────────────────── */}
+      <div className="rounded-2xl p-4 space-y-2" style={{ background: "rgba(168,85,247,0.04)", border: "1px solid rgba(168,85,247,0.2)" }}>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <Signal className="w-4 h-4" style={{ color: "#a855f7" }} />
+            <p className="text-xs font-bold" style={{ color: "#a855f7" }}>Network Connection</p>
+          </div>
+          <span style={{ background: network.online ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: network.online ? "#22c55e" : "#ef4444", border: `1px solid ${network.online ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`, borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>
+            {network.online ? "ONLINE" : "OFFLINE"}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-[11px] font-bold text-white">{network.type.toUpperCase() || "Unknown"}</p>
+            <p className="text-[9px]" style={{ color: "rgba(255,255,255,0.35)" }}>Connection Type</p>
+          </div>
+          <div className="rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-[11px] font-bold text-white">{network.speed || "N/A"}</p>
+            <p className="text-[9px]" style={{ color: "rgba(255,255,255,0.35)" }}>Speed</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── WebSerial CNC Connection ─────────────────────────────────────── */}
+      <div className="rounded-2xl p-4 space-y-3" style={{ background: serialConnected ? "rgba(34,197,94,0.05)" : "rgba(255,255,255,0.03)", border: `1px solid ${serialConnected ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)"}` }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Usb className="w-4 h-4" style={{ color: serialConnected ? "#22c55e" : "rgba(255,255,255,0.4)" }} />
+            <div>
+              <p className="text-xs font-bold" style={{ color: serialConnected ? "#22c55e" : "rgba(255,255,255,0.7)" }}>CNC Machine — USB Serial</p>
+              <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{webSerialSupported ? "WebSerial ready — Chrome/Edge" : "⚠️ Chrome/Edge browser use karo"}</p>
+            </div>
+          </div>
+          {webSerialSupported && (
+            serialConnected
+              ? <button onClick={disconnectSerial} className="text-[11px] px-3 py-1.5 rounded-lg font-semibold" style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>Disconnect</button>
+              : <button onClick={connectSerial} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-semibold" style={{ background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.4)", color: "#86efac", cursor: "pointer" }}>
+                  <Link className="w-3 h-3" /> Connect CNC
+                </button>
+          )}
+        </div>
+        {serialConnected && (
+          <div className="space-y-2">
+            <textarea
+              value={gcodeInput}
+              onChange={e => setGcodeInput(e.target.value)}
+              rows={3}
+              placeholder="G-code..."
+              style={{ width: "100%", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#fff", padding: "6px 8px", fontSize: 11, fontFamily: "monospace", resize: "vertical", boxSizing: "border-box" }}
+            />
+            <div className="flex gap-2">
+              <button onClick={sendGcode} disabled={sendingGcode} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex-1" style={{ background: "rgba(59,130,246,0.2)", border: "1px solid rgba(59,130,246,0.4)", color: "#93c5fd", cursor: sendingGcode ? "not-allowed" : "pointer" }}>
+                <Send className="w-3 h-3" />{sendingGcode ? "Bhejna..." : "G-Code Bhejo"}
+              </button>
+              <button onClick={() => setSerialLog(["Log cleared"])} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>Clear</button>
+            </div>
+          </div>
+        )}
+        <div ref={serialLogRef} style={{ height: 80, overflowY: "auto", background: "rgba(0,0,0,0.4)", borderRadius: 8, padding: "6px 8px", fontSize: 10, color: "#86efac", fontFamily: "monospace" }}>
+          {serialLog.map((l, i) => <div key={i}>{l}</div>)}
         </div>
       </div>
 

@@ -1,12 +1,12 @@
 {
   "startedAt": "2026-03-27T19:34:21.573Z",
   "lastHealthCheck": null,
-  "lastGitPush": null,
-  "lastGitPushResult": null,
+  "lastGitPush": "2026-03-27T19:34:32.511Z",
+  "lastGitPushResult": "pushed → 449681e2ba",
   "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 0,
+  "gitPushCount": 1,
   "gitPushErrors": 0,
   "apiPort": 5000,
   "isElectron": false,
@@ -15,6 +15,26 @@
       "time": "07:34:21 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "07:34:31 pm",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "07:34:31 pm",
+      "type": "info",
+      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
+    },
+    {
+      "time": "07:34:31 pm",
+      "type": "info",
+      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "07:34:32 pm",
+      "type": "success",
+      "message": "GitHub push DONE! 1 commit(s) — HEAD: 449681e2ba"
     }
   ]
 }

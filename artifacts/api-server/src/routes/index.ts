@@ -21,7 +21,7 @@ import materialsRouter from "./materials";
 import drawingVisionRouter from "./drawing-vision";
 import smartToolSelectorRouter from "./smart-tool-selector";
 import gcodeSafetyRouter from "./gcode-safety";
-import githubUpdateRouter, { startAutoUpdate } from "./github-update";
+import githubUpdateRouter, { startAutoUpdate, githubWebhookPublicRouter } from "./github-update";
 import installRouter from "./install";
 import serialRouter from "./serial";
 import { licenseRouter, adminRouter } from "./license-admin";
@@ -50,6 +50,9 @@ router.use(aiReviewRouter);
 
 // Public install script — no auth (PowerShell: irm <url>/api/install | iex)
 router.use(installRouter);
+
+// GitHub webhook — public (GitHub directly calls this, no user token)
+router.use(githubWebhookPublicRouter);
 
 router.use(requireAuth as any);
 router.use(accuracyInterceptor as any);

@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, Router as _Router, type IRouter, type Request, type Response } from "express";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
@@ -1188,6 +1188,79 @@ router.get("/system/drive-manifest", async (_req: Request, res: Response) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err) });
   }
+});
+
+// ── Public webhook router (no auth — GitHub directly calls this) ──────────────
+export const githubWebhookPublicRouter: IRouter = _Router();
+
+githubWebhookPublicRouter.post("/system/github-webhook", async (req: Request, res: Response) => {
+  try {
+    const webhookSecret = process.env["GITHUB_WEBHOOK_SECRET"] ?? "";
+    const signature = req.headers["x-hub-signature-256"] as string ?? "";
+    const event = req.headers["x-github-event"] as string ?? "";
+
+    if (webhookSecret && signature) {
+      const rawBody = JSON.stringify(req.body);
+      const expected = "sha256=" + crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+      try {
+        if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+          logAuto("Webhook rejected — invalid signature", "warn");
+          res.status(401).json({ ok: false, error: "Invalid webhook signature" });
+          return;
+        }
+      } catch {
+        res.status(401).json({ ok: false, error: "Signature verification error" });
+        return;
+      }
+    }
+
+    if (event !== "push") {
+      res.json({ ok: true, message: `Event '${event}' ignored — only push handled` });
+      return;
+    }
+
+    const payload = req.body as { ref?: string; pusher?: { name?: string }; head_commit?: { id?: string; message?: string } };
+    const ref = payload.ref ?? "";
+    if (!ref.endsWith("/main") && ref !== "refs/heads/main") {
+      res.json({ ok: true, message: `Branch '${ref}' ignored` });
+      return;
+    }
+
+    const pusher = payload.pusher?.name ?? "unknown";
+    const commitId = payload.head_commit?.id?.slice(0, 10) ?? "?";
+    const commitMsg = payload.head_commit?.message?.split("\n")[0]?.slice(0, 60) ?? "";
+    logAuto(`[WEBHOOK] '${pusher}' ne push kiya — commit: ${commitId} "${commitMsg}" — auto-pull shuru!`, "success");
+
+    res.json({ ok: true, message: "Webhook received — server updating...", commit: commitId, pusher });
+
+    setTimeout(async () => {
+      try {
+        const result = await checkAndPull();
+        logAuto(`[WEBHOOK] Pull result: ${result.message}`, result.updated ? "success" : "info");
+      } catch (e: unknown) {
+        logAuto(`[WEBHOOK] Pull error: ${e instanceof Error ? e.message : String(e)}`, "error");
+      }
+    }, 2000);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Webhook error";
+    res.status(500).json({ ok: false, error: message });
+  }
+});
+
+githubWebhookPublicRouter.get("/system/github-webhook-info", (_req: Request, res: Response) => {
+  const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAIN"] ?? "your-replit-domain";
+  res.json({
+    ok: true,
+    webhookUrl: `https://${domain}/api/system/github-webhook`,
+    secretConfigured: !!process.env["GITHUB_WEBHOOK_SECRET"],
+    howTo: {
+      step1: "GitHub repo kholo → Settings → Webhooks → Add webhook",
+      step2: `Payload URL: https://${domain}/api/system/github-webhook`,
+      step3: "Content type: application/json",
+      step4: "Events: Just the push event ✓",
+      step5: "Secret: GITHUB_WEBHOOK_SECRET (Replit Secrets mein set karo — optional)",
+    },
+  });
 });
 
 export default router;

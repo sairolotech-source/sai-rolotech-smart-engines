@@ -305,7 +305,7 @@ export function GitHubUpdatePanel() {
           <Github className="w-4 h-4 text-zinc-400 shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-zinc-200 truncate">
-              github.com/sairolotech-source/sai-rolotech-smart-engines
+              github.com/adminsairolotech-bit/sai-rolotech-smart-engines
             </div>
             <div className="text-[9px] text-zinc-500 mt-0.5">Branch: main</div>
           </div>

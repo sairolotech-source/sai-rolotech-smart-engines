@@ -1,6 +1,6 @@
 #!/bin/bash
 # SAI Rolotech Smart Engines — Git Bash Auto Install Script
-# Usage from Git Bash: curl -sSL https://raw.githubusercontent.com/sairolotech-source/sai-rolotech-smart-engines/main/install.sh | bash
+# Usage from Git Bash: curl -sSL https://raw.githubusercontent.com/adminsairolotech-bit/sai-rolotech-smart-engines/main/install.sh | bash
 
 echo ""
 echo "========================================="
@@ -11,12 +11,12 @@ echo ""
 
 # ── Step 1: Get latest release URL ──────────────────────────────────────────
 echo "[1/5] Latest version check kar raha hun..."
-RELEASE_JSON=$(curl -sSL "https://api.github.com/repos/sairolotech-source/sai-rolotech-smart-engines/releases/latest" 2>/dev/null)
+RELEASE_JSON=$(curl -sSL "https://api.github.com/repos/adminsairolotech-bit/sai-rolotech-smart-engines/releases/latest" 2>/dev/null)
 
 if [ -z "$RELEASE_JSON" ]; then
     echo "  Fallback: v2.2.13 use kar raha hun..."
     TAG="v2.2.13"
-    DOWNLOAD_URL="https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases/download/v2.2.13/SAI-Rolotech-Smart-Engines-Setup-2.2.13.exe"
+    DOWNLOAD_URL="https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines/releases/download/v2.2.13/SAI-Rolotech-Smart-Engines-Setup-2.2.13.exe"
 else
     TAG=$(echo "$RELEASE_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tag_name','v2.2.13'))" 2>/dev/null || echo "v2.2.13")
     DOWNLOAD_URL=$(echo "$RELEASE_JSON" | python3 -c "
@@ -31,7 +31,7 @@ for a in assets:
 fi
 
 if [ -z "$DOWNLOAD_URL" ]; then
-    DOWNLOAD_URL="https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases/download/${TAG}/SAI-Rolotech-Smart-Engines-Setup-${TAG#v}.exe"
+    DOWNLOAD_URL="https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines/releases/download/${TAG}/SAI-Rolotech-Smart-Engines-Setup-${TAG#v}.exe"
 fi
 
 echo "  Latest: $TAG"

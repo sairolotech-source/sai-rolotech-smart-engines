@@ -5,12 +5,12 @@ import {
   FileCode2, BarChart3, Layers, Scissors, ChevronDown, ChevronRight,
 } from "lucide-react";
 
-const GITHUB_REPO = "https://github.com/sairolotech-source/sai-rolotech-smart-engines";
-const RELEASE_BASE = `${GITHUB_REPO}/releases/download/v2.2.22`;
-const SETUP_EXE = `${RELEASE_BASE}/SAI-Rolotech-Smart-Engines-Setup-2.2.22.exe`;
-const PORTABLE_EXE = `${RELEASE_BASE}/SAI-Rolotech-Smart-Engines-Portable-2.2.22.exe`;
+const GITHUB_REPO = "https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines";
+const RELEASE_BASE = `${GITHUB_REPO}/releases/download/v2.2.23`;
+const SETUP_EXE = `${RELEASE_BASE}/SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe`;
+const PORTABLE_EXE = `${RELEASE_BASE}/SAI-Rolotech-Smart-Engines-Portable-2.2.23.exe`;
 const DEMO_LINK = "https://www.sairolotech.com";
-const VERSION = "v2.2.22";
+const VERSION = "v2.2.23";
 
 const FEATURES = [
   { icon: <Scissors className="w-4 h-4" />, text: "DXF/DWG Import → Flower Pattern" },

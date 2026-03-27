@@ -16,7 +16,7 @@ const router: IRouter = Router();
 const execAsync = promisify(exec);
 
 const REPO_ROOT = path.resolve("/home/runner/workspace");
-const GITHUB_REPO = "sairolotech-source/sai-rolotech-smart-engines";
+const GITHUB_REPO = "adminsairolotech-bit/sai-rolotech-smart-engines";
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/commits/main`;
 
 const AUTO_CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -934,7 +934,7 @@ router.get("/system/update-sources", async (_req: Request, res: Response) => {
     sources.push({
       id: "git-pull",
       name: "GitHub (git pull)",
-      description: "Standard git fetch + pull from sairolotech-source/sai-rolotech-smart-engines",
+      description: "Standard git fetch + pull from adminsairolotech-bit/sai-rolotech-smart-engines",
       priority: 1,
       status: githubStatus,
       detail: githubDetail,

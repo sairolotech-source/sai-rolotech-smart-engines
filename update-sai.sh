@@ -2,7 +2,7 @@
 # SAI Rolotech Smart Engines — Auto Updater
 # Git Bash mein chalao: bash ~/update-sai.sh
 
-REPO="sairolotech-source/sai-rolotech-smart-engines"
+REPO="adminsairolotech-bit/sai-rolotech-smart-engines"
 API="https://api.github.com/repos/$REPO/releases/latest"
 
 echo ""

@@ -36,7 +36,7 @@
     "wait-on": "^8.0.3"
   },
   "build": {
-    "appId": "com.saisai-rolotech-smart-engines.rollformingai",
+    "appId": "com.sai-rolotech-smart-engines.rollformingai",
     "productName": "SAI Rolotech Smart Engines",
     "copyright": "Copyright (c) 2026 SAI Rolotech Smart Engines",
     "directories": {

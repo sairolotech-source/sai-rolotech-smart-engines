@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import https from "https";
 
 const router = Router();
-const GITHUB_REPO = "sairolotech-source/sai-rolotech-smart-engines";
+const GITHUB_REPO = "adminsairolotech-bit/sai-rolotech-smart-engines";
 
 function ghHeaders(): Record<string, string> {
   const h: Record<string, string> = { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" };

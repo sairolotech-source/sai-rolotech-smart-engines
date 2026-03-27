@@ -22,7 +22,7 @@ function requireSerial(_req: Request, res: Response): boolean {
     res.status(503).json({
       success: false,
       error: "SerialPort library not available. Yeh feature sirf Windows Desktop App (.exe) mein kaam karta hai.",
-      hint: "GitHub Releases se .exe download karo: https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases"
+      hint: "GitHub Releases se .exe download karo: https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines/releases"
     });
     return false;
   }

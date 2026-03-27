@@ -1,6 +1,6 @@
 # SAI Rolotech Smart Engines — Complete Cleanup + Auto Install Script
 # Usage (PowerShell as Admin):
-#   Set-ExecutionPolicy Bypass -Scope Process -Force; irm https://raw.githubusercontent.com/sairolotech-source/sai-rolotech-smart-engines/main/install.ps1 | iex
+#   Set-ExecutionPolicy Bypass -Scope Process -Force; irm https://raw.githubusercontent.com/adminsairolotech-bit/sai-rolotech-smart-engines/main/install.ps1 | iex
 
 Write-Host ""
 Write-Host "=============================================" -ForegroundColor Cyan
@@ -12,7 +12,7 @@ Write-Host ""
 # ── Step 1: Get latest release from GitHub ───────────────────────────────────
 Write-Host "[1/6] Latest version check kar raha hun..." -ForegroundColor Yellow
 try {
-    $release = Invoke-RestMethod "https://api.github.com/repos/sairolotech-source/sai-rolotech-smart-engines/releases/latest" -EA Stop
+    $release = Invoke-RestMethod "https://api.github.com/repos/adminsairolotech-bit/sai-rolotech-smart-engines/releases/latest" -EA Stop
     $tag     = $release.tag_name
     $asset   = $release.assets | Where-Object { $_.name -like "*Setup*.exe" } | Select-Object -First 1
     if (-not $asset) {
@@ -28,7 +28,7 @@ try {
 } catch {
     Write-Host "  Fallback: v2.2.14 use kar raha hun..." -ForegroundColor Yellow
     $tag = "v2.2.14"
-    $url = "https://github.com/sairolotech-source/sai-rolotech-smart-engines/releases/download/v2.2.14/SAI-Rolotech-Smart-Engines-Setup-2.2.14.exe"
+    $url = "https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines/releases/download/v2.2.14/SAI-Rolotech-Smart-Engines-Setup-2.2.14.exe"
 }
 Write-Host ""
 

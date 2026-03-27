@@ -1073,7 +1073,7 @@ function setupAutoUpdater(): void {
 // --- License Key Verification ------------------------------------------------
 
 const DEMO_KEY = "SAIR-DEMO-2026-TRIAL";
-const DEMO_TRIAL_HOURS = 24;
+const DEMO_TRIAL_HOURS = 72;
 const ENCRYPTION_SECRET = "S41-R0L0T3CH-SM4RT-3NG1N3S-2026-X9K";
 const RUNTIME_CHECK_INTERVAL = 15 * 60 * 1000;
 let runtimeCheckTimer: ReturnType<typeof setInterval> | null = null;

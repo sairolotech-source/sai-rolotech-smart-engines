@@ -17,7 +17,7 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 const execAsync = promisify(exec);
 
 const REPO_ROOT = path.resolve("/home/runner/workspace");
-const GITHUB_REPO = "sairolotech-source/sai-rolotech-smart-engines";
+const GITHUB_REPO = "adminsairolotech-bit/sai-rolotech-smart-engines";
 
 export type UpdateSource = "git-pull" | "github-archive" | "google-drive";
 

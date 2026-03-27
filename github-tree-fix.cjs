@@ -2,7 +2,7 @@ const https = require('https');
 const fs = require('fs');
 
 const TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
-const OWNER = 'sairolotech-source';
+const OWNER = 'adminsairolotech-bit';
 const REPO = 'sai-rolotech-smart-engines';
 
 function api(method, urlPath, body) {

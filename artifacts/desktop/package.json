@@ -99,7 +99,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "sairolotech-source",
+      "owner": "adminsairolotech-bit",
       "repo": "sai-rolotech-smart-engines",
       "releaseType": "release"
     }

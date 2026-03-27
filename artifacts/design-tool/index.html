@@ -137,6 +137,8 @@
               setProgress(d.progress, d.kb, d.file, "Downloading " + (d.file || "") + "...");
             } else if (d.type === "PRECACHE_COMPLETE") {
               setProgress(100, d.kb, "", "All " + d.total + " modules cached \u2713");
+              // Caching done — hide splash after 800ms so user sees the 100% tick
+              setTimeout(window.__hideSplashNative, 800);
             }
           });
 

@@ -1,95 +1,20 @@
 {
-  "startedAt": "2026-03-27T20:47:16.406Z",
-  "lastHealthCheck": "2026-03-27T21:01:16.587Z",
-  "lastGitPush": "2026-03-27T20:57:17.041Z",
-  "lastGitPushResult": "pushed → ed1066f513",
-  "healthChecksPassed": 7,
+  "startedAt": "2026-03-27T21:06:35.142Z",
+  "lastHealthCheck": null,
+  "lastGitPush": null,
+  "lastGitPushResult": null,
+  "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 2,
+  "gitPushCount": 0,
   "gitPushErrors": 0,
   "apiPort": 5000,
   "isElectron": false,
   "logs": [
     {
-      "time": "08:47:16 pm",
+      "time": "09:06:35 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "08:47:26 pm",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "08:47:26 pm",
-      "type": "info",
-      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "08:47:26 pm",
-      "type": "info",
-      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:47:27 pm",
-      "type": "success",
-      "message": "GitHub push DONE! 1 commit(s) — HEAD: a0b4bc9f15"
-    },
-    {
-      "time": "08:47:27 pm",
-      "type": "success",
-      "message": "Startup push: 1 commit(s) pushed"
-    },
-    {
-      "time": "08:49:16 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:51:16 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:53:16 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:55:16 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:57:16 pm",
-      "type": "info",
-      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "08:57:16 pm",
-      "type": "info",
-      "message": "[scheduled] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:57:16 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:57:17 pm",
-      "type": "success",
-      "message": "GitHub push DONE! 1 commit(s) — HEAD: ed1066f513"
-    },
-    {
-      "time": "08:59:16 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "09:01:16 pm",
-      "type": "info",
-      "message": "Health: API OK"
     }
   ]
 }

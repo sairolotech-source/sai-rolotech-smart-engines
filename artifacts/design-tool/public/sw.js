@@ -1,11 +1,11 @@
 /**
- * SAI ROLOTECH SMART ENGINES — Service Worker v3.3
+ * SAI ROLOTECH SMART ENGINES — Service Worker v3.4
  * PHASE 1 (Install):  Cache only critical shell (< 10 KB) — instant
  * PHASE 2 (Activate): Progressive pre-cache in background — never blocks UI
- * PHASE 3 (Fetch):    Serve from cache (offline-first)
+ * PHASE 3 (Fetch):    Serve from cache (offline-first); HTML always from network
  */
 
-const CACHE_VERSION = "v3.3";
+const CACHE_VERSION = "v3.4";
 const CACHE_NAME = `sai-rolotech-${CACHE_VERSION}`;
 
 const SHELL_URLS = ["/", "/manifest.json", "/favicon.svg", "/icon-192.png"];

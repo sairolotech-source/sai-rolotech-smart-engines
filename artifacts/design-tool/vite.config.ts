@@ -56,7 +56,17 @@ export default defineConfig({
     target: "esnext",
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "three", "lucide-react", "zustand"],
+    include: [
+      "react", "react-dom", "react/jsx-runtime",
+      "zustand", "zustand/middleware",
+      "lucide-react",
+      "@tanstack/react-query",
+      "wouter",
+      "framer-motion",
+      "three",
+      "@react-three/fiber",
+      "@react-three/drei",
+    ],
     esbuildOptions: {
       target: "esnext",
     },

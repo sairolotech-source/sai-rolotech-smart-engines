@@ -514,20 +514,33 @@ function Scene({ phase }: { phase: number }) {
 }
 
 // ─── 2D CSS Fallback Splash (no GPU needed) ────────────────────────────────────
-function SplashScreen2D({ onComplete, minDuration = 1800 }: SplashScreen3DProps) {
+function SplashScreen2D({ onComplete, minDuration = 1200 }: SplashScreen3DProps) {
   const [progress, setProgress] = useState(5);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
+    // Critical chunks prefetch karo — splash ke dauran background mein download ho jaayein
+    const prefetchChunks = () => {
+      const links = [
+        () => import("@/components/auth/LicenseKeyScreen"),
+        () => import("@/pages/Home"),
+        () => import("@/pages/Dashboard"),
+      ];
+      links.forEach(fn => { try { fn().catch(() => {}); } catch {} });
+    };
+    // 300ms baad prefetch (jab splash animate ho raha ho)
+    const prefetchTimer = setTimeout(prefetchChunks, 300);
+
     const start = performance.now();
     const tick = () => {
       const elapsed = performance.now() - start;
       const p = Math.min(elapsed / minDuration, 1);
       setProgress(Math.round(5 + p * 90));
       if (p < 1) requestAnimationFrame(tick);
-      else setTimeout(() => { setVisible(false); setTimeout(onComplete, 500); }, 200);
+      else setTimeout(() => { setVisible(false); setTimeout(onComplete, 300); }, 100);
     };
     requestAnimationFrame(tick);
+    return () => clearTimeout(prefetchTimer);
   }, [onComplete, minDuration]);
 
   return (
@@ -702,5 +715,5 @@ function SplashScreen3DInner({ onComplete, minDuration = 1800 }: SplashScreen3DP
 
 // ─── Main Export — always use 2D splash for reliability ──────────────────────
 export function SplashScreen3D(props: SplashScreen3DProps) {
-  return <SplashScreen2D {...props} minDuration={Math.min(props.minDuration ?? 4000, 4000)} />;
+  return <SplashScreen2D {...props} minDuration={Math.min(props.minDuration ?? 1200, 1200)} />;
 }

@@ -8,7 +8,7 @@ router.get("/status", (_req, res) => {
   res.json({
     totalKeys: geminiRotator.totalKeys,
     activeKeys: geminiRotator.activeKeys,
-    model: "gemini-3-flash",
+    model: "gemini-2.5-pro",
     keys: geminiRotator.getStatus(),
   });
 });
@@ -17,7 +17,7 @@ router.get("/status", (_req, res) => {
 router.post("/test", async (_req, res) => {
   try {
     const result = await geminiRotator.generateContent({
-      model: "gemini-3-flash",
+      model: "gemini-2.5-pro",
       contents: "Say 'SAI Rolotech key working!' in exactly 5 words.",
     });
     res.json({ success: true, response: result, activeKeys: geminiRotator.activeKeys });

@@ -186,12 +186,13 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   const staticProviders = [
     {
       key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
+        ?? process.env["OPENROUTER_API_KEY_"]
+        ?? process.env["OPENROUTER_API_KEY"]
         ?? process.env["OPEN_ROUTER_"]
-        ?? process.env["OPEN_ROUTE"]
-        ?? process.env["OPENROUTER_API_KEY"],
+        ?? process.env["OPEN_ROUTE"],
       url: "https://openrouter.ai/api/v1/chat/completions",
-      model: "deepseek/deepseek-r1:free",
-      label: "OpenRouter DeepSeek R1",
+      model: "google/gemma-3n-e4b-it:free",
+      label: "OpenRouter Gemma 3n (Free)",
     },
     {
       key: process.env["SAMBANOVA_API_KEY"],

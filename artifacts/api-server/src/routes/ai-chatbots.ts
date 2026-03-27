@@ -78,11 +78,12 @@ function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
     },
     openrouter: {
       key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
+        ?? process.env["OPENROUTER_API_KEY_"]
+        ?? process.env["OPENROUTER_API_KEY"]
         ?? process.env["OPEN_ROUTER_"]
-        ?? process.env["OPEN_ROUTE"]
-        ?? process.env["OPENROUTER_API_KEY"],
+        ?? process.env["OPEN_ROUTE"],
       url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`,
-      model: "deepseek/deepseek-r1:free",
+      model: "google/gemma-3n-e4b-it:free",
       maxTokens: 4096,
       format: "openai",
     },

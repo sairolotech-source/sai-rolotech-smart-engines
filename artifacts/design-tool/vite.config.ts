@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { runtimeErrorOverlay, loadPlatformPlugins } from "./platform-plugins";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const rawPort = process.env.PORT ?? "5000";
 const port = Number(rawPort);
@@ -15,6 +16,7 @@ export default defineConfig({
     tailwindcss(),
     runtimeErrorOverlay(),
     ...(await loadPlatformPlugins(import.meta.dirname)),
+    ...(process.env["ANALYZE"] ? [visualizer({ filename: "dist/stats.json", json: true, gzipSize: true })] : []),
   ],
   resolve: {
     alias: {
@@ -33,16 +35,22 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
+            // === DYNAMIC ONLY (return undefined = Rollup khud code-split karega) ===
+            // @mlc-ai/web-llm — 14MB package, sirf tab chahiye jab user WebLLM use kare
+            // @capacitor/* — mobile-only, web pe chahiye nahi
+            if (id.includes("@mlc-ai/web-llm") || id.includes("@capacitor/")) return undefined;
+
+            // === STATIC VENDORS (explicit chunks) ===
             // React core — pehle load hota hai
             if (id.includes("react-dom") || id.includes("react/"))          return "vendor-react";
             // 3D — sirf 3D views mein chahiye
-            if (id.includes("three") || id.includes("@react-three") || id.includes("postprocessing")) return "vendor-3d";
+            if (id.includes("three") || id.includes("@react-three") || id.includes("postprocessing") || id.includes("three-csg")) return "vendor-3d";
             // PDF/Export
-            if (id.includes("jspdf") || id.includes("jszip"))               return "vendor-pdf";
+            if (id.includes("jspdf") || id.includes("jszip") || id.includes("file-saver")) return "vendor-pdf";
             if (id.includes("html2canvas"))                                  return "vendor-canvas";
             // Canvas/Drawing
             if (id.includes("konva") || id.includes("react-konva"))          return "vendor-konva";
-            // Icons — lazy load hota hai
+            // Icons
             if (id.includes("lucide-react"))                                 return "vendor-icons";
             // State management
             if (id.includes("zustand") || id.includes("immer"))             return "vendor-state";
@@ -54,13 +62,19 @@ export default defineConfig({
             if (id.includes("@radix-ui") || id.includes("vaul") || id.includes("sonner") || id.includes("cmdk")) return "vendor-radix";
             // Monaco editor
             if (id.includes("monaco-editor"))                                return "vendor-monaco";
-            // Date utilities — bahut bada hai date-fns
+            // Date utilities
             if (id.includes("date-fns") || id.includes("react-day-picker")) return "vendor-date";
             // Forms/validation
-            if (id.includes("zod") || id.includes("react-hook-form"))       return "vendor-forms";
+            if (id.includes("zod") || id.includes("react-hook-form") || id.includes("@hookform")) return "vendor-forms";
             // Query/networking
             if (id.includes("@tanstack/react-query") || id.includes("wouter")) return "vendor-query";
-            // Misc small utilities
+            // UI utilities (tailwind-merge, clsx, class-variance-authority)
+            if (id.includes("tailwind-merge") || id.includes("class-variance") || id.includes("clsx")) return "vendor-ui-utils";
+            // Carousel / misc medium UI
+            if (id.includes("embla-carousel") || id.includes("react-colorful") || id.includes("input-otp")) return "vendor-ui-extra";
+            // Workspace internal packages
+            if (id.includes("@workspace/")) return "vendor-workspace";
+            // Everything else — small utilities (uuid, etc.)
             return "vendor-misc";
           }
         },

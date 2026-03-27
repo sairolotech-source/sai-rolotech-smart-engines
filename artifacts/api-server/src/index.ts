@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import { rateLimit } from "express-rate-limit";
 import path from "path";
 import { existsSync, readFileSync } from "fs";
@@ -38,6 +39,16 @@ const FRONTEND_DIST = (() => {
 const app = express();
 
 app.set("trust proxy", 1);
+
+// Gzip compression — JS/CSS files 60-70% chote ho jaate hain (6.7MB → 2.4MB)
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers["x-no-compression"]) return false;
+    return compression.filter(req, res);
+  },
+}));
 
 app.use(cors({
   origin: true,
@@ -78,7 +89,18 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
     : null;
   console.log("[server] index.html cached:", indexHtml ? `${indexHtml.length} bytes` : "NOT FOUND");
 
-  app.use(express.static(FRONTEND_DIST));
+  // JS/CSS assets — 1 saal cache (content-hash mein change aata hai toh browser download karta hai)
+  app.use("/assets", express.static(path.join(FRONTEND_DIST, "assets"), {
+    maxAge: "1y",
+    immutable: true,
+    etag: false,
+    lastModified: false,
+  }));
+  // Baaki static files (icons, manifest, sw.js) — short cache
+  app.use(express.static(FRONTEND_DIST, {
+    maxAge: "1h",
+    etag: true,
+  }));
   app.use((_req, res) => {
     if (indexHtml) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");

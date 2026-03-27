@@ -94,6 +94,10 @@
         };
 
         if ("serviceWorker" in navigator) {
+          // Snapshot: did we already have a SW controller BEFORE this page load?
+          // Used to distinguish SW update (reload needed) vs fresh install (no reload)
+          var hadController = !!navigator.serviceWorker.controller;
+
           // Register SW immediately (before window load)
           navigator.serviceWorker.register("/sw.js").then(function (reg) {
             // If a SW is already waiting (e.g. from prior update), activate it immediately
@@ -134,7 +138,9 @@
 
           var refreshing = false;
           navigator.serviceWorker.addEventListener("controllerchange", function () {
-            if (!refreshing) { refreshing = true; window.location.reload(); }
+            // Only reload on SW UPDATE — not on fresh install (hadController was false)
+            // This prevents reload loop on first visit / fresh browser session
+            if (!refreshing && hadController) { refreshing = true; window.location.reload(); }
           });
         } else {
           setProgress(100, 0, "", "Loading...");

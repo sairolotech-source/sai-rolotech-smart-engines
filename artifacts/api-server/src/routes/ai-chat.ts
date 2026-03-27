@@ -191,8 +191,8 @@ ${SAI_CONFIDENTIALITY_RULES}`;
         ?? process.env["OPEN_ROUTER_"]
         ?? process.env["OPEN_ROUTE"],
       url: "https://openrouter.ai/api/v1/chat/completions",
-      model: "google/gemma-3n-e4b-it:free",
-      label: "OpenRouter Gemma 3n (Free)",
+      model: "arcee-ai/trinity-large-preview:free",
+      label: "OpenRouter Trinity Large (Free)",
     },
     {
       key: process.env["SAMBANOVA_API_KEY"],

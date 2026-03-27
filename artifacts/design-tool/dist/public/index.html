@@ -106,17 +106,26 @@
         if ("serviceWorker" in navigator) {
           // Register SW immediately (before window load)
           navigator.serviceWorker.register("/sw.js").then(function (reg) {
+            // If a SW is already waiting (e.g. from prior update), activate it immediately
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: "SKIP_WAITING" });
+            }
+
             reg.addEventListener("updatefound", function () {
               var nw = reg.installing;
               if (nw) {
                 nw.addEventListener("statechange", function () {
-                  if (nw.state === "installed" && navigator.serviceWorker.controller) {
+                  if (nw.state === "installed") {
+                    // New SW installed — activate immediately regardless of controller state
+                    if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
                     window.dispatchEvent(new CustomEvent("sw-update-available", { detail: reg }));
                   }
                 });
               }
             });
-            setInterval(function () { reg.update(); }, 60 * 60 * 1000);
+            // Check for updates immediately, then every 60 seconds
+            reg.update();
+            setInterval(function () { reg.update(); }, 60 * 1000);
           }).catch(function () {});
 
           // Listen for real SW progress messages

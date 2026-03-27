@@ -104,9 +104,24 @@ async function progressivePreCache() {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
+
+  // Skip API calls
   if (url.pathname.startsWith("/api/")) return;
+  // Skip cross-origin
   if (url.origin !== self.location.origin) return;
 
+  // HTML pages (index.html / "/") — ALWAYS network-first, never serve stale HTML
+  // This ensures users always get the latest JS asset references
+  const isHtml = url.pathname === "/" || url.pathname.endsWith(".html") ||
+    event.request.headers.get("accept")?.includes("text/html");
+  if (isHtml) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Assets — cache-first (content-hashed filenames change on deploy)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

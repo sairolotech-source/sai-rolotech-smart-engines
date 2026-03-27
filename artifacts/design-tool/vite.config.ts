@@ -33,17 +33,34 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
+            // React core — pehle load hota hai
             if (id.includes("react-dom") || id.includes("react/"))          return "vendor-react";
-            if (id.includes("three"))                                        return "vendor-3d";
-            if (id.includes("jspdf"))                                        return "vendor-pdf";
+            // 3D — sirf 3D views mein chahiye
+            if (id.includes("three") || id.includes("@react-three") || id.includes("postprocessing")) return "vendor-3d";
+            // PDF/Export
+            if (id.includes("jspdf") || id.includes("jszip"))               return "vendor-pdf";
             if (id.includes("html2canvas"))                                  return "vendor-canvas";
+            // Canvas/Drawing
             if (id.includes("konva") || id.includes("react-konva"))          return "vendor-konva";
+            // Icons — lazy load hota hai
             if (id.includes("lucide-react"))                                 return "vendor-icons";
+            // State management
             if (id.includes("zustand") || id.includes("immer"))             return "vendor-state";
+            // Animation
             if (id.includes("framer-motion"))                                return "vendor-motion";
+            // Charts
             if (id.includes("recharts") || id.includes("d3-"))              return "vendor-charts";
-            if (id.includes("@radix-ui"))                                    return "vendor-radix";
+            // UI components
+            if (id.includes("@radix-ui") || id.includes("vaul") || id.includes("sonner") || id.includes("cmdk")) return "vendor-radix";
+            // Monaco editor
             if (id.includes("monaco-editor"))                                return "vendor-monaco";
+            // Date utilities — bahut bada hai date-fns
+            if (id.includes("date-fns") || id.includes("react-day-picker")) return "vendor-date";
+            // Forms/validation
+            if (id.includes("zod") || id.includes("react-hook-form"))       return "vendor-forms";
+            // Query/networking
+            if (id.includes("@tanstack/react-query") || id.includes("wouter")) return "vendor-query";
+            // Misc small utilities
             return "vendor-misc";
           }
         },

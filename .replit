@@ -60,5 +60,5 @@ waitForPort = 5000
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "NODE_ENV=production node artifacts/api-server/dist/index.cjs"]
+run = ["node", "artifacts/api-server/dist/index.cjs"]
 build = ["bash", "build.sh"]

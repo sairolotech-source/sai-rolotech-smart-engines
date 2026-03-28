@@ -115,16 +115,43 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
     etag: true,
   }));
 
-  app.use((_req, res) => {
+  const RECOVERY_HTML = `<!DOCTYPE html><html><head><script>
+(function(){
+  var done = false;
+  function go() {
+    if (done) return; done = true;
+    window.location.replace("/?_app=1");
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      var p = regs.map(function(r){return r.unregister()});
+      return Promise.all(p);
+    }).then(function(){
+      if (typeof caches !== "undefined") {
+        return caches.keys().then(function(ks){
+          return Promise.all(ks.map(function(k){return caches.delete(k)}));
+        });
+      }
+    }).then(go).catch(go);
+  } else { go(); }
+  setTimeout(go, 2000);
+})();
+</script></head><body style="background:#070710"></body></html>`;
+
+  app.use((req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Clear-Site-Data", '"cache"');
-    if (indexHtml) {
-      res.send(indexHtml);
+    if (req.query._app || req.path !== "/") {
+      if (indexHtml) {
+        res.send(indexHtml);
+      } else {
+        res.status(503).send("Frontend not available. Path: " + indexHtmlPath);
+      }
     } else {
-      res.status(503).send("Frontend not available. Path: " + indexHtmlPath);
+      res.send(RECOVERY_HTML);
     }
   });
 }

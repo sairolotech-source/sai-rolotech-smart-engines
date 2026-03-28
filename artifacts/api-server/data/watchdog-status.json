@@ -1,248 +1,98 @@
 {
-  "startedAt": "2026-03-28T05:11:25.669Z",
-  "lastHealthCheck": "2026-03-28T06:07:26.322Z",
-  "lastGitPush": "2026-03-28T06:01:26.415Z",
-  "lastGitPushResult": "pushed → dbd62f9a71",
-  "healthChecksPassed": 28,
+  "startedAt": "2026-03-28T05:53:55.351Z",
+  "lastHealthCheck": "2026-03-28T06:09:55.537Z",
+  "lastGitPush": "2026-03-28T06:03:55.931Z",
+  "lastGitPushResult": "pushed → 8ddf166bf9",
+  "healthChecksPassed": 8,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 5,
-  "gitPushErrors": 1,
-  "apiPort": 8080,
+  "gitPushCount": 2,
+  "gitPushErrors": 0,
+  "apiPort": 5000,
   "isElectron": false,
   "logs": [
     {
-      "time": "05:11:25 am",
+      "time": "05:53:55 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
     },
     {
-      "time": "05:11:35 am",
+      "time": "05:54:05 am",
       "type": "info",
       "message": "Startup auto-push check kar raha hai..."
     },
     {
-      "time": "05:11:35 am",
+      "time": "05:54:05 am",
       "type": "info",
       "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
     },
     {
-      "time": "05:11:35 am",
+      "time": "05:54:05 am",
       "type": "info",
-      "message": "[startup] 2 commit(s) push ho rahe hain GitHub pe..."
+      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
     },
     {
-      "time": "05:11:36 am",
-      "type": "error",
-      "message": "GitHub push FAIL: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at e5bd"
+      "time": "05:54:06 am",
+      "type": "success",
+      "message": "GitHub push DONE! 1 commit(s) — HEAD: 55e8acc2bf"
     },
     {
-      "time": "05:13:25 am",
-      "type": "info",
-      "message": "Health: API OK"
+      "time": "05:54:06 am",
+      "type": "success",
+      "message": "Startup push: 1 commit(s) pushed"
     },
     {
-      "time": "05:15:25 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:17:25 am",
+      "time": "05:55:55 am",
       "type": "info",
       "message": "Health: API OK"
     },
     {
-      "time": "05:19:25 am",
+      "time": "05:57:55 am",
       "type": "info",
       "message": "Health: API OK"
     },
     {
-      "time": "05:21:25 am",
+      "time": "05:59:55 am",
       "type": "info",
       "message": "Health: API OK"
     },
     {
-      "time": "05:21:25 am",
+      "time": "06:01:55 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "06:03:55 am",
       "type": "info",
       "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
     },
     {
-      "time": "05:21:25 am",
+      "time": "06:03:55 am",
       "type": "info",
       "message": "[scheduled] 2 commit(s) push ho rahe hain GitHub pe..."
     },
     {
-      "time": "05:21:26 am",
+      "time": "06:03:55 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "06:03:55 am",
       "type": "success",
-      "message": "GitHub push DONE! 2 commit(s) — HEAD: 4dd5b489b2"
+      "message": "GitHub push DONE! 2 commit(s) — HEAD: 8ddf166bf9"
     },
     {
-      "time": "05:23:25 am",
+      "time": "06:05:55 am",
       "type": "info",
       "message": "Health: API OK"
     },
     {
-      "time": "05:25:25 am",
+      "time": "06:07:55 am",
       "type": "info",
       "message": "Health: API OK"
     },
     {
-      "time": "05:27:25 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:29:25 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:31:25 am",
-      "type": "info",
-      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "05:31:25 am",
-      "type": "info",
-      "message": "[scheduled] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "05:31:25 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:31:26 am",
-      "type": "success",
-      "message": "GitHub push DONE! 1 commit(s) — HEAD: 1d111fe531"
-    },
-    {
-      "time": "05:33:25 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:35:25 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:37:25 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:39:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:41:25 am",
-      "type": "info",
-      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "05:41:25 am",
-      "type": "info",
-      "message": "[scheduled] 2 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "05:41:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:41:26 am",
-      "type": "success",
-      "message": "GitHub push DONE! 2 commit(s) — HEAD: 96d73405f5"
-    },
-    {
-      "time": "05:43:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:45:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:47:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:49:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:51:25 am",
-      "type": "info",
-      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "05:51:25 am",
-      "type": "info",
-      "message": "[scheduled] 2 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "05:51:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:51:26 am",
-      "type": "success",
-      "message": "GitHub push DONE! 2 commit(s) — HEAD: cb8201ce04"
-    },
-    {
-      "time": "05:53:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:55:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:57:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "05:59:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "06:01:25 am",
-      "type": "info",
-      "message": "[scheduled] 2 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "06:01:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "06:01:26 am",
-      "type": "success",
-      "message": "GitHub push DONE! 2 commit(s) — HEAD: dbd62f9a71"
-    },
-    {
-      "time": "06:03:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "06:05:26 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "06:07:26 am",
+      "time": "06:09:55 am",
       "type": "info",
       "message": "Health: API OK"
     }

@@ -2,7 +2,7 @@
   "startedAt": "2026-03-28T14:30:05.160Z",
   "lastHealthCheck": null,
   "lastGitPush": null,
-  "lastGitPushResult": null,
+  "lastGitPushResult": "failed: remote: Invalid username or token. Password authentication is not supported for ",
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
@@ -10,7 +10,7 @@
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 0,
+  "gitPushErrors": 1,
   "apiPort": 8080,
   "isElectron": false,
   "logs": [
@@ -18,6 +18,26 @@
       "time": "02:30:05 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "02:30:15 pm",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "02:30:15 pm",
+      "type": "info",
+      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
+    },
+    {
+      "time": "02:30:15 pm",
+      "type": "info",
+      "message": "[startup] 16 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "02:30:15 pm",
+      "type": "error",
+      "message": "GitHub push FAIL: remote: Invalid username or token. Password authentication is not supported for Git operations.\nfatal: Authentication failed for 'https://github.com/a"
     }
   ]
 }

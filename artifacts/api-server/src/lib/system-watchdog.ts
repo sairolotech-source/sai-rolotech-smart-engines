@@ -3,8 +3,9 @@
  *
  * Self-managing system:
  * 1. Auto-push to GitHub on startup + every 10 min (Replit → GitHub → Laptop)
- * 2. API health monitor — checks critical routes every 2 min
- * 3. Self-heal — consecutive failures pe process restart
+ * 2. Auto-pull from GitHub every 5 min (any developer push → auto update here)
+ * 3. API health monitor — checks critical routes every 2 min
+ * 4. Self-heal — consecutive failures pe process restart
  */
 
 import { exec } from "child_process";
@@ -28,6 +29,9 @@ export interface WatchdogStatus {
   lastHealthCheck: string | null;
   lastGitPush: string | null;
   lastGitPushResult: string | null;
+  lastGitPull: string | null;
+  lastGitPullResult: string | null;
+  gitPullCount: number;
   healthChecksPassed: number;
   healthChecksFailed: number;
   consecutiveFailures: number;
@@ -50,6 +54,9 @@ let status: WatchdogStatus = {
   lastHealthCheck: null,
   lastGitPush: null,
   lastGitPushResult: null,
+  lastGitPull: null,
+  lastGitPullResult: null,
+  gitPullCount: 0,
   healthChecksPassed: 0,
   healthChecksFailed: 0,
   consecutiveFailures: 0,
@@ -310,6 +317,7 @@ export function startWatchdog() {
       await autoPushToGitHub("scheduled");
     }, AUTO_PUSH_INTERVAL_MS);
   }
+
 }
 
 export function stopWatchdog() {

@@ -1,75 +1,23 @@
 {
-  "startedAt": "2026-03-28T08:45:47.333Z",
-  "lastHealthCheck": "2026-03-28T08:55:47.474Z",
+  "startedAt": "2026-03-28T09:02:09.086Z",
+  "lastHealthCheck": null,
   "lastGitPush": null,
-  "lastGitPushResult": "failed: remote: fatal: did not receive expected object e2718e6e546e24eeb50de80b4cecb1ce7",
-  "healthChecksPassed": 5,
+  "lastGitPushResult": null,
+  "lastGitPull": null,
+  "lastGitPullResult": null,
+  "gitPullCount": 0,
+  "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 2,
+  "gitPushErrors": 0,
   "apiPort": 5000,
   "isElectron": false,
   "logs": [
     {
-      "time": "08:45:47 am",
+      "time": "09:02:09 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "08:45:57 am",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "08:45:57 am",
-      "type": "info",
-      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "08:45:57 am",
-      "type": "info",
-      "message": "[startup] 7 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:46:07 am",
-      "type": "error",
-      "message": "GitHub push FAIL: remote: fatal: did not receive expected object e2718e6e546e24eeb50de80b4cecb1ce70560e9e        \nerror: remote unpack failed: index-pack failed\nTo http"
-    },
-    {
-      "time": "08:47:47 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:49:47 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:51:47 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:53:47 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:55:47 am",
-      "type": "info",
-      "message": "[scheduled] 9 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:55:47 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:55:54 am",
-      "type": "error",
-      "message": "GitHub push FAIL: remote: fatal: did not receive expected object e2718e6e546e24eeb50de80b4cecb1ce70560e9e        \nerror: remote unpack failed: index-pack failed\nTo http"
     }
   ]
 }

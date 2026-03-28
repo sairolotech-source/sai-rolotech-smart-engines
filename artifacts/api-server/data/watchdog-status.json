@@ -1,16 +1,16 @@
 {
   "startedAt": "2026-03-28T09:02:09.086Z",
-  "lastHealthCheck": "2026-03-28T09:20:10.276Z",
+  "lastHealthCheck": "2026-03-28T09:30:10.390Z",
   "lastGitPush": null,
   "lastGitPushResult": "failed: remote: fatal: did not receive expected object e2718e6e546e24eeb50de80b4cecb1ce7",
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
-  "healthChecksPassed": 9,
+  "healthChecksPassed": 14,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 2,
+  "gitPushErrors": 3,
   "apiPort": 5000,
   "isElectron": false,
   "logs": [
@@ -96,6 +96,46 @@
     },
     {
       "time": "09:20:10 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "09:22:10 am",
+      "type": "info",
+      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
+    },
+    {
+      "time": "09:22:10 am",
+      "type": "info",
+      "message": "[scheduled] 14 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "09:22:10 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "09:22:17 am",
+      "type": "error",
+      "message": "GitHub push FAIL: remote: fatal: did not receive expected object e2718e6e546e24eeb50de80b4cecb1ce70560e9e        \nerror: remote unpack failed: index-pack failed\nTo http"
+    },
+    {
+      "time": "09:24:10 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "09:26:10 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "09:28:10 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "09:30:10 am",
       "type": "info",
       "message": "Health: API OK"
     }

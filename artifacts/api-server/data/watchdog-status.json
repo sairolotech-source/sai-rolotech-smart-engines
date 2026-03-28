@@ -1,40 +1,65 @@
 {
-  "startedAt": "2026-03-28T05:18:24.050Z",
-  "lastHealthCheck": null,
-  "lastGitPush": "2026-03-28T05:18:34.731Z",
-  "lastGitPushResult": "pushed → 84a48e5f4b",
-  "healthChecksPassed": 0,
+  "startedAt": "2026-03-28T05:11:25.669Z",
+  "lastHealthCheck": "2026-03-28T05:21:25.809Z",
+  "lastGitPush": null,
+  "lastGitPushResult": "failed: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote",
+  "healthChecksPassed": 5,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 1,
-  "gitPushErrors": 0,
-  "apiPort": 5000,
+  "gitPushCount": 0,
+  "gitPushErrors": 1,
+  "apiPort": 8080,
   "isElectron": false,
   "logs": [
     {
-      "time": "05:18:24 am",
+      "time": "05:11:25 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
     },
     {
-      "time": "05:18:34 am",
+      "time": "05:11:35 am",
       "type": "info",
       "message": "Startup auto-push check kar raha hai..."
     },
     {
-      "time": "05:18:34 am",
+      "time": "05:11:35 am",
       "type": "info",
       "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
     },
     {
-      "time": "05:18:34 am",
+      "time": "05:11:35 am",
       "type": "info",
       "message": "[startup] 2 commit(s) push ho rahe hain GitHub pe..."
     },
     {
-      "time": "05:18:34 am",
-      "type": "success",
-      "message": "GitHub push DONE! 2 commit(s) — HEAD: 84a48e5f4b"
+      "time": "05:11:36 am",
+      "type": "error",
+      "message": "GitHub push FAIL: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at e5bd"
+    },
+    {
+      "time": "05:13:25 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "05:15:25 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "05:17:25 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "05:19:25 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "05:21:25 am",
+      "type": "info",
+      "message": "Health: API OK"
     }
   ]
 }

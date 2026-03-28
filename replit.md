@@ -108,3 +108,11 @@ The project is structured as a pnpm workspace monorepo comprising `api-server`, 
 - **AI APIs:** Replit AI Integration (GPT-4o-mini), Gemini Flash, Claude Haiku, OpenRouter Llama, SambaNova Llama, Kimi Moonshot, NVIDIA Llama 3.1, GPT-5 Mini
 - **Cloud Services:** Google Drive API
 - **Desktop Application Framework:** Electron
+
+## Electron Desktop App Notes
+- **Native Splash Window:** Electron main process creates its own splash window (`createSplashWindow`) with real-time progress (license check → server start → frontend load). This is separate from the web-based SplashScreen3D component.
+- **Splash auto-closes** when `ready-to-show` fires on main window, with a 3-second failsafe timeout.
+- **Single instance lock** is handled ONCE at line ~1773 — do NOT add a second `requestSingleInstanceLock()` call.
+- **Google Fonts** in index.html uses `media="print" onload="this.media='all'"` pattern to avoid blocking render in offline Electron.
+- **API server** runs on port 3001 in packaged mode. Splash shows real progress during server startup.
+- **GPU acceleration flags** are set in main.ts: d3d11 ANGLE, GPU rasterization, WebGPU, ignore-gpu-blocklist.

@@ -1905,30 +1905,39 @@ app.whenReady().then(async () => {
   }
 
   updateSplash(15, "Checking activation...");
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.setAlwaysOnTop(false);
+  }
   const licensed = await verifyLicense();
   if (!licensed) {
     closeSplash();
     app.quit();
     return;
   }
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.setAlwaysOnTop(true);
+  }
 
-  updateSplash(30, "Starting local server...");
-  await startApiServer();
-  updateSplash(60, apiReady ? "Server ready!" : "Server starting...");
+  try {
+    updateSplash(30, "Starting local server...");
+    await startApiServer();
+    updateSplash(60, apiReady ? "Server ready!" : "Server starting...");
 
-  updateSplash(70, "Loading interface...");
-  buildAppMenu();
-  await createMainWindow();
-  updateSplash(90, "Almost ready...");
+    updateSplash(70, "Loading interface...");
+    buildAppMenu();
+    await createMainWindow();
+    updateSplash(90, "Almost ready...");
 
-  createTray();
-  setupIPC();
+    createTray();
+    setupIPC();
 
-  updateSplash(100, "Launching!");
+    updateSplash(100, "Launching!");
+  } catch (err) {
+    console.error("[App] Startup error:", err);
+    closeSplash();
+    return;
+  }
 
-  mainWindow?.once("ready-to-show", () => {
-    setTimeout(closeSplash, 400);
-  });
   setTimeout(closeSplash, 3000);
 
   if (!IS_DEV) {

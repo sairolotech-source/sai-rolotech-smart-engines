@@ -54,6 +54,59 @@ const queryClient = new QueryClient({
 
 type AppView = "landing" | "login" | "forgot" | "dashboard" | "workspace";
 
+const LazyToaster = lazy(() => import("@/components/ui/toaster").then(m => ({ default: m.Toaster })));
+const LazyUpdateNotification = lazy(() => import("@/components/UpdateNotification").then(m => ({ default: m.UpdateNotification })));
+const LazyElectronAutoUpdate = lazy(() => import("@/components/ElectronAutoUpdate").then(m => ({ default: m.ElectronAutoUpdate })));
+const LazyKeyboardShortcutOverlay = lazy(() => import("@/components/KeyboardShortcutOverlay").then(m => ({ default: m.KeyboardShortcutOverlay })));
+const LazyContextualGuide = lazy(() => import("@/components/ContextualGuide").then(m => ({ default: m.ContextualGuide })));
+
+const LazyOfflineGuard = lazy(() =>
+  import("@/lib/api").then(api => ({
+    default: function OfflineGuard() {
+      const [offline, setOffline] = useState(!navigator.onLine);
+      const [syncing, setSyncing] = useState(false);
+      const [syncResult, setSyncResult] = useState<string | null>(null);
+
+      useEffect(() => {
+        let clearTimer: ReturnType<typeof setTimeout> | null = null;
+        const goOff = () => setOffline(true);
+        const goOn = () => {
+          setOffline(false);
+          const q = api.getOfflineQueue();
+          if (q.length > 0) {
+            setSyncing(true);
+            setSyncResult(null);
+            api.syncOfflineQueue().then(r => {
+              setSyncing(false);
+              if (r.synced > 0) {
+                setSyncResult(`${r.synced} pending requests synced`);
+                clearTimer = setTimeout(() => setSyncResult(null), 5000);
+              }
+            }).catch(() => setSyncing(false));
+          }
+        };
+        window.addEventListener("online", goOn);
+        window.addEventListener("offline", goOff);
+        return () => {
+          window.removeEventListener("online", goOn);
+          window.removeEventListener("offline", goOff);
+          if (clearTimer) clearTimeout(clearTimer);
+        };
+      }, []);
+
+      if (!offline && !syncing && !syncResult) return null;
+      return (
+        <div className="fixed top-0 left-0 right-0 z-[9999] text-center text-xs py-1 font-medium transition-all"
+             style={{ background: offline ? "#dc2626" : syncing ? "#d97706" : "#16a34a", color: "#fff" }}>
+          {offline && "Offline Mode — App hardware se chal raha hai, data locally save ho raha hai"}
+          {syncing && "Syncing pending data to server..."}
+          {syncResult && syncResult}
+        </div>
+      );
+    }
+  }))
+);
+
 function DeferredExtras() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -62,19 +115,13 @@ function DeferredExtras() {
   }, []);
   if (!ready) return null;
 
-  const Toaster = lazy(() => import("@/components/ui/toaster").then(m => ({ default: m.Toaster })));
-  const UpdateNotification = lazy(() => import("@/components/UpdateNotification").then(m => ({ default: m.UpdateNotification })));
-  const ElectronAutoUpdate = lazy(() => import("@/components/ElectronAutoUpdate").then(m => ({ default: m.ElectronAutoUpdate })));
-  const KeyboardShortcutOverlay = lazy(() => import("@/components/KeyboardShortcutOverlay").then(m => ({ default: m.KeyboardShortcutOverlay })));
-  const ContextualGuide = lazy(() => import("@/components/ContextualGuide").then(m => ({ default: m.ContextualGuide })));
-
   return (
     <Suspense fallback={null}>
-      <ErrorBoundary fallbackTitle="Extras Error"><Toaster /></ErrorBoundary>
-      <ErrorBoundary fallbackTitle="Notification Error"><UpdateNotification /></ErrorBoundary>
-      <ErrorBoundary fallbackTitle=""><ElectronAutoUpdate /></ErrorBoundary>
-      <ErrorBoundary fallbackTitle=""><KeyboardShortcutOverlay /></ErrorBoundary>
-      <ErrorBoundary fallbackTitle=""><ContextualGuide /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle="Extras Error"><LazyToaster /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle="Notification Error"><LazyUpdateNotification /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle=""><LazyElectronAutoUpdate /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle=""><LazyKeyboardShortcutOverlay /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle=""><LazyContextualGuide /></ErrorBoundary>
     </Suspense>
   );
 }
@@ -87,47 +134,11 @@ function DeferredOfflineGuard() {
   }, []);
   if (!ready) return null;
 
-  const OfflineGuardInner = lazy(() =>
-    import("@/lib/api").then(api => ({
-      default: function OfflineGuard() {
-        const [offline, setOffline] = useState(!navigator.onLine);
-        const [syncing, setSyncing] = useState(false);
-        const [syncResult, setSyncResult] = useState<string | null>(null);
-
-        useEffect(() => {
-          const goOff = () => setOffline(true);
-          const goOn = () => {
-            setOffline(false);
-            const q = api.getOfflineQueue();
-            if (q.length > 0) {
-              setSyncing(true);
-              setSyncResult(null);
-              api.syncOfflineQueue().then(r => {
-                setSyncing(false);
-                if (r.synced > 0) setSyncResult(`${r.synced} pending requests synced`);
-                setTimeout(() => setSyncResult(null), 5000);
-              }).catch(() => setSyncing(false));
-            }
-          };
-          window.addEventListener("online", goOn);
-          window.addEventListener("offline", goOff);
-          return () => { window.removeEventListener("online", goOn); window.removeEventListener("offline", goOff); };
-        }, []);
-
-        if (!offline && !syncing && !syncResult) return null;
-        return (
-          <div className="fixed top-0 left-0 right-0 z-[9999] text-center text-xs py-1 font-medium transition-all"
-               style={{ background: offline ? "#dc2626" : syncing ? "#d97706" : "#16a34a", color: "#fff" }}>
-            {offline && "Offline Mode — App hardware se chal raha hai, data locally save ho raha hai"}
-            {syncing && "Syncing pending data to server..."}
-            {syncResult && syncResult}
-          </div>
-        );
-      }
-    }))
+  return (
+    <ErrorBoundary fallbackTitle="">
+      <Suspense fallback={null}><LazyOfflineGuard /></Suspense>
+    </ErrorBoundary>
   );
-
-  return <Suspense fallback={null}><OfflineGuardInner /></Suspense>;
 }
 
 const FloatingToolbar = lazy(() =>

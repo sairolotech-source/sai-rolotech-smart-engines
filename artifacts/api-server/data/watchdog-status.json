@@ -1,9 +1,9 @@
 {
   "startedAt": "2026-03-28T07:33:59.259Z",
-  "lastHealthCheck": null,
+  "lastHealthCheck": "2026-03-28T07:37:59.324Z",
   "lastGitPush": "2026-03-28T07:34:10.684Z",
   "lastGitPushResult": "pushed → 60d5fba3d4",
-  "healthChecksPassed": 0,
+  "healthChecksPassed": 2,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 1,
@@ -35,6 +35,21 @@
       "time": "07:34:10 am",
       "type": "success",
       "message": "GitHub push DONE! 2 commit(s) — HEAD: 60d5fba3d4"
+    },
+    {
+      "time": "07:34:10 am",
+      "type": "success",
+      "message": "Startup push: 2 commit(s) pushed"
+    },
+    {
+      "time": "07:35:59 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "07:37:59 am",
+      "type": "info",
+      "message": "Health: API OK"
     }
   ]
 }

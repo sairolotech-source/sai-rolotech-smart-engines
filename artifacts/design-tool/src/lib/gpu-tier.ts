@@ -141,25 +141,50 @@ export function detectGpuInfo(): GpuInfo {
 
   try {
     const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+    const gl = canvas.getContext("webgl2", {
+      powerPreference: "high-performance",
+      failIfMajorPerformanceCaveat: false,
+    }) || canvas.getContext("webgl", {
+      powerPreference: "high-performance",
+      failIfMajorPerformanceCaveat: false,
+    });
     if (gl) {
       if (gl instanceof WebGL2RenderingContext) info.webgl2 = true;
       const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
       if (debugInfo) {
         info.renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || "unknown";
         info.vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || "unknown";
+      } else {
+        info.renderer = gl.getParameter(gl.RENDERER) || "unknown";
+        info.vendor = gl.getParameter(gl.VENDOR) || "unknown";
       }
       info.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+
+      if (info.renderer === "unknown" || info.renderer === "WebKit WebGL") {
+        const maxTex = info.maxTextureSize;
+        const maxVerts = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
+        const cores = navigator.hardwareConcurrency || 2;
+        const devMem = (navigator as any).deviceMemory || 2;
+        if (maxTex >= 16384 && cores >= 6 && devMem >= 8) {
+          info.renderer = "dedicated-gpu (heuristic)";
+          info.type = "dedicated";
+          info.estimatedVRAM_GB = devMem >= 16 ? 6 : 4;
+        } else if (maxTex >= 8192 && (cores >= 4 || devMem >= 4)) {
+          info.renderer = "mid-range-gpu (heuristic)";
+          info.type = maxVerts >= 32 ? "dedicated" : "integrated";
+          info.estimatedVRAM_GB = 2;
+        }
+      }
     }
     canvas.remove();
   } catch {}
 
   const rLow = info.renderer.toLowerCase();
   const vLow = info.vendor.toLowerCase();
-  info.type = detectGpuType(rLow, vLow);
+  if (info.type === "unknown") info.type = detectGpuType(rLow, vLow);
   info.brand = detectBrand(rLow, vLow);
   info.model = extractModelName(rLow);
-  info.estimatedVRAM_GB = estimateVRAM(rLow);
+  if (info.estimatedVRAM_GB <= 1) info.estimatedVRAM_GB = estimateVRAM(rLow);
 
   return info;
 }

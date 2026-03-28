@@ -101,7 +101,11 @@ export async function initGPUComputePipeline(): Promise<GPUComputeStatus> {
   if (!status.webgpuDevice) {
     try {
       const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
+      const gl = canvas.getContext("webgl2", {
+        powerPreference: "high-performance",
+        failIfMajorPerformanceCaveat: false,
+        desynchronized: true,
+      }) as WebGL2RenderingContext | null;
       if (gl) {
         status.webgl2Available = true;
         status.renderingMode = dedicated ? "webgl2-max" : "webgl2-standard";

@@ -115,9 +115,10 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
     etag: true,
   }));
 
-  // SPA fallback — index.html always no-cache (entry point must be fresh)
   app.use((_req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Clear-Site-Data", '"cache"');
     if (indexHtml) {

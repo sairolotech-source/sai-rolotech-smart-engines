@@ -119,6 +119,7 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
   app.use((_req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Clear-Site-Data", '"cache"');
     if (indexHtml) {
       res.send(indexHtml);
     } else {

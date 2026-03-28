@@ -1,14 +1,14 @@
 {
   "startedAt": "2026-03-28T08:18:45.833Z",
-  "lastHealthCheck": "2026-03-28T08:24:45.938Z",
-  "lastGitPush": null,
-  "lastGitPushResult": "failed: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote",
-  "healthChecksPassed": 3,
+  "lastHealthCheck": "2026-03-28T08:28:45.944Z",
+  "lastGitPush": "2026-03-28T08:18:56.456Z",
+  "lastGitPushResult": "pushed → b3e6389aa5",
+  "healthChecksPassed": 5,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 0,
-  "gitPushErrors": 1,
-  "apiPort": 8080,
+  "gitPushCount": 1,
+  "gitPushErrors": 0,
+  "apiPort": 5000,
   "isElectron": false,
   "logs": [
     {
@@ -33,8 +33,13 @@
     },
     {
       "time": "08:18:56 am",
-      "type": "error",
-      "message": "GitHub push FAIL: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at b3e6"
+      "type": "success",
+      "message": "GitHub push DONE! 1 commit(s) — HEAD: b3e6389aa5"
+    },
+    {
+      "time": "08:18:56 am",
+      "type": "success",
+      "message": "Startup push: 1 commit(s) pushed"
     },
     {
       "time": "08:20:45 am",
@@ -48,6 +53,16 @@
     },
     {
       "time": "08:24:45 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "08:26:45 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "08:28:45 am",
       "type": "info",
       "message": "Health: API OK"
     }

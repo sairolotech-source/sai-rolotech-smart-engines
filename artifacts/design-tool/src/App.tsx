@@ -265,10 +265,11 @@ const FloatingToolbar = lazy(() =>
 
 function AuthGate() {
   const { user, initialized } = useAuthStore();
-  const [view, setView] = useState<AppView>(user ? "dashboard" : "landing");
+  const [view, setView] = useState<AppView>("landing");
   const [licenseOk, setLicenseOk] = useState(() => !!localStorage.getItem("sai_lic_token"));
   const [showTutorial, setShowTutorial] = useState(false);
-  const [softwareActivated, setSoftwareActivated] = useState(() => !!user);
+  const [softwareActivated, setSoftwareActivated] = useState(false);
+  const [entryDone, setEntryDone] = useState(false);
 
   useEffect(() => {
     try {
@@ -319,6 +320,16 @@ function AuthGate() {
     return undefined;
   }, [user]);
 
+  const handleSoftwareEnter = useCallback(() => {
+    setSoftwareActivated(true);
+    setEntryDone(true);
+    if (user) {
+      setView("dashboard");
+    } else {
+      setView("login");
+    }
+  }, [user]);
+
   const openWorkspace = useCallback((tab?: AppTab) => {
     if (tab) {
       import("@/store/useCncStore").then(m => {
@@ -334,8 +345,20 @@ function AuthGate() {
 
   if (isAdminPage) return <Suspense fallback={<PageSpinner />}><AdminPanel /></Suspense>;
   if (isDemoVideoPage) return <Suspense fallback={<PageSpinner />}><DemoVideo /></Suspense>;
-  if (!initialized) return <PageSpinner />;
   if (isDownloadPage) return <Suspense fallback={<PageSpinner />}><DemoDownloadPage /></Suspense>;
+
+  if (!entryDone) {
+    return (
+      <Suspense fallback={<PageSpinner />}>
+        <LandingPage
+          onPreload={() => setSoftwareActivated(true)}
+          onGetStarted={handleSoftwareEnter}
+        />
+      </Suspense>
+    );
+  }
+
+  if (!initialized) return <PageSpinner />;
 
   if (!licenseOk) {
     return (
@@ -347,8 +370,7 @@ function AuthGate() {
 
   if (!user) {
     if (view === "forgot") return <Suspense fallback={<PageSpinner />}><ForgotPasswordPage onBack={() => setView("login")} /></Suspense>;
-    if (view === "login") return <Suspense fallback={<PageSpinner />}><LoginPage onForgotPassword={() => setView("forgot")} /></Suspense>;
-    return <Suspense fallback={<PageSpinner />}><LandingPage onPreload={() => setSoftwareActivated(true)} onGetStarted={() => setView("login")} /></Suspense>;
+    return <Suspense fallback={<PageSpinner />}><LoginPage onForgotPassword={() => setView("forgot")} /></Suspense>;
   }
 
   if (view === "workspace") {

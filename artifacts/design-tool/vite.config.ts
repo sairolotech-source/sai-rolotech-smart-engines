@@ -69,8 +69,8 @@ export default defineConfig({
 
           // === EAGER VENDORS (always loaded, but split for parallel download) ===
 
-          // React core — must load first
-          if (id.includes("react-dom") || id.includes("react/")) return "vendor-react";
+          // React core + scheduler — must load first, keep together to avoid circular deps
+          if (id.includes("react-dom") || id.includes("react/") || id.includes("scheduler") || id.includes("react-is")) return "vendor-react";
 
           // Canvas/Drawing
           if (id.includes("konva") || id.includes("react-konva")) return "vendor-konva";

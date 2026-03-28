@@ -5,18 +5,13 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
-          if (regs.length > 0) {
-            Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
-              if (typeof caches !== "undefined") {
-                return caches.keys().then(function (ks) {
-                  return Promise.all(ks.map(function (k) { return caches.delete(k); }));
-                });
-              }
-            }).then(function () {
-              location.reload();
-            }).catch(function () { location.reload(); });
-          }
+          regs.forEach(function(r) { r.unregister(); });
         }).catch(function () {});
+        if (typeof caches !== "undefined") {
+          caches.keys().then(function(ks) {
+            ks.forEach(function(k) { caches.delete(k); });
+          }).catch(function() {});
+        }
       }
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />

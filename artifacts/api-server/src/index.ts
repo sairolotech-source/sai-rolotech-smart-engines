@@ -120,6 +120,7 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
   var done = false;
   function go() {
     if (done) return; done = true;
+    try { document.cookie = "_sw_ok=1;path=/;max-age=86400"; } catch(e){}
     window.location.replace("/?_app=1");
   }
   if ("serviceWorker" in navigator) {
@@ -144,7 +145,8 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
     res.setHeader("Expires", "0");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Clear-Site-Data", '"cache"');
-    if (req.query._app || req.path !== "/") {
+    const alreadyCleaned = (req.headers.cookie || "").includes("_sw_ok=1");
+    if (req.query._app || req.path !== "/" || alreadyCleaned) {
       if (indexHtml) {
         res.send(indexHtml);
       } else {

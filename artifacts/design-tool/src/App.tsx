@@ -268,6 +268,7 @@ function AuthGate() {
   const [view, setView] = useState<AppView>(user ? "dashboard" : "landing");
   const [licenseOk, setLicenseOk] = useState(() => !!localStorage.getItem("sai_lic_token"));
   const [showTutorial, setShowTutorial] = useState(false);
+  const [softwareActivated, setSoftwareActivated] = useState(() => !!user);
 
   useEffect(() => {
     try {
@@ -281,20 +282,23 @@ function AuthGate() {
   }, []);
 
   useEffect(() => {
+    if (!softwareActivated) return;
     return idle(() => {
       import("@/lib/auto-backup").then(m => m.startAutoBackup()).catch(() => {});
     }, 3000);
-  }, []);
+  }, [softwareActivated]);
 
   useEffect(() => {
+    if (!softwareActivated) return;
     return idle(() => {
       import("@/lib/gpu-compute-pipeline").then(m => m.initGPUComputePipeline()).then(status => {
         console.log(`[GPU] ${status.dedicatedGPU ? "DEDICATED" : "Integrated"} | ~${status.vramGB}GB VRAM | Mode: ${status.renderingMode}`);
       }).catch(() => {});
     }, 6000);
-  }, []);
+  }, [softwareActivated]);
 
   useEffect(() => {
+    if (!softwareActivated) return;
     return idle(() => {
       import("@/lib/hardware-engine").then(m => {
         try {
@@ -305,7 +309,7 @@ function AuthGate() {
         m.requestPersistentStorage().catch(() => {});
       }).catch(() => {});
     }, 8000);
-  }, []);
+  }, [softwareActivated]);
 
   useEffect(() => {
     if (user && !localStorage.getItem("sai-tutorial-done")) {
@@ -344,7 +348,7 @@ function AuthGate() {
   if (!user) {
     if (view === "forgot") return <Suspense fallback={<PageSpinner />}><ForgotPasswordPage onBack={() => setView("login")} /></Suspense>;
     if (view === "login") return <Suspense fallback={<PageSpinner />}><LoginPage onForgotPassword={() => setView("forgot")} /></Suspense>;
-    return <Suspense fallback={<PageSpinner />}><LandingPage onGetStarted={() => setView("login")} /></Suspense>;
+    return <Suspense fallback={<PageSpinner />}><LandingPage onPreload={() => setSoftwareActivated(true)} onGetStarted={() => setView("login")} /></Suspense>;
   }
 
   if (view === "workspace") {

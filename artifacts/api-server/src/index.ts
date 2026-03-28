@@ -83,10 +83,15 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
 });
 
 {
+  const SW_CLEANUP_SCRIPT = `<script>if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})}).catch(function(){});if(typeof caches!=="undefined"){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})}).catch(function(){})}}</script>`;
+
   const indexHtmlPath = path.join(FRONTEND_DIST, "index.html");
-  const indexHtml = existsSync(indexHtmlPath)
+  let indexHtml = existsSync(indexHtmlPath)
     ? readFileSync(indexHtmlPath, "utf8")
     : null;
+  if (indexHtml && !indexHtml.includes("getRegistrations")) {
+    indexHtml = indexHtml.replace("<head>", "<head>" + SW_CLEANUP_SCRIPT);
+  }
   console.log("[server] index.html cached:", indexHtml ? `${indexHtml.length} bytes` : "NOT FOUND");
 
   // JS/CSS assets — 1 saal cache (content-hash filename change hota hai automatically)
@@ -97,12 +102,13 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
     lastModified: false,
   }));
 
-  // sw.js + manifest.json — HAMESHA no-cache (browser must always get latest version)
+  const NUKE_SW_JS = `self.addEventListener("install",function(){self.skipWaiting()});self.addEventListener("activate",function(e){e.waitUntil(self.clients.claim().then(function(){return caches.keys()}).then(function(n){return Promise.all(n.map(function(k){return caches.delete(k)}))}).then(function(){return self.clients.matchAll({type:"window"})}).then(function(c){c.forEach(function(w){try{w.navigate(w.url)}catch(e){}})}))});self.addEventListener("fetch",function(e){e.respondWith(fetch(e.request))});`;
+
   app.get("/sw.js", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Content-Type", "application/javascript");
+    res.setHeader("Content-Type", "application/javascript; charset=utf-8");
     res.setHeader("Clear-Site-Data", '"cache", "storage"');
-    res.sendFile(path.join(FRONTEND_DIST, "sw.js"));
+    res.send(NUKE_SW_JS);
   });
   app.get("/manifest.json", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");

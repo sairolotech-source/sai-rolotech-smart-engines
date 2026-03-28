@@ -1,16 +1,16 @@
 {
-  "startedAt": "2026-03-28T12:52:58.668Z",
-  "lastHealthCheck": null,
+  "startedAt": "2026-03-28T12:52:58.658Z",
+  "lastHealthCheck": "2026-03-28T13:00:58.980Z",
   "lastGitPush": null,
-  "lastGitPushResult": null,
+  "lastGitPushResult": "failed: remote: Invalid username or token. Password authentication is not supported for ",
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
-  "healthChecksPassed": 0,
+  "healthChecksPassed": 4,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 0,
+  "gitPushErrors": 1,
   "apiPort": 8080,
   "isElectron": false,
   "logs": [
@@ -18,6 +18,51 @@
       "time": "12:52:58 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "12:53:08 pm",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "12:53:08 pm",
+      "type": "info",
+      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
+    },
+    {
+      "time": "12:53:08 pm",
+      "type": "warn",
+      "message": "Commit warning: fatal: Unable to create '/home/runner/workspace/.git/index.lock': File exists.\n\nAnother git process "
+    },
+    {
+      "time": "12:53:08 pm",
+      "type": "info",
+      "message": "[startup] 3 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "12:53:09 pm",
+      "type": "error",
+      "message": "GitHub push FAIL: remote: Invalid username or token. Password authentication is not supported for Git operations.\nfatal: Authentication failed for 'https://github.com/a"
+    },
+    {
+      "time": "12:54:58 pm",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "12:56:58 pm",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "12:58:58 pm",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "01:00:58 pm",
+      "type": "info",
+      "message": "Health: API OK"
     }
   ]
 }

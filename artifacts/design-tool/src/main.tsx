@@ -29,19 +29,8 @@ window.addEventListener("unhandledrejection", (event) => {
   event.preventDefault(); // prevent console noise for expected rejections
 });
 
-console.log("[main.tsx] React mounting...");
-try {
-  const rootEl = document.getElementById("root");
-  console.log("[main.tsx] root element:", rootEl);
-  const root = createRoot(rootEl!);
-  console.log("[main.tsx] createRoot done, rendering...");
-  root.render(
-    <ErrorBoundary fullScreen>
-      <App />
-    </ErrorBoundary>
-  );
-  console.log("[main.tsx] render() called successfully");
-} catch (e: any) {
-  console.error("[main.tsx] CRASH:", e?.message, e?.stack);
-  document.body.innerHTML = '<pre style="color:red;padding:20px;">' + String(e?.stack || e) + '</pre>';
-}
+createRoot(document.getElementById("root")!).render(
+  <ErrorBoundary fullScreen>
+    <App />
+  </ErrorBoundary>
+);

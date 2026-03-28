@@ -16,6 +16,7 @@ const DemoVideo        = lazy(() => import("@/pages/DemoVideo"));
 const DemoDownloadPage = lazy(() => import("@/pages/DemoDownloadPage"));
 const AdminPanel       = lazy(() => import("@/pages/AdminPanel"));
 const NotFound         = lazy(() => import("@/pages/not-found"));
+const OnboardingTutorial = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial })));
 
 function PageSpinner() {
   return (
@@ -285,11 +286,12 @@ function AuthGate() {
   useEffect(() => {
     return idle(() => {
       import("@/lib/hardware-engine").then(m => {
-        m.getHardwareCapabilities().then(hw => {
+        try {
+          const hw = m.getHardwareCapabilities();
           console.log(`[CPU] ${hw.cpu.cores} cores | ${hw.recommended.workerPoolSize} workers`);
-        }).catch(() => {});
-        m.ensureWorkerPool();
-        m.requestPersistentStorage();
+          m.ensureWorkerPool();
+        } catch {}
+        m.requestPersistentStorage().catch(() => {});
       }).catch(() => {});
     }, 8000);
   }, []);
@@ -351,7 +353,7 @@ function AuthGate() {
         <Suspense fallback={null}><FloatingToolbar loggedIn={!!user} /></Suspense>
         {showTutorial && (
           <Suspense fallback={null}>
-            {(() => { const OT = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial }))); return <OT onClose={() => setShowTutorial(false)} />; })()}
+            <OnboardingTutorial onClose={() => setShowTutorial(false)} />
           </Suspense>
         )}
       </Suspense>
@@ -366,7 +368,7 @@ function AuthGate() {
       <Suspense fallback={null}><FloatingToolbar loggedIn={!!user} /></Suspense>
       {showTutorial && (
         <Suspense fallback={null}>
-          {(() => { const OT = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial }))); return <OT onClose={() => setShowTutorial(false)} />; })()}
+          <OnboardingTutorial onClose={() => setShowTutorial(false)} />
         </Suspense>
       )}
     </Suspense>

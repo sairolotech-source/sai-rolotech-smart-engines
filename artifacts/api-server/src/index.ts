@@ -101,6 +101,7 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
   app.get("/sw.js", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.setHeader("Content-Type", "application/javascript");
+    res.setHeader("Clear-Site-Data", '"cache", "storage"');
     res.sendFile(path.join(FRONTEND_DIST, "sw.js"));
   });
   app.get("/manifest.json", (_req, res) => {

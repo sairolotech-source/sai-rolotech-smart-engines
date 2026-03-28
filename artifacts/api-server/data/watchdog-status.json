@@ -1,20 +1,60 @@
 {
-  "startedAt": "2026-03-28T07:59:22.804Z",
-  "lastHealthCheck": null,
+  "startedAt": "2026-03-28T07:59:22.799Z",
+  "lastHealthCheck": "2026-03-28T08:07:22.930Z",
   "lastGitPush": null,
-  "lastGitPushResult": null,
-  "healthChecksPassed": 0,
+  "lastGitPushResult": "failed: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote",
+  "healthChecksPassed": 4,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 0,
-  "apiPort": 5000,
+  "gitPushErrors": 1,
+  "apiPort": 8080,
   "isElectron": false,
   "logs": [
     {
       "time": "07:59:22 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "07:59:32 am",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "07:59:32 am",
+      "type": "info",
+      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
+    },
+    {
+      "time": "07:59:32 am",
+      "type": "info",
+      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "07:59:33 am",
+      "type": "error",
+      "message": "GitHub push FAIL: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at 2243"
+    },
+    {
+      "time": "08:01:22 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "08:03:22 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "08:05:22 am",
+      "type": "info",
+      "message": "Health: API OK"
+    },
+    {
+      "time": "08:07:22 am",
+      "type": "info",
+      "message": "Health: API OK"
     }
   ]
 }

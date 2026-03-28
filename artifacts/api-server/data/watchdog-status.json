@@ -1,100 +1,20 @@
 {
-  "startedAt": "2026-03-28T04:03:40.341Z",
-  "lastHealthCheck": "2026-03-28T04:21:40.551Z",
-  "lastGitPush": "2026-03-28T04:13:40.899Z",
-  "lastGitPushResult": "pushed → 18386c9683",
-  "healthChecksPassed": 9,
+  "startedAt": "2026-03-28T04:26:04.568Z",
+  "lastHealthCheck": null,
+  "lastGitPush": null,
+  "lastGitPushResult": null,
+  "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 1,
-  "gitPushErrors": 1,
-  "apiPort": 8080,
+  "gitPushCount": 0,
+  "gitPushErrors": 0,
+  "apiPort": 5000,
   "isElectron": false,
   "logs": [
     {
-      "time": "04:03:40 am",
+      "time": "04:26:04 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "04:03:50 am",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "04:03:50 am",
-      "type": "info",
-      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "04:03:50 am",
-      "type": "info",
-      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "04:03:50 am",
-      "type": "error",
-      "message": "GitHub push FAIL: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at fdf2"
-    },
-    {
-      "time": "04:05:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:07:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:09:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:11:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:13:40 am",
-      "type": "info",
-      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "04:13:40 am",
-      "type": "info",
-      "message": "[scheduled] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "04:13:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:13:40 am",
-      "type": "success",
-      "message": "GitHub push DONE! 1 commit(s) — HEAD: 18386c9683"
-    },
-    {
-      "time": "04:15:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:17:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:19:40 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "04:21:40 am",
-      "type": "info",
-      "message": "Health: API OK"
     }
   ]
 }

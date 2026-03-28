@@ -1,241 +1,399 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cog, FileCode2, Layers, Cpu, Zap, Star, Shield, BarChart3, GitBranch, ChevronRight, CheckCircle2 } from 'lucide-react';
 
 const COLORS = {
-  primary: '#f59e0b',
-  accent: '#06b6d4',
-  secondary: '#a78bfa',
-  bg: '#04060e',
-  surface: 'rgba(255,255,255,0.04)',
-  surfaceBorder: 'rgba(255,255,255,0.1)',
-  textMain: '#ffffff',
-  textMuted: '#9ca3af',
-  success: '#22c55e',
+  bg: '#0a0f1a',
+  gold: '#f59e0b',
+  cyan: '#06b6d4',
+  text: '#ffffff',
+  textMuted: '#9ca3af'
 };
 
-const SCENE_DURATION = 6000;
-const TOTAL_SCENES = 10;
+const SCENE_DURATIONS = [
+  8000,  // Scene 0: Brand Opening
+  10000, // Scene 1: The Problem
+  12000, // Scene 2: DXF Import
+  15000, // Scene 3: Flower Pattern
+  15000, // Scene 4: 3D Roll Simulation
+  12000, // Scene 5: G-Code
+  8000,  // Scene 6: Features
+  10000, // Scene 7: CTA Closing
+];
+
+const VOICE_SCRIPTS = [
+  "SAI Rolotech Smart Engines. Precision roll forming engineering since 2020.",
+  "Complex roll forming profiles demand precision at every stage. One mistake costs everything.",
+  "Simply import any D X F profile. Instant parsing. No manual drafting required.",
+  "Automated flower pattern generation. Visualize every bend stage, from flat sheet to final profile.",
+  "Full 3D roll simulation. See your machine work before manufacturing a single roll.",
+  "Instant CNC G-code output. From profile to machine path in milliseconds. Ready for production.",
+  "A complete engineering suite. A I assistant. D X F import. 3D visualization. G-code output. All in one platform.",
+  "SAI Rolotech Smart Engines. Precision you can trust. Visit sairolotech dot com.",
+];
+
+function startAmbientMusic(ctx: AudioContext, masterGain: GainNode): () => void {
+  const nodes: AudioNode[] = [];
+
+  const osc1 = ctx.createOscillator();
+  const osc1Gain = ctx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.value = 55;
+  osc1Gain.gain.value = 0.28;
+  osc1.connect(osc1Gain);
+  osc1Gain.connect(masterGain);
+  osc1.start();
+  nodes.push(osc1);
+
+  const osc2 = ctx.createOscillator();
+  const osc2Gain = ctx.createGain();
+  osc2.type = 'triangle';
+  osc2.frequency.value = 110;
+  osc2Gain.gain.value = 0.08;
+  const lpFilter = ctx.createBiquadFilter();
+  lpFilter.type = 'lowpass';
+  lpFilter.frequency.value = 280;
+  lpFilter.Q.value = 2;
+  osc2.connect(osc2Gain);
+  osc2Gain.connect(lpFilter);
+  lpFilter.connect(masterGain);
+  osc2.start();
+  nodes.push(osc2);
+
+  const osc3 = ctx.createOscillator();
+  const osc3Gain = ctx.createGain();
+  osc3.type = 'sine';
+  osc3.frequency.value = 82.5;
+  osc3Gain.gain.value = 0.12;
+  osc3.connect(osc3Gain);
+  osc3Gain.connect(masterGain);
+  osc3.start();
+  nodes.push(osc3);
+
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.07;
+  lfoGain.gain.value = 0.06;
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc1Gain.gain);
+  lfo.start();
+  nodes.push(lfo);
+
+  const bufSize = ctx.sampleRate * 4;
+  const noiseBuf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) nd[i] = (Math.random() * 2 - 1) * 0.6;
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+  noise.loop = true;
+  const nf = ctx.createBiquadFilter();
+  nf.type = 'bandpass';
+  nf.frequency.value = 90;
+  nf.Q.value = 0.4;
+  const ng = ctx.createGain();
+  ng.gain.value = 0.025;
+  noise.connect(nf);
+  nf.connect(ng);
+  ng.connect(masterGain);
+  noise.start();
+  nodes.push(noise);
+
+  return () => {
+    nodes.forEach(n => { try { (n as OscillatorNode).stop(); } catch {} });
+  };
+}
+
+function speakScene(index: number) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const text = VOICE_SCRIPTS[index];
+  if (!text) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.82;
+  utterance.pitch = 0.88;
+  utterance.volume = 1.0;
+  const trySpeak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const voice =
+      voices.find(v => v.lang.startsWith('en') && /male|david|alex|daniel|james/i.test(v.name)) ||
+      voices.find(v => v.lang === 'en-US') ||
+      voices.find(v => v.lang.startsWith('en')) ||
+      null;
+    if (voice) utterance.voice = voice;
+    window.speechSynthesis.speak(utterance);
+  };
+  if (window.speechSynthesis.getVoices().length > 0) trySpeak();
+  else { window.speechSynthesis.onvoiceschanged = trySpeak; }
+}
 
 export default function DemoVideo() {
   const [currentScene, setCurrentScene] = useState(0);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+  const stopMusicRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // Inject fonts
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
+    return () => { try { document.head.removeChild(link); } catch {} };
+  }, []);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    const playScene = (index: number) => {
+      setCurrentScene(index);
+      timeout = setTimeout(() => playScene((index + 1) % SCENE_DURATIONS.length), SCENE_DURATIONS[index]);
+    };
+    playScene(0);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (!audioEnabled || isMuted) return;
+    speakScene(currentScene);
+    return () => { window.speechSynthesis?.cancel(); };
+  }, [currentScene, audioEnabled, isMuted]);
+
+  useEffect(() => {
+    if (!masterGainRef.current || !audioCtxRef.current) return;
+    masterGainRef.current.gain.setTargetAtTime(
+      isMuted ? 0 : 0.45,
+      audioCtxRef.current.currentTime,
+      0.15
+    );
+    if (isMuted) window.speechSynthesis?.cancel();
+    else if (audioEnabled) speakScene(currentScene);
+  }, [isMuted]);
+
+  useEffect(() => {
     return () => {
-      document.head.removeChild(link);
+      window.speechSynthesis?.cancel();
+      stopMusicRef.current?.();
+      audioCtxRef.current?.close();
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentScene((prev) => (prev + 1) % TOTAL_SCENES);
-    }, SCENE_DURATION);
-    return () => clearInterval(timer);
-  }, []);
-
-  const styles = {
-    container: {
-      width: '100%',
-      height: '100%',
-      background: COLORS.bg,
-      overflow: 'hidden',
-      position: 'relative' as const,
-      fontFamily: "'Space Grotesk', sans-serif",
-      color: COLORS.textMain,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }
+  const enableAudio = () => {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AudioCtx();
+    audioCtxRef.current = ctx;
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 0.45;
+    masterGain.connect(ctx.destination);
+    masterGainRef.current = masterGain;
+    stopMusicRef.current = startAmbientMusic(ctx, masterGain);
+    setAudioEnabled(true);
+    setTimeout(() => speakScene(currentScene), 400);
   };
 
   return (
-    <div style={styles.container}>
-      {/* Background Ambient Layers */}
-      <div style={{ position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none' }}>
-        <div style={{ 
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: '80vw', height: '80vh', background: `radial-gradient(circle, ${COLORS.primary}20 0%, transparent 70%)`
-        }} />
+    <div style={{
+      width: '100vw', height: '100vh', background: COLORS.bg,
+      overflow: 'hidden', position: 'relative',
+      fontFamily: "'JetBrains Mono', monospace", color: COLORS.text,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {/* Background Video */}
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.2, zIndex: 0 }}>
+        <video src="/assets/industrial-bg.mp4" autoPlay loop muted playsInline
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at center, transparent 0%, ${COLORS.bg} 100%)` }} />
       </div>
-      
-      {/* Dynamic Background elements outside AnimatePresence for continuity */}
+
+      {/* Animated Grid */}
       <motion.div
-        animate={{
-          scale: currentScene % 2 === 0 ? 1 : 1.1,
-          opacity: currentScene === 0 ? 0.3 : 0.1
-        }}
-        transition={{ duration: 6, ease: "linear" }}
+        animate={{ backgroundPosition: ['0px 0px', '100px 100px'] }}
+        transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
         style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'radial-gradient(circle at 80% 20%, rgba(6,182,212,0.1) 0%, transparent 50%)'
+          position: 'absolute', inset: 0, zIndex: 1, opacity: 0.05,
+          backgroundImage: `linear-gradient(${COLORS.cyan} 1px, transparent 1px), linear-gradient(90deg, ${COLORS.cyan} 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
         }}
       />
-      
+
       {/* Scene Content */}
       <div style={{ position: 'relative', width: '100%', height: '100%', zIndex: 10 }}>
         <AnimatePresence mode="wait">
-          {currentScene === 0 && <Scene1Intro key="scene-1" />}
-          {currentScene === 1 && <Scene2Dxf key="scene-2" />}
-          {currentScene === 2 && <Scene3Flower key="scene-3" />}
-          {currentScene === 3 && <Scene4Roll key="scene-4" />}
-          {currentScene === 4 && <Scene5GCode key="scene-5" />}
-          {currentScene === 5 && <Scene6Accuracy key="scene-6" />}
-          {currentScene === 6 && <Scene7Machine key="scene-7" />}
-          {currentScene === 7 && <Scene8Features key="scene-8" />}
-          {currentScene === 8 && <Scene9Pipeline key="scene-9" />}
-          {currentScene === 9 && <Scene10Benchmark key="scene-10" />}
+          {currentScene === 0 && <Scene1Intro key="s1" />}
+          {currentScene === 1 && <Scene2Problem key="s2" />}
+          {currentScene === 2 && <Scene3Dxf key="s3" />}
+          {currentScene === 3 && <Scene4Flower key="s4" />}
+          {currentScene === 4 && <Scene5RollSim key="s5" />}
+          {currentScene === 5 && <Scene6GCode key="s6" />}
+          {currentScene === 6 && <Scene7Features key="s7" />}
+          {currentScene === 7 && <Scene8CTA key="s8" />}
         </AnimatePresence>
       </div>
 
       {/* Progress Bar */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '3px', background: 'rgba(255,255,255,0.05)', zIndex: 20 }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', zIndex: 20 }}>
         <motion.div
-          key={currentScene}
-          initial={{ width: '0%' }}
-          animate={{ width: '100%' }}
-          transition={{ duration: SCENE_DURATION / 1000, ease: 'linear' }}
-          style={{ height: '100%', background: COLORS.primary }}
+          key={`progress-${currentScene}`}
+          initial={{ width: '0%' }} animate={{ width: '100%' }}
+          transition={{ duration: SCENE_DURATIONS[currentScene] / 1000, ease: 'linear' }}
+          style={{ height: '100%', background: COLORS.gold }}
         />
       </div>
+
+      {/* Scene Indicator */}
+      <div style={{ position: 'absolute', bottom: '1.5vh', right: '2vw', zIndex: 21, fontSize: '0.9vw', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.15em' }}>
+        {currentScene + 1} / {SCENE_DURATIONS.length}
+      </div>
+
+      {/* Audio Enable Overlay */}
+      <AnimatePresence>
+        {!audioEnabled && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={enableAudio}
+            style={{
+              position: 'absolute', inset: 0, zIndex: 100,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.65)', cursor: 'pointer', backdropFilter: 'blur(6px)'
+            }}
+          >
+            <motion.div
+              animate={{ scale: [0.97, 1.03, 0.97], boxShadow: [`0 0 30px ${COLORS.gold}30`, `0 0 60px ${COLORS.gold}60`, `0 0 30px ${COLORS.gold}30`] }}
+              transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2vh',
+                background: 'rgba(10,15,26,0.9)', border: `1px solid ${COLORS.gold}50`,
+                borderRadius: '2vw', padding: '4vh 6vw', textAlign: 'center'
+              }}
+            >
+              <div style={{ fontSize: '4vw', lineHeight: 1 }}>🔊</div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.5vw', color: COLORS.gold, letterSpacing: '0.1em' }}>
+                CLICK TO START WITH AUDIO
+              </div>
+              <div style={{ fontSize: '1.1vw', color: COLORS.textMuted }}>
+                Voice over + Background music
+              </div>
+              <div style={{ fontSize: '0.9vw', color: 'rgba(255,255,255,0.2)', marginTop: '0.5vh' }}>
+                (video plays silently without audio)
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mute / Unmute Button */}
+      <AnimatePresence>
+        {audioEnabled && (
+          <motion.button
+            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            onClick={() => setIsMuted(m => !m)}
+            style={{
+              position: 'absolute', top: '2vh', right: '2vw', zIndex: 50,
+              background: isMuted ? 'rgba(245,158,11,0.1)' : 'rgba(6,182,212,0.08)',
+              border: `1px solid ${isMuted ? COLORS.gold : COLORS.cyan}50`,
+              borderRadius: '0.8vw', padding: '0.8vh 1.8vw', cursor: 'pointer',
+              color: COLORS.text, fontSize: '1.2vw', display: 'flex', alignItems: 'center',
+              gap: '0.6vw', letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace"
+            }}
+          >
+            <span style={{ fontSize: '1.4vw' }}>{isMuted ? '🔇' : '🔊'}</span>
+            {isMuted ? 'MUTED' : 'AUDIO ON'}
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-// SCENE 1: INTRO
+// SCENE 1: Brand Opening (0-8s)
 function Scene1Intro() {
   return (
     <motion.div 
-      initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }} transition={{ duration: 0.8 }}
+      initial={{ opacity: 0, scale: 1.1 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+      transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
       style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
     >
       <motion.div
-        initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
-        animate={{ rotate: 0, opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 100, delay: 0.2 }}
-        style={{ marginBottom: '2rem' }}
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.5, duration: 1, type: 'spring', stiffness: 50 }}
+        style={{ display: 'flex', alignItems: 'center', gap: '2vw', marginBottom: '2vh' }}
       >
-        <div style={{ position: 'relative' }}>
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 10, ease: "linear" }}>
-            <Cog size={120} color={COLORS.primary} strokeWidth={1} />
-          </motion.div>
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: `2px solid ${COLORS.primary}` }} />
-          </div>
-        </div>
-      </motion.div>
-      <motion.h1 
-        initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5, duration: 0.8 }}
-        style={{ fontSize: '3rem', fontWeight: 600, letterSpacing: '-0.02em', margin: '0 0 1rem 0', color: '#fff' }}
-      >
-        AI-Driven Precision Roll Forming
-      </motion.h1>
-      <motion.div 
-        initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.8 }}
-        style={{ display: 'flex', gap: '1rem', color: COLORS.textMuted, fontSize: '1.2rem', fontFamily: "'JetBrains Mono', monospace" }}
-      >
-        <span>v2.2.20</span>
-        <span>·</span>
-        <span>7 Modules</span>
-        <span>·</span>
-        <span style={{ color: COLORS.accent }}>500+ Profiles</span>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-// SCENE 2: DXF IMPORT
-function Scene2Dxf() {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.6 }} style={{ width: '100%', height: '100%', padding: '4rem', display: 'flex', alignItems: 'center', gap: '4rem' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <motion.div 
-          initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', delay: 0.2 }}
-          style={{ width: '140px', height: '180px', border: `2px dashed ${COLORS.accent}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.05)' }}
+          animate={{ rotate: 360 }} 
+          transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+          style={{ width: '8vw', height: '8vw', border: `0.3vw solid ${COLORS.gold}`, borderRadius: '1vw', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}>
-            <FileCode2 size={48} color={COLORS.accent} style={{ marginBottom: '1rem' }} />
-          </motion.div>
-          <span style={{ fontFamily: "'JetBrains Mono'", fontSize: '1rem', color: COLORS.accent }}>.dxf</span>
+          <div style={{ width: '4vw', height: '4vw', background: COLORS.gold, borderRadius: '0.5vw' }} />
         </motion.div>
-        
-        <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.5 }} style={{ background: COLORS.surface, border: `1px solid ${COLORS.surfaceBorder}`, padding: '1.5rem', borderRadius: '12px', fontFamily: "'JetBrains Mono'" }}>
-          <div style={{ color: COLORS.textMuted, marginBottom: '1rem', fontSize: '0.9rem' }}>PARSED DATA</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Type:</span> <span style={{ color: COLORS.primary }}>C-Purlin</span></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Width:</span> <span>150mm</span></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Flanges:</span> <span>50mm</span></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>t:</span> <span>2.0mm</span></div>
-        </motion.div>
-      </div>
-      <div style={{ flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.5)', borderRadius: '24px', padding: '3rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-        <svg viewBox="0 0 300 200" style={{ width: '100%', maxWidth: '500px' }}>
-          {/* Grid */}
-          <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-          </pattern>
-          <rect width="300" height="200" fill="url(#grid)" />
-          
-          <motion.path 
-            d="M 50 150 L 50 50 L 250 50 L 250 150" 
-            fill="none" stroke={COLORS.primary} strokeWidth="4"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 2, delay: 0.5, ease: "easeInOut" }}
-          />
-          <motion.path 
-            d="M 40 150 L 40 40 L 260 40 L 260 150" 
-            fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="4 4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2.5 }}
-          />
-          {/* Dimensions */}
-          <motion.text initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3 }} x="150" y="30" fill={COLORS.textMuted} fontSize="12" textAnchor="middle" fontFamily="JetBrains Mono">150mm</motion.text>
-          <motion.text initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3 }} x="30" y="100" fill={COLORS.textMuted} fontSize="12" textAnchor="middle" transform="rotate(-90 30,100)" fontFamily="JetBrains Mono">50mm</motion.text>
-        </svg>
-      </div>
+        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '10vw', margin: 0, lineHeight: 0.9, letterSpacing: '0.05em' }}>
+          SAI ROLOTECH
+        </h1>
+      </motion.div>
+
+      <motion.h2 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5, duration: 1 }}
+        style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '4vw', color: COLORS.cyan, margin: '2vh 0 0 0', letterSpacing: '0.1em' }}
+      >
+        PRECISION ROLL FORMING ENGINEERING
+      </motion.h2>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 2.5, duration: 1 }}
+        style={{ marginTop: '4vh', fontSize: '1.5vw', color: COLORS.textMuted, letterSpacing: '0.2em' }}
+      >
+        SMART ENGINES V2.2.23
+      </motion.div>
     </motion.div>
   );
 }
 
-// SCENE 3: FLOWER PATTERN
-function Scene3Flower() {
-  const angles = ['0°', '15°', '35°', '55°', '75°', '90°'];
+// SCENE 2: The Problem (8-18s)
+function Scene2Problem() {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }} style={{ width: '100%', height: '100%', padding: '4rem', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '4rem' }}>
-        <Layers size={32} color={COLORS.primary} />
-        <h2 style={{ fontSize: '2rem', margin: 0 }}>Flower Pattern Generator</h2>
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: '-10vw' }}
+      transition={{ duration: 1 }}
+      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5vw' }}
+    >
+      <div style={{ position: 'absolute', inset: 0, zIndex: -1, opacity: 0.3 }}>
+        <img src="/assets/precision-machinery.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="bg" />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #0a0f1a, transparent)' }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, padding: '0 2rem' }}>
-        {angles.map((angle, i) => (
+
+      <motion.h2
+        initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 1 }}
+        style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '5vw', textAlign: 'center', margin: '0 0 5vh 0', textShadow: '0 10px 30px rgba(0,0,0,0.8)' }}
+      >
+        COMPLEX ROLL FORMING REQUIRES <span style={{ color: COLORS.cyan }}>PRECISION</span> AT EVERY STAGE
+      </motion.h2>
+
+      <div style={{ display: 'flex', gap: '3vw', marginTop: '5vh' }}>
+        {[
+          { name: 'C-CHANNEL', path: 'M 80 20 L 20 20 L 20 80 L 80 80' },
+          { name: 'U-CHANNEL', path: 'M 20 20 L 20 80 L 80 80 L 80 20' },
+          { name: 'HAT PROFILE', path: 'M 10 80 L 30 80 L 30 20 L 70 20 L 70 80 L 90 80' },
+          { name: 'Z-SECTION', path: 'M 20 20 L 50 20 L 50 80 L 80 80' }
+        ].map((profile, i) => (
           <motion.div 
             key={i}
-            initial={{ opacity: 0, y: 50, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: i * 0.5 + 0.2, type: 'spring' }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+            initial={{ opacity: 0, scale: 0.5, rotateY: 90 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            transition={{ delay: 1 + i * 0.3, duration: 1, type: 'spring' }}
+            style={{ width: '15vw', height: '15vw', background: 'rgba(255,255,255,0.02)', border: `1px solid ${COLORS.gold}40`, borderRadius: '1vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           >
-            <div style={{ height: '180px', width: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: `2px solid ${COLORS.surfaceBorder}`, position: 'relative' }}>
-              <svg viewBox="0 0 100 100" style={{ width: '100%', overflow: 'visible' }}>
-                <motion.path
-                  initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: i * 0.5 + 0.5, duration: 1 }}
-                  d={`M 10 ${90 - i * 12} L 30 ${90 - i * 8} L 70 ${90 - i * 8} L 90 ${90 - i * 12}`}
-                  fill="none" stroke={i === angles.length - 1 ? COLORS.primary : COLORS.accent} strokeWidth="3"
-                />
-              </svg>
-              {i < angles.length - 1 && (
-                <div style={{ position: 'absolute', right: '-50%', top: '50%', transform: 'translateY(-50%)', color: COLORS.surfaceBorder }}>
-                  <ChevronRight size={24} />
-                </div>
-              )}
-            </div>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.5 + 1.2 }} style={{ marginTop: '1.5rem', fontFamily: "'JetBrains Mono'", fontSize: '1.2rem', color: i === angles.length - 1 ? COLORS.primary : '#fff' }}>
-              {angle}
-            </motion.div>
-            <div style={{ fontSize: '0.9rem', color: COLORS.textMuted, marginTop: '0.5rem', fontFamily: "'JetBrains Mono'" }}>STN {i+1}</div>
+            <svg viewBox="0 0 100 100" style={{ width: '60%', height: '60%' }}>
+              <motion.path 
+                d={profile.path} fill="none" stroke={COLORS.gold} strokeWidth="4"
+                initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 2 + i * 0.2, duration: 1.5, ease: "easeInOut" }}
+              />
+            </svg>
+            <div style={{ marginTop: '1vh', fontSize: '1vw', color: COLORS.textMuted }}>{profile.name}</div>
           </motion.div>
         ))}
       </div>
@@ -243,233 +401,268 @@ function Scene3Flower() {
   );
 }
 
-// SCENE 4: ROLL TOOLING
-function Scene4Roll() {
+// SCENE 3: DXF Import (18-30s)
+function Scene3Dxf() {
   return (
-    <motion.div initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }} style={{ width: '100%', height: '100%', display: 'flex', padding: '4rem', gap: '4rem' }}>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 1 }}
+      style={{ width: '100%', height: '100%', display: 'flex', padding: '6vw', gap: '4vw' }}
+    >
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <h2 style={{ fontSize: '2.5rem', marginBottom: '3rem', fontWeight: 300 }}>Roll Tooling Specification</h2>
+        <motion.div 
+          initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.5 }}
+          style={{ fontSize: '1.2vw', color: COLORS.cyan, marginBottom: '1vh', letterSpacing: '0.2em' }}
+        >
+          MODULE 01
+        </motion.div>
+        <motion.h2
+          initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.7 }}
+          style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '6vw', margin: '0 0 2vh 0', lineHeight: 1 }}
+        >
+          IMPORT ANY <span style={{ color: COLORS.gold }}>DXF PROFILE</span>
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+          style={{ fontSize: '1.5vw', color: COLORS.textMuted }}
+        >
+          Instant precision. No manual drafting required.
+        </motion.p>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '3rem' }}>
-          {['120mm', '126mm', '134mm'].map((od, i) => (
-            <motion.div 
-              key={i}
-              initial={{ x: -30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: i * 0.3 + 0.5, type: 'spring' }}
-              style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '1.8rem', fontFamily: "'JetBrains Mono'", background: COLORS.surface, padding: '1rem', borderRadius: '12px', border: `1px solid ${COLORS.surfaceBorder}` }}
-            >
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: `2px solid ${COLORS.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: COLORS.accent }} />
-              </div>
-              OD: <span style={{ color: COLORS.primary }}>{od}</span>
-            </motion.div>
-          ))}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2 }} style={{ marginTop: '1rem', color: COLORS.textMuted, fontFamily: "'JetBrains Mono'", fontSize: '1.2rem' }}>
-            Shaft: ⌀42mm solid steel
-          </motion.div>
-        </div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.5 }} style={{ background: 'rgba(245,158,11,0.05)', border: `1px solid ${COLORS.primary}40`, padding: '1.5rem', borderRadius: '12px' }}>
-          <div style={{ fontFamily: "'JetBrains Mono'", color: COLORS.primary, marginBottom: '1rem', fontSize: '0.9rem', letterSpacing: '0.1em' }}>BOM EXPORT</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontFamily: "'JetBrains Mono'" }}>
-            <div><span style={{ color: '#fff', fontSize: '1.5rem' }}>16</span> rolls</div>
-            <div><span style={{ color: '#fff', fontSize: '1.5rem' }}>8</span> shafts</div>
-            <div style={{ gridColumn: '1 / -1' }}><span style={{ color: '#fff', fontSize: '1.5rem' }}>16</span> bearings 6308</div>
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }}
+          style={{ marginTop: '4vh', background: 'rgba(6,182,212,0.05)', border: `1px solid ${COLORS.cyan}40`, padding: '2vw', borderRadius: '1vw' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1vh', marginBottom: '1vh' }}>
+            <span>FILE</span><span style={{ color: COLORS.cyan }}>profile_v4.dxf</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1vh', marginBottom: '1vh' }}>
+            <span>ENTITIES</span><span style={{ color: COLORS.text }}>24 LINES, 8 ARCS</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>STATUS</span><span style={{ color: COLORS.gold }}>PARSED SUCCESSFULLY</span>
           </div>
         </motion.div>
       </div>
-      
+
       <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Abstract Roll Visualization */}
         <motion.div 
-          animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-          style={{ width: '400px', height: '400px', borderRadius: '50%', border: `1px solid rgba(255,255,255,0.05)`, position: 'relative' }}
+          initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1, duration: 1.5 }}
+          style={{ width: '100%', height: '80%', background: '#050810', borderRadius: '1vw', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}
         >
-          <div style={{ position: 'absolute', inset: '40px', borderRadius: '50%', border: `2px solid ${COLORS.primary}`, opacity: 0.5 }} />
-          <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 4 }} style={{ position: 'absolute', inset: '80px', borderRadius: '50%', border: `4px solid ${COLORS.accent}`, boxShadow: `0 0 30px ${COLORS.accent}40` }} />
-          <div style={{ position: 'absolute', inset: '140px', borderRadius: '50%', border: `1px dashed rgba(255,255,255,0.3)` }} />
-          <div style={{ position: 'absolute', top: '50%', left: '50%', width: '60px', height: '60px', background: '#111', borderRadius: '50%', transform: 'translate(-50%, -50%)', border: `8px solid #333`, boxShadow: 'inset 0 0 10px #000' }} />
+          {/* Grid */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '4vw 4vw' }} />
+          
+          <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
+            {/* The DXF Shape */}
+            <motion.path 
+              d="M 50 150 L 50 50 L 150 50 L 150 150 L 130 150 L 130 70 L 70 70 L 70 150 Z" 
+              fill="none" stroke={COLORS.cyan} strokeWidth="2"
+              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 2, duration: 3, ease: "easeInOut" }}
+            />
+            {/* Dimensions */}
+            <motion.line x1="50" y1="40" x2="150" y2="40" stroke={COLORS.textMuted} strokeWidth="0.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 4 }} />
+            <motion.text x="100" y="35" fill={COLORS.text} fontSize="6" textAnchor="middle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 4.2 }}>100.00</motion.text>
+            
+            <motion.line x1="40" y1="50" x2="40" y2="150" stroke={COLORS.textMuted} strokeWidth="0.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 4.5 }} />
+            <motion.text x="35" y="100" fill={COLORS.text} fontSize="6" textAnchor="middle" transform="rotate(-90 35,100)" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 4.7 }}>100.00</motion.text>
+          </svg>
         </motion.div>
       </div>
     </motion.div>
   );
 }
 
-// SCENE 5: G-CODE
-function Scene5GCode() {
-  const code = [
-    "N010 G90 G21",
-    "N020 G28 U0",
-    "N030 T0101 M03 S350",
-    "N040 G00 X120.000 Z0.000",
-    "N050 G01 X120.000 Z-5.000 F0.2",
-    "N060 G01 X126.000 Z-10.000",
-    "N070 G02 X134.000 Z-15.000 R4.0",
-    "N080 G01 X134.000 Z-25.000"
+// SCENE 4: Flower Pattern (30-45s) - KEY SCENE
+function Scene4Flower() {
+  const stages = [
+    { label: 'FLAT', path: 'M 10 90 L 90 90' },
+    { label: 'STN 1', path: 'M 10 85 L 20 90 L 80 90 L 90 85' },
+    { label: 'STN 2', path: 'M 15 75 L 30 90 L 70 90 L 85 75' },
+    { label: 'STN 3', path: 'M 20 60 L 35 90 L 65 90 L 80 60' },
+    { label: 'STN 4', path: 'M 25 40 L 40 90 L 60 90 L 75 40' },
+    { label: 'STN 5', path: 'M 30 20 L 45 90 L 55 90 L 70 20' },
   ];
-  
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.1 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
-      <div style={{ width: '80%', height: '80%', background: '#0a0a0f', borderRadius: '12px', border: `1px solid #222`, overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.8)' }}>
-        <div style={{ height: '40px', background: '#111', display: 'flex', alignItems: 'center', padding: '0 1.5rem', gap: '0.8rem', borderBottom: '1px solid #222' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }} />
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#eab308' }} />
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#22c55e' }} />
-          <div style={{ marginLeft: '1rem', fontSize: '0.9rem', color: '#888', fontFamily: "'JetBrains Mono'" }}>cnc_export.tap</div>
-          <div style={{ marginLeft: 'auto' }}>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2 }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: COLORS.success, fontSize: '0.8rem', fontFamily: "'JetBrains Mono'" }}>
-              <CheckCircle2 size={14} /> Safety Check Passed
-            </motion.div>
-          </div>
-        </div>
-        <div style={{ padding: '3rem', fontFamily: "'JetBrains Mono'", fontSize: '1.5rem', lineHeight: '2', color: '#a3be8c' }}>
-          {code.map((line, i) => (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: 'blur(20px)' }}
+      transition={{ duration: 1.5 }}
+      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5vw' }}
+    >
+      <motion.h2
+        initial={{ y: -30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5, duration: 1 }}
+        style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '6vw', color: '#fff', margin: '0 0 1vh 0' }}
+      >
+        AUTOMATED <span style={{ color: COLORS.cyan }}>FLOWER PATTERN</span> GENERATION
+      </motion.h2>
+      <motion.div 
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+        style={{ fontSize: '1.5vw', color: COLORS.textMuted, marginBottom: '6vh' }}
+      >
+        The core of precision engineering
+      </motion.div>
+
+      <div style={{ position: 'relative', width: '80vw', height: '40vh', display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+        <svg viewBox="0 0 100 100" style={{ width: '40vw', height: '40vw', overflow: 'visible' }}>
+          {stages.map((stage, i) => (
+            <motion.path
+              key={i}
+              d={stage.path}
+              fill="none"
+              stroke={i === stages.length - 1 ? COLORS.gold : 'rgba(6,182,212,0.3)'}
+              strokeWidth={i === stages.length - 1 ? 2 : 0.5}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1, filter: i === stages.length -1 ? `drop-shadow(0 0 10px ${COLORS.gold})` : 'none' }}
+              transition={{ delay: 1.5 + i * 1.5, duration: 2, ease: "easeInOut" }}
+            />
+          ))}
+        </svg>
+
+        {/* Legend */}
+        <div style={{ position: 'absolute', right: 0, top: 0, display: 'flex', flexDirection: 'column', gap: '1vh' }}>
+          {stages.map((stage, i) => (
             <motion.div 
               key={i}
-              initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.4 }}
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.5 + i * 1.5 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '1vw', fontSize: '1.2vw', color: i === stages.length -1 ? COLORS.gold : COLORS.textMuted }}
             >
-              <span style={{ color: '#5c6370', marginRight: '1.5rem', display: 'inline-block', width: '50px' }}>{String(i + 1).padStart(2, '0')}</span>
-              {line.split(' ').map((part, j) => (
-                <span key={j} style={{ color: part.startsWith('G') || part.startsWith('M') ? COLORS.accent : part.startsWith('X') || part.startsWith('Z') ? COLORS.primary : 'inherit' }}>
-                  {part}{' '}
-                </span>
-              ))}
+              <div style={{ width: '2vw', height: '2px', background: i === stages.length -1 ? COLORS.gold : 'rgba(6,182,212,0.3)' }} />
+              {stage.label}
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// SCENE 5: 3D Roll Sim (45-60s) - KEY SCENE
+function Scene5RollSim() {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 1.2 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 1.5 }}
+      style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+    >
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <img src="/assets/roll-machine.png" alt="Roll Machine" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, #0a0f1a 10%, transparent 50%, #0a0f1a 90%)' }} />
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+        <motion.div 
+          initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5, type: 'spring', bounce: 0.5 }}
+          style={{ width: '6vw', height: '6vw', borderRadius: '50%', background: 'rgba(245,158,11,0.1)', border: `2px solid ${COLORS.gold}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3vh', boxShadow: `0 0 30px ${COLORS.gold}60` }}
+        >
+          <div style={{ fontSize: '2vw' }}>3D</div>
+        </motion.div>
+        
+        <motion.h2
+          initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 1 }}
+          style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '7vw', margin: '0 0 2vh 0', textShadow: '0 10px 30px #000' }}
+        >
+          FULL 3D <span style={{ color: COLORS.gold }}>ROLL SIMULATION</span>
+        </motion.h2>
+        
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
+          style={{ fontSize: '1.8vw', color: COLORS.textMuted, maxWidth: '60vw' }}
+        >
+          Visualize metal bending progressively through each station before manufacturing a single roll.
+        </motion.p>
+      </div>
+
+      {/* Animated Overlay indicating scanning/simulation */}
+      <motion.div 
+        animate={{ y: ['-50vh', '150vh'] }}
+        transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+        style={{ position: 'absolute', left: 0, right: 0, height: '2px', background: COLORS.cyan, boxShadow: `0 0 20px 5px ${COLORS.cyan}80`, zIndex: 5 }}
+      />
+    </motion.div>
+  );
+}
+
+// SCENE 6: G-Code (60-72s)
+function Scene6GCode() {
+  const codes = [
+    "G90 G21", "G28 U0", "T0101 M03 S350", "G00 X125.340 Z0.000",
+    "G01 X125.340 Z-5.000 F0.2", "G01 X110.000 Z-15.000",
+    "G02 X86.600 Z-25.000 R100.000", "G01 X86.600 Z-50.000"
+  ];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: '10vw' }}
+      transition={{ duration: 1 }}
+      style={{ width: '100%', height: '100%', display: 'flex', padding: '6vw', gap: '4vw', background: '#050810' }}
+    >
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <motion.h2
+          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '6vw', margin: '0 0 2vh 0' }}
+        >
+          INSTANT <span style={{ color: COLORS.cyan }}>CNC G-CODE</span>
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+          style={{ fontSize: '1.5vw', color: COLORS.textMuted }}
+        >
+          From profile to machine path in milliseconds. Export directly to your lathe.
+        </motion.p>
+      </div>
+
+      <div style={{ flex: 1, position: 'relative' }}>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1 }}
+          style={{ position: 'absolute', inset: 0, background: '#000', border: `1px solid #333`, borderRadius: '1vw', padding: '3vw', overflow: 'hidden' }}
+        >
+          <div style={{ fontSize: '1vw', color: '#555', borderBottom: '1px solid #333', paddingBottom: '1vh', marginBottom: '2vh' }}>OUTPUT.TAP</div>
+          {codes.map((code, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.5 + i * 0.2 }}
+              style={{ fontSize: '1.5vw', color: code.startsWith('G02') || code.startsWith('G01') ? COLORS.gold : COLORS.cyan, marginBottom: '1vh', fontFamily: "'JetBrains Mono', monospace" }}
+            >
+              <span style={{ color: '#555', marginRight: '2vw' }}>N0{(i+1)*10}</span> {code}
             </motion.div>
           ))}
           <motion.div 
             animate={{ opacity: [1, 0] }} transition={{ repeat: Infinity, duration: 0.8 }}
-            style={{ display: 'inline-block', width: '14px', height: '28px', background: COLORS.success, verticalAlign: 'middle', marginTop: '1rem' }}
+            style={{ width: '1vw', height: '2vw', background: COLORS.text, marginTop: '1vh' }}
           />
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   );
 }
 
-// SCENE 6: ACCURACY
-function Scene6Accuracy() {
-  const ratings = [
-    { label: "Strip Width", stars: 5 },
-    { label: "Roll Gap", stars: 5 },
-    { label: "Bearing", stars: 5 },
-    { label: "Springback", stars: 4 },
-  ];
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }} transition={{ duration: 0.8 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h2 style={{ fontSize: '2.5rem', marginBottom: '4rem', fontWeight: 300 }}>Quality Validation</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', width: '80%', maxWidth: '1000px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {ratings.map((r, i) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.3 + 0.3, type: 'spring' }}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.2rem', background: COLORS.surface, padding: '1.5rem 2rem', borderRadius: '12px', border: `1px solid ${COLORS.surfaceBorder}` }}
-            >
-              <span>{r.label}</span>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                {[...Array(5)].map((_, j) => (
-                  <motion.div key={j} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.3 + j * 0.1 + 0.6 }}>
-                    <Star size={24} fill={j < r.stars ? COLORS.primary : 'none'} color={j < r.stars ? COLORS.primary : COLORS.surfaceBorder} />
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle, ${COLORS.primary}15 0%, transparent 70%)` }}>
-          <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', delay: 2, bounce: 0.5 }}>
-            <CheckCircle2 size={100} color={COLORS.success} style={{ marginBottom: '2rem' }} />
-          </motion.div>
-          <div style={{ fontSize: '1.2rem', color: COLORS.textMuted, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Overall Accuracy</div>
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.5 }}
-            style={{ fontSize: '6rem', fontWeight: 700, color: COLORS.primary, lineHeight: 1, textShadow: `0 0 40px ${COLORS.primary}40` }}
-          >
-            99.7%
-          </motion.div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// SCENE 7: MACHINE SPEC
-function Scene7Machine() {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.8 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <motion.div 
-        initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', damping: 20 }}
-        style={{ background: 'linear-gradient(145deg, #1f2937 0%, #111827 100%)', border: `1px solid ${COLORS.primary}40`, borderRadius: '24px', padding: '4rem', width: '700px', boxShadow: `0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 ${COLORS.primary}40` }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '3rem' }}>
-          <Zap size={40} color={COLORS.primary} />
-          <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 400 }}>Motor Specification</h2>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', fontFamily: "'JetBrains Mono'", marginBottom: '3rem' }}>
-          <div>
-            <div style={{ color: COLORS.textMuted, fontSize: '1rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Power</div>
-            <div style={{ fontSize: '2rem', color: COLORS.textMain }}>15 kW</div>
-            <div style={{ fontSize: '1rem', color: COLORS.primary, marginTop: '0.2rem' }}>IEC 160L</div>
-          </div>
-          <div>
-            <div style={{ color: COLORS.textMuted, fontSize: '1rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Motor Speed</div>
-            <div style={{ fontSize: '2rem', color: COLORS.textMain }}>1440 rpm</div>
-          </div>
-          <div>
-            <div style={{ color: COLORS.textMuted, fontSize: '1rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Gearbox</div>
-            <div style={{ fontSize: '2rem', color: COLORS.textMain }}>31.5:1</div>
-          </div>
-          <div>
-            <div style={{ color: COLORS.textMuted, fontSize: '1rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Output Speed</div>
-            <div style={{ fontSize: '2.5rem', color: COLORS.accent }}>45.7 rpm</div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '3rem', padding: '2rem', background: 'rgba(0,0,0,0.3)', borderRadius: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontFamily: "'JetBrains Mono'" }}>
-            <span style={{ color: COLORS.textMuted, fontSize: '1.2rem' }}>Line Speed</span>
-            <span style={{ color: COLORS.primary, fontSize: '1.2rem', fontWeight: 'bold' }}>20 m/min</span>
-          </div>
-          <div style={{ width: '100%', height: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden' }}>
-            <motion.div 
-              initial={{ width: 0 }} animate={{ width: '75%' }} transition={{ duration: 2, delay: 1, ease: 'easeOut' }}
-              style={{ height: '100%', background: `linear-gradient(90deg, ${COLORS.primary} 0%, #fbbf24 100%)`, borderRadius: '6px', boxShadow: `0 0 20px ${COLORS.primary}` }}
-            />
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-// SCENE 8: SPECIAL FUNCTIONS
-function Scene8Features() {
+// SCENE 7: Features (72-80s)
+function Scene7Features() {
   const features = [
-    { icon: <Shield size={40} />, title: "AI Risk Engine" },
-    { icon: <Cpu size={40} />, title: "Gemini 3.1 Pro" },
-    { icon: <FileCode2 size={40} />, title: "G-Code Export" },
-    { icon: <GitBranch size={40} />, title: "Offline 7/7 Modules" }
+    { title: "AI Engineering Assistant", color: COLORS.cyan },
+    { title: "DXF Import", color: COLORS.gold },
+    { title: "3D Visualization", color: COLORS.cyan },
+    { title: "G-Code Output", color: COLORS.gold },
+    { title: "Flower Pattern", color: COLORS.cyan },
+    { title: "Material Database", color: COLORS.gold }
   ];
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h2 style={{ fontSize: '3rem', marginBottom: '5rem', fontWeight: 300 }}>Special Functions</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.1 }}
+      transition={{ duration: 1 }}
+      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3vw', width: '70vw' }}>
         {features.map((f, i) => (
           <motion.div 
             key={i}
-            initial={{ rotateX: 90, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} transition={{ delay: i * 0.3 + 0.2, type: 'spring', damping: 15 }}
-            style={{ 
-              width: '380px', height: '140px', 
-              background: `linear-gradient(135deg, rgba(167,139,250,0.15) 0%, rgba(6,182,212,0.15) 100%)`, 
-              border: `1px solid rgba(167,139,250,0.4)`, 
-              borderRadius: '20px', display: 'flex', alignItems: 'center', padding: '0 2.5rem', gap: '2rem',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
-            }}
+            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.2, type: 'spring' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '2vw', background: 'rgba(255,255,255,0.03)', padding: '2vw', borderRadius: '1vw', borderLeft: `0.5vw solid ${f.color}` }}
           >
-            <div style={{ color: COLORS.secondary, padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>{f.icon}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 500, color: '#fff' }}>{f.title}</div>
+            <div style={{ width: '1.5vw', height: '1.5vw', borderRadius: '50%', background: f.color, boxShadow: `0 0 15px ${f.color}` }} />
+            <div style={{ fontSize: '1.8vw' }}>{f.title}</div>
           </motion.div>
         ))}
       </div>
@@ -477,76 +670,39 @@ function Scene8Features() {
   );
 }
 
-// SCENE 9: PIPELINE
-function Scene9Pipeline() {
-  const steps = ["Profile Input", "Flower AI", "Roll Tooling", "G-Code", "PDF Report"];
+// SCENE 8: CTA (80-90s)
+function Scene8CTA() {
   return (
-    <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.8 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4rem' }}>
-      <h2 style={{ fontSize: '2.5rem', marginBottom: '6rem', fontWeight: 300 }}>Automated Workflow</h2>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: '1200px' }}>
-        {steps.map((step, i) => (
-          <React.Fragment key={i}>
-            <motion.div 
-              initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: i * 0.4 + 0.2, type: 'spring' }}
-              style={{ 
-                padding: '2rem 2.5rem', background: i === 1 ? COLORS.primary : COLORS.surface, 
-                color: i === 1 ? '#000' : '#fff', borderRadius: '12px', border: i !== 1 ? `1px solid ${COLORS.surfaceBorder}` : 'none',
-                fontWeight: 600, fontSize: '1.3rem', textAlign: 'center', flexShrink: 0,
-                boxShadow: i === 1 ? `0 0 30px ${COLORS.primary}60` : 'none'
-              }}
-            >
-              {step}
-            </motion.div>
-            {i < steps.length - 1 && (
-              <motion.div 
-                initial={{ width: 0, opacity: 0 }} animate={{ width: '60px', opacity: 1 }} transition={{ delay: i * 0.4 + 0.4 }}
-                style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}
-              >
-                <ChevronRight color={COLORS.accent} size={48} />
-              </motion.div>
-            )}
-          </React.Fragment>
-        ))}
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      transition={{ duration: 1.5 }}
+      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+    >
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.2 }}>
+        <img src="/assets/metal-sheet.png" alt="Metal" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, transparent, #0a0f1a)' }} />
       </div>
-    </motion.div>
-  );
-}
 
-// SCENE 10: BENCHMARK
-function Scene10Benchmark() {
-  const [val, setVal] = useState(96.0);
-  
-  useEffect(() => {
-    let current = 96.0;
-    const interval = setInterval(() => {
-      current += 0.1;
-      if (current >= 99.7) {
-        setVal(99.7);
-        clearInterval(interval);
-      } else {
-        setVal(current);
-      }
-    }, 40);
-    return () => clearInterval(interval);
-  }, []);
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 1, duration: 2, ease: "easeOut" }}
+        style={{ textAlign: 'center', zIndex: 10 }}
+      >
+        <motion.div 
+          animate={{ boxShadow: [`0 0 20px ${COLORS.gold}40`, `0 0 60px ${COLORS.gold}80`, `0 0 20px ${COLORS.gold}40`] }}
+          transition={{ repeat: Infinity, duration: 3 }}
+          style={{ width: '10vw', height: '10vw', margin: '0 auto 4vh auto', border: `0.4vw solid ${COLORS.gold}`, borderRadius: '1.5vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.1)' }}
+        >
+          <div style={{ width: '5vw', height: '5vw', background: COLORS.gold, borderRadius: '0.5vw' }} />
+        </motion.div>
 
-  return (
-    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, filter: 'blur(20px)' }} transition={{ duration: 1 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%)` }}>
-      <motion.div 
-        initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
-        style={{ fontSize: '10rem', fontWeight: 700, color: COLORS.primary, lineHeight: 1, marginBottom: '2rem', fontFamily: "'Space Grotesk'", textShadow: `0 0 60px ${COLORS.primary}80` }}
-      >
-        {val.toFixed(1)}%
-      </motion.div>
-      <motion.div 
-        initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 2.5 }}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', color: COLORS.textMuted, fontSize: '1.5rem', letterSpacing: '0.05em' }}
-      >
-        <span style={{ color: '#fff', fontSize: '2.5rem', fontWeight: 300 }}>Precision Accuracy</span>
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', fontFamily: "'JetBrains Mono'", fontSize: '1.2rem' }}>
-          <span style={{ color: COLORS.accent }}>500+ Profiles Validated</span>
-          <span>·</span>
-          <span>ASTM A653 Reference</span>
+        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '8vw', margin: '0 0 1vh 0', letterSpacing: '0.05em' }}>
+          SAI ROLOTECH SMART ENGINES
+        </h1>
+        <div style={{ fontSize: '2.5vw', color: COLORS.cyan, marginBottom: '4vh', letterSpacing: '0.1em' }}>
+          PRECISION YOU CAN TRUST
+        </div>
+        <div style={{ fontSize: '2vw', color: COLORS.textMuted, borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '2vh', display: 'inline-block', padding: '2vh 4vw' }}>
+          sairolotech.com
         </div>
       </motion.div>
     </motion.div>

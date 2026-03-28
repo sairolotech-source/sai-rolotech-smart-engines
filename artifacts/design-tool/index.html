@@ -2,6 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          if (regs.length > 0) {
+            Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
+              caches.keys().then(function (ks) {
+                Promise.all(ks.map(function (k) { return caches.delete(k); })).then(function () {
+                  location.reload();
+                });
+              });
+            });
+          }
+        });
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Sai Rolotech Smart Engines</title>
     <meta name="description" content="Professional Roll Forming Design Suite — CNC G-Code, Power Pattern, Digital Twin, AI Diagnostics" />

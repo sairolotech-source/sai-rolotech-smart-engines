@@ -111,6 +111,7 @@ app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next
 
   // Icons + other static files — 1 day (ok to cache, rarely change)
   app.use(express.static(FRONTEND_DIST, {
+    index: false,
     maxAge: "1d",
     etag: true,
   }));

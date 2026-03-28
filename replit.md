@@ -90,6 +90,7 @@ The project is structured as a pnpm workspace monorepo comprising `api-server`, 
 - **AI Ultra Validation System:** Injects comprehensive rule sets into AI system prompts to enforce engineering standards and safety.
 - **Production Build Serving:** API Server serves gzipped production-built frontend with immutable cache headers.
 - **Critical Chunk Splitting:** Lazy loading of large dependencies like `@mlc-ai/web-llm` to reduce initial bundle size.
+- **SW Recovery System:** Recovery page at `/` clears stale Service Workers and CacheStorage before redirecting to the app (`/?_app=1`). Cookie-based (`_sw_ok`) skip ensures recovery runs only once per browser. Self-destruct `sw.js` replaces any old SW (install→skipWaiting, activate→claim+clear+navigate, fetch→network-only). **IMPORTANT: Do NOT restore `manualChunks` in vite.config.ts** — it caused circular chunk dependencies (vendor-react ↔ vendor-radix) that crashed the app.
 
 ## External Dependencies
 

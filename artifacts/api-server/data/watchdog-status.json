@@ -1,8 +1,8 @@
 {
-  "startedAt": "2026-03-28T09:56:10.712Z",
+  "startedAt": "2026-03-28T11:30:47.776Z",
   "lastHealthCheck": null,
   "lastGitPush": null,
-  "lastGitPushResult": "failed: remote: fatal: did not receive expected object e2718e6e546e24eeb50de80b4cecb1ce7",
+  "lastGitPushResult": null,
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
@@ -10,34 +10,14 @@
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 1,
-  "apiPort": 5000,
+  "gitPushErrors": 0,
+  "apiPort": 8080,
   "isElectron": false,
   "logs": [
     {
-      "time": "09:56:10 am",
+      "time": "11:30:47 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "09:56:20 am",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "09:56:20 am",
-      "type": "info",
-      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "09:56:20 am",
-      "type": "info",
-      "message": "[startup] 16 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "09:56:37 am",
-      "type": "error",
-      "message": "GitHub push FAIL: remote: fatal: did not receive expected object e2718e6e546e24eeb50de80b4cecb1ce70560e9e        \nerror: remote unpack failed: index-pack failed\nTo http"
     }
   ]
 }

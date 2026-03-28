@@ -1,17 +1,11 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter, useRoute } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuthStore } from "@/store/useAuthStore";
-import { useCncStore, type AppTab } from "@/store/useCncStore";
-
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useThemeStore, applyTheme } from "@/store/useThemeStore";
-import { useRoleStore, ROLE_LABELS, ROLE_COLORS, type UserRole } from "@/store/useRoleStore";
-import { syncOfflineQueue, getOfflineQueue } from "@/lib/api";
+import { useAuthStore } from "@/store/useAuthStore";
 
-// ── Heavy pages — lazy load (sirf jab zaroorat ho tab download hoga) ──────────
+type AppTab = "profile" | "gcode" | "flower" | "cnc" | "3d" | "bom" | "accuracy" | "dxf" | "report" | "sheet" | "coil" | "manual" | "digital-twin" | "dashboard";
+
 const LicenseKeyScreen = lazy(() => import("@/components/auth/LicenseKeyScreen").then(m => ({ default: m.LicenseKeyScreen })));
 const Home             = lazy(() => import("@/pages/Home"));
 const LandingPage      = lazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })));
@@ -22,24 +16,7 @@ const DemoVideo        = lazy(() => import("@/pages/DemoVideo"));
 const DemoDownloadPage = lazy(() => import("@/pages/DemoDownloadPage"));
 const AdminPanel       = lazy(() => import("@/pages/AdminPanel"));
 const NotFound         = lazy(() => import("@/pages/not-found"));
-const UpdateNotification  = lazy(() => import("@/components/UpdateNotification").then(m => ({ default: m.UpdateNotification })));
-const ElectronAutoUpdate  = lazy(() => import("@/components/ElectronAutoUpdate").then(m => ({ default: m.ElectronAutoUpdate })));
-const KeyboardShortcutOverlay = lazy(() => import("@/components/KeyboardShortcutOverlay").then(m => ({ default: m.KeyboardShortcutOverlay })));
-const ContextualGuide  = lazy(() => import("@/components/ContextualGuide").then(m => ({ default: m.ContextualGuide })));
-const OnboardingTutorial = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial })));
-const ProjectShare     = lazy(() => import("@/components/ProjectShare").then(m => ({ default: m.ProjectShare })));
 
-// Lazy-loaded heavy libs — splash ke baad init hoga
-const startAutoBackup = () => import("@/lib/auto-backup").then(m => m.startAutoBackup());
-const initGPU = () => import("@/lib/gpu-compute-pipeline").then(m => m.initGPUComputePipeline());
-const initHardware = () => import("@/lib/hardware-engine").then(m => {
-  const hw = m.getHardwareCapabilities();
-  m.ensureWorkerPool();
-  m.requestPersistentStorage();
-  return hw;
-});
-
-// Simple fallback spinner — zero cost
 function PageSpinner() {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-[#08090f]">
@@ -48,161 +25,17 @@ function PageSpinner() {
   );
 }
 
-function OfflineGuard() {
-  const [offline, setOffline] = useState(!navigator.onLine);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<string | null>(null);
+const idle = (fn: () => void, ms: number) => {
+  const t = setTimeout(() => {
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(() => { try { fn(); } catch {} });
+    } else {
+      try { fn(); } catch {}
+    }
+  }, ms);
+  return () => clearTimeout(t);
+};
 
-  useEffect(() => {
-    const goOff = () => setOffline(true);
-    const goOn = () => {
-      setOffline(false);
-      const q = getOfflineQueue();
-      if (q.length > 0) {
-        setSyncing(true);
-        setSyncResult(null);
-        syncOfflineQueue().then(r => {
-          setSyncing(false);
-          if (r.synced > 0) setSyncResult(`${r.synced} pending requests synced`);
-          setTimeout(() => setSyncResult(null), 5000);
-        }).catch(() => setSyncing(false));
-      }
-    };
-    window.addEventListener("online", goOn);
-    window.addEventListener("offline", goOff);
-    return () => { window.removeEventListener("online", goOn); window.removeEventListener("offline", goOff); };
-  }, []);
-
-  if (!offline && !syncing && !syncResult) return null;
-  return (
-    <div className="fixed top-0 left-0 right-0 z-[9999] text-center text-xs py-1 font-medium transition-all"
-         style={{ background: offline ? "#dc2626" : syncing ? "#d97706" : "#16a34a", color: "#fff" }}>
-      {offline && "Offline Mode — App hardware se chal raha hai, data locally save ho raha hai"}
-      {syncing && "Syncing pending data to server..."}
-      {syncResult && syncResult}
-    </div>
-  );
-}
-
-// ─── Floating Toolbar — Theme + Share + Role + Tutorial ──────────────────────
-function FloatingToolbar({ loggedIn }: { loggedIn: boolean }) {
-  const { theme, toggleTheme } = useThemeStore();
-  const { role, setRole } = useRoleStore();
-  const [showShare, setShowShare] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
-
-  if (!loggedIn) return null;
-
-  const roles: UserRole[] = ["admin", "engineer", "viewer"];
-
-  return (
-    <>
-      {/* Floating toolbar — bottom-left */}
-      <div
-        className="fixed bottom-4 left-4 z-[9990] flex flex-col gap-2"
-        style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.4))" }}
-      >
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-base transition-all hover:scale-110 active:scale-95"
-          style={{
-            background: theme === "dark"
-              ? "linear-gradient(135deg,#1e1f3a,#2a2b4a)"
-              : "linear-gradient(135deg,#fff9e6,#fef3c7)",
-            border: "1px solid rgba(245,158,11,0.3)",
-            color: theme === "dark" ? "#f59e0b" : "#92400e",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
-          }}
-        >
-          {theme === "dark" ? "🌙" : "☀️"}
-        </button>
-
-        {/* Project Share */}
-        <button
-          onClick={() => setShowShare(true)}
-          title="Project Share"
-          className="w-9 h-9 rounded-full flex items-center justify-center text-base transition-all hover:scale-110 active:scale-95"
-          style={{
-            background: "linear-gradient(135deg,#0d0e1e,#1a1b30)",
-            border: "1px solid rgba(6,182,212,0.3)",
-            color: "#06b6d4",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
-          }}
-        >
-          🔗
-        </button>
-
-        {/* Tutorial */}
-        <button
-          onClick={() => setShowTutorial(true)}
-          title="Tutorial Replay"
-          className="w-9 h-9 rounded-full flex items-center justify-center text-base transition-all hover:scale-110 active:scale-95"
-          style={{
-            background: "linear-gradient(135deg,#0d0e1e,#1a1b30)",
-            border: "1px solid rgba(139,92,246,0.3)",
-            color: "#8b5cf6",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
-          }}
-        >
-          📚
-        </button>
-
-        {/* Role badge / switcher */}
-        <div className="relative">
-          <button
-            onClick={() => setShowRoleMenu(v => !v)}
-            title="User Role"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all hover:scale-110 active:scale-95"
-            style={{
-              background: `${ROLE_COLORS[role]}22`,
-              border: `1px solid ${ROLE_COLORS[role]}55`,
-              color: ROLE_COLORS[role],
-              boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
-            }}
-          >
-            {role === "admin" ? "★" : role === "engineer" ? "⚙" : "👁"}
-          </button>
-          {showRoleMenu && (
-            <div
-              className="absolute left-10 bottom-0 rounded-xl overflow-hidden flex flex-col min-w-[130px]"
-              style={{
-                background: "#0d0e1e",
-                border: "1px solid rgba(255,255,255,0.1)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-              }}
-            >
-              <div className="px-3 py-2 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>
-                Role
-              </div>
-              {roles.map(r => (
-                <button
-                  key={r}
-                  onClick={() => { setRole(r); setShowRoleMenu(false); }}
-                  className="flex items-center gap-2 px-3 py-2 text-xs transition-all hover:bg-white/5 text-left"
-                  style={{ color: role === r ? ROLE_COLORS[r] : "rgba(255,255,255,0.6)" }}
-                >
-                  <span style={{ color: ROLE_COLORS[r] }}>
-                    {r === "admin" ? "★" : r === "engineer" ? "⚙" : "👁"}
-                  </span>
-                  {ROLE_LABELS[r]}
-                  {role === r && <span className="ml-auto text-xs">✓</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showShare && <ProjectShare onClose={() => setShowShare(false)} />}
-      {showTutorial && <OnboardingTutorial onClose={() => setShowTutorial(false)} />}
-    </>
-  );
-}
-
-// ─── Crash-resilient QueryClient ────────────────────────────────────────────
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -220,20 +53,247 @@ const queryClient = new QueryClient({
 
 type AppView = "landing" | "login" | "forgot" | "dashboard" | "workspace";
 
+function DeferredExtras() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  if (!ready) return null;
+
+  const Toaster = lazy(() => import("@/components/ui/toaster").then(m => ({ default: m.Toaster })));
+  const UpdateNotification = lazy(() => import("@/components/UpdateNotification").then(m => ({ default: m.UpdateNotification })));
+  const ElectronAutoUpdate = lazy(() => import("@/components/ElectronAutoUpdate").then(m => ({ default: m.ElectronAutoUpdate })));
+  const KeyboardShortcutOverlay = lazy(() => import("@/components/KeyboardShortcutOverlay").then(m => ({ default: m.KeyboardShortcutOverlay })));
+  const ContextualGuide = lazy(() => import("@/components/ContextualGuide").then(m => ({ default: m.ContextualGuide })));
+
+  return (
+    <Suspense fallback={null}>
+      <ErrorBoundary fallbackTitle="Extras Error"><Toaster /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle="Notification Error"><UpdateNotification /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle=""><ElectronAutoUpdate /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle=""><KeyboardShortcutOverlay /></ErrorBoundary>
+      <ErrorBoundary fallbackTitle=""><ContextualGuide /></ErrorBoundary>
+    </Suspense>
+  );
+}
+
+function DeferredOfflineGuard() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!ready) return null;
+
+  const OfflineGuardInner = lazy(() =>
+    import("@/lib/api").then(api => ({
+      default: function OfflineGuard() {
+        const [offline, setOffline] = useState(!navigator.onLine);
+        const [syncing, setSyncing] = useState(false);
+        const [syncResult, setSyncResult] = useState<string | null>(null);
+
+        useEffect(() => {
+          const goOff = () => setOffline(true);
+          const goOn = () => {
+            setOffline(false);
+            const q = api.getOfflineQueue();
+            if (q.length > 0) {
+              setSyncing(true);
+              setSyncResult(null);
+              api.syncOfflineQueue().then(r => {
+                setSyncing(false);
+                if (r.synced > 0) setSyncResult(`${r.synced} pending requests synced`);
+                setTimeout(() => setSyncResult(null), 5000);
+              }).catch(() => setSyncing(false));
+            }
+          };
+          window.addEventListener("online", goOn);
+          window.addEventListener("offline", goOff);
+          return () => { window.removeEventListener("online", goOn); window.removeEventListener("offline", goOff); };
+        }, []);
+
+        if (!offline && !syncing && !syncResult) return null;
+        return (
+          <div className="fixed top-0 left-0 right-0 z-[9999] text-center text-xs py-1 font-medium transition-all"
+               style={{ background: offline ? "#dc2626" : syncing ? "#d97706" : "#16a34a", color: "#fff" }}>
+            {offline && "Offline Mode — App hardware se chal raha hai, data locally save ho raha hai"}
+            {syncing && "Syncing pending data to server..."}
+            {syncResult && syncResult}
+          </div>
+        );
+      }
+    }))
+  );
+
+  return <Suspense fallback={null}><OfflineGuardInner /></Suspense>;
+}
+
+const FloatingToolbar = lazy(() =>
+  Promise.all([
+    import("@/store/useThemeStore"),
+    import("@/store/useRoleStore"),
+    import("@/components/OnboardingTutorial"),
+    import("@/components/ProjectShare"),
+  ]).then(([themeM, roleM, tutM, shareM]) => ({
+    default: function FloatingToolbar({ loggedIn }: { loggedIn: boolean }) {
+      const { theme, toggleTheme } = themeM.useThemeStore();
+      const { role, setRole } = roleM.useRoleStore();
+      const [showShare, setShowShare] = useState(false);
+      const [showTutorial, setShowTutorial] = useState(false);
+      const [showRoleMenu, setShowRoleMenu] = useState(false);
+
+      if (!loggedIn) return null;
+
+      type UserRole = "admin" | "engineer" | "viewer";
+      const roles: UserRole[] = ["admin", "engineer", "viewer"];
+
+      return (
+        <>
+          <div
+            className="fixed bottom-4 left-4 z-[9990] flex flex-col gap-2"
+            style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.4))" }}
+          >
+            <button
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-base transition-all hover:scale-110 active:scale-95"
+              style={{
+                background: theme === "dark"
+                  ? "linear-gradient(135deg,#1e1f3a,#2a2b4a)"
+                  : "linear-gradient(135deg,#fff9e6,#fef3c7)",
+                border: "1px solid rgba(245,158,11,0.3)",
+                color: theme === "dark" ? "#f59e0b" : "#92400e",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
+              }}
+            >
+              {theme === "dark" ? "🌙" : "☀️"}
+            </button>
+
+            <button
+              onClick={() => setShowShare(true)}
+              title="Project Share"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-base transition-all hover:scale-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#0d0e1e,#1a1b30)",
+                border: "1px solid rgba(6,182,212,0.3)",
+                color: "#06b6d4",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
+              }}
+            >
+              🔗
+            </button>
+
+            <button
+              onClick={() => setShowTutorial(true)}
+              title="Tutorial Replay"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-base transition-all hover:scale-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#0d0e1e,#1a1b30)",
+                border: "1px solid rgba(139,92,246,0.3)",
+                color: "#8b5cf6",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
+              }}
+            >
+              📚
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowRoleMenu(v => !v)}
+                title="User Role"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all hover:scale-110 active:scale-95"
+                style={{
+                  background: `${roleM.ROLE_COLORS[role]}22`,
+                  border: `1px solid ${roleM.ROLE_COLORS[role]}55`,
+                  color: roleM.ROLE_COLORS[role],
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
+                }}
+              >
+                {role === "admin" ? "★" : role === "engineer" ? "⚙" : "👁"}
+              </button>
+              {showRoleMenu && (
+                <div
+                  className="absolute left-10 bottom-0 rounded-xl overflow-hidden flex flex-col min-w-[130px]"
+                  style={{
+                    background: "#0d0e1e",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  <div className="px-3 py-2 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    Role
+                  </div>
+                  {roles.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => { setRole(r); setShowRoleMenu(false); }}
+                      className="flex items-center gap-2 px-3 py-2 text-xs transition-all hover:bg-white/5 text-left"
+                      style={{ color: role === r ? roleM.ROLE_COLORS[r] : "rgba(255,255,255,0.6)" }}
+                    >
+                      <span style={{ color: roleM.ROLE_COLORS[r] }}>
+                        {r === "admin" ? "★" : r === "engineer" ? "⚙" : "👁"}
+                      </span>
+                      {roleM.ROLE_LABELS[r]}
+                      {role === r && <span className="ml-auto text-xs">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {showShare && <shareM.ProjectShare onClose={() => setShowShare(false)} />}
+          {showTutorial && <tutM.OnboardingTutorial onClose={() => setShowTutorial(false)} />}
+        </>
+      );
+    }
+  }))
+);
+
 function AuthGate() {
   const { user, initialized } = useAuthStore();
   const [view, setView] = useState<AppView>(user ? "dashboard" : "landing");
-  // License already stored? Instant skip karo — no screen flash
   const [licenseOk, setLicenseOk] = useState(() => !!localStorage.getItem("sai_lic_token"));
   const [showTutorial, setShowTutorial] = useState(false);
-  const { theme } = useThemeStore();
 
-  // Apply saved theme on mount
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    try {
+      const hide = (window as any).__hideSplashNative;
+      if (typeof hide === "function") hide();
+    } catch {}
 
-  // Show tutorial on first login
+    import("@/store/useThemeStore").then(m => {
+      try { m.applyTheme(m.useThemeStore.getState().theme); } catch {}
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    return idle(() => {
+      import("@/lib/auto-backup").then(m => m.startAutoBackup()).catch(() => {});
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return idle(() => {
+      import("@/lib/gpu-compute-pipeline").then(m => m.initGPUComputePipeline()).then(status => {
+        console.log(`[GPU] ${status.dedicatedGPU ? "DEDICATED" : "Integrated"} | ~${status.vramGB}GB VRAM | Mode: ${status.renderingMode}`);
+      }).catch(() => {});
+    }, 6000);
+  }, []);
+
+  useEffect(() => {
+    return idle(() => {
+      import("@/lib/hardware-engine").then(m => {
+        m.getHardwareCapabilities().then(hw => {
+          console.log(`[CPU] ${hw.cpu.cores} cores | ${hw.recommended.workerPoolSize} workers`);
+        }).catch(() => {});
+        m.ensureWorkerPool();
+        m.requestPersistentStorage();
+      }).catch(() => {});
+    }, 8000);
+  }, []);
+
   useEffect(() => {
     if (user && !localStorage.getItem("sai-tutorial-done")) {
       const t = setTimeout(() => setShowTutorial(true), 800);
@@ -242,24 +302,13 @@ function AuthGate() {
     return undefined;
   }, [user]);
 
-  // React mount hote hi native splash hide karo + heavy libs background mein load karo
-  useEffect(() => {
-    const hide = (window as any).__hideSplashNative;
-    if (typeof hide === "function") hide();
-
-    // Heavy libs — mount ke baad delay se load (UI hang na ho)
-    const defer = (fn: () => void, ms: number) => setTimeout(fn, ms);
-    defer(() => startAutoBackup().catch(() => {}), 2000);
-    defer(() => {
-      initGPU().then(status => {
-        console.log(`[GPU] ${status.dedicatedGPU ? "DEDICATED" : "Integrated"} | ~${status.vramGB}GB VRAM | Mode: ${status.renderingMode}`);
+  const openWorkspace = useCallback((tab?: AppTab) => {
+    if (tab) {
+      import("@/store/useCncStore").then(m => {
+        m.useCncStore.getState().setActiveTab(tab);
       }).catch(() => {});
-    }, 4000);
-    defer(() => {
-      initHardware().then(hw => {
-        console.log(`[CPU] ${hw.cpu.cores} cores | ${hw.recommended.workerPoolSize} workers`);
-      }).catch(() => {});
-    }, 6000);
+    }
+    setView("workspace");
   }, []);
 
   const [isDownloadPage] = useRoute("/download");
@@ -271,7 +320,6 @@ function AuthGate() {
   if (!initialized) return <PageSpinner />;
   if (isDownloadPage) return <Suspense fallback={<PageSpinner />}><DemoDownloadPage /></Suspense>;
 
-  // ── License gate — splash ke baad, login se pehle ─────────────────────────
   if (!licenseOk) {
     return (
       <Suspense fallback={<PageSpinner />}>
@@ -300,8 +348,12 @@ function AuthGate() {
           </Route>
           <Route component={NotFound} />
         </Switch>
-        <FloatingToolbar loggedIn={!!user} />
-        {showTutorial && <OnboardingTutorial onClose={() => setShowTutorial(false)} />}
+        <Suspense fallback={null}><FloatingToolbar loggedIn={!!user} /></Suspense>
+        {showTutorial && (
+          <Suspense fallback={null}>
+            {(() => { const OT = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial }))); return <OT onClose={() => setShowTutorial(false)} />; })()}
+          </Suspense>
+        )}
       </Suspense>
     );
   }
@@ -309,15 +361,14 @@ function AuthGate() {
   return (
     <Suspense fallback={<PageSpinner />}>
       <ErrorBoundary fallbackTitle="Dashboard Error — Click Recover to continue">
-        <Dashboard
-          onOpenWorkspace={(tab?: AppTab) => {
-            if (tab) useCncStore.getState().setActiveTab(tab);
-            setView("workspace");
-          }}
-        />
+        <Dashboard onOpenWorkspace={openWorkspace} />
       </ErrorBoundary>
-      <FloatingToolbar loggedIn={!!user} />
-      {showTutorial && <OnboardingTutorial onClose={() => setShowTutorial(false)} />}
+      <Suspense fallback={null}><FloatingToolbar loggedIn={!!user} /></Suspense>
+      {showTutorial && (
+        <Suspense fallback={null}>
+          {(() => { const OT = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial }))); return <OT onClose={() => setShowTutorial(false)} />; })()}
+        </Suspense>
+      )}
     </Suspense>
   );
 }
@@ -325,23 +376,13 @@ function AuthGate() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider delayDuration={300}>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <ErrorBoundary fallbackTitle="Application Error — Click Recover to continue" fullScreen>
-            <AuthGate />
-          </ErrorBoundary>
-        </WouterRouter>
-        <Toaster />
-        <OfflineGuard />
-        <Suspense fallback={null}>
-          <ErrorBoundary fallbackTitle="Notification Error">
-            <UpdateNotification />
-          </ErrorBoundary>
-          <ElectronAutoUpdate />
-          <KeyboardShortcutOverlay />
-          <ContextualGuide />
-        </Suspense>
-      </TooltipProvider>
+      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <ErrorBoundary fallbackTitle="Application Error — Click Recover to continue" fullScreen>
+          <AuthGate />
+        </ErrorBoundary>
+      </WouterRouter>
+      <DeferredExtras />
+      <DeferredOfflineGuard />
     </QueryClientProvider>
   );
 }

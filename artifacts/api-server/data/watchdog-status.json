@@ -1,20 +1,40 @@
 {
-  "startedAt": "2026-03-28T04:38:41.611Z",
+  "startedAt": "2026-03-28T04:38:32.920Z",
   "lastHealthCheck": null,
-  "lastGitPush": null,
-  "lastGitPushResult": null,
+  "lastGitPush": "2026-03-28T04:38:43.526Z",
+  "lastGitPushResult": "pushed → da94267b9d",
   "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 0,
+  "gitPushCount": 1,
   "gitPushErrors": 0,
-  "apiPort": 8080,
+  "apiPort": 5000,
   "isElectron": false,
   "logs": [
     {
-      "time": "04:38:41 am",
+      "time": "04:38:32 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "04:38:42 am",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "04:38:42 am",
+      "type": "info",
+      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
+    },
+    {
+      "time": "04:38:43 am",
+      "type": "info",
+      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "04:38:43 am",
+      "type": "success",
+      "message": "GitHub push DONE! 1 commit(s) — HEAD: da94267b9d"
     }
   ]
 }

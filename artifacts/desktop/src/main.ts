@@ -57,11 +57,12 @@ const OFFLINE_GRACE_DAYS = 7;
 // --- State -------------------------------------------------------------------
 
 let mainWindow:     BrowserWindow | null = null;
+let splashWindow:   BrowserWindow | null = null;
 let tray:           Tray         | null = null;
 let apiProcess:     ChildProcess | null = null;
 let isQuitting       = false;
 let apiReady         = false;
-let appIsReady       = false;   // guards globalShortcut usage
+let appIsReady       = false;
 let updateDownloadProgress = 0;
 
 // --- Resource paths ----------------------------------------------------------
@@ -227,6 +228,89 @@ function writeDiagnosticLog(): void {
   }
 }
 
+// --- Native Splash Window (shows during API startup + frontend load) ---------
+
+function createSplashWindow(): void {
+  splashWindow = new BrowserWindow({
+    width: 460, height: 340,
+    resizable: false, movable: true, minimizable: false, maximizable: false,
+    frame: false, transparent: false, alwaysOnTop: true,
+    backgroundColor: "#070710",
+    ...(fs.existsSync(getAssetPath("icon.ico")) ? { icon: getAssetPath("icon.ico") } : {}),
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+  splashWindow.setMenu(null);
+
+  const splashHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#070710;color:#e4e4e7;font-family:'Segoe UI',system-ui,sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:100vh;overflow:hidden;-webkit-app-region:drag;user-select:none;}
+  @keyframes pulse{0%,100%{transform:scale(0.9);opacity:.5}50%{transform:scale(1.3);opacity:0}}
+  .icon-wrap{position:relative;width:64px;height:64px;margin-bottom:20px;}
+  .ring{position:absolute;inset:0;border-radius:16px;border:2px solid rgba(249,115,22,.4);animation:pulse 1.4s ease-out infinite;}
+  .ring:nth-child(2){animation-delay:.4s}
+  .ring:nth-child(3){animation-delay:.8s}
+  .icon{position:relative;width:64px;height:64px;border-radius:16px;
+    background:linear-gradient(135deg,#f97316,#d97706);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 40px rgba(249,115,22,.35);}
+  h1{font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px;}
+  .sub{color:#71717a;font-size:11px;font-weight:500;margin-bottom:20px;}
+  .bar-wrap{width:220px;height:3px;border-radius:3px;background:#1a1a2e;overflow:hidden;margin-bottom:10px;}
+  .bar{height:100%;border-radius:3px;background:linear-gradient(90deg,#f97316,#d97706);
+    width:0%;transition:width .4s ease;}
+  .status{color:#f97316;font-size:11px;font-style:italic;min-height:16px;text-align:center;}
+  .pct{color:#71717a;font-size:10px;font-family:monospace;margin-top:4px;}
+</style></head><body>
+  <div class="icon-wrap">
+    <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+    <div class="icon">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      </svg>
+    </div>
+  </div>
+  <h1>Sai Rolotech Smart Engines</h1>
+  <div class="sub">Roll Forming Engineering Suite</div>
+  <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+  <div class="status" id="status">Starting...</div>
+  <div class="pct" id="pct">0%</div>
+  <script>
+    window.__updateSplash = function(pct, text) {
+      var bar = document.getElementById('bar');
+      var status = document.getElementById('status');
+      var pctEl = document.getElementById('pct');
+      if (bar) bar.style.width = pct + '%';
+      if (status && text) status.textContent = text;
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (pct >= 100) {
+        if (bar) bar.style.background = 'linear-gradient(90deg,#22c55e,#4ade80)';
+        if (status) status.style.color = '#22c55e';
+      }
+    };
+  </script>
+</body></html>`;
+
+  splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(splashHtml)}`);
+  splashWindow.once("closed", () => { splashWindow = null; });
+}
+
+function updateSplash(pct: number, text: string): void {
+  if (!splashWindow || splashWindow.isDestroyed()) return;
+  splashWindow.webContents.executeJavaScript(
+    `window.__updateSplash?.(${pct}, ${JSON.stringify(text)})`
+  ).catch(() => {});
+}
+
+function closeSplash(): void {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.close();
+    splashWindow = null;
+  }
+}
+
 // --- Browser Window ----------------------------------------------------------
 
 async function createMainWindow(): Promise<void> {
@@ -333,15 +417,14 @@ async function createMainWindow(): Promise<void> {
     }
   }
 
-  // -- Window events --
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
+    closeSplash();
     if (IS_WIN && mainWindow) {
-      // Windows Mica/Acrylic effect (Windows 11)
       try {
         const { setMica } = require("electron-acrylic-window");
         setMica(mainWindow);
-      } catch { /* Not available  -  no issue */ }
+      } catch { /* Not available */ }
     }
   });
 
@@ -1812,33 +1895,47 @@ app.whenReady().then(async () => {
   console.log(`[App] Starting ${APP_NAME} v${APP_VERSION}`);
   console.log(`[App] isDev=${IS_DEV}, platform=${process.platform}`);
 
-  // Write diagnostic log on every launch
   writeDiagnosticLog();
+
+  createSplashWindow();
+  updateSplash(5, "Verifying license...");
 
   if (!IS_DEV) {
     await killPortProcess(API_PORT);
   }
 
+  updateSplash(15, "Checking activation...");
   const licensed = await verifyLicense();
   if (!licensed) {
+    closeSplash();
     app.quit();
     return;
   }
 
+  updateSplash(30, "Starting local server...");
   await startApiServer();
+  updateSplash(60, apiReady ? "Server ready!" : "Server starting...");
 
-  // Create window
+  updateSplash(70, "Loading interface...");
   buildAppMenu();
   await createMainWindow();
+  updateSplash(90, "Almost ready...");
+
   createTray();
   setupIPC();
+
+  updateSplash(100, "Launching!");
+
+  mainWindow?.once("ready-to-show", () => {
+    setTimeout(closeSplash, 400);
+  });
+  setTimeout(closeSplash, 3000);
 
   if (!IS_DEV) {
     setupAutoUpdater();
     setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 10000);
   }
 
-  // Global shortcut: Ctrl+Shift+R = quick reload
   try {
     globalShortcut.register("Ctrl+Shift+R", () => mainWindow?.webContents.reload());
   } catch (e) {
@@ -1871,19 +1968,6 @@ app.on("will-quit", () => {
   stopApiServer();
 });
 
-// Prevent multiple instances
-if (!app.requestSingleInstanceLock()) {
-  // Another instance is running  -  just bring it to front and exit quietly
-  app.quit();
-} else {
-  app.on("second-instance", () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
-}
 
 // --- Global Process-Level Crash Shield ---------------------------------------
 // This is the final safety net  -  like AutoCAD/SolidWorks crash recovery.

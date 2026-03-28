@@ -7,14 +7,16 @@
         navigator.serviceWorker.getRegistrations().then(function (regs) {
           if (regs.length > 0) {
             Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
-              caches.keys().then(function (ks) {
-                Promise.all(ks.map(function (k) { return caches.delete(k); })).then(function () {
-                  location.reload();
+              if (typeof caches !== "undefined") {
+                return caches.keys().then(function (ks) {
+                  return Promise.all(ks.map(function (k) { return caches.delete(k); }));
                 });
-              });
-            });
+              }
+            }).then(function () {
+              location.reload();
+            }).catch(function () { location.reload(); });
           }
-        });
+        }).catch(function () {});
       }
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
@@ -113,14 +115,6 @@
 
         // Hard failsafe — hide after 4s regardless
         setTimeout(window.__hideSplashNative, 4000);
-
-        // Silently unregister ALL old Service Workers — no reload needed
-        // SW caching was causing stuck loading; we now serve directly from server
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function (regs) {
-            regs.forEach(function (r) { r.unregister(); });
-          }).catch(function () {});
-        }
       })();
     </script>
   </body>

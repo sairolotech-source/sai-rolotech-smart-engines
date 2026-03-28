@@ -250,8 +250,9 @@ Files fixed:
 - `@mlc-ai/web-llm` lazy chunk: 2.1 MB gzip (only on demand)
 
 **Other Performance Features:**
-- Service Worker: offline-first, PHASE 1 (critical shell) + PHASE 2 (background precache)
-- Splash screen duration: 1.2s max
+- Service Worker: DISABLED — self-destruct sw.js replaces old cache-first SW; index.html has blocking SW unregister script at top of `<head>` to clear any stale registrations on first load
+- manualChunks: REMOVED from vite.config.ts — was causing circular chunk dependency (vendor-react imported from vendor-radix → `Cannot set properties of undefined (setting 'Children')`); Rollup auto-splits now
+- Splash screen duration: 4s max (failsafe timer)
 - Heavy GPU/hardware init deferred 3-7s after splash
 - License token check: skip screen instantly if `sai_lic_token` in localStorage
 - GitHub Webhook auto-update: `POST /api/system/github-webhook`

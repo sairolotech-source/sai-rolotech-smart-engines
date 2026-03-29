@@ -257,4 +257,113 @@ router.post("/ai/cnc-plan", async (req: Request, res: Response) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// POST /ai/advise-flower — offline engineering advice for flower/forming plan
+// ---------------------------------------------------------------------------
+router.post("/ai/advise-flower", (req: Request, res: Response) => {
+  try {
+    const {
+      materialType = "GI",
+      thickness = 1.5,
+      totalBends = 4,
+      bendAngles = [] as number[],
+      flangeHeights = [] as number[],
+      profileComplexity = "standard",
+    } = req.body as {
+      materialType?: string;
+      thickness?: number;
+      totalBends?: number;
+      bendAngles?: number[];
+      flangeHeights?: number[];
+      profileComplexity?: string;
+    };
+
+    const mat = (materialType ?? "GI").toUpperCase();
+    const t = parseFloat(String(thickness ?? 1.5));
+    const bends = parseInt(String(totalBends ?? 4), 10);
+    const angles: number[] = Array.isArray(bendAngles) ? bendAngles.map(Number) : [];
+    const heights: number[] = Array.isArray(flangeHeights) ? flangeHeights.map(Number) : [];
+
+    // Material-specific limits
+    const maxAnglePerPass = mat === "SS" ? 10 : mat === "TI" ? 8 : mat === "AL" ? 12 : 15;
+    const springbackNote = mat === "SS" ? "Stainless requires 8–12% springback compensation; use negative overbend in last 2 stations." :
+      mat === "AL" ? "Aluminium has low springback; use lighter forming forces (reduce line speed by 10–15%)." :
+      mat === "TI" ? "Titanium requires slow line speed (≤10 m/min) and generous bend radii (≥3T)." :
+      "Mild steel/GI standard process; coat rolls with chrome or grind to Ra 0.4 for best surface.";
+
+    const totalBendAngle = angles.length > 0 ? angles.reduce((s, a) => s + Math.abs(a), 0) : bends * 30;
+    const recommendedStations = Math.max(3, Math.min(20, Math.ceil(totalBendAngle / maxAnglePerPass) + (mat === "SS" || mat === "TI" ? 2 : 0)));
+
+    // Build angle distribution zones
+    const earlyCount = Math.ceil(recommendedStations * 0.3);
+    const midCount = Math.ceil(recommendedStations * 0.5);
+    const lateCount = recommendedStations - earlyCount - midCount;
+    const angleDistribution = [
+      {
+        zone: "Entry forming (stations 1–" + earlyCount + ")",
+        stations: `1–${earlyCount}`,
+        maxAnglePerPass: Math.round(maxAnglePerPass * 0.6),
+        notes: `Light forming — ${Math.round(maxAnglePerPass * 0.6)}° max per pass. Establish strip guidance and avoid edge wave.`,
+      },
+      {
+        zone: "Progressive forming (stations " + (earlyCount + 1) + "–" + (earlyCount + midCount) + ")",
+        stations: `${earlyCount + 1}–${earlyCount + midCount}`,
+        maxAnglePerPass,
+        notes: `Main forming zone — up to ${maxAnglePerPass}° per pass. Monitor springback and maintain constant strip width.`,
+      },
+      {
+        zone: "Calibration (stations " + (earlyCount + midCount + 1) + "–" + recommendedStations + ")",
+        stations: `${earlyCount + midCount + 1}–${recommendedStations}`,
+        maxAnglePerPass: Math.round(maxAnglePerPass * 0.4),
+        notes: `Sizing and overbend correction — ${Math.round(maxAnglePerPass * 0.4)}° max. Final shape accuracy and springback compensation.`,
+      },
+    ].filter((z) => lateCount > 0 || z.zone.startsWith("Entry") || z.zone.startsWith("Progressive"));
+
+    // Build defect risks
+    const defectRisks = [];
+    if (t < 0.8) {
+      defectRisks.push({ defect: "Edge wave", risk: "high", cause: "Thin material compresses easily at edges", prevention: "Reduce forming speed 15%, use idle rolls at edges" });
+    }
+    if (mat === "SS") {
+      defectRisks.push({ defect: "Surface scratching", risk: "high", cause: "Stainless work-hardens and galls on rolls", prevention: "Chrome-plate rolls, apply forming lubricant, reduce speed to 12–18 m/min" });
+    }
+    if (totalBendAngle > 120) {
+      defectRisks.push({ defect: "Springback", risk: "high", cause: `Total bend angle ${Math.round(totalBendAngle)}° is high`, prevention: `Apply ${mat === "SS" ? "12%" : "8%"} overbend in last 2 calibration stations` });
+    }
+    if (heights.length > 0 && Math.max(...heights) > 50) {
+      defectRisks.push({ defect: "Flange height deviation", risk: "medium", cause: "Deep flanges (>50mm) accumulate forming errors", prevention: "Use side roll guides after station " + Math.ceil(recommendedStations / 2) });
+    }
+    if (defectRisks.length === 0) {
+      defectRisks.push({ defect: "Bow / camber", risk: "low", cause: "Minor roll alignment variation", prevention: "Check roll parallelism every 500 operating hours" });
+    }
+
+    const stationStrategy = recommendedStations <= 6
+      ? "Compact progressive forming: all forming passes distributed evenly with 2 calibration stations at exit."
+      : recommendedStations <= 10
+      ? "Standard progressive forming: entry passes light (60% force), mid-zone heavy forming, last 2–3 calibration."
+      : "Extended forming sequence: use 3 pre-forming stations for gradual strip introduction, then 60% progressive, 3 calibration.";
+
+    const summary =
+      `For ${mat} (${t}mm) with ${bends} bend${bends !== 1 ? "s" : ""}, recommend ${recommendedStations} forming stations. ` +
+      `Total forming angle: ${Math.round(totalBendAngle)}° — max ${maxAnglePerPass}°/pass. ` +
+      springbackNote;
+
+    res.json({
+      success: true,
+      advice: {
+        summary,
+        recommendedStations,
+        stationStrategy,
+        angleDistribution,
+        defectRisks,
+        materialAdvice: springbackNote,
+      },
+      mode: "offline",
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Flower advice failed";
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 export default router;

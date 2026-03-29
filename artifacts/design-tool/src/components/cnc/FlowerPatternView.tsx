@@ -92,19 +92,12 @@ function generateProgressiveProfile(
   fraction: number,
 ): { type: string; startX: number; startY: number; endX: number; endY: number }[] {
   if (segments.length === 0) return [];
-  if (fraction >= 0.999) {
-    return segments.map(s => ({
-      type: s.type ?? "line",
-      startX: s.startX ?? 0, startY: s.startY ?? 0,
-      endX:   s.endX   ?? 0, endY:   s.endY   ?? 0,
-    }));
-  }
 
   const result: { type: string; startX: number; startY: number; endX: number; endY: number }[] = [];
   const first = segments[0];
-  const fDx = (first.endX ?? 0) - (first.startX ?? 0);
-  const fDy = (first.endY ?? 0) - (first.startY ?? 0);
-  let curDir = Math.atan2(fDy, fDx);
+  // Always start horizontal so the "flat" station looks like a flat strip entering the machine
+  // and all stations share a consistent reference direction for the flower overlay.
+  let curDir = 0;
   let curX = first.startX ?? 0;
   let curY = first.startY ?? 0;
 

@@ -392,6 +392,13 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle }: {
   onToggle: () => void;
 }) {
   const rp = rt.rollProfile;
+  if (!rp) {
+    return (
+      <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-[10px] text-zinc-500 italic">
+        {rt.label ?? `Station ${rt.stationNumber}`} — roll profile unavailable (regenerate roll tooling to populate data)
+      </div>
+    );
+  }
   const colors = ["#3b82f6","#ef4444","#22c55e","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#f97316","#14b8a6","#a855f7","#6366f1","#10b981"];
   const stColor = colors[(rt.stationNumber - 1) % colors.length];
   const phase = getRollPhase(rt.stationNumber - 1, totalStations);
@@ -678,8 +685,8 @@ function ManufacturingView({ rollTooling }: { rollTooling: RollToolingResult[] }
       "  STATION ROLL SCHEDULE",
       `  ${"Stn".padEnd(6)} ${"Label".padEnd(10)} ${"Upper Roll".padEnd(12)} ${"Lower Roll".padEnd(12)} ${"Roll OD".padEnd(12)} ${"Width".padEnd(10)} ${"Gap"}`,
       hr,
-      ...rollTooling.map(rt =>
-        `  ${String(rt.stationNumber).padEnd(6)} ${rt.label.padEnd(10)} R${String(rt.rollProfile.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rt.rollProfile.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rt.rollProfile.rollDiameter.toFixed(2).padEnd(11)} ${rt.rollProfile.rollWidth.toFixed(3).padEnd(10)} ${rt.rollProfile.gap.toFixed(3)} mm`
+      ...rollTooling.filter(rt => !!rt.rollProfile).map(rt =>
+        `  ${String(rt.stationNumber).padEnd(6)} ${rt.label.padEnd(10)} R${String(rt.rollProfile!.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rt.rollProfile!.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rt.rollProfile!.rollDiameter.toFixed(2).padEnd(11)} ${rt.rollProfile!.rollWidth.toFixed(3).padEnd(10)} ${rt.rollProfile!.gap.toFixed(3)} mm`
       ),
     ];
 
@@ -1800,8 +1807,8 @@ export function RollToolingView() {
     );
   }
 
-  const passLine = rollTooling[0]?.rollProfile.passLineY ?? 0;
-  const matType = rollTooling[0]?.rollProfile.kFactor === 0.44 ? "GI" : rollTooling[0]?.rollProfile.kFactor === 0.42 ? "HR" : "CR";  // FIX: kFactor 0.42 is HR not CR (DIN 6935); else fallback CR
+  const passLine = rollTooling[0]?.rollProfile?.passLineY ?? 0;
+  const matType = rollTooling[0]?.rollProfile?.kFactor === 0.44 ? "GI" : rollTooling[0]?.rollProfile?.kFactor === 0.42 ? "HR" : "CR";  // FIX: kFactor 0.42 is HR not CR (DIN 6935); else fallback CR
 
   return (
     <div className="flex flex-col h-full bg-zinc-950 overflow-hidden">
@@ -1874,11 +1881,11 @@ export function RollToolingView() {
             <React.Fragment key={rt.stationNumber}>
               <button onClick={() => { setView("stations"); setExpandedStation(rt.stationNumber); }}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${expandedStation === rt.stationNumber && view === "stations" ? "bg-blue-700 text-white" : "bg-zinc-800 text-blue-400 hover:bg-zinc-700"}`}>
-                R{rt.rollProfile.upperRollNumber}
+                R{rt.rollProfile?.upperRollNumber ?? "—"}
               </button>
               <button onClick={() => { setView("stations"); setExpandedStation(rt.stationNumber); }}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${expandedStation === rt.stationNumber && view === "stations" ? "bg-orange-700 text-white" : "bg-zinc-800 text-orange-400 hover:bg-zinc-700"}`}>
-                R{rt.rollProfile.lowerRollNumber}
+                R{rt.rollProfile?.lowerRollNumber ?? "—"}
               </button>
               {rt.stationNumber < rollTooling.length && <div className="w-2 h-px bg-zinc-700" />}
             </React.Fragment>

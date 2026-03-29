@@ -1,0 +1,439 @@
+MASTER PROMPT — CALCULATION ENGINE + VALIDATION ENGINE + NO FALSE SUCCESS
+
+You are fixing and upgrading an engineering-grade roll forming software system. Treat this as a production-critical CAD/CAM calculation platform, not a demo UI.
+
+CORE RULE:
+Never claim “done”, “fixed”, “generated”, “complete”, or “successful” unless the output is actually verified and visible.
+
+==================================================
+
+1. SYSTEM GOAL
+   ==================================================
+
+Build a robust pipeline for:
+
+DXF / center-line / profile input
+-> geometry validation
+-> center-line to sheet conversion
+-> dimensions extraction
+-> bend angle detection
+-> flower pattern generation
+-> pass distribution
+-> roll tooling calculations
+-> smart-roll rendering
+-> export preparation
+
+This must work with proper engineering validation, safe fallbacks, and explicit error messages.
+
+==================================================
+2. GOLDEN EXECUTION RULE
+========================
+
+For every command, follow this order only:
+
+READ
+VALIDATE
+NORMALIZE
+CALCULATE
+VERIFY
+RENDER
+EXPORT
+REPORT
+
+If any stage fails:
+
+* stop downstream execution
+* do not fake success
+* show exact failure reason
+* log structured debug data
+* suggest the next corrective step
+
+==================================================
+3. NEVER DO THIS
+================
+
+* Never return success if dimensions are missing
+* Never return success if angles are missing
+* Never return success if flower pattern is incomplete
+* Never return success if roll passes are undefined
+* Never render if required calculation fields are null/undefined
+* Never read properties like passLineY without a guard
+* Never hide engineering failure behind a generic UI message
+* Never continue to next stage after failed validation
+* Never say “AI completed work” without proof
+
+==================================================
+4. MANDATORY PIPELINE STAGES
+============================
+
+STAGE A — INPUT INGESTION
+Accepted inputs:
+
+* DXF profile
+* center-line geometry
+* manually drawn profile
+* thickness
+* material
+* bend preferences
+* station limit
+
+Validate:
+
+* file parsed correctly
+* entities supported
+* no empty geometry
+* no broken polyline chain
+* no invalid arc data
+* unit detection clear
+* thickness > 0
+* profile not self-contradictory
+
+Output:
+
+* raw geometry object
+* parse warnings
+* parse errors
+
+---
+
+STAGE B — GEOMETRY NORMALIZATION
+Tasks:
+
+* merge connected entities
+* sort segment order
+* repair tiny gaps within tolerance
+* remove duplicates
+* unify units
+* detect open vs closed shape
+* detect arcs / lines / corners
+* create canonical profile structure
+
+Output:
+
+* normalized profile
+* ordered segments
+* normalized coordinate system
+
+---
+
+STAGE C — CENTER-LINE TO SHEET CONVERSION
+This is mandatory.
+
+If input is center-line:
+
+* convert center-line to sheet profile using thickness logic
+* support both-side offset where applicable
+* support explicit inside/outside/neutral-axis mode
+* handle corner joins safely
+* prevent self-intersection
+* trim/extend intersections correctly
+* preserve manufacturable geometry
+
+Required options:
+
+* centerline offset mode
+* thickness application mode
+* bend radius handling
+* acute corner handling
+
+Output:
+
+* valid sheet profile
+* inner/outer/neutral path references
+* conversion warnings if geometry is unsafe
+
+---
+
+STAGE D — DIMENSION & ANGLE EXTRACTION
+Mandatory outputs:
+
+* segment lengths
+* total profile width/height
+* bend angles
+* radii
+* flange lengths
+* coordinate references
+
+Rules:
+
+* dimensions must be visible and inspectable
+* angles must not be blank
+* any uncertain angle must be flagged, not guessed silently
+
+---
+
+STAGE E — FLOWER PATTERN GENERATION
+Generate forming sequence from final section to intermediate passes.
+
+Rules:
+
+* use validated bend count only
+* support multi-bend profiles
+* maintain progressive forming logic
+* enforce station count constraints
+* if requested stations are fewer than ideal, produce controlled redistribution warning
+* no random interpolation without report
+
+Output:
+
+* pass-by-pass intermediate profiles
+* forming percentage per stand
+* warnings for over-aggressive forming jumps
+
+---
+
+STAGE F — PASS / SMART ROLL DATA GENERATION
+Before rendering, generate a complete pass object.
+
+Each pass object must contain validated fields like:
+
+* id
+* geometry
+* passLineY
+* pass center reference
+* width
+* bend progression
+* upper/lower roll references if applicable
+
+If any required field is missing:
+
+* mark pass invalid
+* stop render
+* show structured diagnostic panel
+
+Do not allow UI to access undefined passLineY.
+
+---
+
+STAGE G — ROLL TOOLING CALCULATION
+Compute:
+
+* roll positions
+* upper/lower clearances
+* shaft constraints
+* basic interference risk
+* estimated OD references where rules allow
+* stand sequence data
+
+Rules:
+
+* if machine constraints missing, state assumptions clearly
+* if tooling is approximate, label as approximation
+* never label estimated tooling as production released unless verified
+
+---
+
+STAGE H — RENDERING
+Render only verified data.
+
+Before rendering each module:
+
+* Setup View
+* Roll View
+* Smart-Rolls
+* Flower View
+* Tooling View
+
+Use a pre-render validator.
+
+If invalid:
+
+* do not crash
+* render diagnostic state
+* show missing field names
+* offer retry only after data refresh
+
+==================================================
+5. ERROR HANDLING STANDARD
+==========================
+
+Every module must use:
+
+1. input guards
+2. schema validation
+3. null/undefined protection
+4. fallback UI
+5. structured logs
+
+Error message format:
+
+* module name
+* failed stage
+* missing field / bad value
+* probable root cause
+* suggested fix
+
+Example:
+Module: SmartRolls
+Stage: Pass Data Assembly
+Issue: passLineY undefined for pass index 3
+Root Cause: pass generation returned incomplete object after geometry normalization failure
+Action: inspect normalized profile and pass builder
+
+==================================================
+6. SMART ENGINE / API RULES
+===========================
+
+For AI Flower Advisor / smart engine service:
+
+Before calling service:
+
+* verify base URL exists
+* verify env vars loaded
+* verify request payload schema
+* verify timeout handling
+* verify response schema
+* verify CORS / network failures are captured
+
+If service unavailable:
+
+* show “service unavailable”
+* do not show misleading advice
+* log request id / response status
+* allow local fallback if available
+
+==================================================
+7. VERIFICATION GATES
+=====================
+
+A stage is only “passed” when all required outputs exist.
+
+Do not proceed unless previous gate passed.
+
+Gate 1: geometry parsed
+Gate 2: geometry normalized
+Gate 3: thickness conversion valid
+Gate 4: dimensions extracted
+Gate 5: bend angles extracted
+Gate 6: flower passes generated
+Gate 7: roll pass objects complete
+Gate 8: render successful
+Gate 9: export data assembled
+
+If any gate fails:
+
+* stop
+* show exact gate failure
+* do not mark task complete
+
+==================================================
+8. DEBUG LOGGING REQUIREMENT
+============================
+
+Log these exact checkpoints:
+
+* raw input summary
+* parsed entities count
+* normalized segment count
+* thickness conversion result
+* bend count
+* angle list
+* generated station count
+* pass object validation result
+* render eligibility result
+* API request/response summary
+
+All logs must be human-readable.
+
+==================================================
+9. TEST REQUIREMENT
+===================
+
+Create and run tests for:
+
+* simple open profile
+* simple closed profile
+* center-line with thickness
+* line + arc mixed profile
+* multi-bend profile
+* missing thickness case
+* unsupported DXF entity case
+* self-intersection case
+* fewer stations than ideal
+* smart engine offline case
+* render with incomplete pass object
+
+No feature should be called complete without passing tests.
+
+==================================================
+10. UI RULE
+===========
+
+UI must never pretend success.
+
+Replace fake completion banners with:
+
+* Validated
+* Partially Generated
+* Needs Correction
+* Failed with Reason
+
+Also add:
+
+* visible dimensions panel
+* visible angles panel
+* pass data status
+* station warnings
+* service connectivity status
+
+==================================================
+11. REQUIRED FIXES FOR CURRENT BUGS
+===================================
+
+Fix these current issues first:
+
+1. Roll View crash:
+   Cannot read properties of undefined (reading 'passLineY')
+
+2. Smart-Rolls View crash:
+   Cannot read properties of undefined (reading 'passLineY')
+
+3. Setup View crash:
+   Minified React error #185
+
+4. AI Flower Advisor:
+   Failed to connect to smart engine service
+
+5. Geometry output issue:
+
+* no dimensions
+* no angles
+* incomplete/incorrect flower pattern
+* center-line to sheet conversion not working
+
+==================================================
+12. DEFINITION OF DONE
+======================
+
+Task is DONE only if all are true:
+
+* no crash in Setup View
+* no crash in Roll View
+* no crash in Smart-Rolls
+* dimensions visible
+* angles visible
+* center-line thickness conversion works
+* flower pattern generated correctly
+* pass objects validated
+* smart engine connectivity handled correctly
+* no fake success message
+* logs clearly show each stage result
+* tests pass
+
+==================================================
+13. FINAL RESPONSE FORMAT
+=========================
+
+When reporting back, provide:
+
+1. Root cause
+2. Files changed
+3. Exact fixes applied
+4. Validation added
+5. Test cases run
+6. Remaining limitations
+7. Screenshot/log proof
+
+Do not give a marketing-style answer.
+Do not say “everything is working” without evidence.
+Be strict, technical, and truthful.

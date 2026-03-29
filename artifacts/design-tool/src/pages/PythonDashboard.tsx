@@ -15,6 +15,7 @@ import MachineLayoutPanel from "@/components/python-dashboard/MachineLayoutPanel
 import RollContourPanel from "@/components/python-dashboard/RollContourPanel";
 import CadExportPanel from "@/components/python-dashboard/CadExportPanel";
 import RollFormingSimulator from "@/components/python-dashboard/RollFormingSimulator";
+import RollDrawingPanel from "@/components/python-dashboard/RollDrawingPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -232,7 +233,8 @@ export default function PythonDashboard() {
   const finalDecision   = (pipelineResult?.final_decision_engine ?? null) as Record<string, unknown> | null;
   const consistency     = (pipelineResult?.consistency_engine ?? null) as Record<string, unknown> | null;
   const machineLayout   = (pipelineResult?.machine_layout_engine ?? null) as Record<string, unknown> | null;
-  const rollContour     = (pipelineResult?.roll_contour_engine ?? null) as Record<string, unknown> | null;
+  const rollContour     = (pipelineResult?.roll_contour_engine ?? simulationData?.roll_contour_engine ?? null) as Record<string, unknown> | null;
+  const rollDimension   = (pipelineResult?.roll_dimension_engine ?? null) as Record<string, unknown> | null;
   const camPrep         = (pipelineResult?.cam_prep_engine ?? null) as Record<string, unknown> | null;
   const cadExportData   = (cadExportResult?.cad_export ?? null) as Record<string, unknown> | null;
   const cadCamPrep      = (cadExportResult?.cam_prep ?? camPrep) as Record<string, unknown> | null;
@@ -381,6 +383,10 @@ export default function PythonDashboard() {
             <SummaryCards summary={summary} />
             {machineLayout && <MachineLayoutPanel data={machineLayout as any} />}
             <RollContourPanel data={rollContour as any} />
+            <RollDrawingPanel
+              rollContour={rollContour as any}
+              rollDimensions={rollDimension as any}
+            />
             <RollFormingSimulator
               data={(simulationData?.simulation_engine ?? null) as any}
               optimizerData={(simulationData?.ai_optimizer_engine ?? null) as any}

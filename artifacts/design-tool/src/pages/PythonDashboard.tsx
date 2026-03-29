@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Activity, FlaskConical, Download, FileJson, ArrowLeft } from "lucide-react";
+import { Activity, FlaskConical, Download, FileJson, ArrowLeft, Package } from "lucide-react";
 import { InputPanel } from "@/components/python-dashboard/InputPanel";
 import { PipelineStatusPanel } from "@/components/python-dashboard/PipelineStatusPanel";
 import { SummaryCards } from "@/components/python-dashboard/SummaryCards";
@@ -11,6 +11,8 @@ import FinalDecisionPanel from "@/components/python-dashboard/FinalDecisionPanel
 import SemiAutoPanel from "@/components/python-dashboard/SemiAutoPanel";
 import DxfUploadPanel from "@/components/python-dashboard/DxfUploadPanel";
 import MachineLayoutPanel from "@/components/python-dashboard/MachineLayoutPanel";
+import RollContourPanel from "@/components/python-dashboard/RollContourPanel";
+import CadExportPanel from "@/components/python-dashboard/CadExportPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -23,6 +25,8 @@ export default function PythonDashboard() {
   const [loading, setLoading] = useState(false);
   const [semiAutoLoading, setSemiAutoLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
+  const [cadLoading, setCadLoading] = useState(false);
+  const [cadExportResult, setCadExportResult] = useState<Record<string, unknown> | null>(null);
   const [payload, setPayload] = useState<ManualModePayload | null>(null);
   const [pipelineResult, setPipelineResult] = useState<Record<string, unknown> | null>(null);
   const [debugResult, setDebugResult] = useState<{
@@ -155,6 +159,25 @@ export default function PythonDashboard() {
     }
   }, [payload]);
 
+  const handleCadExport = useCallback(async () => {
+    if (!payload) return;
+    setCadLoading(true);
+    setError(null);
+    try {
+      const resp = await fetch("/papi/api/cad-export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      setCadExportResult(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "CAD export failed");
+    } finally {
+      setCadLoading(false);
+    }
+  }, [payload]);
+
   const reportEngine    = (pipelineResult?.report_engine ?? {}) as Record<string, unknown>;
   const summary         = (reportEngine?.engineering_summary ?? {}) as Record<string, unknown>;
   const readableReport  = (reportEngine?.readable_report as string) ?? "";
@@ -164,6 +187,10 @@ export default function PythonDashboard() {
   const finalDecision   = (pipelineResult?.final_decision_engine ?? null) as Record<string, unknown> | null;
   const consistency     = (pipelineResult?.consistency_engine ?? null) as Record<string, unknown> | null;
   const machineLayout   = (pipelineResult?.machine_layout_engine ?? null) as Record<string, unknown> | null;
+  const rollContour     = (pipelineResult?.roll_contour_engine ?? null) as Record<string, unknown> | null;
+  const camPrep         = (pipelineResult?.cam_prep_engine ?? null) as Record<string, unknown> | null;
+  const cadExportData   = (cadExportResult?.cad_export ?? null) as Record<string, unknown> | null;
+  const cadCamPrep      = (cadExportResult?.cam_prep ?? camPrep) as Record<string, unknown> | null;
 
   const profEng   = (pipelineResult?.profile_analysis_engine ?? {}) as Record<string, unknown>;
   const inputEng  = (pipelineResult?.input_engine ?? {}) as Record<string, unknown>;
@@ -199,7 +226,7 @@ export default function PythonDashboard() {
             <Activity className="w-5 h-5 text-violet-400" />
             <div>
               <div className="text-lg font-bold text-gray-100">Python API Debug Dashboard</div>
-              <div className="text-[10px] text-gray-500">Sai Rolotech Smart Engines v2.3.0 — 17 Engines — FastAPI on port 9000</div>
+              <div className="text-[10px] text-gray-500">Sai Rolotech Smart Engines v2.3.0 — 22 Engines — FastAPI on port 9000</div>
             </div>
           </div>
           <a href="/" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">
@@ -260,6 +287,14 @@ export default function PythonDashboard() {
                   <Download className="w-3.5 h-3.5" />
                   Download PDF File
                 </button>
+                <button
+                  onClick={handleCadExport}
+                  disabled={!payload || cadLoading}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-40 text-cyan-300 text-xs font-medium py-2 transition-colors"
+                >
+                  <Package className="w-3.5 h-3.5" />
+                  {cadLoading ? "Generating CAD Pack…" : "Generate CAD/STEP Pack"}
+                </button>
                 {(selectedMode === "semi_auto" || selectedMode === "manual_review") && (
                   <div className="text-[10px] text-yellow-500/80 text-center px-2">
                     PDF locked until confirmation is complete
@@ -293,6 +328,13 @@ export default function PythonDashboard() {
 
             <SummaryCards summary={summary} />
             {machineLayout && <MachineLayoutPanel data={machineLayout as any} />}
+            <RollContourPanel data={rollContour as any} />
+            <CadExportPanel
+              cadExport={cadExportData as any}
+              camPrep={cadCamPrep as any}
+              isLoading={cadLoading}
+              onRequestExport={payload ? handleCadExport : undefined}
+            />
             <WarningPanel warnings={warnings} assumptions={assumptions} />
 
             {pdfResult && (

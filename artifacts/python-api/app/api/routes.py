@@ -36,6 +36,9 @@ from app.engines.flange_web_lip_engine import detect_flange_web_lip
 from app.engines.machine_layout_engine import generate_machine_layout
 from app.engines.debug_test_engine import extract_stage_debug
 from app.engines.test_runner_engine import run_all_tests as _run_all_tests
+from app.engines.roll_contour_engine import generate_roll_contour
+from app.engines.cad_export_engine import generate_cad_export
+from app.engines.cam_prep_engine import generate_cam_prep
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -58,7 +61,11 @@ def _run_core_engines(
     profile_result: Dict[str, Any],
     input_result: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Run the shared downstream engines: flange_web_lip → flower → stations → shaft/bearing/duty/roll → machine_layout."""
+    """
+    Shared downstream engines:
+    flange_web_lip → flower → stations → shaft/bearing/duty/roll
+    → machine_layout → roll_contour → cam_prep
+    """
     flange_result = detect_flange_web_lip(profile_result)
 
     flower_result = generate_flower(profile_result, input_result)
@@ -87,17 +94,37 @@ def _run_core_engines(
         duty_result=duty_result,
     )
 
+    # ── Roll Contour Engine ────────────────────────────────────────────────
+    roll_contour_result = generate_roll_contour(
+        profile_result=profile_result,
+        input_result=input_result,
+        station_result=station_result,
+        flower_result=flower_result,
+        flange_result=flange_result,
+    )
+
+    # ── CAM Prep Engine ────────────────────────────────────────────────────
+    cam_prep_result = generate_cam_prep(
+        roll_contour_result=roll_contour_result,
+        shaft_result=shaft_result,
+        roll_calc_result=roll_calc_result,
+        input_result=input_result,
+        station_result=station_result,
+    )
+
     return {
         "status": "pass",
-        "flange_web_lip_engine": flange_result,
-        "advanced_flower_engine": flower_result,
-        "station_engine": station_result,
-        "roll_logic_engine": roll_logic_result,
-        "shaft_engine": shaft_result,
-        "bearing_engine": bearing_result,
-        "duty_engine": duty_result,
+        "flange_web_lip_engine":   flange_result,
+        "advanced_flower_engine":  flower_result,
+        "station_engine":          station_result,
+        "roll_logic_engine":       roll_logic_result,
+        "shaft_engine":            shaft_result,
+        "bearing_engine":          bearing_result,
+        "duty_engine":             duty_result,
         "roll_design_calc_engine": roll_calc_result,
-        "machine_layout_engine": layout_result,
+        "machine_layout_engine":   layout_result,
+        "roll_contour_engine":     roll_contour_result,
+        "cam_prep_engine":         cam_prep_result,
     }
 
 
@@ -258,8 +285,9 @@ def health():
             "consistency", "final_decision",
             "report", "pdf_export",
             "debug_test", "test_runner",
+            "roll_contour", "cam_prep", "cad_export",
         ],
-        "total_engines": 19,
+        "total_engines": 22,
         "endpoints": [
             "GET  /api/health",
             "POST /api/manual-mode",
@@ -271,6 +299,8 @@ def health():
             "POST /api/dxf-upload  (alias: /api/auto-mode-dxf)",
             "POST /api/preview-dxf",
             "GET  /api/run-manual-tests",
+            "POST /api/cad-export",
+            "GET  /api/download-file",
         ],
     }
 
@@ -660,3 +690,72 @@ def semi_auto_confirm(data: Dict[str, Any]):
     }
 
     return result
+
+
+# ─── POST /api/cad-export ─────────────────────────────────────────────────────
+
+@router.post("/cad-export")
+def run_cad_export(data: ManualProfileInput):
+    """
+    Run full manual pipeline + generate CAD export pack.
+    Returns file manifest with paths for roll_set.dxf, shaft_layout.dxf,
+    assembly.dxf, and per-roll STEP files.
+    """
+    logger.info("[cad-export] bends=%d material=%s", data.bend_count, data.material)
+    pipeline = execute_manual_pipeline(data)
+    if is_fail(pipeline):
+        return pipeline
+
+    cad_result = generate_cad_export(
+        roll_contour_result   = pipeline.get("roll_contour_engine", {}),
+        cam_prep_result       = pipeline.get("cam_prep_engine", {}),
+        shaft_result          = pipeline.get("shaft_engine", {}),
+        bearing_result        = pipeline.get("bearing_engine", {}),
+        roll_calc_result      = pipeline.get("roll_design_calc_engine", {}),
+        station_result        = pipeline.get("station_engine", {}),
+        profile_result        = pipeline.get("profile_analysis_engine", {}),
+        machine_layout_result = pipeline.get("machine_layout_engine", {}),
+    )
+
+    return {
+        "status":          pipeline.get("status"),
+        "cad_export":      cad_result,
+        "roll_contour":    pipeline.get("roll_contour_engine", {}),
+        "cam_prep":        pipeline.get("cam_prep_engine", {}),
+        "engineering_summary": pipeline.get("report_engine", {}).get("engineering_summary", {}),
+    }
+
+
+# ─── GET /api/download-file ───────────────────────────────────────────────────
+
+@router.get("/download-file")
+def download_file(path: str):
+    """
+    Download a generated file by its absolute path (from cad_export file_manifest).
+    Supports .dxf, .stp, .pdf files in the exports directory.
+    """
+    import os as _os
+    from app.engines.cad_export_engine import EXPORTS_DIR as _EXPORTS_DIR
+    from app.engines.pdf_export_engine import EXPORTS_DIR as _PDF_DIR
+
+    # Security: only serve files inside known export directories
+    safe_roots = [
+        _os.path.realpath(_EXPORTS_DIR),
+        _os.path.realpath(_PDF_DIR),
+    ]
+    real_path = _os.path.realpath(path)
+    allowed = any(real_path.startswith(root) for root in safe_roots)
+
+    if not allowed or not _os.path.isfile(real_path):
+        raise HTTPException(status_code=404, detail="File not found or not accessible")
+
+    ext = _os.path.splitext(real_path)[1].lower()
+    media_map = {
+        ".dxf":  "application/dxf",
+        ".stp":  "application/step",
+        ".step": "application/step",
+        ".pdf":  "application/pdf",
+    }
+    media_type = media_map.get(ext, "application/octet-stream")
+    return FileResponse(real_path, media_type=media_type,
+                        filename=_os.path.basename(real_path))

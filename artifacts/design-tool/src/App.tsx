@@ -16,6 +16,7 @@ const DemoVideo        = lazy(() => import("@/pages/DemoVideo"));
 const DemoDownloadPage = lazy(() => import("@/pages/DemoDownloadPage"));
 const AdminPanel       = lazy(() => import("@/pages/AdminPanel"));
 const NotFound         = lazy(() => import("@/pages/not-found"));
+const PythonDashboard  = lazy(() => import("@/pages/PythonDashboard"));
 const OnboardingTutorial = lazy(() => import("@/components/OnboardingTutorial").then(m => ({ default: m.OnboardingTutorial })));
 
 function PageSpinner() {
@@ -416,9 +417,20 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <ErrorBoundary fallbackTitle="Application Error — Click Recover to continue" fullScreen>
-          <AuthGate />
-        </ErrorBoundary>
+        <Switch>
+          <Route path="/python">
+            <Suspense fallback={<PageSpinner />}>
+              <ErrorBoundary fallbackTitle="Python Dashboard Error">
+                <PythonDashboard />
+              </ErrorBoundary>
+            </Suspense>
+          </Route>
+          <Route>
+            <ErrorBoundary fallbackTitle="Application Error — Click Recover to continue" fullScreen>
+              <AuthGate />
+            </ErrorBoundary>
+          </Route>
+        </Switch>
       </WouterRouter>
       <DeferredExtras />
       <DeferredOfflineGuard />

@@ -245,6 +245,105 @@ def run_manual_mode(data: ManualProfileInput):
     return execute_manual_pipeline(data)
 
 
+# ─── GET /api/run-tests ──────────────────────────────────────────────────────
+
+@router.get("/run-tests")
+def run_tests():
+    """Run 5 built-in test cases and return pass/fail for each."""
+    from app.api.schemas import ManualProfileInput
+
+    CASES = [
+        {"name": "TC-01: GI Simple Channel", "bend_count": 2, "section_width_mm": 100, "section_height_mm": 40, "thickness": 0.8, "material": "GI", "profile_type": "simple_channel"},
+        {"name": "TC-02: CR Lipped Channel", "bend_count": 4, "section_width_mm": 120, "section_height_mm": 55, "thickness": 1.0, "material": "CR", "profile_type": "lipped_channel"},
+        {"name": "TC-03: SS Heavy Section", "bend_count": 6, "section_width_mm": 150, "section_height_mm": 60, "thickness": 1.5, "material": "SS", "profile_type": "lipped_channel"},
+        {"name": "TC-04: HR Complex Profile", "bend_count": 8, "section_width_mm": 200, "section_height_mm": 80, "thickness": 2.0, "material": "HR", "profile_type": "complex_profile"},
+        {"name": "TC-05: HR Shutter 8 Bends", "bend_count": 8, "section_width_mm": 250, "section_height_mm": 30, "thickness": 1.2, "material": "HR", "profile_type": "shutter_profile"},
+    ]
+
+    results = []
+    all_pass = True
+
+    for tc in CASES:
+        name = tc.pop("name")
+        try:
+            data = ManualProfileInput(**tc)
+            result = execute_manual_pipeline(data)
+            status = "pass" if result.get("status") == "pass" else "fail"
+            if status == "fail":
+                all_pass = False
+            summary = result.get("report_engine", {}).get("engineering_summary", {})
+            results.append({
+                "name": name,
+                "status": status,
+                "stations": summary.get("recommended_station_count"),
+                "shaft_mm": summary.get("shaft_diameter_mm"),
+                "bearing": summary.get("bearing_type"),
+                "roll_od_mm": summary.get("estimated_roll_od_mm"),
+                "complexity": summary.get("forming_complexity_class"),
+                "failed_stage": result.get("failed_stage"),
+            })
+        except Exception as e:
+            all_pass = False
+            results.append({"name": name, "status": "error", "reason": str(e)})
+
+    return {
+        "status": "pass" if all_pass else "partial",
+        "total": len(CASES),
+        "passed": sum(1 for r in results if r["status"] == "pass"),
+        "failed": sum(1 for r in results if r["status"] != "pass"),
+        "test_cases": results,
+    }
+
+
+# ─── POST /api/manual-mode-debug ─────────────────────────────────────────────
+
+@router.post("/manual-mode-debug")
+def run_manual_mode_debug(data: ManualProfileInput):
+    """Manual mode pipeline with per-engine stage debug breakdown."""
+    logger.info("[manual-mode-debug] bends=%d material=%s", data.bend_count, data.material)
+    pipeline = execute_manual_pipeline(data)
+
+    ENGINE_ORDER = [
+        "profile_analysis_engine",
+        "input_engine",
+        "advanced_flower_engine",
+        "station_engine",
+        "roll_logic_engine",
+        "shaft_engine",
+        "bearing_engine",
+        "duty_engine",
+        "roll_design_calc_engine",
+        "report_engine",
+    ]
+
+    stage_debug = []
+    first_failed = None
+
+    for engine_key in ENGINE_ORDER:
+        eng = pipeline.get(engine_key, {})
+        st = eng.get("status", "not_run")
+        reason = eng.get("reason") if st == "fail" else None
+        if st == "fail" and not first_failed:
+            first_failed = engine_key
+        stage_debug.append({
+            "stage": engine_key,
+            "status": st,
+            "reason": reason,
+        })
+
+    if pipeline.get("status") == "fail" and not first_failed:
+        first_failed = pipeline.get("failed_stage")
+
+    return {
+        "status": pipeline.get("status"),
+        "pipeline_result": pipeline,
+        "debug_result": {
+            "first_failed_stage": first_failed,
+            "stage_debug": stage_debug,
+        },
+    }
+
+
 # ─── POST /api/auto-mode-export-pdf ──────────────────────────────────────────
 
 @router.post("/auto-mode-export-pdf")

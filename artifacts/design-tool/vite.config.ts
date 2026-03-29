@@ -66,6 +66,11 @@ export default defineConfig({
         target: "http://localhost:8080",
         changeOrigin: true,
       },
+      "/papi": {
+        target: "http://localhost:9000",
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/papi/, ""),
+      },
     },
     fs: {
       strict: true,

@@ -1,0 +1,99 @@
+Haan, **ye ho sakta hai**. Codex web/app aur CLI dono me aap uska kaam **real time logs/progress** ke saath dekh sakte ho. OpenAI docs ke mutabik Codex ko web/app me projects par parallel tasks ke liye use kiya ja sakta hai, aur CLI me interactive mode me aap uske edits aur commands ko iterate karte hue dekh sakte ho. Quickstart me bhi likha hai ki aap logs dekh kar progress monitor kar sakte ho. ([OpenAI Developers][1])
+
+Aapko jo chahiye, uske liye **best setup** ye hai:
+
+## Option 1 — Codex browser/app me visible kaam
+
+Is mode me:
+
+* project open karo
+* task do
+* Codex logs dekho
+* kis file me kya badal raha hai dekho
+* task complete hone par diff review karo
+
+Ye app/browser style delegation ke liye best hai. Codex web ko OpenAI ne cloud-based coding agent ke roop me describe kiya hai jo code read, edit, run kar sakta hai. ([OpenAI][2])
+
+## Option 2 — Codex CLI interactive mode
+
+Agar aapko aur zyada live dekhna hai, to CLI better hota hai:
+
+* full-screen terminal UI
+* commands visible
+* edits visible
+* logs visible
+
+OpenAI docs me CLI interactive mode explicitly documented hai. ([OpenAI Developers][3])
+
+## Option 3 — Browser automation bhi visible karao
+
+Agar aap literally dekhna chahte ho ki app screen par kya ho raha hai, to Codex ko bolo:
+
+* Playwright/browser smoke test chalaye
+* screenshots save kare
+* step-by-step notes de
+* har page par kya mila woh likhe
+
+Ye especially aapke app ke liye useful hoga, kyunki aapko samajhna hai:
+
+* LeftPanel me data kaise aa raha hai
+* RollToolingView me kya render ho raha hai
+* reload ke baad kya repair hua
+* export me kya gaya
+
+## Aapko exactly kya bolna chahiye
+
+Isko Codex me paste karo:
+
+Use Codex in visible browser-first mode. I want to SEE how the app works while you test it.
+
+Requirements:
+
+1. Work in a way that shows progress clearly:
+
+   * show task logs
+   * show which files are being read or changed
+   * show commands being run
+   * save screenshots for each important step
+2. Open the app in a browser automation flow and test it visually.
+3. Use one deterministic profile and walk through the full app:
+
+   * load/import profile
+   * generate roll tooling
+   * inspect LeftPanel
+   * inspect RollToolingView
+   * inspect DigitalTwinView
+   * inspect CompletePackagePanel / exports
+   * reload app and verify migrated cached state
+4. After each step, report:
+
+   * what you expected
+   * what actually happened
+   * whether the UI is truthful
+   * whether any field is undefined, NaN, [object Object], or fake 0.000
+5. Save screenshots or artifacts for every major step so I can understand the app.
+6. If browser automation is unavailable, say that clearly and fall back to the closest visible mode with logs and saved artifacts.
+7. Do not say “fixed” without visual proof and runtime proof.
+
+## Sabse practical advice
+
+Aapke case me **sirf code diff dekhna enough nahi hai**.
+Aapko Codex se ye 3 cheezein ek saath leni chahiye:
+
+* **logs**
+* **screenshots**
+* **browser flow report**
+
+Tabhi aapko samajh aayega ki app sach me kya kar rahi hai.
+
+## Seedha answer
+
+**Haan, Codex ko browser/visible mode me kaam karne ke liye bola ja sakta hai.**
+Lekin usko specifically bolna padega:
+**“logs dikhao, browser flow chalao, screenshots do, aur step-by-step samjhao.”**
+
+Agar chaho, main ab aapke liye **Codex ke liye Hindi me ek ultra-simple visible-browser prompt** likh deta hoon.
+
+[1]: https://developers.openai.com/codex/app/features/?utm_source=chatgpt.com "Features – Codex app"
+[2]: https://openai.com/index/introducing-codex/?utm_source=chatgpt.com "Introducing Codex"
+[3]: https://developers.openai.com/codex/cli/features/?utm_source=chatgpt.com "Codex CLI features"

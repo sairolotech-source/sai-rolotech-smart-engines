@@ -1,0 +1,456 @@
+Bilkul — ab **Centerline Preview UI + Converted Profile Renderer** dete hain, taaki user clearly dekh sake:
+
+* original centerline
+* outer offset
+* inner offset
+* final sheet profile
+* conversion warnings
+* confidence
+
+Ye bahut useful hoga, kyunki isi se pata chalega conversion sahi hua ya nahi.
+
+# Backend preview route
+
+Agar DXF/JSON geometry aayi aur `is_centerline_profile=true` ho, to preview route me conversion output bhi bhejo.
+
+## `routes.py`
+
+```python
+from fastapi import APIRouter, UploadFile, File, Form
+from app.engines.import_engine import parse_dxf_file
+from app.engines.centerline_sheet_converter_arc_engine import convert_centerline_to_sheet_arc_aware
+
+router = APIRouter(prefix="/api", tags=["roll-forming"])
+
+
+@router.post("/preview-centerline-conversion")
+def preview_centerline_conversion(
+    file: UploadFile = File(...),
+    thickness: float = Form(...),
+):
+    import_result = parse_dxf_file(file)
+
+    if import_result.get("status") == "fail":
+        return {
+            "status": "fail",
+            "failed_stage": "file_import_engine",
+            "result": import_result
+        }
+
+    geometry = import_result.get("geometry", [])
+
+    conversion_result = convert_centerline_to_sheet_arc_aware(
+        geometry=geometry,
+        thickness=thickness,
+        mode="both",
+        arc_segments=24
+    )
+
+    if conversion_result.get("status") == "fail":
+        return {
+            "status": "fail",
+            "failed_stage": "centerline_sheet_converter_arc_engine",
+            "result": conversion_result
+        }
+
+    return {
+        "status": "pass",
+        "import_engine": import_result,
+        "centerline_converter_engine": conversion_result
+    }
+```
+
+# Frontend API
+
+## `services/api.js`
+
+```javascript
+export async function previewCenterlineConversion(file, thickness) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("thickness", String(thickness));
+
+  const res = await fetch("/api/preview-centerline-conversion", {
+    method: "POST",
+    body: formData,
+  });
+
+  return res.json();
+}
+```
+
+# New component
+
+## `components/CenterlineConversionPreview.jsx`
+
+```javascript
+function polylinePoints(points = []) {
+  return points.map((p) => `${p[0]},${-p[1]}`).join(" ");
+}
+
+function calcViewBoxFromProfiles(profiles = []) {
+  const all = [];
+
+  profiles.forEach((pts) => {
+    (pts || []).forEach((p) => all.push(p));
+  });
+
+  if (all.length === 0) return "0 -100 100 100";
+
+  const xs = all.map((p) => p[0]);
+  const ys = all.map((p) => p[1]);
+
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const pad = 10;
+  return `${minX - pad} ${-(maxY + pad)} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`;
+}
+
+export default function CenterlineConversionPreview({ data }) {
+  if (!data) {
+    return (
+      <div className="rounded-2xl border p-4 shadow-sm bg-white">
+        <div className="text-lg font-semibold mb-3">Centerline Conversion Preview</div>
+        <div className="text-sm text-gray-500">No conversion preview loaded</div>
+      </div>
+    );
+  }
+
+  if (data.status === "fail") {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+        <div className="font-semibold">Centerline Conversion Failed</div>
+        <div className="mt-1">
+          {data.result?.reason || data.reason || "Unknown error"}
+        </div>
+      </div>
+    );
+  }
+
+  const conv = data.centerline_converter_engine || {};
+  const converted = conv.converted_profiles || [];
+  const first = converted[0] || {};
+
+  const centerline = first.centerline || [];
+  const outerProfile = first.outer_profile || [];
+  const innerProfile = first.inner_profile || [];
+  const sheetProfile = first.sheet_profile || [];
+
+  const viewBox = calcViewBoxFromProfiles([
+    centerline,
+    outerProfile,
+    innerProfile,
+    sheetProfile,
+  ]);
+
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-lg font-semibold">Centerline Conversion Preview</div>
+        <div className="text-sm text-gray-500">
+          Confidence: {conv.confidence || "-"}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border bg-gray-50 p-3 overflow-auto">
+        <svg
+          viewBox={viewBox}
+          className="w-full h-[460px]"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {sheetProfile.length > 1 && (
+            <polygon
+              points={polylinePoints(sheetProfile)}
+              fill="rgba(0,0,0,0.04)"
+              stroke="none"
+            />
+          )}
+
+          {sheetProfile.length > 1 && (
+            <polyline
+              points={polylinePoints(sheetProfile)}
+              fill="none"
+              stroke="black"
+              strokeWidth="1.2"
+            />
+          )}
+
+          {outerProfile.length > 1 && (
+            <polyline
+              points={polylinePoints(outerProfile)}
+              fill="none"
+              stroke="blue"
+              strokeWidth="1"
+            />
+          )}
+
+          {innerProfile.length > 1 && (
+            <polyline
+              points={polylinePoints(innerProfile)}
+              fill="none"
+              stroke="green"
+              strokeWidth="1"
+            />
+          )}
+
+          {centerline.length > 1 && (
+            <polyline
+              points={polylinePoints(centerline)}
+              fill="none"
+              stroke="red"
+              strokeDasharray="4 4"
+              strokeWidth="1"
+            />
+          )}
+        </svg>
+      </div>
+
+      <div className="grid md:grid-cols-4 gap-3 mt-4 text-sm">
+        <div className="rounded-xl border p-3">
+          <div className="text-gray-500">Thickness</div>
+          <div className="font-semibold">{conv.thickness ?? "-"}</div>
+        </div>
+        <div className="rounded-xl border p-3">
+          <div className="text-gray-500">Offset Each Side</div>
+          <div className="font-semibold">{conv.offset_each_side ?? "-"}</div>
+        </div>
+        <div className="rounded-xl border p-3">
+          <div className="text-gray-500">Mode</div>
+          <div className="font-semibold">{conv.mode ?? "-"}</div>
+        </div>
+        <div className="rounded-xl border p-3">
+          <div className="text-gray-500">Profiles</div>
+          <div className="font-semibold">{converted.length}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid md:grid-cols-2 gap-4">
+        <div className="rounded-xl border p-3 text-sm">
+          <div className="font-medium mb-2">Legend</div>
+          <div>Red dashed = centerline</div>
+          <div>Blue = outer profile</div>
+          <div>Green = inner profile</div>
+          <div>Black = final sheet profile</div>
+        </div>
+
+        <div className="rounded-xl border p-3 text-sm">
+          <div className="font-medium mb-2">Warnings</div>
+          {(conv.warnings || []).length === 0 ? (
+            <div className="text-gray-500">No warnings</div>
+          ) : (
+            <ul className="grid gap-1">
+              {conv.warnings.map((w, i) => (
+                <li key={i}>• {w}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+# DXF upload form update
+
+## `components/DxfUploadForm.jsx`
+
+```javascript
+import { useState } from "react";
+
+export default function DxfUploadForm({ onRun, onPreview, onCenterlinePreview }) {
+  const [file, setFile] = useState(null);
+  const [thickness, setThickness] = useState(0.8);
+  const [material, setMaterial] = useState("GI");
+  const [isCenterline, setIsCenterline] = useState(false);
+
+  function submit(e) {
+    e.preventDefault();
+    if (!file) return alert("Please select a DXF file");
+
+    onRun({
+      file,
+      thickness,
+      material,
+      is_centerline_profile: isCenterline,
+    });
+  }
+
+  function handlePreview() {
+    if (!file) return alert("Please select a DXF file");
+    onPreview(file);
+  }
+
+  function handleCenterlinePreview() {
+    if (!file) return alert("Please select a DXF file");
+    onCenterlinePreview(file, thickness);
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-3 rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="text-lg font-semibold">DXF Auto Mode</div>
+
+      <input
+        className="border rounded-xl p-2"
+        type="file"
+        accept=".dxf"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+      />
+
+      <input
+        className="border rounded-xl p-2"
+        type="number"
+        step="0.01"
+        value={thickness}
+        onChange={(e) => setThickness(Number(e.target.value))}
+      />
+
+      <select
+        className="border rounded-xl p-2"
+        value={material}
+        onChange={(e) => setMaterial(e.target.value)}
+      >
+        <option value="GI">GI</option>
+        <option value="GP">GP</option>
+        <option value="CR">CR</option>
+        <option value="HR">HR</option>
+        <option value="MS">MS</option>
+        <option value="SS">SS</option>
+        <option value="ALUMINIUM">ALUMINIUM</option>
+      </select>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isCenterline}
+          onChange={(e) => setIsCenterline(e.target.checked)}
+        />
+        <span>Centerline Profile</span>
+      </label>
+
+      <div className="flex flex-wrap gap-3">
+        <button type="button" className="rounded-2xl border px-4 py-2" onClick={handlePreview}>
+          Preview DXF
+        </button>
+
+        {isCenterline && (
+          <button
+            type="button"
+            className="rounded-2xl border px-4 py-2"
+            onClick={handleCenterlinePreview}
+          >
+            Preview Centerline Conversion
+          </button>
+        )}
+
+        <button className="rounded-2xl border px-4 py-2 font-medium">
+          Run DXF Auto Mode
+        </button>
+      </div>
+    </form>
+  );
+}
+```
+
+# Dashboard integration
+
+## `pages/Dashboard.jsx`
+
+Add imports:
+
+```javascript
+import CenterlineConversionPreview from "../components/CenterlineConversionPreview";
+import { previewCenterlineConversion } from "../services/api";
+```
+
+Add state:
+
+```javascript
+const [centerlinePreviewData, setCenterlinePreviewData] = useState(null);
+```
+
+Add handler:
+
+```javascript
+async function handleCenterlinePreview(file, thickness) {
+  setLoading(true);
+  try {
+    const data = await previewCenterlineConversion(file, thickness);
+    setCenterlinePreviewData(data);
+  } finally {
+    setLoading(false);
+  }
+}
+```
+
+Update form call:
+
+```javascript
+<DxfUploadForm
+  onRun={handleAutoRun}
+  onPreview={handlePreview}
+  onCenterlinePreview={handleCenterlinePreview}
+/>
+```
+
+Render component:
+
+```javascript
+<CenterlineConversionPreview data={centerlinePreviewData} />
+```
+
+# `services/api.js`
+
+```javascript
+export async function previewCenterlineConversion(file, thickness) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("thickness", String(thickness));
+
+  const res = await fetch("/api/preview-centerline-conversion", {
+    method: "POST",
+    body: formData,
+  });
+
+  return res.json();
+}
+```
+
+# Replit ko exact command
+
+```text
+Add a centerline conversion preview system.
+
+Backend:
+- Create POST /api/preview-centerline-conversion
+- Parse DXF
+- Run centerline_sheet_converter_arc_engine
+- Return conversion result with centerline, outer_profile, inner_profile, and sheet_profile
+
+Frontend:
+- Add a CenterlineConversionPreview component
+- Render:
+  red dashed = centerline
+  blue = outer profile
+  green = inner profile
+  black = final sheet profile
+- Show thickness, offset_each_side, confidence, profile count, and warnings
+
+Update DXF upload form:
+- Add Centerline Profile checkbox
+- If checked, show “Preview Centerline Conversion” button
+- Call the preview-centerline-conversion endpoint
+```
+
+# Next strongest improvement
+
+Ab sabse useful next cheezein hongi:
+
+* **centerline conversion DWG export**
+* **semi-auto correction on converted profile**
+* **corner radius aware offset refinement**
+
+Agar chaho, next me main **centerline to sheet DWG export engine** bhi de deta hoon.

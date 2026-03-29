@@ -355,6 +355,7 @@ def health():
             "POST /api/cad-export",
             "GET  /api/download-file",
             "POST /api/manual-mode-export-cad-pack",
+            "POST /api/preview-centerline-conversion",
         ],
     }
 

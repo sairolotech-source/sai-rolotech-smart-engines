@@ -4,6 +4,21 @@ import { generateFlowerPattern } from "../lib/power-pattern";
 import { generateRollTooling, calcRequiredMotorPower } from "../lib/roll-tooling";
 import { validateFlowerInputs, computeNeutralAxisStripWidth } from "../lib/calc-validator";
 import { verifyFlowerPattern } from "../lib/deep-accuracy-engine";
+import {
+  SUPPORTED_MATERIALS,
+  K_FACTORS,
+  estimateStationsRuleBook,
+  calcDutyClass,
+  SHAFT_DIAMETER_MM,
+  selectBearingForShaft,
+  detectEngineeringWarnings,
+  thicknessCategory,
+  MATERIAL_FORMING_DIFFICULTY,
+  MATERIAL_STATION_CORRECTION,
+  thicknessStationCorrection,
+  classifyComplexity,
+  COMPLEXITY_LABELS,
+} from "../lib/engineering-rules";
 
 const router: IRouter = Router();
 
@@ -61,47 +76,7 @@ interface PipelineResult {
   warnings: string[];
 }
 
-const STATION_RULES: {
-  label: string;
-  minBends: number;
-  maxBends: number;
-  minStations: number;
-  maxStations: number;
-}[] = [
-  { label: "Simple U/C channel",      minBends: 1, maxBends: 2,  minStations: 6,  maxStations: 8  },
-  { label: "Standard C/Z channel",    minBends: 3, maxBends: 4,  minStations: 8,  maxStations: 12 },
-  { label: "Lipped channel / purlin", minBends: 5, maxBends: 6,  minStations: 10, maxStations: 14 },
-  { label: "Shutter / complex",       minBends: 7, maxBends: 10, minStations: 12, maxStations: 18 },
-  { label: "Ultra-complex / multi-return", minBends: 11, maxBends: 999, minStations: 16, maxStations: 24 },
-];
-
-const MATERIAL_STATION_PENALTY: Record<string, number> = {
-  SS: 2, TI: 4, HSLA: 2, HR: 1, GI: 0, CR: 0, AL: 0, MS: 0, CU: 0, PP: 1,
-};
-
-const THICKNESS_STATION_PENALTY = (t: number): number =>
-  t < 0.5 ? 2 : t > 3.0 ? 1 : 0;
-
-function estimateStations(bendCount: number, material: string, thickness: number): {
-  min: number; max: number; recommended: number; complexity: string;
-} {
-  const rule = STATION_RULES.find(r => bendCount >= r.minBends && bendCount <= r.maxBends)
-    ?? STATION_RULES[STATION_RULES.length - 1]!;
-  const penalty = (MATERIAL_STATION_PENALTY[material.toUpperCase()] ?? 0) + THICKNESS_STATION_PENALTY(thickness);
-  return {
-    min: rule.minStations + penalty,
-    max: rule.maxStations + penalty,
-    recommended: Math.round((rule.minStations + rule.maxStations) / 2) + penalty,
-    complexity: rule.label,
-  };
-}
-
-function classifySection(bendCount: number): string {
-  if (bendCount <= 2) return "simple";
-  if (bendCount <= 4) return "standard";
-  if (bendCount <= 6) return "lipped";
-  return "complex";
-}
+// All engineering rules imported from lib/engineering-rules.ts (single source of truth)
 
 interface AutoPipelineBody {
   geometry: ProfileGeometry & {
@@ -115,22 +90,6 @@ interface AutoPipelineBody {
   shaftDiameter?: number;
 }
 
-const MATERIAL_FORMING_DIFFICULTY: Record<string, string> = {
-  GI: "easy", CR: "easy", HR: "medium", SS: "hard", AL: "easy",
-  MS: "medium", CU: "medium", TI: "very-hard", PP: "medium", HSLA: "hard",
-};
-
-const MATERIAL_DUTY_CLASS: Record<string, string> = {
-  GI: "light", CR: "light", HR: "medium", SS: "medium-heavy", AL: "light",
-  MS: "medium", CU: "medium", TI: "heavy", PP: "light", HSLA: "heavy",
-};
-
-function thicknessCategory(t: number): string {
-  if (t < 0.8) return "0.3–0.8mm (ultra-thin)";
-  if (t < 1.2) return "0.8–1.2mm (thin)";
-  if (t < 2.0) return "1.2–2.0mm (medium)";
-  return "2.0mm+ (heavy)";
-}
 
 router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>, res: Response) => {
   const steps: PipelineStep[] = [];
@@ -230,7 +189,8 @@ router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>,
     const sectionHeight = parseFloat((boundingBox.height ?? 0).toFixed(2));
     const bendCount = bends?.length ?? 0;
 
-    const profileType = classifySection(bendCount);
+    const profileComplexity = classifyComplexity(bendCount);
+    const profileType = COMPLEXITY_LABELS[profileComplexity];
     const geNotes: string[] = [];
     if (sectionWidth < 1 || sectionHeight < 1) {
       engines.geometry_engine = { status: "fail", profile_type: profileType, section_width_mm: sectionWidth, section_height_mm: sectionHeight, bend_count: bendCount, total_length_mm: parseFloat(totalLength.toFixed(2)), open_profile: sectionModel === "open", notes: [`Dimensions too small: W=${sectionWidth}mm, H=${sectionHeight}mm — check DXF units`] };
@@ -287,12 +247,8 @@ router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>,
     };
 
     // ─── STEP 5: Strip Width / Neutral Axis ────────────────────────────────
-    // K-factors per DIN 6935
-    const K_FACTORS_MAP: Record<string, number> = {
-      GI: 0.44, CR: 0.44, HR: 0.42, SS: 0.50, AL: 0.43,
-      MS: 0.42, CU: 0.44, TI: 0.50, PP: 0.44, HSLA: 0.45,
-    };
-    const kFactor = K_FACTORS_MAP[effectiveMaterial] ?? 0.44;
+    // K-factors per DIN 6935 — from engineering-rules.ts (shared source of truth)
+    const kFactor = K_FACTORS[effectiveMaterial] ?? 0.44;
 
     let stripWidth = totalLength;
     try {
@@ -320,26 +276,30 @@ router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>,
     }
 
     // ─── STEP 6: Station Estimation ────────────────────────────────────────
-    const stationEst = estimateStations(bendCount, effectiveMaterial, thickness);
+    // Uses rule book formula: stations = bend_count + complexity_factor + thickness_factor + material_factor
+    const stationEst = estimateStationsRuleBook(bendCount, effectiveMaterial, thickness);
     const numStations = stationEst.recommended;
-    const sectionType = classifySection(bendCount);
-    const matPenalty = MATERIAL_STATION_PENALTY[effectiveMaterial] ?? 0;
-    const thkPenalty = THICKNESS_STATION_PENALTY(thickness);
-    notes.push(`Profile type: ${stationEst.complexity} — ${stationEst.min}–${stationEst.max} stations recommended.`);
+    const sectionType = stationEst.complexity;
+    notes.push(`Complexity: ${stationEst.complexity} — Formula: ${stationEst.formula}`);
     engines.station_engine = {
       status: "pass",
       recommended_station_count: numStations,
-      minimum_station_count: stationEst.min,
-      maximum_station_count: stationEst.max,
-      material_penalty: matPenalty,
-      thickness_penalty: thkPenalty,
+      minimum_station_count: stationEst.minimum,
+      maximum_station_count: stationEst.maximum,
+      material_penalty: stationEst.materialCorrection,
+      thickness_penalty: stationEst.thicknessCorrection,
     };
     pass("station-count", "Station Count Estimation", 6, {
       bend_count: bendCount,
-      recommended_stations: numStations,
-      min_stations: stationEst.min,
-      max_stations: stationEst.max,
       complexity: stationEst.complexity,
+      complexity_label: stationEst.complexityLabel,
+      recommended_stations: numStations,
+      min_stations: stationEst.minimum,
+      max_stations: stationEst.maximum,
+      formula: stationEst.formula,
+      complexity_correction: stationEst.complexityCorrection,
+      thickness_correction: stationEst.thicknessCorrection,
+      material_correction: stationEst.materialCorrection,
     });
 
     // ─── STEP 7: Flower Pattern Generation ─────────────────────────────────
@@ -408,53 +368,63 @@ router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>,
     }
 
     // ─── STEP 8: Shaft & Bearing Calculation ───────────────────────────────
+    // PRIMARY: Rule book duty-class table (Section 5 & 6)
+    //   LIGHT→40mm→6208 | MEDIUM→50mm→6210 | HEAVY→60mm→6212 | INDUSTRIAL→70mm→6214
+    // SECONDARY: Shigley's MSS (generateRollTooling) for forming force estimation only.
+    const dutyClass = calcDutyClass(thickness, stationEst.complexity, effectiveMaterial);
+    const ruleBookShaft = SHAFT_DIAMETER_MM[dutyClass];
+    const ruleBookBearing = selectBearingForShaft(ruleBookShaft);
+
     let rollToolingResult: unknown[] = [];
-    let maxShaftDiameter = 40;
-    let primaryBearing = "6210";
     let maxFormingForce = 0;
 
+    // Run Shigley's computation for forming force data (do not override rule-book shaft/bearing)
     try {
       rollToolingResult = generateRollTooling(
         flowerStations as Parameters<typeof generateRollTooling>[0],
         effectiveMaterial,
         thickness,
-        userShaft ?? 40,
+        ruleBookShaft,
         0.05,
         motorKw,
         rpm,
       );
-
-      for (const rt of rollToolingResult as Array<{ shaft?: { selectedDiaMm?: number }; bearing?: { designation?: string }; rollOD?: { upperOD?: number }; formingForceN?: number }>) {
-        if ((rt.shaft?.selectedDiaMm ?? 0) > maxShaftDiameter) maxShaftDiameter = rt.shaft!.selectedDiaMm!;
-        if (rt.bearing?.designation) primaryBearing = rt.bearing.designation;
+      for (const rt of rollToolingResult as Array<{ formingForceN?: number }>) {
         if ((rt.formingForceN ?? 0) > maxFormingForce) maxFormingForce = rt.formingForceN!;
       }
-
-      const dutyClass = MATERIAL_DUTY_CLASS[effectiveMaterial] ?? "medium";
-      notes.push(`Shaft: ${maxShaftDiameter}mm diameter selected (Shigley's MSS method, SF=2.5).`);
-      notes.push(`Bearing: ${primaryBearing} deep-groove (SKF L10 ≥ 20,000hrs verified).`);
-      engines.mechanical_engine = {
-        status: "pass",
-        duty_class: dutyClass,
-        suggested_shaft_diameter_mm: maxShaftDiameter,
-        suggested_bearing_type: primaryBearing,
-        max_forming_force_kn: parseFloat((maxFormingForce / 1000).toFixed(2)),
-        motor_kw: motorKw,
-      };
-      pass("shaft-bearing", "Shaft & Bearing Selection", 8, {
-        shaft_diameter_mm: maxShaftDiameter,
-        bearing_type: primaryBearing,
-        max_forming_force_kn: parseFloat((maxFormingForce / 1000).toFixed(2)),
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Shaft/bearing calculation failed";
-      engines.mechanical_engine = { status: "warn", duty_class: "medium", suggested_shaft_diameter_mm: 50, suggested_bearing_type: "6210", max_forming_force_kn: 0, motor_kw: motorKw, reason: msg };
-      warn("shaft-bearing", "Shaft & Bearing Selection", 8, msg, {
-        shaft_diameter_mm: 50,
-        bearing_type: "6210",
-      });
-      maxShaftDiameter = 50;
+    } catch {
+      /* roll-tooling is secondary — shaft/bearing already determined by rule book */
     }
+
+    // Detect engineering warnings
+    const engWarnings = detectEngineeringWarnings({
+      bendCount,
+      thickness,
+      material: effectiveMaterial,
+      sectionWidth,
+      sectionHeight,
+      isOpen: sectionModel === "open",
+    });
+    for (const w of engWarnings) warnings.push(`[${w.code}] ${w.message}`);
+
+    notes.push(`Duty class: ${dutyClass} → Shaft: ${ruleBookShaft}mm → Bearing: ${ruleBookBearing} (Rule Book Section 5 & 6).`);
+    engines.mechanical_engine = {
+      status: "pass",
+      duty_class: dutyClass,
+      suggested_shaft_diameter_mm: ruleBookShaft,
+      suggested_bearing_type: ruleBookBearing,
+      max_forming_force_kn: parseFloat((maxFormingForce / 1000).toFixed(2)),
+      motor_kw: motorKw,
+    };
+    pass("shaft-bearing", "Shaft & Bearing Selection", 8, {
+      duty_class: dutyClass,
+      shaft_diameter_mm: ruleBookShaft,
+      bearing_type: ruleBookBearing,
+      rule: `${dutyClass} duty → ${ruleBookShaft}mm shaft → ${ruleBookBearing}`,
+      max_forming_force_kn: parseFloat((maxFormingForce / 1000).toFixed(2)),
+    });
+    const maxShaftDiameter = ruleBookShaft;
+    const primaryBearing = ruleBookBearing;
 
     // ─── STEP 9: Motor Power ────────────────────────────────────────────────
     try {
@@ -474,11 +444,11 @@ router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>,
     // ─── STEP 10: Final Pipeline Summary ───────────────────────────────────
     const overallStatus = pipelineFailed ? "fail" : errors.length > 0 ? "partial" : "pass";
     const assumptions = [
-      "Preliminary engineering logic used — expert review required before production",
-      `Station count derived from rule tables (Section 11 spec) for ${stationEst.complexity}`,
-      "Shaft design per Shigley's MSS method with SF=2.5",
-      "Bearing life per SKF L10 method at 1440 RPM, 20,000 hr target",
-      `Strip width per DIN 6935 K-factor (K=${kFactor}) neutral axis method`,
+      "Preliminary engineering estimates — expert review required before production",
+      `Station formula (Rule Book §4): ${stationEst.formula}`,
+      `Duty class (Rule Book §7): ${dutyClass} → ${ruleBookShaft}mm shaft (§5) → ${ruleBookBearing} bearing (§6)`,
+      `Strip width (DIN 6935): K=${kFactor} neutral axis for ${effectiveMaterial}`,
+      "Shigley's MSS used for forming force estimation only — shaft/bearing follow rule book tables",
     ];
     engines.final_summary = {
       status: overallStatus === "fail" ? "fail" : overallStatus === "partial" ? "warn" : "pass",

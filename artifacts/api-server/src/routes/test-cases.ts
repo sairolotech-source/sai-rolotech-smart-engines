@@ -12,8 +12,15 @@
 import { Router, type IRouter } from "express";
 import type { ProfileGeometry } from "../lib/dxf-parser-util";
 import { generateFlowerPattern } from "../lib/power-pattern";
-import { generateRollTooling } from "../lib/roll-tooling";
 import { computeNeutralAxisStripWidth } from "../lib/calc-validator";
+import {
+  SUPPORTED_MATERIALS,
+  K_FACTORS,
+  estimateStationsRuleBook,
+  calcDutyClass,
+  SHAFT_DIAMETER_MM,
+  selectBearingForShaft,
+} from "../lib/engineering-rules";
 
 const router: IRouter = Router();
 
@@ -168,17 +175,7 @@ interface TestCaseResult {
   enginesSummary: Record<string, unknown>;
 }
 
-const SUPPORTED_MATERIALS = ["GI", "CR", "HR", "SS", "AL", "MS", "CU", "TI", "PP", "HSLA"];
-const MATERIAL_PENALTY: Record<string, number> = { SS: 2, TI: 4, HSLA: 2, HR: 1, GI: 0, CR: 0, AL: 0, MS: 0, CU: 0, PP: 1 };
-const THICKNESS_PENALTY = (t: number) => t < 0.5 ? 2 : t > 3.0 ? 1 : 0;
-const STATION_RULES = [
-  { minBends: 1,  maxBends: 2,   min: 6,  max: 8,  label: "Simple U/C channel" },
-  { minBends: 3,  maxBends: 4,   min: 8,  max: 12, label: "Standard C/Z / lipped" },
-  { minBends: 5,  maxBends: 6,   min: 10, max: 14, label: "Lipped channel / purlin" },
-  { minBends: 7,  maxBends: 10,  min: 12, max: 18, label: "Shutter / complex" },
-  { minBends: 11, maxBends: 999, min: 16, max: 24, label: "Ultra-complex / multi-return" },
-];
-const K_FACTORS: Record<string, number> = { GI: 0.44, CR: 0.44, HR: 0.42, SS: 0.50, AL: 0.43, MS: 0.42, CU: 0.44, TI: 0.50, PP: 0.44, HSLA: 0.45 };
+// All engineering rules imported from lib/engineering-rules.ts — single source of truth
 
 function runSingleCase(tc: TestCaseDef): TestCaseResult {
   const stages: StageResult[] = [];
@@ -228,16 +225,16 @@ function runSingleCase(tc: TestCaseDef): TestCaseResult {
   }
 
   // Stage 4: Material validation
-  const material = SUPPORTED_MATERIALS.includes(matRaw) ? matRaw : "GI";
+  const material = (SUPPORTED_MATERIALS as readonly string[]).includes(matRaw) ? matRaw : "GI";
   if (!failed) {
-    if (!SUPPORTED_MATERIALS.includes(matRaw)) {
+    if (!(SUPPORTED_MATERIALS as readonly string[]).includes(matRaw)) {
       stages.push({ id: "material", label: "Input Engine (Material)", status: "warn", reason: `Unknown material '${matRaw}', defaulting to GI` });
     } else {
       stages.push({ id: "material", label: "Input Engine (Material)", status: "pass", data: { material } });
     }
   }
 
-  // Stage 5: Strip width
+  // Stage 5: Strip width — DIN 6935 K-factor neutral axis
   let stripWidth = geometry.totalLength ?? segs.reduce((s, seg) => s + (seg.length ?? 0), 0);
   if (!failed) {
     try {
@@ -246,24 +243,29 @@ function runSingleCase(tc: TestCaseDef): TestCaseResult {
       const bendParams = bends.map(b => ({ angle: b.angle, innerRadius: b.radius }));
       const naResult = computeNeutralAxisStripWidth(bendParams, flanges, kFactor, thickness);
       if (naResult > 0) stripWidth = naResult;
-      stages.push({ id: "strip-width", label: "Roll Logic Engine (Strip Width)", status: "pass", data: { strip_width_mm: parseFloat(stripWidth.toFixed(2)), k_factor: kFactor } });
+      stages.push({ id: "strip-width", label: "Roll Logic Engine (Strip Width)", status: "pass", data: { strip_width_mm: parseFloat(stripWidth.toFixed(2)), k_factor: kFactor, method: "DIN 6935" } });
     } catch {
       stages.push({ id: "strip-width", label: "Roll Logic Engine (Strip Width)", status: "warn", reason: "Fallback to perimeter length" });
     }
   }
 
-  // Stage 6: Station estimation
+  // Stage 6: Station estimation — Rule Book §4 formula
+  //   stations = bend_count + complexity_correction + thickness_correction + material_correction
   let numStations = 0;
-  let stationLabel = "";
-  let stationMin = 0, stationMax = 0;
+  let stationEst: ReturnType<typeof estimateStationsRuleBook> | null = null;
   if (!failed) {
-    const rule = STATION_RULES.find(r => bendCount >= r.minBends && bendCount <= r.maxBends) ?? STATION_RULES[STATION_RULES.length - 1]!;
-    const penalty = (MATERIAL_PENALTY[material] ?? 0) + THICKNESS_PENALTY(thickness);
-    stationMin = rule.min + penalty;
-    stationMax = rule.max + penalty;
-    numStations = Math.round((stationMin + stationMax) / 2);
-    stationLabel = rule.label;
-    stages.push({ id: "station", label: "Station Estimation Engine", status: "pass", data: { recommended: numStations, min: stationMin, max: stationMax, label: stationLabel } });
+    stationEst = estimateStationsRuleBook(bendCount, material, thickness);
+    numStations = stationEst.recommended;
+    stages.push({
+      id: "station", label: "Station Estimation Engine", status: "pass",
+      data: {
+        complexity: stationEst.complexity,
+        recommended: numStations,
+        min: stationEst.minimum,
+        max: stationEst.maximum,
+        formula: stationEst.formula,
+      },
+    });
   }
 
   // Stage 7: Flower pattern
@@ -272,7 +274,7 @@ function runSingleCase(tc: TestCaseDef): TestCaseResult {
     try {
       const fr = generateFlowerPattern(geometry, numStations, "S", material, thickness);
       flowerStations = fr.stations;
-      stages.push({ id: "flower", label: "Flower Pattern Engine", status: "pass", data: { stationsGenerated: flowerStations.length, complexity: stationLabel } });
+      stages.push({ id: "flower", label: "Flower Pattern Engine", status: "pass", data: { stationsGenerated: flowerStations.length, complexity: stationEst?.complexity } });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Flower generation failed";
       stages.push({ id: "flower", label: "Flower Pattern Engine", status: "fail", reason: msg });
@@ -280,25 +282,18 @@ function runSingleCase(tc: TestCaseDef): TestCaseResult {
     }
   }
 
-  // Stage 8: Shaft/Bearing
+  // Stage 8: Shaft & Bearing — Rule Book §5 & §6 (duty-class table)
+  //   LIGHT→40mm→6208 | MEDIUM→50mm→6210 | HEAVY→60mm→6212 | INDUSTRIAL→70mm→6214
   let shaftDiam = 40;
-  let bearingType = "6210";
-  if (!failed && flowerStations.length > 0) {
-    try {
-      const rt = generateRollTooling(
-        flowerStations as Parameters<typeof generateRollTooling>[0],
-        material, thickness, 40, 0.05, 11, 1440,
-      );
-      for (const r of rt as Array<{ shaft?: { selectedDiaMm?: number }; bearing?: { designation?: string } }>) {
-        if ((r.shaft?.selectedDiaMm ?? 0) > shaftDiam) shaftDiam = r.shaft!.selectedDiaMm!;
-        if (r.bearing?.designation) bearingType = r.bearing.designation;
-      }
-      stages.push({ id: "mechanical", label: "Mechanical Selection Engine", status: "pass", data: { shaft_diameter_mm: shaftDiam, bearing_type: bearingType } });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Shaft/bearing calc failed";
-      stages.push({ id: "mechanical", label: "Mechanical Selection Engine", status: "warn", reason: msg });
-      shaftDiam = 50; bearingType = "6210";
-    }
+  let bearingType = "6208";
+  if (!failed && stationEst) {
+    const duty = calcDutyClass(thickness, stationEst.complexity, material);
+    shaftDiam = SHAFT_DIAMETER_MM[duty];
+    bearingType = selectBearingForShaft(shaftDiam);
+    stages.push({
+      id: "mechanical", label: "Mechanical Selection Engine", status: "pass",
+      data: { duty_class: duty, shaft_diameter_mm: shaftDiam, bearing_type: bearingType, rule: `${duty}→${shaftDiam}mm→${bearingType}` },
+    });
   }
 
   // Stage 9: Report
@@ -335,8 +330,10 @@ function runSingleCase(tc: TestCaseDef): TestCaseResult {
     verdictReason,
     enginesSummary: {
       stations: numStations,
-      stationRange: numStations > 0 ? `${stationMin}–${stationMax}` : "N/A",
-      complexity: stationLabel || "N/A",
+      stationRange: stationEst ? `${stationEst.minimum}–${stationEst.maximum}` : "N/A",
+      complexity: stationEst?.complexity ?? "N/A",
+      complexityLabel: stationEst?.complexityLabel ?? "N/A",
+      formula: stationEst?.formula ?? "N/A",
       shaftDiameter_mm: shaftDiam,
       bearing: bearingType,
       stripWidth_mm: parseFloat(stripWidth.toFixed(2)),

@@ -1,0 +1,666 @@
+Bilkul. Neeche **FastAPI backend starter code** de raha hoon jo Replit me directly base project ke roop me use ho sakta hai.
+
+## Project structure
+
+```text
+app/
+├─ main.py
+├─ api/
+│  ├─ routes.py
+│  └─ schemas.py
+├─ engines/
+│  ├─ import_engine.py
+│  ├─ geometry_engine.py
+│  ├─ profile_analysis_engine.py
+│  ├─ input_engine.py
+│  ├─ flower_pattern_engine.py
+│  ├─ station_engine.py
+│  ├─ roll_logic_engine.py
+│  ├─ shaft_engine.py
+│  ├─ bearing_engine.py
+│  └─ duty_engine.py
+├─ utils/
+│  └─ response.py
+requirements.txt
+```
+
+## requirements.txt
+
+```txt
+fastapi
+uvicorn
+python-multipart
+pydantic
+```
+
+## app/main.py
+
+```python
+from fastapi import FastAPI
+from app.api.routes import router
+
+app = FastAPI(
+    title="Roll Forming Auto Design API",
+    version="1.0.0"
+)
+
+app.include_router(router)
+
+@app.get("/")
+def root():
+    return {
+        "status": "pass",
+        "message": "Roll Forming Auto Design API running"
+    }
+```
+
+## app/utils/response.py
+
+```python
+from typing import Any, Dict, Optional
+
+
+def pass_response(engine: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    return {
+        "engine": engine,
+        "status": "pass",
+        **(data or {})
+    }
+
+
+def fail_response(engine: str, reason: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    return {
+        "engine": engine,
+        "status": "fail",
+        "reason": reason,
+        **(data or {})
+    }
+```
+
+## app/api/schemas.py
+
+```python
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+
+
+class AutoModeInput(BaseModel):
+    thickness: float = Field(..., gt=0)
+    material: str
+    # abhi demo ke liye file parse ke badle manual entities bhi de sakte ho
+    entities: Optional[List[Dict[str, Any]]] = None
+
+
+class ManualProfileInput(BaseModel):
+    bend_count: int = Field(..., ge=0)
+    section_width_mm: float = Field(..., gt=0)
+    section_height_mm: float = Field(..., gt=0)
+    thickness: float = Field(..., gt=0)
+    material: str
+    profile_type: Optional[str] = "custom"
+```
+
+## app/engines/import_engine.py
+
+```python
+from typing import Any, Dict, List
+from app.utils.response import pass_response, fail_response
+
+
+def parse_entities(entities: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not entities:
+        return fail_response("file_import_engine", "No geometry/entities received")
+
+    return pass_response("file_import_engine", {
+        "notes": ["Entities accepted"],
+        "geometry": entities,
+        "entity_count": len(entities)
+    })
+```
+
+## app/engines/geometry_engine.py
+
+```python
+from typing import Any, Dict, List
+from app.utils.response import pass_response, fail_response
+
+
+def clean_geometry(geometry: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not geometry:
+        return fail_response("geometry_engine", "Empty geometry")
+
+    # abhi placeholder cleanup
+    cleaned = geometry
+    warnings = []
+
+    # future: open/closed profile detection
+    profile_open = False
+
+    return pass_response("geometry_engine", {
+        "geometry": cleaned,
+        "profile_open": profile_open,
+        "warnings": warnings,
+        "cleaned_entity_count": len(cleaned)
+    })
+```
+
+## app/engines/profile_analysis_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+
+
+def analyze_profile(geometry) -> Dict[str, Any]:
+    if not geometry:
+        return fail_response("profile_analysis_engine", "Geometry missing")
+
+    bend_count = detect_bend_count(geometry)
+    width = estimate_width(geometry)
+    height = estimate_height(geometry)
+    profile_type = classify_profile(bend_count, width, height)
+
+    return pass_response("profile_analysis_engine", {
+        "bend_count": bend_count,
+        "section_width_mm": width,
+        "section_height_mm": height,
+        "profile_type": profile_type,
+        "return_bends_count": 0,
+        "symmetry_status": "unknown"
+    })
+
+
+def detect_bend_count(geometry) -> int:
+    # placeholder
+    return max(len(geometry) - 1, 0)
+
+
+def estimate_width(geometry) -> float:
+    return 100.0
+
+
+def estimate_height(geometry) -> float:
+    return 50.0
+
+
+def classify_profile(bend_count: int, width: float, height: float) -> str:
+    if bend_count <= 2:
+        return "simple_channel"
+    if bend_count <= 6:
+        return "lipped_channel"
+    return "complex_profile"
+```
+
+## app/engines/input_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+
+SUPPORTED_MATERIALS = ["GI", "GP", "CR", "HR", "MS", "SS", "ALUMINIUM"]
+
+
+def validate_inputs(thickness: float, material: str) -> Dict[str, Any]:
+    if thickness is None:
+        return fail_response("input_engine", "Thickness missing")
+
+    if thickness <= 0:
+        return fail_response("input_engine", "Thickness must be greater than zero")
+
+    if not material:
+        return fail_response("input_engine", "Material missing")
+
+    material = material.upper().strip()
+    if material not in SUPPORTED_MATERIALS:
+        return fail_response("input_engine", f"Unsupported material: {material}")
+
+    return pass_response("input_engine", {
+        "sheet_thickness_mm": thickness,
+        "material": material
+    })
+```
+
+## app/engines/flower_pattern_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+
+
+def generate(profile_result: Dict[str, Any], input_result: Dict[str, Any]) -> Dict[str, Any]:
+    bend_count = profile_result.get("bend_count", 0)
+    thickness = input_result.get("sheet_thickness_mm", 0)
+    material = input_result.get("material", "")
+
+    if bend_count <= 0:
+        return fail_response("flower_pattern_engine", "Bend count not detected")
+
+    complexity = classify_complexity(bend_count, thickness, material)
+    passes = estimate_passes(bend_count, complexity)
+
+    return pass_response("flower_pattern_engine", {
+        "forming_complexity_class": complexity,
+        "estimated_forming_passes": passes,
+        "pass_distribution_logic": build_pass_logic(complexity)
+    })
+
+
+def classify_complexity(bend_count: int, thickness: float, material: str) -> str:
+    score = bend_count
+
+    if thickness > 1.2:
+        score += 2
+    elif thickness > 0.8:
+        score += 1
+
+    if material in ["SS", "HR"]:
+        score += 2
+    elif material in ["MS", "CR"]:
+        score += 1
+
+    if score <= 4:
+        return "simple"
+    if score <= 8:
+        return "medium"
+    if score <= 12:
+        return "complex"
+    return "very_complex"
+
+
+def estimate_passes(bend_count: int, complexity: str) -> int:
+    extra = {
+        "simple": 2,
+        "medium": 3,
+        "complex": 5,
+        "very_complex": 7
+    }
+    return bend_count + extra[complexity]
+
+
+def build_pass_logic(complexity: str):
+    logic = ["edge pickup", "pre-form", "intermediate forming", "calibration"]
+    if complexity in ["medium", "complex", "very_complex"]:
+        logic.insert(3, "lip / return bend progression")
+    if complexity in ["complex", "very_complex"]:
+        logic.insert(4, "shape stabilization")
+    return logic
+```
+
+## app/engines/station_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response
+
+
+def estimate(profile_result: Dict[str, Any], input_result: Dict[str, Any], flower_result: Dict[str, Any]) -> Dict[str, Any]:
+    bend_count = profile_result["bend_count"]
+    thickness = input_result["sheet_thickness_mm"]
+    material = input_result["material"]
+    complexity = flower_result["forming_complexity_class"]
+
+    base = bend_count
+
+    complexity_factor = {
+        "simple": 0,
+        "medium": 2,
+        "complex": 4,
+        "very_complex": 6
+    }[complexity]
+
+    thickness_factor = 0
+    if 0.8 <= thickness < 1.2:
+        thickness_factor = 1
+    elif 1.2 <= thickness < 2.0:
+        thickness_factor = 2
+    elif thickness >= 2.0:
+        thickness_factor = 3
+
+    material_factor = 0
+    if material == "MS":
+        material_factor = 1
+    elif material == "SS":
+        material_factor = 2
+
+    recommended = base + complexity_factor + thickness_factor + material_factor
+    minimum = max(recommended - 2, bend_count)
+
+    return pass_response("station_engine", {
+        "min_station_count": minimum,
+        "recommended_station_count": recommended,
+        "reason_log": {
+            "base": base,
+            "complexity_factor": complexity_factor,
+            "thickness_factor": thickness_factor,
+            "material_factor": material_factor
+        },
+        "confidence_level": "medium"
+    })
+```
+
+## app/engines/roll_logic_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response
+
+
+def generate(profile_result: Dict[str, Any], flower_result: Dict[str, Any], station_result: Dict[str, Any]) -> Dict[str, Any]:
+    return pass_response("roll_logic_engine", {
+        "preliminary_roll_design_status": "generated",
+        "roll_group_count_estimate": station_result["recommended_station_count"],
+        "pass_breakdown_notes": flower_result["pass_distribution_logic"],
+        "review_required_flag": True,
+        "notes": [
+            "Preliminary roll design logic only",
+            "Final roll dimensions require expert review"
+        ]
+    })
+```
+
+## app/engines/shaft_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response
+
+
+def select_shaft(profile_result: Dict[str, Any], input_result: Dict[str, Any], station_result: Dict[str, Any]) -> Dict[str, Any]:
+    thickness = input_result["sheet_thickness_mm"]
+    stations = station_result["recommended_station_count"]
+    profile_type = profile_result["profile_type"]
+
+    if thickness < 0.8 and stations <= 6:
+        dia = 40
+        duty = "light"
+    elif thickness <= 1.2 and stations <= 10:
+        dia = 50
+        duty = "medium"
+    elif thickness <= 2.0 or profile_type == "complex_profile":
+        dia = 60
+        duty = "heavy"
+    else:
+        dia = 70
+        duty = "very_heavy"
+
+    return pass_response("shaft_engine", {
+        "suggested_shaft_diameter_mm": dia,
+        "duty_class": duty,
+        "shaft_selection_reason": f"Thickness={thickness}, Stations={stations}, Profile={profile_type}"
+    })
+```
+
+## app/engines/bearing_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response
+
+
+def select_bearing(shaft_result: Dict[str, Any], input_result: Dict[str, Any]) -> Dict[str, Any]:
+    dia = shaft_result["suggested_shaft_diameter_mm"]
+    material = input_result["material"]
+
+    bearing_map = {
+        40: "6208",
+        50: "6210",
+        60: "6212",
+        70: "6214"
+    }
+
+    family = "deep_groove_ball_bearing"
+    if material in ["SS", "HR"] or dia >= 60:
+        family = "taper_roller_or_heavy_duty"
+
+    return pass_response("bearing_engine", {
+        "bearing_family": family,
+        "suggested_bearing_type": bearing_map.get(dia, "manual_review_required"),
+        "reason": f"Selected from shaft diameter {dia} mm"
+    })
+```
+
+## app/engines/duty_engine.py
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response
+
+
+def classify(profile_result: Dict[str, Any], input_result: Dict[str, Any], station_result: Dict[str, Any], shaft_result: Dict[str, Any]) -> Dict[str, Any]:
+    thickness = input_result["sheet_thickness_mm"]
+    stations = station_result["recommended_station_count"]
+    shaft = shaft_result["suggested_shaft_diameter_mm"]
+
+    if thickness < 0.8 and stations <= 6 and shaft <= 40:
+        duty = "light"
+    elif thickness <= 1.2 and stations <= 10 and shaft <= 50:
+        duty = "medium"
+    elif thickness <= 2.0 and shaft <= 60:
+        duty = "heavy"
+    else:
+        duty = "industrial"
+
+    return pass_response("duty_engine", {
+        "machine_duty_class": duty,
+        "stand_strength_note": f"{duty} duty stand recommended"
+    })
+```
+
+## app/api/routes.py
+
+```python
+from fastapi import APIRouter
+from app.api.schemas import AutoModeInput, ManualProfileInput
+
+from app.engines.import_engine import parse_entities
+from app.engines.geometry_engine import clean_geometry
+from app.engines.profile_analysis_engine import analyze_profile
+from app.engines.input_engine import validate_inputs
+from app.engines.flower_pattern_engine import generate as generate_flower
+from app.engines.station_engine import estimate as estimate_station
+from app.engines.roll_logic_engine import generate as generate_roll_logic
+from app.engines.shaft_engine import select_shaft
+from app.engines.bearing_engine import select_bearing
+from app.engines.duty_engine import classify as classify_duty
+
+router = APIRouter(prefix="/api", tags=["roll-forming"])
+
+
+def stop_if_fail(result):
+    return result.get("status") == "fail"
+
+
+@router.post("/auto-mode")
+def run_auto_mode(data: AutoModeInput):
+    import_result = parse_entities(data.entities or [])
+    if stop_if_fail(import_result):
+        return import_result
+
+    geometry_result = clean_geometry(import_result["geometry"])
+    if stop_if_fail(geometry_result):
+        return {
+            "status": "fail",
+            "failed_stage": "geometry_engine",
+            "result": geometry_result
+        }
+
+    profile_result = analyze_profile(geometry_result["geometry"])
+    if stop_if_fail(profile_result):
+        return {
+            "status": "fail",
+            "failed_stage": "profile_analysis_engine",
+            "result": profile_result
+        }
+
+    input_result = validate_inputs(data.thickness, data.material)
+    if stop_if_fail(input_result):
+        return {
+            "status": "fail",
+            "failed_stage": "input_engine",
+            "result": input_result
+        }
+
+    flower_result = generate_flower(profile_result, input_result)
+    if stop_if_fail(flower_result):
+        return {
+            "status": "fail",
+            "failed_stage": "flower_pattern_engine",
+            "result": flower_result
+        }
+
+    station_result = estimate_station(profile_result, input_result, flower_result)
+    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
+    shaft_result = select_shaft(profile_result, input_result, station_result)
+    bearing_result = select_bearing(shaft_result, input_result)
+    duty_result = classify_duty(profile_result, input_result, station_result, shaft_result)
+
+    return {
+        "status": "pass",
+        "file_import_engine": import_result,
+        "geometry_engine": geometry_result,
+        "profile_analysis_engine": profile_result,
+        "input_engine": input_result,
+        "flower_pattern_engine": flower_result,
+        "station_engine": station_result,
+        "roll_logic_engine": roll_logic_result,
+        "shaft_engine": shaft_result,
+        "bearing_engine": bearing_result,
+        "duty_engine": duty_result
+    }
+
+
+@router.post("/manual-mode")
+def run_manual_mode(data: ManualProfileInput):
+    input_result = validate_inputs(data.thickness, data.material)
+    if stop_if_fail(input_result):
+        return {
+            "status": "fail",
+            "failed_stage": "input_engine",
+            "result": input_result
+        }
+
+    profile_result = {
+        "status": "pass",
+        "engine": "profile_analysis_engine",
+        "bend_count": data.bend_count,
+        "section_width_mm": data.section_width_mm,
+        "section_height_mm": data.section_height_mm,
+        "profile_type": data.profile_type,
+        "return_bends_count": 0,
+        "symmetry_status": "unknown"
+    }
+
+    flower_result = generate_flower(profile_result, input_result)
+    if stop_if_fail(flower_result):
+        return {
+            "status": "fail",
+            "failed_stage": "flower_pattern_engine",
+            "result": flower_result
+        }
+
+    station_result = estimate_station(profile_result, input_result, flower_result)
+    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
+    shaft_result = select_shaft(profile_result, input_result, station_result)
+    bearing_result = select_bearing(shaft_result, input_result)
+    duty_result = classify_duty(profile_result, input_result, station_result, shaft_result)
+
+    return {
+        "status": "pass",
+        "profile_analysis_engine": profile_result,
+        "input_engine": input_result,
+        "flower_pattern_engine": flower_result,
+        "station_engine": station_result,
+        "roll_logic_engine": roll_logic_result,
+        "shaft_engine": shaft_result,
+        "bearing_engine": bearing_result,
+        "duty_engine": duty_result
+    }
+```
+
+## Replit me run kaise karna hai
+
+Shell me:
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Agar Replit webview use karna ho to `.replit` ya run command me ye set karo:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 3000
+```
+
+## Test sample 1: manual mode
+
+`POST /api/manual-mode`
+
+```json
+{
+  "bend_count": 4,
+  "section_width_mm": 100,
+  "section_height_mm": 50,
+  "thickness": 0.8,
+  "material": "GI",
+  "profile_type": "simple_channel"
+}
+```
+
+## Test sample 2: auto mode
+
+`POST /api/auto-mode`
+
+```json
+{
+  "thickness": 1.0,
+  "material": "MS",
+  "entities": [
+    {"type": "line", "start": [0, 0], "end": [0, 50]},
+    {"type": "line", "start": [0, 50], "end": [100, 50]},
+    {"type": "line", "start": [100, 50], "end": [100, 0]}
+  ]
+}
+```
+
+## Is code me abhi kya strong hai
+
+Ye starter code already ye kaam karta hai:
+
+* auto pipeline separate engines me hai
+* first fail par stop hota hai
+* JSON structured output deta hai
+* manual aur auto dono mode hain
+* shaft, bearing, station, duty basic rules se nikal rahe hain
+
+## Abhi kya pending hai
+
+Ye 3 cheezein abhi actual banani hongi:
+
+**1. real DXF parser**
+`ezdxf` jaisa parser use karke
+
+**2. real geometry measurement**
+width, height, bend angle, open profile detection
+
+**3. real bend detection**
+line-angle change aur arc handling
+
+## Replit ko final command
+
+Ye exact prompt bhi de do:
+
+```text
+Use this FastAPI starter architecture and implement it directly in the project.
+Do not merge all code into one file.
+Keep engines modular.
+Next task:
+1. connect real DXF parsing
+2. implement real geometry width/height detection
+3. implement bend detection from line/arc angle changes
+4. add debug logs for every engine
+5. create test cases for simple channel, lipped channel, and shutter profile
+Do not show fake success if a stage is incomplete.
+```
+
+Agar aap bolo, next message me main iska **DXF parser version** bhi de deta hoon jisme `ezdxf` use hoga.

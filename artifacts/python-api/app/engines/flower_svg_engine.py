@@ -152,8 +152,10 @@ def section_centerline(
             return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
         n_ribs = max(2, min(8, round(web_mm / max(rib_h * 3.5, 1.0))))
         rib_pitch = web_mm / n_ribs
-        arm_run  = rib_h * math.sin(th)
-        arm_rise = rib_h * math.cos(th)
+        # theta=0 (flat): arm_run=rib_h (full horizontal), arm_rise=0 (no vertical)
+        # theta=90 (formed): arm_run=0 (no horizontal spread), arm_rise=rib_h (full height)
+        arm_run  = rib_h * math.cos(th)   # horizontal projection of rib arm
+        arm_rise = rib_h * math.sin(th)   # vertical projection of rib arm
         flat_top_w = max(0.0, rib_pitch - 2.0 * arm_run)
 
         pts_s: List[Tuple[float, float]] = []

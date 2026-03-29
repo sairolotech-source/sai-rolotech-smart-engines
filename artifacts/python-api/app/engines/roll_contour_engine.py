@@ -629,64 +629,79 @@ def _angle_schedule_for_profile(
     n_passes: int,
     profile_type: str,
     has_lips: bool,
+    bend_count: int = 2,
 ) -> List[float]:
     """
-    Profile-aware per-pass angle schedule.
+    Profile-aware per-pass forming-angle schedule.
 
-    Lipped channel / hat section / door frame with lips:
-      Two-phase forming — flanges lead the schedule, lips lag by ~35% of passes.
-      In practice the angle ramp is the same target for flanges; lip rolls
-      engage later (≥ 35% progress) so the early passes let flanges develop
-      before lip rolls contact the strip.
+    Returns a list of `n_passes` floats: the target bend angle (° from flat)
+    at each forming station.  Angle 0 = flat strip; angle = target_deg = fully formed.
 
-    Shutter profile / panel:
-      Standard cubic ease — all ribs form simultaneously (in-line tooling).
-      A slight delay at the start (linear 0→15% over the first 10% of passes)
-      prevents edge marking on thin-gauge slats.
+    The schedule encodes bend-group sequencing implicitly: early passes drive the
+    primary (outer / flange) bend group; later passes engage secondary groups (lips,
+    inner ribs) once the flanges have partially formed.
 
-    Z-section:
-      Asymmetric ease: left flange (upward) forms 10% ahead of right (downward).
-      Modelled here as a slightly steeper early ramp.
+    ─── Profiles ────────────────────────────────────────────────────────────────
+    lipped_channel / hat_section / door_frame:
+      Two-phase forming.  Phase 1 (0→35% of passes): flanges develop to 55%
+      of target using smooth cubic ease; lip / return-lip rolls are retracted.
+      Phase 2 (35→100%): lips engage; angle continues smoothly to 100% target.
+      Sequencing: flange bends lead; lip bends start at pass ≥ ceil(0.35 × n_passes).
 
-    All others:
-      Standard cubic ease.
+    shutter_slat / shutter_profile:
+      Outer-rib-first two-stage ramp.  Stage 1 (0→40% of passes): linear ramp
+      from 0° to 30% of target (outer rib arms engage gently).
+      Stage 2 (40→100%): cubic ease 30%→100% (inner ribs follow outer ribs).
+      bend_count is used to estimate how many outer vs inner ribs form in each stage.
+
+    z_section:
+      Asymmetric ease (left flange leads right by one notch): exponent 1.8 ramp.
+
+    All others (c_channel, u_channel, simple_channel, simple_angle):
+      Standard cubic ease (smoothstep).
+    ─────────────────────────────────────────────────────────────────────────────
     """
     pt = (profile_type or "c_channel").lower().replace(" ", "_")
 
     if pt in ("lipped_channel", "hat_section", "door_frame") and (has_lips or pt == "door_frame"):
+        # Two-phase: flanges lead, lips/returns lag
+        # Bend-group sequencing embedded in schedule shape:
+        #   passes 1 … ceil(0.35×n): flange group only (up to 55% target)
+        #   passes ceil(0.35×n)+1 … n: both flange + lip group (55% → 100%)
         angles: List[float] = []
         for i in range(1, n_passes + 1):
             t = i / n_passes
             if t < 0.35:
-                # Early passes: only flanges engage — gentle cubic progression
                 t_norm = t / 0.35
                 eased = t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.55
             else:
-                # Mid-to-final: lips begin forming; full cubic ease to target
                 t_norm = (t - 0.35) / 0.65
                 eased = 0.55 * target_deg + t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.45
             angles.append(round(eased, 1))
         return angles
 
     if pt in ("shutter_profile", "shutter_slat"):
-        # Shutter slats: outer ribs form first (low angle), inner ribs follow.
-        # Modelled as a two-stage ramp:
-        #   Stage 1 (first 40% of passes): gentle linear ramp 0→30% of target
-        #   Stage 2 (remaining 60%): cubic ease from 30% to 100% of target
-        # This delays inner-rib engagement and prevents edge marking on thin gauge.
+        # Outer-rib-first: outer-rib bend group engages in Stage 1,
+        # inner-rib bend group follows in Stage 2.
+        # Number of outer ribs ≈ bend_count // 2 (each rib has 2 arms).
+        n_outer_bends = max(1, bend_count // 2)
+        n_inner_bends = max(0, bend_count - n_outer_bends)
+        # Stage boundary: 40% of passes for outer ribs
         angles = []
         for i in range(1, n_passes + 1):
             t = i / n_passes
             if t <= 0.40:
+                # Stage 1: outer rib arms form linearly 0→30% target
                 eased = (t / 0.40) * target_deg * 0.30
             else:
+                # Stage 2: inner ribs engage; cubic ease 30%→100% target
                 t_norm = (t - 0.40) / 0.60
                 eased = target_deg * 0.30 + t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.70
             angles.append(round(eased, 1))
         return angles
 
     if pt == "z_section":
-        # Slightly steeper early ramp (left flange leads)
+        # Asymmetric ease: left (upward) flange leads by power-law, right follows
         angles = []
         for i in range(1, n_passes + 1):
             t = i / n_passes
@@ -694,7 +709,7 @@ def _angle_schedule_for_profile(
             angles.append(round(eased, 1))
         return angles
 
-    # Default: standard cubic ease
+    # Default: standard cubic ease (c_channel, u_channel, simple_angle, etc.)
     return _angle_schedule(target_deg, n_passes)
 
 
@@ -774,6 +789,7 @@ def _flat_strip_for_profile(
     bend_count: int,
     lip_mm: float,
     ba_each: float,
+    bend_groups: Optional[List[Dict[str, Any]]] = None,
 ) -> tuple:
     """
     Profile-type-aware flat strip width with neutral-axis bend allowances.
@@ -795,6 +811,36 @@ def _flat_strip_for_profile(
     """
     pt = (profile_type or "c_channel").lower().replace(" ", "_")
 
+    # ── Multi-group: aggregate BA by bend group (different radii per group) ──
+    # When bend_groups is provided, sum BA per group × bend_count for the
+    # authoritative flat-strip formula instead of using a single ba_each.
+    if bend_groups:
+        total_group_ba = sum(g["ba_mm"] * g["bend_count"] for g in bend_groups)
+        def _group_leg(g: Dict[str, Any]) -> float:
+            gid = g["group_id"]
+            cnt = g["bend_count"]
+            if gid in ("rib_arms", "rib_inner"):
+                # Shutter slat: each rib arm ≈ section_h/2
+                return (section_h / 2.0) * cnt
+            elif gid == "flange":
+                return section_h * cnt
+            elif gid in ("lip", "return_lip"):
+                return g.get("leg_mm", section_h * 0.25) * cnt
+            else:
+                return section_h * cnt
+        total_leg_h = sum(_group_leg(g) for g in bend_groups)
+        flat = round(section_w + total_leg_h + total_group_ba, 2)
+        group_terms = "+".join(
+            f"{g['bend_count']}×BA_g({round(g['ba_mm'],3)})[{g['group_id']}]"
+            for g in bend_groups
+        )
+        formula = (
+            f"web({section_w})+legs({round(total_leg_h,2)})"
+            f"+{group_terms}={flat} [multi-group]"
+        )
+        return flat, formula
+
+    # ── Single-group (legacy / simple): profile-type-aware formula ───────────
     if pt in ("c_channel", "u_channel", "simple_channel", "simple_angle", "z_section"):
         n_flanges = min(bend_count, 2)
         flat = round(section_w + n_flanges * section_h + n_flanges * ba_each, 2)
@@ -805,7 +851,7 @@ def _flat_strip_for_profile(
 
     elif pt in ("lipped_channel", "hat_section"):
         n_flanges = 2
-        n_lips    = max(0, bend_count - 2)   # remaining bends after flanges
+        n_lips    = max(0, bend_count - 2)
         flat = round(section_w + n_flanges * section_h + n_lips * lip_mm
                      + bend_count * ba_each, 2)
         formula = (
@@ -815,7 +861,6 @@ def _flat_strip_for_profile(
         )
 
     elif pt == "door_frame":
-        # Door frame: web + 2 flanges + 2 return lips (inward)
         return_lip_mm = lip_mm if lip_mm > 0 else round(section_h * 0.25, 2)
         n_flanges = 2
         n_return_lips = max(0, bend_count - 2)
@@ -828,7 +873,7 @@ def _flat_strip_for_profile(
         )
 
     elif pt in ("shutter_profile", "shutter_slat"):
-        rib_arm_mm = section_h / 2.0   # each arm of a rib ≈ half the rib height
+        rib_arm_mm = section_h / 2.0
         flat = round(section_w + bend_count * rib_arm_mm + bend_count * ba_each, 2)
         formula = (
             f"web({section_w})+{bend_count}×rib_arm({round(rib_arm_mm,2)})"
@@ -837,7 +882,6 @@ def _flat_strip_for_profile(
         )
 
     else:
-        # Complex / fallback — legacy formula
         flat = round(section_w + bend_count * section_h + bend_count * ba_each, 2)
         formula = (
             f"web({section_w})+{bend_count}×segment({section_h})"
@@ -1116,23 +1160,16 @@ def generate_roll_contour(
     angle_with_springback = round(primary_angle + springback, 1)
 
     angles    = _angle_schedule_for_profile(
-        angle_with_springback, forming_passes, profile_type, has_lips
+        angle_with_springback, forming_passes, profile_type, has_lips,
+        bend_count=bend_count,
     )
 
     # ── Effective lip length — prefer explicit value from profile_result ──────
     lip_mm = float(profile_result.get("lip_mm") or
                    (flange_result or {}).get("lip_length_mm") or 0.0)
 
-    # ── True flat strip width — profile-type aware neutral-axis formula ───────
+    # ── Per-station K-factor and BA (computed before bend_groups) ────────────
     ba_each = _bend_allowance(90.0, bend_radius_mm, thickness, material)
-    flat_strip_mm, flat_strip_formula = _flat_strip_for_profile(
-        profile_type=profile_type,
-        section_w=section_w,
-        section_h=section_h,
-        bend_count=bend_count,
-        lip_mm=lip_mm,
-        ba_each=ba_each,
-    )
     # Legacy compat
     total_flange_mm = section_h * max(bend_count, 0)
 
@@ -1196,6 +1233,17 @@ def generate_roll_contour(
             "forming_start_pass": round(forming_passes * 0.40) + 1,
             "forming_end_pass":   forming_passes,
         })
+
+    # ── True flat strip width — profile-type aware; uses per-group BA when available
+    flat_strip_mm, flat_strip_formula = _flat_strip_for_profile(
+        profile_type=profile_type,
+        section_w=section_w,
+        section_h=section_h,
+        bend_count=bend_count,
+        lip_mm=lip_mm,
+        ba_each=ba_each,
+        bend_groups=_bg_early,
+    )
 
     strip_widths = _strip_width_progression(
         section_w, bend_count, thickness, forming_passes,

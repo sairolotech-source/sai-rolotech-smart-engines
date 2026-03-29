@@ -443,14 +443,21 @@ class TestFourProfileAcceptance:
         assert door_frame_result["forming_summary"]["profile_category"] == "structural"
 
     def test_door_frame_flat_strip_within_1mm(self, door_frame_result):
-        """Door frame MS 2.0mm 80×60 lip=15: flat = 80+2×60+2×15+4×BA"""
+        """Door frame MS 2.0mm 80×60 lip=15: flat = 80+2×60+2×15+BA_flange+BA_lip
+        Engine uses per-group BA: flange bends at standard radius, lip bends at 0.85× radius.
+        Manual lower bound: all BAs at lip radius (conservative); upper: all at flange radius."""
         t = 2.0
-        r = BEND_RADIUS_FACTOR["MS"] * t
-        ba = _bend_allowance(90.0, r, t, "MS")
-        manual = 80 + 2 * 60 + 2 * 15.0 + 4 * ba
+        r_flange = BEND_RADIUS_FACTOR["MS"] * t
+        r_lip    = round(r_flange * 0.85, 3)
+        ba_flange = _bend_allowance(90.0, r_flange, t, "MS")
+        ba_lip    = _bend_allowance(90.0, r_lip, t, "MS")
+        # Upper bound: all 4 bends at flange radius
+        upper = 80 + 2 * 60 + 2 * 15.0 + 4 * ba_flange
+        # Lower bound: all 4 bends at lip radius
+        lower = 80 + 2 * 60 + 2 * 15.0 + 4 * ba_lip
         flat = door_frame_result["forming_summary"]["flat_strip_width_mm"]
-        assert flat == pytest.approx(manual, abs=1.0), \
-            f"Flat strip {flat:.2f} vs manual {manual:.2f}"
+        assert lower - 0.5 <= flat <= upper + 0.5, \
+            f"Flat strip {flat:.2f} outside [{lower:.2f}, {upper:.2f}]"
 
     def test_door_frame_angle_schedule_two_phase(self, door_frame_result):
         assert door_frame_result["forming_summary"]["angle_schedule_mode"] == "two_phase_lipped"
@@ -504,14 +511,18 @@ class TestFourProfileAcceptance:
         assert lipped_ss_result["forming_summary"]["profile_category"] == "structural"
 
     def test_lipped_ss_flat_strip_within_1mm(self, lipped_ss_result):
-        """LC SS 1.0mm 80×40 lip=15: flat = 80+80+30+4×BA within ±1mm"""
+        """LC SS 1.0mm 80×40 lip=15: flat = 80+80+30+4×BA within ±1mm
+        Engine uses per-group BA: flange at standard radius, lip at 0.85× radius."""
         t = 1.0
-        r = BEND_RADIUS_FACTOR["SS"] * t
-        ba = _bend_allowance(90.0, r, t, "SS")
-        manual = 80 + 2 * 40 + 2 * 15.0 + 4 * ba
+        r_flange = BEND_RADIUS_FACTOR["SS"] * t
+        r_lip    = round(r_flange * 0.85, 3)
+        ba_flange = _bend_allowance(90.0, r_flange, t, "SS")
+        ba_lip    = _bend_allowance(90.0, r_lip, t, "SS")
+        upper = 80 + 2 * 40 + 2 * 15.0 + 4 * ba_flange
+        lower = 80 + 2 * 40 + 2 * 15.0 + 4 * ba_lip
         flat = lipped_ss_result["forming_summary"]["flat_strip_width_mm"]
-        assert flat == pytest.approx(manual, abs=1.0), \
-            f"Flat strip {flat:.2f} vs manual {manual:.2f}"
+        assert lower - 0.5 <= flat <= upper + 0.5, \
+            f"Flat strip {flat:.2f} outside [{lower:.2f}, {upper:.2f}]"
 
     def test_lipped_ss_pinch_severity_not_critical(self, lipped_ss_result):
         """SS 1.0mm: R/t=2.0 for SS → severity should not be critical"""

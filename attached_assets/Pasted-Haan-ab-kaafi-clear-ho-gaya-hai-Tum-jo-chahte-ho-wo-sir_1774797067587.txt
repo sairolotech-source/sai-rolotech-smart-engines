@@ -1,0 +1,496 @@
+Haan, **ab kaafi clear ho gaya hai**.
+Tum jo chahte ho, wo sirf G-code generator nahi hai — **SolidCAM Turning + manual machinist support + roll tooling workflow** ek saath chahiye.
+
+Tumhari screenshots se ye clear dikh raha hai ki current SolidCAM workflow me ye areas use ho rahe hain:
+
+* **Geometry**
+* **Tool**
+* **Levels**
+* **Technology**
+* **Link**
+* **Misc. parameters**
+* **Feed Points**
+* **Origin position**
+* **Coolant**
+* **Tool change position**
+* **Rough**
+* **Semi-finish/finish**
+* **Strategies**
+* **Break edges**
+* **Toolkit / tool import**
+* **Simulation**
+* **Contour turning operation**
+* **Profile and groove tool setup**
+
+Isliye software ko ab **3 parallel modes** me banana hoga:
+
+## 1. Auto CAM mode
+
+Jahan app khud:
+
+* roll contour padhe
+* tool select kare
+* rough + finish strategy banaye
+* post ke hisaab se G-code de
+
+## 2. SolidCAM-style editable mode
+
+Jahan operator manually change kar sake:
+
+* geometry
+* tool number
+* tool orientation
+* X output direction
+* spindle mode
+* feed mm/rev
+* safety distance
+* rough step-down
+* offset X/Z
+* retract distance
+* finish method
+* passes
+* strategy
+
+## 3. Manual machinist mode
+
+Jahan machine operator ko simple sheet mile:
+
+* kaunsa tool lagana hai
+* tool nose radius kya hai
+* profile/groove tool kaunsa
+* spindle speed
+* CSS ya RPM
+* feed normal / finish
+* rough depth per pass
+* retract distance
+* home move
+* safety distance
+* kis side se cut start hoga
+* finishing kitni passes me hogi
+
+---
+
+# Tumhare software me ab kya-kya add hona chahiye
+
+## A. SolidCAM-style Turning Operation panel
+
+Ye screenshots ke hisaab se replicate karna hai.
+
+### Section 1 — Geometry
+
+* CoordSys
+* contour selection
+* show/modify geometry
+* partial machining
+* geometry limits
+* cutter angle limit
+
+### Section 2 — Tool
+
+* tool type:
+
+  * profile
+  * groove
+  * cutoff
+* tool number
+* tool offset
+* tool orientation
+* turret
+* safety angle
+* holder safety
+* station
+* tool ID
+* X output direction
+* CW/CCW relation
+
+### Section 3 — Levels
+
+* safety distance
+* cut-end safety
+* X/Z custom distances
+* fixture clearance
+* X min/max dia limits
+
+### Section 4 — Technology / Data
+
+* feed mm/min or mm/rev
+* feed normal
+* feed finish
+* feed lead in/out
+* spin mode RPM / m/min
+* finishing speed
+* auto gear switching
+* reference diameter
+* min/max spindle
+* safety parameters
+* holder protection
+
+### Section 5 — Feed Points
+
+* profile-wise feed point table
+* selected profile no.
+* X
+* Z
+* delta
+* feed override
+
+### Section 6 — Rough
+
+* rough type
+* equal steps
+* adaptive step down
+* distance X
+* distance Z
+* retract distance
+* smoothing
+* direction
+* finish on rough geometry option
+
+### Section 7 — Semi-finish / Finish
+
+* semi-finish yes/no
+* finish method
+* stairs method
+* finish on rest material only
+* passes
+* step over
+* compensation
+
+### Section 8 — Strategies
+
+* descending / non-descending motion
+* geometry splitting along Z
+* constant/variable slicing
+* retract each slice
+* roll-in approach
+
+### Section 9 — Break edges
+
+* chamfer / radius break
+* size
+* angle
+* side selection
+
+### Section 10 — Link / Misc parameters
+
+* approach
+* retract
+* M codes
+* coolant on/off
+* dwell
+* optional stop
+* machine notes
+
+---
+
+# B. Toolkit / Tool Library system
+
+Tumhari screenshots me tool import bhi dikh raha hai, isliye app me proper tool library chahiye.
+
+## Tool database me fields:
+
+* Tool no.
+* Description
+* Tool type
+* Holder
+* Insert shape
+* Insert clamping
+* Lead angle
+* insert thickness
+* nose radius
+* cutting direction
+* shank size
+* tool length
+* profile/groove/cutoff type
+
+## Minimum starter library:
+
+* Profile 35° R0.8
+* Profile 35° R0.2
+* Groove tool
+* Cutoff tool
+* Finish profile tool
+
+## Smart recommendation engine:
+
+App khud suggest kare:
+
+* kis groove ke liye profile tool
+* kis narrow slot ke liye groove tool
+* finish pass ke liye nose radius kya ho
+
+---
+
+# C. Manual machinist support
+
+Ye bahut important hai.
+
+Software ko sirf code nahi dena — **manual sheet** bhi deni hai.
+
+## Per-tool setup sheet:
+
+* Tool No.
+* Tool type
+* Holder type
+* insert angle
+* nose radius
+* turret position
+* X output direction
+* recommended offset
+* intended operation:
+
+  * rough contour
+  * finish contour
+  * groove
+  * cutoff
+
+## Per-operation sheet:
+
+* operation name
+* work type
+* start point
+* safe Z
+* rough depth
+* finish allowance
+* finish passes
+* spindle mode
+* speed
+* feed
+* coolant
+* retract style
+* home return
+
+## Operator notes:
+
+* profile side se cut start karo
+* groove bottom pe slow feed
+* finish pass after rough offset remove
+* check insert clearance at hump sides
+* use simulation before run
+
+---
+
+# D. Simulation ko 3 part me banao
+
+## 1. Toolpath simulation
+
+Screenshots me jo turning simulation dikh raha hai, waise:
+
+* stock
+* target
+* tool path
+* rough removal
+* finish contour
+* rest material
+
+## 2. Machine-safe simulation
+
+* X/Z travel
+* retract safe?
+* holder collision risk
+* tool angle mismatch
+* tool wrong side mounted?
+* profile inaccessible zone
+
+## 3. Roll-form contour simulation
+
+* groove contour preview
+* cut result preview
+* upper/lower roll compare
+* rest stock
+* symmetry check
+
+---
+
+# E. Tumhari machine/post ke hisaab se defaults
+
+Ab software me by default ye profile hona chahiye:
+
+### Machine
+
+* `2X_DELTA2`
+
+### Operation type
+
+* `TR_contour`
+
+### Tool style
+
+* profile / groove tools from toolkit
+
+### Feeds and speed
+
+* mm/rev support
+* CSS support
+* spindle cap
+* auto gear switch option
+
+### Output style
+
+* real TAP family
+* tool-specific blocks
+* home moves
+* M4 if same family requires
+* G92 spindle limit
+* G96 CSS
+* G90 absolute
+* G28 U0/W0 return
+
+---
+
+# F. Software ke final modes
+
+## Mode 1 — Quick Auto
+
+User:
+
+* contour select
+* tool choose
+* material
+* rough/finish allowance
+* generate
+
+App:
+
+* operation banaye
+* simulation de
+* G-code de
+
+## Mode 2 — Advanced CAM
+
+SolidCAM-style full editable tabs
+
+## Mode 3 — Operator Mode
+
+Simple screen:
+
+* tool list
+* offsets
+* feed
+* speed
+* step down
+* warnings
+* run checklist
+
+---
+
+# Ye sab banane ke liye exact module list
+
+* `turningOperationEngine.ts`
+* `toolLibraryEngine.ts`
+* `toolSelectionAdvisor.ts`
+* `operationTemplateEngine.ts`
+* `roughStrategyEngine.ts`
+* `finishStrategyEngine.ts`
+* `manualSetupSheetEngine.ts`
+* `turningSimulationEngine.ts`
+* `holderClearanceEngine.ts`
+* `machineChecklistEngine.ts`
+
+---
+
+# Codex ke liye exact master command
+
+PHASE 2.6 / 3 — SOLIDCAM TURNING FEATURE PARITY + MANUAL OPERATOR MODE
+
+Use the uploaded screenshots, real TAP programs, post files, and machine definitions as the source of truth.
+
+Mission:
+Expand the CNC turning workflow so the software supports both:
+
+1. SolidCAM-style editable CAM operation setup
+2. Manual machinist/operator support sheets
+
+Build these feature groups:
+
+A. Turning Operation UI/logic
+Replicate the functional workflow of these sections:
+
+* Geometry
+* Tool
+* Levels
+* Technology
+* Link
+* Misc parameters
+* Feed Points
+* Origin position
+* Coolant
+* Tool change position
+* Rough
+* Semi-finish/finish
+* Strategies
+* Break edges
+
+B. Tool Library / Toolkit
+Add support for:
+
+* tool database
+* profile tools
+* groove tools
+* cutoff tools
+* insert geometry
+* holder geometry
+* cutting direction
+* nose radius
+* shank dimensions
+
+C. Manual Operator Mode
+Generate setup sheets containing:
+
+* tool number
+* tool type
+* offset/orientation
+* speed/feed
+* rough depth
+* finish passes
+* safety distance
+* retract style
+* operation notes
+* home return notes
+
+D. Simulation
+Add:
+
+* stock removal simulation
+* rest material simulation
+* rough + finish preview
+* holder/tool accessibility warnings
+* X/Z safe travel warnings
+
+E. Output
+Use real TAP/post style and produce:
+
+* editable operation data
+* CAM setup sheet
+* machinist sheet
+* final G-code
+* simulation summary
+
+Rules:
+
+* do not build fake UI-only tabs
+* each tab/section must connect to real data and output
+* preserve uploaded machine/post style
+* mark estimated values clearly if not exact
+
+Return:
+
+1. feature audit of what already exists
+2. missing modules
+3. build order
+4. exact files to create or extend
+5. minimal architecture plan
+   Start with audit only.
+
+---
+
+# Mera clear answer
+
+**Haan, saath ki saath SolidCAM wale features bhi add karne chahiye.**
+**Aur haan, manual machinist/operator ko bhi machine chalane layak setup sheet milni chahiye.**
+
+Ye software ka final goal hona chahiye:
+
+**Auto CAM + Editable CAM + Manual Operator Support + Real Simulation + Real Post Output**
+
+Agar chaho, next message me main iska **full screen-by-screen UI blueprint** bana deta hoon — kis tab me kya field hoga, kya default hoga, kya export hoga.

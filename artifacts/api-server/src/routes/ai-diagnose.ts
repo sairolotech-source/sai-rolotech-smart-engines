@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { diagnose, optimizeParameters, type DiagnosisInput, type DefectId } from "../lib/offline-ai-engine";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -40,14 +41,23 @@ router.post("/ai/optimize", (req: Request, res: Response) => {
 });
 
 router.get("/ai/status", (_req: Request, res: Response) => {
+  const hasCodex = !!openai;
+  const openrouterKey = process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"];
+  const codexActive = hasCodex && !!openrouterKey;
+
   res.json({
     online: true,
-    offlineMode: true,
-    engineVersion: "SAI_OFFLINE_v2",
+    offlineMode: !codexActive,
+    engineVersion: "SAI_CODEX_v5.3",
+    activeModel: codexActive ? "openai/codex-mini-latest" : null,
+    provider: codexActive ? "OpenRouter (Replit AI Integrations)" : "offline",
     knowledgeBase: "SAI-KB-v2.0-500patterns",
     defectsSupported: 12,
     accuracyScore: 99,
-    message: "Sai Rolotech Smart Engines Engine — fully offline, no internet needed",
+    codex53Active: codexActive,
+    message: codexActive
+      ? "Codex 5.3 (openai/codex-mini-latest) active via Replit AI Integrations — OpenRouter"
+      : "Sai Rolotech Smart Engines — offline mode",
   });
 });
 

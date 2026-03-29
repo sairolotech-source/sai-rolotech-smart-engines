@@ -11,6 +11,8 @@ const geminiApiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
 const geminiBaseURL = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
 const anthropicApiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
 const anthropicBaseURL = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
+const openrouterBaseURL = process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL;
+const openrouterApiKey = process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY;
 
 let _openai: OpenAI | null = null;
 let _provider: "openai" | "gemini" | "none" = "none";
@@ -19,6 +21,10 @@ if (openaiBaseURL && openaiApiKey) {
   _openai = new OpenAI({ apiKey: openaiApiKey, baseURL: openaiBaseURL });
   _provider = "openai";
   console.log("[AI] OpenAI provider ready (gpt-5.2 / gpt-5.3-codex)");
+} else if (openrouterBaseURL && openrouterApiKey) {
+  _openai = new OpenAI({ apiKey: openrouterApiKey, baseURL: `${openrouterBaseURL}/api/v1` });
+  _provider = "openai";
+  console.log("[AI] OpenRouter provider ready (openai/codex-mini-latest via Replit AI Integrations)");
 } else if (geminiApiKey) {
   const fallbackURL = geminiBaseURL ?? "https://generativelanguage.googleapis.com/v1beta/openai";
   _openai = new OpenAI({ apiKey: geminiApiKey, baseURL: fallbackURL });

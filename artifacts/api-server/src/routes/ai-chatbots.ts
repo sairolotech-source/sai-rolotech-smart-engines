@@ -83,7 +83,7 @@ function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
         ?? process.env["OPEN_ROUTER_"]
         ?? process.env["OPEN_ROUTE"],
       url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`,
-      model: "arcee-ai/trinity-large-preview:free",
+      model: "openai/codex-mini-latest",
       maxTokens: 4096,
       format: "openai",
     },

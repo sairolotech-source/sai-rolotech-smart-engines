@@ -107,7 +107,7 @@ ${SAI_CONFIDENTIALITY_RULES}`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "openai/codex-mini-latest",
       messages,
       max_completion_tokens: 8192,
     });
@@ -190,9 +190,9 @@ ${SAI_CONFIDENTIALITY_RULES}`;
         ?? process.env["OPENROUTER_API_KEY"]
         ?? process.env["OPEN_ROUTER_"]
         ?? process.env["OPEN_ROUTE"],
-      url: "https://openrouter.ai/api/v1/chat/completions",
-      model: "arcee-ai/trinity-large-preview:free",
-      label: "OpenRouter Trinity Large (Free)",
+      url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`,
+      model: "openai/codex-mini-latest",
+      label: "OpenRouter Codex Mini (gpt-5.3-codex)",
     },
     {
       key: process.env["SAMBANOVA_API_KEY"],

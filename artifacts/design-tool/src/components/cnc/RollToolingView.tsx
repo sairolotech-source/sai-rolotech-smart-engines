@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useCncStore, type RollToolingResult, type RollGapInfo, type CamPlan, type CamTool, type CamOperation, type RollTypeInfo, type RollMaterialRec } from "../../store/useCncStore";
+import { useCncStore, MATERIAL_DATABASE, type RollToolingResult, type RollGapInfo, type CamPlan, type CamTool, type CamOperation, type RollTypeInfo, type RollMaterialRec } from "../../store/useCncStore";
 import { AccuracyBadge } from "./AccuracyBadge";
 import { getAccuracyExportText } from "./AccuracyMonitor";
 import { BomView } from "./BomView";
@@ -377,11 +377,18 @@ function RollCard({ rp, side, rollNum, stationLabel, stationNum, rollType, rollM
 }
 
 // ─── Pass Angle Mini Chart ────────────────────────────────────────────────────
-function PassAngleMiniChart({ bendAngles, stationNumber, totalStations }: {
+function PassAngleMiniChart({ bendAngles, stationNumber, totalStations, springbackFactor, materialType }: {
   bendAngles: number[];
   stationNumber: number;
   totalStations: number;
+  springbackFactor?: number;
+  materialType?: string;
 }) {
+  const [showOverbend, setShowOverbend] = useState(false);
+  const sb = springbackFactor ?? 1.0;
+  const sbPct = ((sb - 1) * 100).toFixed(0);
+  const sbColor = sb >= 1.20 ? "#ef4444" : sb >= 1.12 ? "#f59e0b" : "#22c55e";
+
   if (!bendAngles || bendAngles.length === 0) {
     return (
       <div className="rounded border border-zinc-700/50 bg-zinc-900/50 px-3 py-2 text-[9px] text-zinc-600 italic">
@@ -391,13 +398,22 @@ function PassAngleMiniChart({ bendAngles, stationNumber, totalStations }: {
   }
 
   const pct = (stationNumber - 1) / Math.max(totalStations - 1, 1);
-  const maxAngle = Math.max(...bendAngles, 1);
+  const displayAngles = showOverbend ? bendAngles.map(a => a * sb) : bendAngles;
+  const maxAngle = Math.max(...displayAngles, 1);
 
   return (
     <div className="rounded-lg border border-zinc-700/40 bg-zinc-900/50 p-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Pass Angle Schedule</span>
-        <span className="text-[9px] text-zinc-600 ml-auto">Station {stationNumber}/{totalStations} · {(pct * 100).toFixed(0)}% progression</span>
+        {materialType && (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+            style={{ backgroundColor: sbColor + "25", color: sbColor, border: `1px solid ${sbColor}50` }}
+          >
+            {materialType} +{sbPct}% springback
+          </span>
+        )}
+        <span className="text-[9px] text-zinc-600 ml-auto">St {stationNumber}/{totalStations} · {(pct * 100).toFixed(0)}%</span>
       </div>
 
       {/* Progression bar */}
@@ -411,11 +427,30 @@ function PassAngleMiniChart({ bendAngles, stationNumber, totalStations }: {
         />
       </div>
 
+      {/* Toggle: target vs overbend */}
+      <div className="flex gap-1.5 mb-2">
+        <button
+          onClick={() => setShowOverbend(false)}
+          className={`text-[9px] px-2 py-0.5 rounded transition-all ${!showOverbend ? "bg-blue-600/30 text-blue-300 border border-blue-600/50" : "text-zinc-600 border border-zinc-700 hover:border-zinc-500"}`}
+        >
+          Target angle
+        </button>
+        <button
+          onClick={() => setShowOverbend(true)}
+          className={`text-[9px] px-2 py-0.5 rounded transition-all ${showOverbend ? "bg-amber-600/30 text-amber-300 border border-amber-600/50" : "text-zinc-600 border border-zinc-700 hover:border-zinc-500"}`}
+          title={`Overbend by +${sbPct}% to compensate springback`}
+        >
+          Overbend (×{sb.toFixed(2)})
+        </button>
+      </div>
+
       {/* Bend bars */}
       <div className="flex items-end gap-1.5 h-12">
-        {bendAngles.map((angle, i) => {
+        {displayAngles.map((angle, i) => {
           const h = (angle / maxAngle) * 100;
-          const barColor = angle >= 85 && angle <= 95 ? "#22c55e" : angle > 120 ? "#ef4444" : "#f59e0b";
+          const barColor = showOverbend
+            ? "#f59e0b"
+            : angle >= 85 && angle <= 95 ? "#22c55e" : angle > 120 ? "#ef4444" : "#f59e0b";
           return (
             <div key={i} className="flex flex-col items-center flex-1 gap-0.5">
               <span className="text-[8px] font-mono" style={{ color: barColor }}>{angle.toFixed(0)}°</span>
@@ -429,11 +464,25 @@ function PassAngleMiniChart({ bendAngles, stationNumber, totalStations }: {
         })}
       </div>
 
+      {/* Overbend summary row */}
+      {showOverbend && sb > 1.0 && (
+        <div className="mt-2 rounded border border-amber-800/40 bg-amber-950/20 p-1.5 text-[9px] text-amber-300 space-y-0.5">
+          <div className="font-bold">Overbend targets (compensate +{sbPct}% springback):</div>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+            {bendAngles.map((a, i) => (
+              <span key={i} className="font-mono">B{i+1}: {a.toFixed(1)}° → <span className="text-amber-200 font-bold">{(a * sb).toFixed(1)}°</span></span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-2 flex flex-wrap gap-2 text-[8px] text-zinc-600">
-        <span className="text-green-400">■ 85–95° (right angle)</span>
-        <span className="text-amber-400">■ other angles</span>
-        <span className="text-red-400">■ &gt;120° (aggressive)</span>
-        <span className="ml-auto">Springback included in angle values</span>
+        {!showOverbend && <>
+          <span className="text-green-400">■ 85–95° (right angle)</span>
+          <span className="text-amber-400">■ other angles</span>
+          <span className="text-red-400">■ &gt;120° (aggressive)</span>
+        </>}
+        {showOverbend && <span className="text-amber-400">■ overbend target (press tool to this angle, springback will return to target)</span>}
       </div>
     </div>
   );
@@ -451,11 +500,13 @@ function getRollPhase(stIdx: number, total: number): { label: string; color: str
 }
 
 // ─── Station pair ────────────────────────────────────────────────────────────
-function StationRollPair({ rt, totalStations, isExpanded, onToggle }: {
+function StationRollPair({ rt, totalStations, isExpanded, onToggle, springbackFactor, materialType }: {
   rt: RollToolingResult;
   totalStations: number;
   isExpanded: boolean;
   onToggle: () => void;
+  springbackFactor?: number;
+  materialType?: string;
 }) {
   const rp = rt.rollProfile;
   if (!rp) {
@@ -502,6 +553,8 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle }: {
             bendAngles={rt.bendAngles ?? []}
             stationNumber={rt.stationNumber}
             totalStations={totalStations}
+            springbackFactor={springbackFactor}
+            materialType={materialType}
           />
 
           {/* ── STEP 3: Roll Behavior Panel ── */}
@@ -1821,7 +1874,8 @@ function ProfileRulesEngine() {
 type RollView = "integrated" | "stations" | "gap" | "summary" | "mfg" | "cam" | "bom" | "assembly" | "rolltypes" | "rules" | "engineering";
 
 export function RollToolingView() {
-  const { rollTooling, rollGaps, accuracyLog, accuracyThreshold } = useCncStore();
+  const { rollTooling, rollGaps, accuracyLog, accuracyThreshold, materialType } = useCncStore();
+  const springbackFactor = MATERIAL_DATABASE[materialType as keyof typeof MATERIAL_DATABASE]?.springbackFactor ?? 1.0;
   const latestToolingScore = [...accuracyLog].reverse().find(e => e.taskType === "tooling");
   const [expandedStation, setExpandedStation] = useState<number | null>(1);
   const [view, setView] = useState<RollView>("integrated");
@@ -2033,6 +2087,8 @@ export function RollToolingView() {
                 totalStations={rollTooling.length}
                 isExpanded={expandedStation === rt.stationNumber}
                 onToggle={() => setExpandedStation(expandedStation === rt.stationNumber ? null : rt.stationNumber)}
+                springbackFactor={springbackFactor}
+                materialType={materialType}
               />
             ))}
           </>

@@ -272,6 +272,9 @@ export function LeftPanel() {
 
   const postProcessorId = useCncStore(state => state.postProcessorId);
   const localSetPostProcessorId = setPostProcessorId;
+  const stations = useCncStore(state => state.stations);
+  const rollTooling = useCncStore(state => state.rollTooling);
+  const gcodeOutputs = useCncStore(state => state.gcodeOutputs);
   const [confirmDeleteFile, setConfirmDeleteFile] = useState(false);
 
   // ── Line-to-Sheet offset ──────────────────────────────────────────────────
@@ -822,6 +825,99 @@ export function LeftPanel() {
           </div>
         )}
       </div>
+
+      {/* ── OPERATOR NEXT STEP PANEL ── */}
+      {(() => {
+        const hasGeometry = !!geometry;
+        const hasStations = stations.length > 0;
+        const hasTooling = rollTooling.length > 0;
+        const hasGcode = gcodeOutputs.length > 0;
+        const incompleteCount = hasTooling
+          ? rollTooling.filter(rt => !rt.rollProfile || !(rt.bendAngles?.length)).length
+          : 0;
+
+        type Step = { icon: string; label: string; detail: string; color: string; action?: () => void; done: boolean };
+        const steps: Step[] = [
+          {
+            done: hasGeometry,
+            icon: hasGeometry ? "✅" : "①",
+            label: hasGeometry ? `Profile loaded (${geometry?.segments?.length ?? 0} segs)` : "Load a profile",
+            detail: hasGeometry ? "Geometry ready for generation" : "Upload DXF or draw a profile in the Upload section below",
+            color: hasGeometry ? "#22c55e" : "#3b82f6",
+          },
+          {
+            done: hasStations,
+            icon: hasStations ? "✅" : "②",
+            label: hasStations ? `Flower pattern: ${stations.length} stations` : "Run Flower Pattern",
+            detail: hasStations ? "Power Pattern generated — pass schedule ready" : "Click 'Generate Power Pattern' in the Station section",
+            color: hasStations ? "#22c55e" : hasGeometry ? "#f59e0b" : "#52525b",
+          },
+          {
+            done: hasTooling && incompleteCount === 0,
+            icon: hasTooling && incompleteCount === 0 ? "✅" : hasTooling ? "⚠" : "③",
+            label: hasTooling
+              ? incompleteCount > 0 ? `Roll tooling: ${incompleteCount} incomplete` : `Roll tooling: ${rollTooling.length} stations OK`
+              : "Generate Roll Tooling",
+            detail: hasTooling
+              ? incompleteCount > 0 ? `${incompleteCount} station(s) missing profile — use ⟳ Regenerate below` : "All roll profiles complete"
+              : "Click 'Generate Roll Tooling' in the Roll section",
+            color: hasTooling ? (incompleteCount > 0 ? "#f59e0b" : "#22c55e") : hasStations ? "#f59e0b" : "#52525b",
+          },
+          {
+            done: hasGcode,
+            icon: hasGcode ? "✅" : "④",
+            label: hasGcode ? `G-Code: ${gcodeOutputs.length} outputs` : "Generate G-Code",
+            detail: hasGcode ? "G-Code generated — run CNC safety check before export" : "Click 'Generate G-Code' in the G-Code section",
+            color: hasGcode ? "#22c55e" : hasTooling && incompleteCount === 0 ? "#f59e0b" : "#52525b",
+          },
+        ];
+
+        const nextStep = steps.find(s => !s.done);
+
+        if (!nextStep) {
+          return (
+            <div className="mx-3 my-2 rounded-lg border border-emerald-800/50 bg-emerald-950/25 p-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 mb-1.5 flex items-center gap-1">
+                <span>✅</span> Package Ready
+              </div>
+              <div className="text-[10px] text-zinc-300 leading-tight">
+                Profile · Flower · Tooling · G-Code all complete.
+                <span className="text-emerald-300 font-semibold"> Run G-code safety check, then export package.</span>
+              </div>
+              <div className="mt-2 flex gap-1">
+                {steps.map((s, i) => (
+                  <div key={i} className="flex-1 h-1 rounded-full bg-emerald-500" title={s.label} />
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="mx-3 my-2 rounded-lg border border-blue-800/40 bg-blue-950/20 p-2.5">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-blue-400 mb-1.5 flex items-center gap-1">
+              <span>▶</span> Next Step
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-base leading-none flex-shrink-0">{nextStep.icon}</span>
+              <div>
+                <div className="text-[11px] font-semibold text-zinc-100">{nextStep.label}</div>
+                <div className="text-[10px] text-zinc-400 mt-0.5 leading-tight">{nextStep.detail}</div>
+              </div>
+            </div>
+            <div className="mt-2 flex gap-1">
+              {steps.map((s, i) => (
+                <div
+                  key={i}
+                  className="flex-1 h-1 rounded-full"
+                  style={{ backgroundColor: s.done ? "#22c55e" : s === nextStep ? s.color : "#27272a" }}
+                  title={s.label}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── FILE UPLOAD QUICK ACCESS ── */}
       <div className="p-3 border-b border-white/[0.05]">

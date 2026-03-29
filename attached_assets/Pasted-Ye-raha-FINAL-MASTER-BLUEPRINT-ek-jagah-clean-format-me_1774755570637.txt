@@ -1,0 +1,589 @@
+Ye raha **FINAL MASTER BLUEPRINT** — ek jagah clean format me, taaki aap seedha **Replit / developer** ko de sako.
+
+---
+
+# FINAL MASTER BLUEPRINT
+
+## Roll Forming Auto + Semi Auto Engineering App
+
+## 1. Main goal
+
+App ka purpose:
+
+* DXF drawing import kare
+* geometry parse kare
+* width / height / bend detect kare
+* web / flange / lip detect kare
+* profile type classify kare
+* thickness aur material le
+* flower pattern generate kare
+* station count estimate kare
+* shaft / bearing suggest kare
+* roll OD / gap / clearance estimate kare
+* machine layout suggest kare
+* final engineering report banaye
+* PDF export kare
+* debug + test system ho
+* Auto / Semi Auto / Manual review logic ho
+
+---
+
+## 2. Most important truth
+
+**100% blind auto allowed nahi hona chahiye.**
+System ka target hona chahiye:
+
+* **100% safe flow**
+* **high reliability**
+* **fake output zero**
+* **uncertain case me semi-auto**
+* **contradiction case me manual review**
+
+---
+
+## 3. Final mode logic
+
+### Auto Mode
+
+Sirf tab allow ho jab:
+
+* all critical engines pass
+* confidence high ho
+* no blocking contradiction
+
+### Semi Auto Mode
+
+Tab use ho jab:
+
+* result mostly sahi ho
+* but kuch fields confirm karni ho
+
+User confirm kare:
+
+* width
+* height
+* bend count
+* profile type
+* return bends
+* material
+* thickness
+* stations
+* shaft
+* bearing
+
+### Manual Review
+
+Tab use ho jab:
+
+* contradiction ho
+* geometry dirty ho
+* confidence low ho
+* profile complex ho
+* consistency engine fail ho
+
+---
+
+## 4. Final backend architecture
+
+```text
+app/
+├─ main.py
+├─ api/
+│  ├─ routes.py
+│  └─ schemas.py
+├─ engines/
+│  ├─ import_engine.py
+│  ├─ geometry_engine.py
+│  ├─ bend_detection_engine.py
+│  ├─ flange_web_lip_engine.py
+│  ├─ profile_analysis_engine.py
+│  ├─ input_engine.py
+│  ├─ advanced_flower_engine.py
+│  ├─ station_engine.py
+│  ├─ roll_logic_engine.py
+│  ├─ shaft_engine.py
+│  ├─ bearing_engine.py
+│  ├─ duty_engine.py
+│  ├─ roll_design_calc_engine.py
+│  ├─ machine_layout_engine.py
+│  ├─ consistency_engine.py
+│  ├─ final_decision_engine.py
+│  ├─ report_engine.py
+│  ├─ pdf_export_engine.py
+│  ├─ debug_test_engine.py
+│  └─ test_runner_engine.py
+├─ utils/
+│  └─ response.py
+└─ exports/
+```
+
+---
+
+## 5. Engine responsibilities
+
+### import_engine
+
+* DXF read kare
+* LINE / ARC / LWPOLYLINE / POLYLINE parse kare
+* normalized geometry JSON de
+
+### geometry_engine
+
+* geometry clean kare
+* duplicates remove kare
+* bbox nikale
+* open/usable state bataye
+
+### bend_detection_engine
+
+* point chains banaye
+* angle change nikaale
+* actual bends count kare
+* return / sharp bends detect kare
+
+### flange_web_lip_engine
+
+* web detect kare
+* flanges detect kare
+* lips detect kare
+* symmetry detect kare
+* section type classify kare
+
+### profile_analysis_engine
+
+* width / height
+* bend count
+* return bends
+* section features
+* profile type
+
+### input_engine
+
+* thickness validate
+* material validate
+
+### advanced_flower_engine
+
+* bend + lip + return bend + thickness + material + symmetry se pass logic banaye
+
+### station_engine
+
+* complexity-based station recommendation de
+
+### shaft_engine
+
+* preliminary shaft diameter दे
+
+### bearing_engine
+
+* shaft ke basis par bearing type de
+
+### duty_engine
+
+* light / medium / heavy / industrial class de
+
+### roll_design_calc_engine
+
+* roll OD
+* vertical gap
+* side clearance
+* pass-wise gap plan
+* spacer recommendation
+* calibration note
+
+### machine_layout_engine
+
+* stand spacing
+* shaft center distance
+* entry guide
+* straightener
+* drive
+* motor
+* gearbox
+* frame
+* line length
+
+### consistency_engine
+
+* contradictions pakde
+
+### final_decision_engine
+
+* overall confidence de
+* selected_mode decide kare
+
+### report_engine
+
+* readable report
+* JSON export
+* engineering summary
+
+### pdf_export_engine
+
+* PDF report banaye
+
+### debug_test_engine
+
+* stage-wise pass/fail log de
+
+### test_runner_engine
+
+* standard tests run kare
+
+---
+
+## 6. Confidence model
+
+Total confidence = 100
+
+* import: 20
+* geometry: 20
+* bend detection: 20
+* section features: 15
+* flower logic: 10
+* station logic: 10
+* mechanical: 5
+
+### Final rules
+
+* **85+** → Auto
+* **65 to 84** → Semi Auto
+* **below 65** → Manual review
+* **any blocking contradiction** → Manual review
+
+---
+
+## 7. Every engine must return these fields
+
+```json
+{
+  "engine": "engine_name",
+  "status": "pass",
+  "confidence": "high",
+  "blocking": false,
+  "warnings": [],
+  "assumptions": []
+}
+```
+
+Allowed values:
+
+* status: `pass`, `fail`, `review_required`
+* confidence: `high`, `medium`, `low`
+* blocking: `true`, `false`
+
+---
+
+## 8. Non-negotiable rules
+
+1. Fake result mat do
+2. Missing data ke baad next stage mat chalao
+3. Contradiction ho to block karo
+4. Confidence low ho to auto mat allow karo
+5. User-confirmed semi-auto data ko separate mark karo
+6. Final report ko “preliminary engineering report” hi bolo
+7. Final tooling-approved result ka jhootha claim mat karo
+8. Har calculation ka basis visible ho
+9. Debug output hamesha available ho
+10. Test suite ke bina success mat dikhana
+
+---
+
+## 9. Consistency checks
+
+System ko ye conflicts pakadne chahiye:
+
+* lipped_channel but lips = 0
+* simple_channel but return_bends > 0
+* shutter_profile but station count too low
+* bend_count high but station count too low
+* heavy duty but shaft too small
+* roll OD too close to shaft diameter
+* bend_count = 0
+* width/height invalid
+* unsupported DXF too much
+
+Agar issue blocking ho → manual review
+
+---
+
+## 10. Auto Mode rules
+
+Auto Mode tabhi allow:
+
+* import high confidence
+* geometry high confidence
+* bend detection high confidence
+* section features high confidence
+* no blocking consistency issue
+* final confidence >= 85
+
+Otherwise:
+
+* auto stop
+* semi-auto ya manual
+
+---
+
+## 11. Semi Auto rules
+
+Semi Auto me detected values dikhao:
+
+* section width
+* section height
+* bend count
+* profile type
+* return bends
+* material
+* thickness
+* station count
+* shaft diameter
+* bearing type
+
+User correction ke baad pipeline recalculate karo.
+
+Return:
+
+* `mode = semi_auto_confirmed`
+
+---
+
+## 12. Manual review rules
+
+Manual review तब force karo jab:
+
+* contradictions ho
+* confidence low ho
+* complex section ho
+* DXF unreliable ho
+* bend detection uncertain ho
+* lip detection uncertain ho
+
+---
+
+## 13. Required API routes
+
+### Manual
+
+* `POST /api/manual-mode`
+* `POST /api/manual-mode-debug`
+* `POST /api/manual-mode-export-pdf`
+* `POST /api/manual-mode-download-pdf`
+
+### Auto DXF
+
+* `POST /api/auto-mode-dxf`
+* `POST /api/preview-dxf`
+* `POST /api/auto-mode-dxf-export-pdf` later
+
+### Semi Auto
+
+* `POST /api/semi-auto-confirm`
+
+### Testing
+
+* `GET /api/run-manual-tests`
+
+---
+
+## 14. Required frontend UI
+
+### Panels
+
+1. Manual input form
+2. DXF upload form
+3. DXF preview
+4. Top decision banner
+5. Pipeline status panel
+6. Engineering summary cards
+7. Semi Auto Confirmation panel
+8. Warnings + assumptions
+9. Readable report preview
+10. Engine raw JSON details
+11. Test result panel
+12. PDF export result
+
+---
+
+## 15. Frontend must clearly show
+
+* selected mode
+* overall confidence
+* first failed stage
+* blocking reasons
+* each engine status
+* exact error reason
+* readable report
+* PDF export result
+
+---
+
+## 16. Top banner logic
+
+If final decision exists, show:
+
+* Selected Mode
+* Overall Confidence
+* Blocking Reasons
+* Recommended Next Action
+
+If fail:
+
+* Failed stage
+* Reason
+
+Never show generic “Success” only.
+
+---
+
+## 17. Required test cases
+
+At minimum these tests:
+
+1. simple channel
+2. lipped channel
+3. shutter profile
+4. invalid thickness
+5. empty DXF
+6. unsupported DXF entities
+7. contradiction case
+8. heavy duty with small shaft mismatch
+
+Each test must show:
+
+* input
+* expected
+* actual
+* pass/fail
+* failed stage
+
+---
+
+## 18. Report content
+
+Readable report me include karo:
+
+* Input summary
+* Profile summary
+* Section features
+* Flower pattern summary
+* Station estimation
+* Shaft / bearing / duty
+* Roll design calculations
+* Machine layout
+* Warnings
+* Assumptions
+* Important preliminary note
+
+---
+
+## 19. PDF rules
+
+PDF me clear heading ho:
+
+**Roll Forming Preliminary Engineering Report**
+
+Aur niche note ho:
+
+* This is a preliminary engineering report
+* Final roll tooling design and production approval require expert review
+
+---
+
+## 20. Replit master instruction
+
+Ye exact block Replit ko do:
+
+```text
+Build the roll forming engineering app using a reliability-first architecture.
+
+Main goal:
+Create a safe engineering workflow that supports Auto Mode, Semi Auto Mode, and Manual Review.
+
+Core rules:
+- Do not generate fake engineering results
+- Do not continue after missing or invalid critical data
+- Every engine must return status, confidence, blocking, warnings, and assumptions
+- Add consistency checks to catch contradictions
+- Add a final decision engine to choose auto / semi_auto / manual_review
+- Auto Mode is allowed only when confidence is high and no blocking contradictions exist
+- Semi Auto must show detected values and let the user confirm or correct them
+- Manual review must be forced when contradictions or low confidence exist
+
+Required backend engines:
+- import_engine
+- geometry_engine
+- bend_detection_engine
+- flange_web_lip_engine
+- profile_analysis_engine
+- input_engine
+- advanced_flower_engine
+- station_engine
+- shaft_engine
+- bearing_engine
+- duty_engine
+- roll_design_calc_engine
+- machine_layout_engine
+- consistency_engine
+- final_decision_engine
+- report_engine
+- pdf_export_engine
+- debug_test_engine
+- test_runner_engine
+
+Required frontend features:
+- manual form
+- DXF upload form
+- DXF preview
+- pipeline status
+- decision banner
+- engineering summary
+- semi auto confirmation panel
+- readable report preview
+- raw engine output
+- test result panel
+- PDF export result
+
+Mode rules:
+- 85+ confidence => auto
+- 65 to 84 => semi_auto
+- below 65 => manual_review
+- any blocking consistency conflict => manual_review
+
+Do not optimize for speed first.
+Optimize for reliability, transparency, testability, and engineering safety.
+```
+
+---
+
+## 21. Final practical target
+
+Aapka final app aisa behave kare:
+
+### Case 1: clean simple profile
+
+* Auto mode
+* high confidence
+* direct result
+
+### Case 2: profile mostly clear but lip/bend uncertain
+
+* Semi Auto
+* user confirmation
+* corrected result
+
+### Case 3: contradictory or complex profile
+
+* Manual review
+* no fake result
+
+---
+
+## 22. Final truth
+
+Aapko **100% blind automation** nahi chahiye.
+Aapko **100% controlled engineering flow** chahiye.
+
+Ye blueprint usi ke liye hai.
+
+Agar chaho, agle message me main is pure blueprint ko **ek single ultra master prompt** me compact karke de deta hoon, jo directly copy-paste ke layak ho.

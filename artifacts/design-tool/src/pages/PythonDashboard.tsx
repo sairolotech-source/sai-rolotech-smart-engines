@@ -8,6 +8,7 @@ import { WarningPanel } from "@/components/python-dashboard/WarningPanel";
 import { ReportPreview } from "@/components/python-dashboard/ReportPreview";
 import { TestResults } from "@/components/python-dashboard/TestResults";
 import FinalDecisionPanel from "@/components/python-dashboard/FinalDecisionPanel";
+import SemiAutoPanel from "@/components/python-dashboard/SemiAutoPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -18,32 +19,68 @@ import {
 
 export default function PythonDashboard() {
   const [loading, setLoading] = useState(false);
+  const [semiAutoLoading, setSemiAutoLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [payload, setPayload] = useState<ManualModePayload | null>(null);
   const [pipelineResult, setPipelineResult] = useState<Record<string, unknown> | null>(null);
   const [debugResult, setDebugResult] = useState<{
     first_failed_stage?: string;
-    stage_debug: Array<{ stage: string; status: string; reason?: string | null }>;
+    stage_debug: Array<{ stage: string; status: string; reason?: string | null; selected_mode?: string; overall_confidence?: number; consistency_status?: string; blocking?: boolean; issues_found?: number }>;
   } | null>(null);
   const [testData, setTestData] = useState<Record<string, unknown> | null>(null);
   const [pdfResult, setPdfResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmedNote, setConfirmedNote] = useState<string | null>(null);
 
-  const handleRun = useCallback(async (form: ManualModePayload) => {
-    setLoading(true);
-    setPayload(form);
+  const runDebug = useCallback(async (form: ManualModePayload, isSemiConfirm = false) => {
+    if (isSemiConfirm) setSemiAutoLoading(true);
+    else setLoading(true);
     setPdfResult(null);
     setError(null);
+    setConfirmedNote(null);
     try {
       const data = await runManualModeDebug(form);
       setPipelineResult(data.pipeline_result ?? null);
       setDebugResult(data.debug_result ?? null);
+      if (isSemiConfirm) setConfirmedNote("Pipeline re-run with confirmed values.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Pipeline call failed");
     } finally {
-      setLoading(false);
+      if (isSemiConfirm) setSemiAutoLoading(false);
+      else setLoading(false);
     }
   }, []);
+
+  const handleRun = useCallback((form: ManualModePayload) => {
+    setPayload(form);
+    runDebug(form, false);
+  }, [runDebug]);
+
+  const handleSemiAutoConfirm = useCallback((vals: {
+    bend_count: number;
+    section_width_mm: number;
+    section_height_mm: number;
+    profile_type: string;
+    thickness: number;
+    material: string;
+    return_bends: number;
+    lips_present: boolean;
+    flanges_present: boolean;
+    station_count: number;
+    shaft_mm: number;
+    bearing: string;
+  }) => {
+    const confirmed: ManualModePayload = {
+      bend_count: vals.bend_count,
+      section_width_mm: vals.section_width_mm,
+      section_height_mm: vals.section_height_mm,
+      thickness: vals.thickness,
+      material: vals.material,
+      profile_type: vals.profile_type,
+    };
+    setPayload(confirmed);
+    runDebug(confirmed, true);
+  }, [runDebug]);
 
   const handleRunTests = useCallback(async () => {
     setTestLoading(true);
@@ -88,19 +125,44 @@ export default function PythonDashboard() {
     }
   }, [payload]);
 
-  const reportEngine = (pipelineResult?.report_engine ?? {}) as Record<string, unknown>;
-  const summary = (reportEngine?.engineering_summary ?? {}) as Record<string, unknown>;
-  const readableReport = (reportEngine?.readable_report as string) ?? "";
-  const rollCalc = (pipelineResult?.roll_design_calc_engine ?? {}) as Record<string, unknown>;
-  const warnings = (rollCalc?.warnings as string[]) ?? [];
-  const assumptions = (rollCalc?.assumptions as string[]) ?? [];
-  const finalDecision = (pipelineResult?.final_decision_engine ?? null) as Record<string, unknown> | null;
-  const consistency = (pipelineResult?.consistency_engine ?? null) as Record<string, unknown> | null;
+  const reportEngine    = (pipelineResult?.report_engine ?? {}) as Record<string, unknown>;
+  const summary         = (reportEngine?.engineering_summary ?? {}) as Record<string, unknown>;
+  const readableReport  = (reportEngine?.readable_report as string) ?? "";
+  const rollCalc        = (pipelineResult?.roll_design_calc_engine ?? {}) as Record<string, unknown>;
+  const warnings        = (rollCalc?.warnings as string[]) ?? [];
+  const assumptions     = (rollCalc?.assumptions as string[]) ?? [];
+  const finalDecision   = (pipelineResult?.final_decision_engine ?? null) as Record<string, unknown> | null;
+  const consistency     = (pipelineResult?.consistency_engine ?? null) as Record<string, unknown> | null;
+
+  const profEng   = (pipelineResult?.profile_analysis_engine ?? {}) as Record<string, unknown>;
+  const inputEng  = (pipelineResult?.input_engine ?? {}) as Record<string, unknown>;
+  const stEng     = (pipelineResult?.station_engine ?? {}) as Record<string, unknown>;
+  const shEng     = (pipelineResult?.shaft_engine ?? {}) as Record<string, unknown>;
+  const brEng     = (pipelineResult?.bearing_engine ?? {}) as Record<string, unknown>;
+
+  const selectedMode = (finalDecision?.selected_mode as string) ?? "auto_mode";
+  const showSemiAutoPanel = pipelineResult && (selectedMode === "semi_auto" || selectedMode === "manual_review");
+
+  const detectedValues = {
+    bend_count: profEng.bend_count as number | undefined,
+    section_width_mm: profEng.section_width_mm as number | undefined,
+    section_height_mm: profEng.section_height_mm as number | undefined,
+    profile_type: (profEng.profile_type as string) ?? payload?.profile_type,
+    thickness: inputEng.sheet_thickness_mm as number | undefined,
+    material: inputEng.material as string | undefined,
+    return_bends: profEng.return_bends_count as number | undefined,
+    lips_present: (profEng.profile_type as string) === "lipped_channel",
+    flanges_present: true,
+    station_count: stEng.recommended_station_count as number | undefined,
+    shaft_mm: shEng.suggested_shaft_diameter_mm as number | undefined,
+    bearing: brEng.suggested_bearing_type as string | undefined,
+  };
 
   return (
     <div className="min-h-screen bg-[#08090f] text-gray-200 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
 
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-violet-400" />
@@ -109,17 +171,18 @@ export default function PythonDashboard() {
               <div className="text-[10px] text-gray-500">Sai Rolotech Smart Engines v2.2.0 — FastAPI on port 9000</div>
             </div>
           </div>
-          <a
-            href="/"
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-          >
+          <a href="/" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to App
           </a>
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-500/25 bg-red-500/8 px-4 py-3 text-red-300 text-sm">
-            {error}
+          <div className="rounded-xl border border-red-500/25 bg-red-500/8 px-4 py-3 text-red-300 text-sm">{error}</div>
+        )}
+
+        {confirmedNote && (
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-4 py-3 text-emerald-300 text-sm">
+            ✓ {confirmedNote}
           </div>
         )}
 
@@ -133,6 +196,8 @@ export default function PythonDashboard() {
         )}
 
         <div className="grid lg:grid-cols-3 gap-4">
+
+          {/* LEFT COLUMN */}
           <div className="lg:col-span-1 space-y-4">
             <InputPanel onRun={handleRun} loading={loading} />
 
@@ -149,7 +214,7 @@ export default function PythonDashboard() {
                 </button>
                 <button
                   onClick={handleExportPdf}
-                  disabled={!payload || loading}
+                  disabled={!payload || loading || selectedMode === "semi_auto" || selectedMode === "manual_review"}
                   className="flex items-center justify-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-40 text-violet-300 text-xs font-medium py-2 transition-colors"
                 >
                   <FileJson className="w-3.5 h-3.5" />
@@ -157,12 +222,17 @@ export default function PythonDashboard() {
                 </button>
                 <button
                   onClick={handleDownloadPdf}
-                  disabled={!payload || loading}
+                  disabled={!payload || loading || selectedMode === "semi_auto" || selectedMode === "manual_review"}
                   className="flex items-center justify-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 disabled:opacity-40 text-emerald-300 text-xs font-medium py-2 transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download PDF File
                 </button>
+                {(selectedMode === "semi_auto" || selectedMode === "manual_review") && (
+                  <div className="text-[10px] text-yellow-500/80 text-center px-2">
+                    PDF locked until confirmation is complete
+                  </div>
+                )}
               </div>
             </div>
 
@@ -173,8 +243,22 @@ export default function PythonDashboard() {
             />
           </div>
 
+          {/* RIGHT COLUMN */}
           <div className="lg:col-span-2 space-y-4">
             <FinalDecisionPanel finalDecision={finalDecision as any} consistency={consistency as any} />
+
+            {showSemiAutoPanel && (
+              <SemiAutoPanel
+                selectedMode={selectedMode}
+                overallConfidence={(finalDecision?.overall_confidence as number) ?? 0}
+                blockingReasons={(finalDecision?.blocking_reasons as string[]) ?? []}
+                recommendedAction={(finalDecision?.recommended_next_action as string) ?? ""}
+                detectedValues={detectedValues}
+                onConfirm={handleSemiAutoConfirm}
+                loading={semiAutoLoading}
+              />
+            )}
+
             <SummaryCards summary={summary} />
             <WarningPanel warnings={warnings} assumptions={assumptions} />
 

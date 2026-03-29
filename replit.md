@@ -97,27 +97,46 @@ The project is structured as a pnpm workspace monorepo comprising `api-server`, 
 
 Added alongside the TypeScript/Express API server. Runs at `artifacts/python-api/`.
 
-**Architecture:** Fully modular — each engine is a separate Python file:
+**Architecture:** Fully modular — each engine is a separate Python file (15 total):
 - `app/utils/engineering_rules.py` — Single source of truth (mirrors `engineering-rules.ts`)
 - `app/engines/import_engine.py` — Entity list + real ezdxf DXF file parsing
 - `app/engines/geometry_engine.py` — Bbox, open/closed profile, degenerate segment cleanup
 - `app/engines/profile_analysis_engine.py` — Real bend detection (line angle changes + arcs)
 - `app/engines/input_engine.py` — Thickness + material validation (Rule Book materials)
-- `app/engines/flower_pattern_engine.py` — Forming pass distribution by complexity tier
+- `app/engines/advanced_flower_engine.py` — Forming pass distribution by complexity tier
 - `app/engines/station_engine.py` — Rule Book §4 station formula
 - `app/engines/roll_logic_engine.py` — Roll group breakdown per station
 - `app/engines/shaft_engine.py` — Rule Book §6 duty-class shaft table
 - `app/engines/bearing_engine.py` — Rule Book §7 bearing table
 - `app/engines/duty_engine.py` — Final machine duty classification
+- `app/engines/roll_design_calc_engine.py` — Roll OD, pass gap, spacer, calibration
+- `app/engines/consistency_engine.py` — Cross-validation (14 checks: bend↔profile, shaft↔duty, OD↔shaft, etc.)
+- `app/engines/final_decision_engine.py` — Accuracy Control System: 100-pt confidence score → Auto/Semi Auto/Manual Review mode
+- `app/engines/report_engine.py` — 19-field engineering summary + 10-section readable report
+- `app/engines/pdf_export_engine.py` — ReportLab A4 PDF (3 pages)
 
-**Endpoints:**
-- `GET  /` — Server info + endpoint map
-- `GET  /api/health` — Health check
+**Accuracy Control System (final_decision_engine):**
+- Confidence scoring: import/20 + geometry/20 + bend/20 + section/15 + flower/10 + station/10 + mech/5 = 100
+- ≥85 + consistency pass → AUTO MODE | 65–84 OR blocked → SEMI AUTO | <65 → MANUAL REVIEW
+- consistency_engine runs 14 cross-checks and blocks auto_mode if any critical check fails
+- Semi Auto triggers SemiAutoPanel in frontend — user can review/correct all detected values before re-run
+
+**Endpoints (9 total):**
+- `GET  /api/health` — Health check (lists all 15 engines)
 - `POST /api/auto-mode` — Full pipeline from entity list
 - `POST /api/manual-mode` — Pipeline from manual profile dimensions
 - `POST /api/dxf-upload` — Real DXF file upload → full pipeline (ezdxf)
-- `GET  /docs` — Swagger UI
-- `GET  /redoc` — ReDoc UI
+- `POST /api/auto-mode-export-pdf` — Auto pipeline + PDF result (JSON)
+- `POST /api/manual-mode-export-pdf` — Manual pipeline + PDF result (JSON)
+- `POST /api/manual-mode-download-pdf` — Manual pipeline → download PDF file
+- `POST /api/manual-mode-debug` — Pipeline + per-engine stage debug with mode/confidence
+- `GET  /api/run-tests` — 5 built-in test cases (5/5 pass, shows mode+confidence)
+
+**Frontend Dashboard** (`/python` — no auth required):
+- `FinalDecisionPanel` — Mode badge (green/yellow/red) + 100-pt score + 7-bar confidence breakdown + blocking reasons
+- `SemiAutoPanel` — Appears when mode=semi_auto or manual_review; 12 editable fields with detected↔confirmed columns + "Confirm & Re-run Pipeline" button; PDF export locked until confirmed
+- `PipelineStatusPanel` — 12 engine stages with per-engine mode/confidence/consistency inline info
+- `TestResults` — Shows mode + confidence/100 + consistency_status per test case
 
 **Rule Book parity:** LIGHT→40mm→6208 | MEDIUM→50mm→6210 | HEAVY→60mm→6212 | INDUSTRIAL→70mm→6214
 

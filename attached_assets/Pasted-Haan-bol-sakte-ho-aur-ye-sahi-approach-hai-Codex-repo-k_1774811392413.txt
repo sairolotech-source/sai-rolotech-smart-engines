@@ -1,0 +1,94 @@
+Haan, **bol sakte ho** — aur ye sahi approach hai. Codex repo ko read/edit/run kar sakta hai aur commands/tests chala kar app flows verify kar sakta hai, isliye usse **ek sample profile bana kar full flow check** karwana practical hai. Official Codex docs ke mutabik Codex codebase me kaam kar sakta hai, commands run kar sakta hai, aur app/CLI workflows me project tasks execute kar sakta hai. ([OpenAI][1])
+
+Lekin ek baat important hai:
+Codex ko **“profile banao aur sab sahi hai bol do”** mat bolo.
+Usko ye bolo:
+
+* ek **deterministic test profile** banao
+* us profile se **generate flow** chalao
+* UI/render/export/reload sab verify karo
+* aur **proof do**
+* bina proof ke “fixed” na bole
+
+Aapke case me Codex se ye 6 checks karvao:
+
+1. **Sample profile create/load**
+
+   * simple known shape
+   * thickness fixed
+   * expected tooling path predictable
+
+2. **Generate tooling**
+
+   * no crash
+   * no `undefined`
+   * no `[object Object]`
+
+3. **Display verification**
+
+   * LeftPanel
+   * RollToolingView
+   * DigitalTwinView
+   * Setup sheet
+
+4. **Export verification**
+
+   * CSV/XML/package
+   * missing values = `N/A`
+   * fake `0.000` nahi
+
+5. **Reload verification**
+
+   * app band karke cached state se reopen
+   * stale migration path stable
+
+6. **Score + blockers**
+
+   * honest updated score
+   * agar 85+ nahi hua to exact reason
+
+Isko Codex ko paste karo:
+
+Codex 5.3 — deterministic profile verification run.
+
+Create or load one simple deterministic engineering profile and use it to verify the entire app flow end to end.
+
+Requirements:
+
+1. Use a stable sample profile with known thickness/material and predictable geometry.
+2. Run the full flow:
+
+   * load/import profile
+   * generate tooling
+   * render LeftPanel
+   * render RollToolingView
+   * render DigitalTwinView
+   * render setup sheet / package panels
+   * export CSV/XML/package
+   * reload app from cached state
+3. Verify all of the following:
+
+   * no crash
+   * no `FINAL: undefined`
+   * no `[object Object]`
+   * no fake `0.000` where engineering data is missing
+   * missing optional values show `N/A`
+   * required missing values block downstream flow with a clear reason
+4. Produce proof:
+
+   * exact profile used
+   * steps executed
+   * files involved
+   * runtime results
+   * whether reload remained stable
+   * whether export remained truthful
+5. Return updated honest score out of 100.
+6. Do not say “passed” without runtime proof.
+7. If any step is manual or uncertain, state it explicitly.
+
+Seedha jawab:
+
+**Haan, Codex ko bol sakte ho ek profile bana kar sab cheezein check kare.**
+**Aur ye abhi aapke liye best next step hai.**
+
+[1]: https://openai.com/index/introducing-codex/?utm_source=chatgpt.com "Introducing Codex"

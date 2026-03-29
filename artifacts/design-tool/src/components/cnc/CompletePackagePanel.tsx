@@ -144,7 +144,7 @@ function RollsTab({ rollTooling }: { rollTooling: RollToolingResult[] }) {
                             {[
                               ["K-Factor", `${rp.kFactor}`],
                               ["Neutral Axis", `${rp.neutralAxisOffset.toFixed(3)} mm`],
-                              ["Pass Line Y", `${(rp.passLineY ?? 0).toFixed(3)} mm`],
+                              ["Pass Line Y", rp.passLineY != null && isFinite(rp.passLineY) ? `${rp.passLineY.toFixed(3)} mm` : "N/A"],
                               ["Phase", phase],
                             ].map(([l, v]) => (
                               <div key={l} className="flex justify-between text-[10px] font-mono border-b border-white/[0.04] pb-0.5">

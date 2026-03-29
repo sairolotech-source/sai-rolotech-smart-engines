@@ -530,7 +530,9 @@ export function repairOrSynthesizeRollProfile(
     typeof existing?.upperLatheGcode === "string" && existing.upperLatheGcode.length > 20 &&
     typeof existing?.lowerLatheGcode === "string" && existing.lowerLatheGcode.length > 20;
 
-  if (hasGeometry && hasGcode) return rt;
+  // Only short-circuit if ALL three are present: geometry, gcode, AND passLineY.
+  // A rollProfile with passLineY === undefined (stale localStorage) must be re-synthesized.
+  if (hasGeometry && hasGcode && existing?.passLineY != null && isFinite(existing.passLineY)) return rt;
 
   const upperOD  = rt.upperRollOD  ?? 100;
   const lowerOD  = rt.lowerRollOD  ?? upperOD;

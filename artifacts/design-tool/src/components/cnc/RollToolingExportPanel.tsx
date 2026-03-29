@@ -60,13 +60,13 @@ function buildCopraCSV(rollTooling: ReturnType<typeof useCncStore.getState>["rol
       rt.stationNumber, "UPPER", "forming",
       rp.rollDiameter.toFixed(3), rp.shaftDiameter.toFixed(3), rp.rollWidth.toFixed(3),
       rp.grooveDepth.toFixed(3), rp.gap.toFixed(4), rp.rollDiameter.toFixed(3),
-      (rp.rollDiameter - rp.grooveDepth * 2).toFixed(3), rp.kFactor.toFixed(4), (rp.passLineY ?? 0).toFixed(3),
+      (rp.rollDiameter - rp.grooveDepth * 2).toFixed(3), rp.kFactor.toFixed(4), rp.passLineY != null && isFinite(rp.passLineY) ? rp.passLineY.toFixed(3) : "N/A",
     ].join(","));
     lines.push([
       rt.stationNumber, "LOWER", "forming",
       rp.rollDiameter.toFixed(3), rp.shaftDiameter.toFixed(3), rp.rollWidth.toFixed(3),
       "0.000", rp.gap.toFixed(4), rp.rollDiameter.toFixed(3), rp.rollDiameter.toFixed(3),
-      rp.kFactor.toFixed(4), (rp.passLineY ?? 0).toFixed(3),
+      rp.kFactor.toFixed(4), rp.passLineY != null && isFinite(rp.passLineY) ? rp.passLineY.toFixed(3) : "N/A",
     ].join(","));
 
     // Profile coordinates

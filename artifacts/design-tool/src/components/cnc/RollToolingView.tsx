@@ -646,7 +646,7 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle, springbackFa
                   <div className="bg-zinc-900/60 border border-orange-900/40 rounded p-2">
                     <div className="text-orange-400 font-semibold mb-0.5">↓ LOWER ROLL</div>
                     <div className="text-zinc-300 leading-tight">{beh.lowerRollAction}</div>
-                    <div className="text-zinc-600 mt-1">Pass line: <span className="text-green-400 font-mono">{(rp.passLineY ?? 0).toFixed(3)} mm</span></div>
+                    <div className="text-zinc-600 mt-1">Pass line: <span className="text-green-400 font-mono">{rp.passLineY != null && isFinite(rp.passLineY) ? rp.passLineY.toFixed(3) + " mm" : "N/A"}</span></div>
                   </div>
                 </div>
 
@@ -729,12 +729,12 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle, springbackFa
           <div className="bg-green-950/40 border border-green-800/50 rounded px-3 py-2 flex flex-wrap items-center gap-3 text-xs">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-green-400 font-mono font-semibold">PASS LINE Y = {(rp.passLineY ?? 0).toFixed(3)} mm</span>
+              <span className="text-green-400 font-mono font-semibold">PASS LINE Y = {rp.passLineY != null && isFinite(rp.passLineY) ? rp.passLineY.toFixed(3) + " mm" : "N/A"}</span>
             </div>
             <span className="text-zinc-500">|</span>
-            <span className="text-zinc-400">Upper center: <span className="text-blue-400 font-mono">+{(rp.upperRollCenterY - (rp.passLineY ?? 0)).toFixed(3)} mm</span></span>
+            <span className="text-zinc-400">Upper center: <span className="text-blue-400 font-mono">{rp.passLineY != null && rp.upperRollCenterY != null ? "+" + (rp.upperRollCenterY - rp.passLineY).toFixed(3) + " mm" : "N/A"}</span></span>
             <span className="text-zinc-600">|</span>
-            <span className="text-zinc-400">Lower center: <span className="text-orange-400 font-mono">{(rp.lowerRollCenterY - (rp.passLineY ?? 0)).toFixed(3)} mm</span></span>
+            <span className="text-zinc-400">Lower center: <span className="text-orange-400 font-mono">{rp.passLineY != null && rp.lowerRollCenterY != null ? (rp.lowerRollCenterY - rp.passLineY).toFixed(3) + " mm" : "N/A"}</span></span>
             <span className="text-zinc-600">|</span>
             <span className="text-zinc-400">K-Factor: <span className="text-amber-400 font-mono">{rp.kFactor}</span></span>
             <span className="text-zinc-600">|</span>
@@ -867,7 +867,7 @@ function ManufacturingView({ rollTooling }: { rollTooling: RollToolingResult[] }
       `  Roll OD        : Ø${rp.rollDiameter.toFixed(3)} mm`,
       `  Roll Width     : ${rp.rollWidth.toFixed(3)} mm`,
       `  K-Factor       : ${rp.kFactor}`,
-      `  Pass Line Y    : ${(rp.passLineY ?? 0).toFixed(3)} mm`,
+      `  Pass Line Y    : ${rp.passLineY != null && isFinite(rp.passLineY) ? rp.passLineY.toFixed(3) + " mm" : "N/A"}`,
       "",
       "  STATION ROLL SCHEDULE",
       `  ${"Stn".padEnd(6)} ${"Label".padEnd(10)} ${"Upper Roll".padEnd(12)} ${"Lower Roll".padEnd(12)} ${"Roll OD".padEnd(12)} ${"Width".padEnd(10)} ${"Gap"}`,
@@ -991,7 +991,7 @@ function ManufacturingView({ rollTooling }: { rollTooling: RollToolingResult[] }
       "  8. Install KM locking nuts + lock washers",
       "",
       "  PASS LINE SETUP",
-      `  Pass Line Height : ${(rp.passLineY ?? 0).toFixed(3)} mm from machine base`,
+      `  Pass Line Height : ${rp.passLineY != null && isFinite(rp.passLineY) ? rp.passLineY.toFixed(3) + " mm" : "N/A"} from machine base`,
       "  Upper roll  : Above pass line (adjustable via screw jack)",
       "  Lower roll  : Fixed at pass line",
       "",

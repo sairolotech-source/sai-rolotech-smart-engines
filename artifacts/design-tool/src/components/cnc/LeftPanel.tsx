@@ -737,7 +737,9 @@ export function LeftPanel() {
       // Build normalized rollTooling: add rollProfile object from flat server fields
       // so RollToolingView/DigitalTwinView never access undefined `rt.rollProfile`.
       const normalizedRollTooling = (result.rollTooling ?? []).map((rt: any) => {
-        if (rt.rollProfile) return rt; // already shaped correctly
+        // Only short-circuit if rollProfile is complete — passLineY must be present and finite.
+        // Stale localStorage data can have rollProfile object but passLineY === undefined.
+        if (rt.rollProfile && rt.rollProfile.passLineY != null && isFinite(rt.rollProfile.passLineY)) return rt;
         const upperOD: number = rt.upperRollOD ?? rt.rollDiameter ?? 100;
         const lowerOD: number = rt.lowerRollOD ?? upperOD;
         const gap: number    = rt.rollGap ?? rt.gap ?? 1;

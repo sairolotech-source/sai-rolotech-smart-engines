@@ -532,7 +532,7 @@ function StationDetail({ rt, station, gap, materialThickness }: {
         <div className="bg-zinc-900 border border-green-900/50 rounded-lg p-3">
           <div className="text-xs font-semibold text-green-400 mb-2">Pass Line & Gap</div>
           <div className="space-y-1 text-xs font-mono">
-            <div className="flex justify-between"><span className="text-zinc-400">Pass Line</span><span className="text-green-300">{formatMM(rp.passLineY ?? 0)} mm</span></div>
+            <div className="flex justify-between"><span className="text-zinc-400">Pass Line</span><span className="text-green-300">{rp.passLineY != null && isFinite(rp.passLineY) ? formatMM(rp.passLineY) + " mm" : "N/A"}</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">Nominal Gap</span><span className="text-amber-400">{formatMM(gap?.nominalGap ?? rp.gap, 4)} mm</span></div>
             <div className="flex justify-between">
               <span className="text-zinc-400">Springback Gap</span>

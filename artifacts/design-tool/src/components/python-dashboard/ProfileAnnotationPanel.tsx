@@ -30,6 +30,7 @@ interface PinchZone {
   zone_type: string;
   x: number; y: number;
   label: string;
+  severity?: string;
 }
 
 interface RollWidthBreakdown {
@@ -393,7 +394,7 @@ export default function ProfileAnnotationPanel({
                            dash={[5, 4]} opacity={0.4} lineCap="round" />;
             })()}
 
-            {/* ── Contact strips (web=emerald, flange=blue, chamfer=amber) ─────── */}
+            {/* ── Contact strips — strip_type-aware colors ──────────────────── */}
             {showZones && (cur?.contact_strips ?? []).map((cs, i) => {
               const a = toCanvas(cs.x_from, cs.y_from);
               const b = toCanvas(cs.x_to,   cs.y_to);
@@ -401,15 +402,25 @@ export default function ProfileAnnotationPanel({
               const ry = Math.min(a.cy, b.cy);
               const rw = Math.abs(b.cx - a.cx) || 4;
               const rh = Math.abs(b.cy - a.cy) || 4;
+              // strip_type → override color regardless of backend color field
+              const STRIP_COLOR: Record<string, string> = {
+                web_contact:       "#10b981",  // emerald
+                flange_contact:    "#3b82f6",  // blue
+                chamfer_contact:   "#f59e0b",  // amber (default)
+                shutter_rib_contact: "#f59e0b",// amber
+                lip_contact:       "#06b6d4",  // cyan
+                rebate_contact:    "#a855f7",  // purple
+              };
+              const fillColor = STRIP_COLOR[cs.strip_type] ?? cs.color ?? "#94a3b8";
               const isWeb     = cs.strip_type === "web_contact";
               const opacity   = isWeb ? 0.14 : 0.11;
               const borderOp  = isWeb ? 0.55 : 0.40;
               return (
                 <Group key={i}>
                   <Rect x={rx} y={ry} width={rw} height={rh}
-                        fill={cs.color} opacity={opacity} />
+                        fill={fillColor} opacity={opacity} />
                   <Rect x={rx} y={ry} width={rw} height={rh}
-                        stroke={cs.color} strokeWidth={0.8} opacity={borderOp} />
+                        stroke={fillColor} strokeWidth={0.8} opacity={borderOp} />
                 </Group>
               );
             })}
@@ -434,21 +445,31 @@ export default function ProfileAnnotationPanel({
               </>
             )}
 
-            {/* ── Pinch zone markers (amber circles at bend corners) ────────── */}
+            {/* ── Pinch zone markers — severity-aware colors ────────────────── */}
             {showPinch && (cur?.pinch_zones ?? []).map((pz, i) => {
               const { cx, cy } = toCanvas(pz.x, pz.y);
               const isFlange = pz.zone_type.includes("flange");
+              // severity: critical → red bold, high → orange, default → amber
+              const isCritical = pz.severity === "critical";
+              const isHigh     = pz.severity === "high";
+              const ringColor  = isCritical ? "#ef4444" : isHigh ? "#f97316" : "#f59e0b";
+              const dotColor   = isCritical ? "#fca5a5" : isHigh ? "#fdba74" : "#fbbf24";
+              const strokeW    = isCritical ? 2.0 : 1.2;
               return (
                 <Group key={i}>
                   <Circle x={cx} y={cy} radius={isFlange ? 5 : 10}
-                          fill="#f59e0b" opacity={0.18} />
+                          fill={ringColor} opacity={0.18} />
                   <Circle x={cx} y={cy} radius={isFlange ? 3 : 5.5}
-                          stroke="#f59e0b" strokeWidth={1.2} opacity={0.7} />
-                  <Circle x={cx} y={cy} radius={1.5} fill="#fbbf24" opacity={0.9} />
+                          stroke={ringColor} strokeWidth={strokeW} opacity={0.85} />
+                  <Circle x={cx} y={cy} radius={1.5} fill={dotColor} opacity={0.9} />
                   <Text
                     x={cx + 8} y={cy - 9}
                     text={pz.label}
-                    fontSize={7.5} fill="#fbbf24" fontFamily="monospace" opacity={0.8}
+                    fontSize={isCritical ? 8 : 7.5}
+                    fill={dotColor}
+                    fontFamily="monospace"
+                    fontStyle={isCritical ? "bold" : "normal"}
+                    opacity={0.9}
                   />
                 </Group>
               );

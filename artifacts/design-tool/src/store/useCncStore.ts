@@ -219,6 +219,7 @@ export interface RollGapInfo {
   upperRollZ: number;
   lowerRollZ: number;
   bendAllowances: number[];
+  clashRiskMarkers?: Array<{ x: number; y: number; severity: string; label?: string }>;
 }
 
 // ─── STEP 3: Roll Behavior types ─────────────────────────────────────────────
@@ -446,6 +447,20 @@ export interface RollToolingResult {
   rollMaterial?: RollMaterialRec;
   // Runtime-populated by API response — may be present if backend fills them
   bendAngles?: number[];
+  // Production-profile tooling sub-object (v2.2+)
+  tooling?: {
+    top_roll_contour?:    Array<{ x: number; y: number }>;
+    bottom_roll_contour?: Array<{ x: number; y: number }>;
+    face_width_mm?:       number;
+    groove_width_mm?:     number;
+    groove_depth_mm?:     number;
+    relief_width_mm?:     number;
+    relief_depth_mm?:     number;
+    shoulder_left_mm?:    number;
+    shoulder_right_mm?:   number;
+    clash_risk_markers?:  Array<{ x: number; y: number; severity: string; label?: string }>;
+    geometry_grade?:      string;
+  };
 }
 
 // ─── Station Profile Status ────────────────────────────────────────────────────
@@ -1079,6 +1094,10 @@ interface CncState {
   rollGaps: RollGapInfo[];
   pythonPipelineSyncedAt: string | null;
   setPythonPipelineSyncedAt: (ts: string | null) => void;
+  profileCategory: string | null;
+  setProfileCategory: (c: string | null) => void;
+  remainingWeaknesses: string[];
+  setRemainingWeaknesses: (w: string[]) => void;
   machineData: MachineData | null;
   motorCalc: MotorCalcResult | null;
   bomResult: BomResult | null;
@@ -1251,6 +1270,10 @@ export const useCncStore = create<CncState>()(persist((set) => ({
   rollTooling: [],
   rollGaps: [],
   pythonPipelineSyncedAt: null,
+  profileCategory: null,
+  setProfileCategory: (c) => set({ profileCategory: c }),
+  remainingWeaknesses: [],
+  setRemainingWeaknesses: (w) => set({ remainingWeaknesses: w }),
   machineData: null,
   motorCalc: null,
   bomResult: null,

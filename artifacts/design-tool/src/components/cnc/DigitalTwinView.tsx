@@ -310,6 +310,30 @@ export function DigitalTwinView() {
         </div>
       </div>
 
+      {/* ── Clash-risk banner — shown when any station has markers ────────── */}
+      {rollGaps.some(g => g.clashRiskMarkers && g.clashRiskMarkers.length > 0) && (
+        <div className="flex-shrink-0 flex items-start gap-2.5 px-4 py-2 border-b border-orange-700/50 bg-orange-950/40">
+          <span className="text-orange-400 text-sm mt-0.5 shrink-0">⚠</span>
+          <div className="min-w-0">
+            <span className="text-orange-300 text-xs font-bold">Clash Risk Detected</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+              {rollGaps.flatMap((g, gi) =>
+                (g.clashRiskMarkers ?? []).map((m, mi) => {
+                  const isCrit = m.severity === "critical";
+                  return (
+                    <span key={`${gi}-${mi}`}
+                      className={`text-[10px] font-mono ${isCrit ? "text-red-400 font-bold" : "text-orange-400"}`}>
+                      {g.label}: {m.label ?? m.severity}
+                      {isCrit && " (!!)"}
+                    </span>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div ref={containerRef} className="flex-shrink-0 overflow-x-auto border-b border-zinc-800" style={{ background: "#07080d" }}>
         <svg width={svgW} height={SVG_H} style={{ display: "block" }}>
           {Array.from({ length: Math.ceil(svgW / 50) }).map((_, i) => (

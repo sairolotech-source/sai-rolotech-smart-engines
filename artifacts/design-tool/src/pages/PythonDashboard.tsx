@@ -32,6 +32,37 @@ import {
 import { buildStationRollProfile } from "@/lib/toolingEngine";
 import type { RollGapInfo } from "@/store/useCncStore";
 
+// ─── Remaining Weaknesses collapsible card ────────────────────────────────────
+function RemainingWeaknessesCard({ weaknesses }: { weaknesses: string[] }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-amber-500/8 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">Remaining Weaknesses</span>
+          <span className="text-[10px] font-mono text-amber-600 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
+            {weaknesses.length}
+          </span>
+        </div>
+        <span className="text-amber-600 text-xs">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 space-y-1.5">
+          {weaknesses.map((w, i) => (
+            <div key={i} className="flex items-start gap-2 text-[11px] text-amber-200/80">
+              <span className="text-amber-500 mt-0.5 shrink-0">⚠</span>
+              <span className="leading-snug">{w}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PythonDashboard() {
   const setNumStations       = useCncStore(s => s.setNumStations);
   const setMaterialType      = useCncStore(s => s.setMaterialType);
@@ -39,6 +70,9 @@ export default function PythonDashboard() {
   const setRollTooling       = useCncStore(s => s.setRollTooling);
   const setRollGaps               = useCncStore(s => s.setRollGaps);
   const setPythonPipelineSyncedAt = useCncStore(s => s.setPythonPipelineSyncedAt);
+  const setProfileCategory        = useCncStore(s => s.setProfileCategory);
+  const setRemainingWeaknesses    = useCncStore(s => s.setRemainingWeaknesses);
+  const remainingWeaknesses       = useCncStore(s => s.remainingWeaknesses);
 
   const [loading, setLoading] = useState(false);
   const [semiAutoLoading, setSemiAutoLoading] = useState(false);
@@ -114,6 +148,22 @@ export default function PythonDashboard() {
       const lowerCenterY  = -((p.shaft_center_lower_mm as number) ?? (lowerRollOD / 2 + nominalGap / 2));
       const isCalibration = (p.stage_type as string) === "calibration";
 
+      // Read pass.tooling sub-dict (production-profile v2.2+)
+      const toolingRaw = p.tooling as Record<string, unknown> | undefined;
+      const tooling = toolingRaw ? {
+        top_roll_contour:    toolingRaw.top_roll_contour    as Array<{ x: number; y: number }> | undefined,
+        bottom_roll_contour: toolingRaw.bottom_roll_contour as Array<{ x: number; y: number }> | undefined,
+        face_width_mm:       toolingRaw.face_width_mm       as number | undefined,
+        groove_width_mm:     toolingRaw.groove_width_mm     as number | undefined,
+        groove_depth_mm:     toolingRaw.groove_depth_mm     as number | undefined,
+        relief_width_mm:     toolingRaw.relief_width_mm     as number | undefined,
+        relief_depth_mm:     toolingRaw.relief_depth_mm     as number | undefined,
+        shoulder_left_mm:    toolingRaw.shoulder_left_mm    as number | undefined,
+        shoulder_right_mm:   toolingRaw.shoulder_right_mm   as number | undefined,
+        clash_risk_markers:  toolingRaw.clash_risk_markers  as Array<{ x: number; y: number; severity: string; label?: string }> | undefined,
+        geometry_grade:      toolingRaw.geometry_grade      as string | undefined,
+      } : undefined;
+
       return {
         stationId:              `python-s${(p.pass_no as number) ?? i + 1}`,
         stationIndex:           i,
@@ -135,6 +185,7 @@ export default function PythonDashboard() {
         profileDepthMm:         grooveDepth,
         bendAngles:             [bendAngleDeg],
         material:               mat,
+        tooling,
         rollProfile: {
           upperRoll,
           lowerRoll,
@@ -180,6 +231,10 @@ export default function PythonDashboard() {
         ? shapely_gap
         : Math.max(0, nominalGap - springbackRatio * grooveDep * 0.05);
 
+      const passToolingRaw = p.tooling as Record<string, unknown> | undefined;
+      const clashRiskMarkers = passToolingRaw?.clash_risk_markers as
+        Array<{ x: number; y: number; severity: string; label?: string }> | undefined;
+
       return {
         stationNumber:  passNo,
         label:          (p.station_label as string) ?? `Station ${passNo}`,
@@ -188,12 +243,19 @@ export default function PythonDashboard() {
         upperRollZ:     0,
         lowerRollZ:     0,
         bendAllowances: [(p.target_angle_deg as number) ?? 0],
+        clashRiskMarkers,
       };
     });
     setRollGaps(rollGaps);
+
+    // ── Profile category + remaining weaknesses from forming_summary ─────────
+    const formingSummary = rollCt?.forming_summary as Record<string, unknown> | undefined;
+    setProfileCategory((formingSummary?.profile_category as string | undefined) ?? null);
+    setRemainingWeaknesses((formingSummary?.remaining_weaknesses as string[] | undefined) ?? []);
+
     setPythonPipelineSyncedAt(new Date().toISOString());
 
-  }, [pipelineResult, setNumStations, setMaterialType, setMaterialThickness, setRollTooling, setRollGaps, setPythonPipelineSyncedAt]);
+  }, [pipelineResult, setNumStations, setMaterialType, setMaterialThickness, setRollTooling, setRollGaps, setPythonPipelineSyncedAt, setProfileCategory, setRemainingWeaknesses]);
 
   const runDebug = useCallback(async (form: ManualModePayload, isSemiConfirm = false) => {
     if (isSemiConfirm) setSemiAutoLoading(true);
@@ -659,6 +721,11 @@ export default function PythonDashboard() {
                   Grade A = manufacturing-grade (Shapely + Machinery's Handbook) · B = validated approximation · C = heuristic fallback · D = placeholder
                 </div>
               </div>
+            )}
+
+            {/* ── Remaining Weaknesses Card ─────────────────────────────── */}
+            {remainingWeaknesses.length > 0 && (
+              <RemainingWeaknessesCard weaknesses={remainingWeaknesses} />
             )}
 
             {/* ── SVG Engineering Tabs ──────────────────────────────────── */}

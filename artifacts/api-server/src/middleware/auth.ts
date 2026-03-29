@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 
 export interface AuthUser {
   uid: string;
@@ -15,12 +16,24 @@ const OFFLINE_TOKENS = [
   "offline-sai-rolotech-local",
 ];
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+}
+
+function isValidToken(token: string): boolean {
+  return OFFLINE_TOKENS.some((t) => timingSafeEqual(token, t));
+}
+
 export async function requireAuth(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const authHeader = req.headers["authorization"];
+  const rawHeader = req.headers["authorization"];
+  // Express may return string | string[] — normalise to string
+  const authHeader = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     res.status(401).json({ error: "Missing or invalid Authorization header" });
     return;
@@ -28,8 +41,12 @@ export async function requireAuth(
 
   const token = authHeader.slice(7);
 
-  if (OFFLINE_TOKENS.includes(token)) {
-    req.authUser = { uid: "offline-sai-rolotech-1164", email: "engineer@sairolotech.local", name: "SAI Engineer" };
+  if (isValidToken(token)) {
+    req.authUser = {
+      uid: "offline-sai-rolotech-1164",
+      email: "engineer@sairolotech.local",
+      name: "SAI Engineer",
+    };
     next();
     return;
   }

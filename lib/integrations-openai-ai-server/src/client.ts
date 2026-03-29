@@ -22,9 +22,11 @@ if (openaiBaseURL && openaiApiKey) {
   _provider = "openai";
   console.log("[AI] OpenAI provider ready (gpt-5.2 / gpt-5.3-codex)");
 } else if (openrouterBaseURL && openrouterApiKey) {
-  _openai = new OpenAI({ apiKey: openrouterApiKey, baseURL: `${openrouterBaseURL}/api/v1` });
+  // Replit AI Integrations proxy: base URL = openrouterBaseURL (NO /api/v1 appended)
+  // Accepted model IDs on this proxy: o4-mini, gpt-4o-mini, gpt-4o
+  _openai = new OpenAI({ apiKey: openrouterApiKey, baseURL: openrouterBaseURL });
   _provider = "openai";
-  console.log("[AI] OpenRouter provider ready (openai/codex-mini-latest via Replit AI Integrations)");
+  console.log("[AI] OpenRouter provider ready (o4-mini / Codex via Replit AI Integrations)");
 } else if (geminiApiKey) {
   const fallbackURL = geminiBaseURL ?? "https://generativelanguage.googleapis.com/v1beta/openai";
   _openai = new OpenAI({ apiKey: geminiApiKey, baseURL: fallbackURL });

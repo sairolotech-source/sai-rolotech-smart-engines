@@ -107,7 +107,7 @@ ${SAI_CONFIDENTIALITY_RULES}`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "openai/codex-mini-latest",
+      model: "o4-mini",
       messages,
       max_completion_tokens: 8192,
     });
@@ -144,14 +144,14 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   const orKey = process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
     ?? process.env["OPENROUTER_API_KEY_"]
     ?? process.env["OPENROUTER_API_KEY"];
-  const orUrl = `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`;
+  const orUrl = `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/chat/completions`;
 
   if (orKey) {
     try {
       const res = await fetch(orUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
-        body: JSON.stringify({ model: "openai/codex-mini-latest", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        body: JSON.stringify({ model: "o4-mini", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
         signal: AbortSignal.timeout(30000),
       });
       if (res.ok) {

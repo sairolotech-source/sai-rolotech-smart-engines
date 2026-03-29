@@ -193,12 +193,22 @@ export function parseDxfContent(content: string): ProfileGeometry {
       if (diff > 180) diff -= 360;
       if (diff < -180) diff += 360;
       if (Math.abs(diff) > 1) {
+        // Use cross product to get signed direction
+        const crossZ = dx1 * dy2 - dy1 * dx2;
+        const signedDiff = crossZ >= 0 ? Math.abs(diff) : -Math.abs(diff);
+        // Detect bend radius from adjacent arc segment if present
+        const prevArc = idx > 0 ? segments[idx - 1] : null;
+        const nextArc = segments[idx + 2] ?? null;
+        const detectedRadius =
+          (prevArc?.type === "arc" ? prevArc.radius : null) ??
+          (nextArc?.type === "arc" ? nextArc.radius : null) ??
+          1.5; // engineering default: 1.5mm for sheet metal line-line junctions
         bends.push({
           angle: Math.abs(diff),
-          radius: 2,
+          radius: detectedRadius,
           segmentIndex: idx,
-          side: diff > 0 ? "left" : "right",
-          direction: diff > 0 ? "up" : "down",
+          side: signedDiff > 0 ? "left" : "right",
+          direction: signedDiff > 0 ? "up" : "down",
         });
       }
     } else if (s1.type === "arc" || s2.type === "arc") {

@@ -34,7 +34,7 @@ async function callOpenAI(
 ): Promise<string | null> {
   if (!openai) return null;
   try {
-    const model = "openai/codex-mini-latest";
+    const model = "o4-mini";
     const res = await openai.chat.completions.create({
       model,
       messages: [

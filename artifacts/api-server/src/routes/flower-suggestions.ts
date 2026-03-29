@@ -266,13 +266,13 @@ async function callCodexForSuggestions(prompt: string): Promise<string | null> {
     ?? process.env["OPENROUTER_API_KEY_"]
     ?? process.env["OPENROUTER_API_KEY"];
   if (!orKey) return null;
-  const orUrl = `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`;
+  const orUrl = `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/chat/completions`;
   try {
     const res = await fetch(orUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
       body: JSON.stringify({
-        model: "openai/codex-mini-latest",
+        model: "o4-mini",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 8192,
         temperature: 0.4,

@@ -66,7 +66,7 @@ router.post("/ai-review", async (req: Request, res: Response) => {
     ];
 
     // Use same pattern as ai-chat.ts — max_completion_tokens, no temperature
-    const model = "openai/codex-mini-latest";
+    const model = "o4-mini";
     const completion = await openai.chat.completions.create({
       model,
       messages,

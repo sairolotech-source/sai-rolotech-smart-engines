@@ -197,7 +197,7 @@ Return ONLY the JSON, no explanation.`;
     try {
       if (openai) {
         const response = await openai.chat.completions.create({
-          model: "openai/codex-mini-latest",
+          model: "o4-mini",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userMsg },
@@ -215,7 +215,7 @@ Return ONLY the JSON, no explanation.`;
         const jsonMatch = aiResult.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]) as PassEngineOutput;
-          res.json({ ...parsed, source: "openai/codex-mini-latest" });
+          res.json({ ...parsed, source: "o4-mini" });
           return;
         }
       } catch {

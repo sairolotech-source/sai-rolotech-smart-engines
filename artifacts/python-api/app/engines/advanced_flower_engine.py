@@ -1,6 +1,11 @@
 from typing import Dict, Any, List
 from app.utils.response import pass_response, fail_response
 
+VALID_SECTION_TYPES = {
+    "simple_channel", "lipped_channel", "z_purlin", "hat_section",
+    "box_section", "complex_section", "shutter_profile", "unknown"
+}
+
 
 def generate_advanced_flower(
     profile_result: Dict[str, Any],
@@ -18,9 +23,14 @@ def generate_advanced_flower(
     section_payload = section_features if isinstance(section_features, dict) else {}
 
     section_type = extract_section_type(section_payload, profile_result)
+    if section_type not in VALID_SECTION_TYPES:
+        section_type = "unknown"
+
     symmetry = extract_symmetry(section_payload)
-    flange_count = len(extract_flanges(section_payload))
-    lip_count = len(extract_lips(section_payload))
+    flanges = extract_flanges(section_payload)
+    lips = extract_lips(section_payload)
+    flange_count = len(flanges)
+    lip_count = len(lips)
     web_length = extract_web_length(section_payload)
 
     thickness = float(input_result.get("sheet_thickness_mm", 0))
@@ -28,6 +38,11 @@ def generate_advanced_flower(
 
     if bend_count <= 0:
         return fail_response("advanced_flower_engine", "Bend count not detected")
+
+    # Extract actual bend angles from profile or infer from section type
+    raw_bends = profile_result.get("bend_angles_deg", [])
+    if not raw_bends or not isinstance(raw_bends, list):
+        raw_bends = _infer_bend_angles(section_type, bend_count, flanges, lips)
 
     complexity_score = calculate_complexity_score(
         bend_count=bend_count,
@@ -58,7 +73,8 @@ def generate_advanced_flower(
         estimated_passes=estimated_passes,
         lip_count=lip_count,
         return_bends=return_bends,
-        symmetry=symmetry
+        symmetry=symmetry,
+        bend_angles=raw_bends
     )
 
     warnings = build_warnings(
@@ -74,10 +90,12 @@ def generate_advanced_flower(
         "complexity_score": complexity_score,
         "forming_complexity_class": complexity_class,
         "estimated_forming_passes": estimated_passes,
-        "pass_distribution_logic": pass_plan,
+        "pass_distribution_logic": [p["label"] for p in pass_plan],
+        "pass_plan": pass_plan,
         "warnings": warnings,
         "assumptions": [
-            "Preliminary rule-based flower logic used",
+            "Per-bend angle arrays are fractional progressions toward target angles",
+            "Calibration passes include 2% springback overbend compensation",
             "Final pass design still needs expert review for production tooling"
         ]
     })
@@ -177,70 +195,137 @@ def estimate_passes(
     return max(passes, bend_count + 2)
 
 
+def _infer_bend_angles(
+    section_type: str,
+    bend_count: int,
+    flanges: list,
+    lips: list
+) -> List[float]:
+    """Return inferred target angles (deg) for each bend when DXF data is unavailable."""
+    if section_type in {"simple_channel", "lipped_channel", "z_purlin"}:
+        flange_angles = [90.0] * min(len(flanges) or 2, bend_count)
+        lip_angles = [90.0] * min(len(lips), bend_count - len(flange_angles))
+        result = flange_angles + lip_angles
+    elif section_type == "hat_section":
+        result = [90.0] * min(4, bend_count)
+    elif section_type in {"box_section", "complex_section"}:
+        result = [90.0] * bend_count
+    else:
+        result = [90.0] * bend_count
+    # Pad or trim to bend_count
+    while len(result) < bend_count:
+        result.append(90.0)
+    return result[:bend_count]
+
+
+def _compute_pass_angle_progression(
+    bend_angles: List[float],
+    num_passes: int,
+    final_pass_offset: int = 2
+) -> List[List[float]]:
+    """
+    For each forming pass (excluding calibration), compute fractional angle targets.
+    Calibration passes use overbend (angle * 1.02) to compensate springback.
+    Returns a list of per-pass angle arrays.
+    """
+    forming_passes = max(1, num_passes - final_pass_offset)
+    result: List[List[float]] = []
+    for p in range(num_passes):
+        if p < forming_passes:
+            pct = (p + 1) / forming_passes
+            pass_angles = [round(a * pct, 2) for a in bend_angles]
+        else:
+            # calibration: target final angle + springback overbend
+            pass_angles = [round(a * 1.02, 2) for a in bend_angles]
+        result.append(pass_angles)
+    return result
+
+
 def build_pass_plan(
     section_type: str,
     complexity_class: str,
     estimated_passes: int,
     lip_count: int,
     return_bends: int,
-    symmetry: str
-) -> List[str]:
-    plan: List[str] = []
+    symmetry: str,
+    bend_angles: List[float] = None
+) -> List[Dict[str, Any]]:
+    """
+    Build a structured pass plan with per-bend numeric angle targets.
+    Returns List[{pass, label, bend_angles_deg, progression_pct, is_calibration}]
+    """
+    if bend_angles is None:
+        bend_angles = []
 
-    plan.append("edge pickup")
-    plan.append("initial leg pre-form")
+    labels: List[str] = []
+    labels.append("edge pickup")
+    labels.append("initial leg pre-form")
 
     if symmetry == "symmetric":
-        plan.append("balanced two-side progression")
+        labels.append("balanced two-side progression")
     else:
-        plan.append("asymmetric side-controlled progression")
+        labels.append("asymmetric side-controlled progression")
 
     if section_type in {"simple_channel", "lipped_channel"}:
-        plan.append("web stabilization")
-        plan.append("main flange angle progression")
+        labels.append("web stabilization")
+        labels.append("main flange angle progression")
 
     if lip_count > 0:
-        plan.append("lip initiation")
-        plan.append("lip angle progression")
+        labels.append("lip initiation")
+        labels.append("lip angle progression")
 
     if return_bends > 0:
-        plan.append("return bend controlled forming")
+        labels.append("return bend controlled forming")
 
     if complexity_class in {"complex", "very_complex"}:
-        plan.append("intermediate shape stabilization")
-        plan.append("progressive closure control")
+        labels.append("intermediate shape stabilization")
+        labels.append("progressive closure control")
 
     if section_type in {"complex_section", "shutter_profile"}:
-        plan.append("multi-feature sequential forming")
+        labels.append("multi-feature sequential forming")
 
-    plan.append("pre-calibration")
-    plan.append("final calibration")
+    labels.append("pre-calibration")
+    labels.append("final calibration")
 
-    return compress_plan_to_target(plan, estimated_passes)
+    # Compress/expand labels to match estimated_passes
+    labels = _compress_labels_to_target(labels, estimated_passes)
+    n = len(labels)
+
+    # Compute per-pass angle arrays
+    calibration_passes = 2 if n >= 4 else 1
+    angle_progressions = _compute_pass_angle_progression(bend_angles, n, calibration_passes)
+
+    plan: List[Dict[str, Any]] = []
+    for i, (label, angles) in enumerate(zip(labels, angle_progressions)):
+        is_cal = i >= (n - calibration_passes)
+        pct = round(100 * (i + 1) / n, 1)
+        plan.append({
+            "pass": i + 1,
+            "label": label,
+            "bend_angles_deg": angles,
+            "progression_pct": pct,
+            "is_calibration": is_cal,
+        })
+
+    return plan
 
 
-def compress_plan_to_target(plan: List[str], target: int) -> List[str]:
-    if len(plan) == target:
-        return plan
-
-    if len(plan) < target:
-        out = list(plan)
+def _compress_labels_to_target(labels: List[str], target: int) -> List[str]:
+    if len(labels) == target:
+        return labels
+    if len(labels) < target:
+        out = list(labels)
         idx = 1
         while len(out) < target:
             out.insert(-2, f"intermediate forming stage {idx}")
             idx += 1
         return out
-
-    essential = []
-    seen = set()
-    for item in plan:
+    seen: set = set()
+    essential: List[str] = []
+    for item in labels:
         if item not in seen:
             essential.append(item)
             seen.add(item)
-
-    if len(essential) <= target:
-        return essential[:target]
-
     return essential[:target]
 
 

@@ -49,14 +49,14 @@ router.get("/ai/status", (_req: Request, res: Response) => {
     online: true,
     offlineMode: !codexActive,
     engineVersion: "SAI_CODEX_v5.3",
-    activeModel: codexActive ? "openai/codex-mini-latest" : null,
+    activeModel: codexActive ? "o4-mini" : null,
     provider: codexActive ? "OpenRouter (Replit AI Integrations)" : "offline",
     knowledgeBase: "SAI-KB-v2.0-500patterns",
     defectsSupported: 12,
     accuracyScore: 99,
     codex53Active: codexActive,
     message: codexActive
-      ? "Codex 5.3 (openai/codex-mini-latest) active via Replit AI Integrations — OpenRouter"
+      ? "o4-mini (Codex) active via Replit AI Integrations — OpenRouter"
       : "Sai Rolotech Smart Engines — offline mode",
   });
 });

@@ -1,0 +1,198 @@
+Perfect 👍
+Main aapko **ready-to-use FULL VIDEO PACKAGE** deta hoon jisse aap 2 minute ka professional demo video bana sakte ho (mobile ya PC se easily).
+
+---
+
+# 🎬 FINAL DEMO VIDEO (READY SCRIPT + TIMELINE)
+
+## ⏱️ Total Duration: 2:00 min
+
+👉 Style: Fast, professional, engineering + automation focus
+
+---
+
+# 🎤 🎥 COMPLETE VOICEOVER SCRIPT
+
+🎬 INTRO (0:00–0:12)
+
+"Yeh hai ek advanced roll forming automation system, jahan sirf ek CAD drawing se complete roll design aur machine setup automatically generate ho jata hai."
+
+---
+
+🎬 STEP 1 – FILE UPLOAD (0:12–0:25)
+
+"Sabse pehle hum DXF file upload karte hain.
+Agar drawing centerline par bani ho, to hum 'Centerline Profile' option enable kar dete hain."
+
+---
+
+🎬 STEP 2 – CENTERLINE CONVERSION (0:25–0:40)
+
+"System automatically centerline ko sheet profile me convert karta hai, jisme thickness dono side equally distribute hoti hai aur exact inner, outer aur final sheet profile generate ho jata hai."
+
+---
+
+🎬 STEP 3 – AUTO ENGINE (0:40–1:05)
+
+"Uske baad system automatic flower pattern generate karta hai, jo progressive bending sequence define karta hai.
+Saath hi required stations aur forming steps bhi calculate ho jate hain."
+
+---
+
+🎬 STEP 4 – ROLL DESIGN (1:05–1:30)
+
+"Har station ke liye upper aur lower roll contours generate hote hain.
+Saath hi roll dimensions, shaft size aur bearing selection bhi automatic calculate ho jata hai."
+
+---
+
+🎬 STEP 5 – EXPORT (1:30–1:50)
+
+"Final output me system DWG drawings, STEP files aur CAM-ready data generate karta hai, jise directly SolidWorks aur SolidCAM me use kiya ja sakta hai."
+
+---
+
+🎬 END (1:50–2:00)
+
+"Is system se design time drastically reduce hota hai aur production process fast aur accurate ban jata hai."
+
+---
+
+# 🎬 SCREEN RECORDING PLAN (VERY IMPORTANT)
+
+👉 Aapko bas ye steps record karne hain:
+
+## 🔹 Scene-wise Recording
+
+### 1. Dashboard open
+
+* App ka main screen dikhao
+* (2–3 sec)
+
+### 2. DXF upload
+
+* File select karo
+* checkbox ON karo (centerline)
+* (5 sec)
+
+### 3. Preview button
+
+* click → preview dikhao
+* colored lines (red/blue/green/black)
+* (8 sec)
+
+### 4. Run Auto Mode
+
+* click karo
+* loading / processing
+* (5 sec)
+
+### 5. Flower + stations
+
+* result scroll karo
+* (8 sec)
+
+### 6. Roll design
+
+* upper/lower profile
+* dimensions
+* (10 sec)
+
+### 7. Export section
+
+* DWG / STEP buttons
+* click (download)
+* (5 sec)
+
+---
+
+# 🎬 VIDEO BANANE KA EASY TARIKA
+
+## Option 1 (Sabse easy)
+
+👉 Mobile se record:
+
+* Screen record ON
+* App use karo
+* baad me voice add karo
+
+## Option 2 (Best quality)
+
+👉 PC par:
+
+* OBS Studio use karo
+* mic se voice record karo
+
+---
+
+# 🎧 VOICE ADD KARNE KE TOOLS
+
+* CapCut (mobile/PC) ⭐ easiest
+* VN Editor
+* Filmora
+
+👉 Bas script copy karo → voice record karo → video par laga do
+
+---
+
+# 🎨 PROFESSIONAL TOUCH ADD KARNE KE LIYE
+
+Add karo:
+
+* background music (light tech)
+* subtitles (important lines)
+* zoom effects
+* cursor highlight
+
+---
+
+# 🧠 PRO TIP (CLIENT IMPACT)
+
+Intro me logo ya naam add karo:
+
+👉 “Sai Rolotech Automation System”
+
+End me:
+
+👉 “Ready for Production Optimization”
+
+---
+
+# 🚀 BONUS – VIDEO TITLE & DESCRIPTION
+
+## Title:
+
+👉 “Roll Forming Automation System | DXF to Roll Design in Seconds”
+
+## Description:
+
+👉 “Convert CAD drawings into complete roll forming setup including flower pattern, roll design, and machine configuration automatically.”
+
+---
+
+# 🔥 FINAL RESULT
+
+Isse aap bana paoge:
+
+✅ client demo video
+✅ investor pitch video
+✅ website promo video
+✅ WhatsApp marketing video
+
+---
+
+# 🚀 NEXT LEVEL (agar chaho)
+
+Main next me bana sakta hoon:
+
+👉 🎬 **Fully edited video (text + subtitles format)**
+👉 🎨 **Thumbnail design (YouTube/WhatsApp)**
+👉 📊 **Investor pitch deck**
+
+Bas bolo:
+
+👉 “EDITED VIDEO SCRIPT DO”
+👉 “THUMBNAIL DO”
+👉 “PITCH DECK DO”
+
+Main next level bana dunga 💯

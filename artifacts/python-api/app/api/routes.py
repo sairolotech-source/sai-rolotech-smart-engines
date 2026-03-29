@@ -16,7 +16,7 @@ from app.engines.import_engine import parse_entities, parse_dxf_bytes
 from app.engines.geometry_engine import clean_geometry
 from app.engines.profile_analysis_engine import analyze_profile
 from app.engines.input_engine import validate_inputs
-from app.engines.flower_pattern_engine import generate as generate_flower
+from app.engines.advanced_flower_engine import generate_advanced_flower as generate_flower
 from app.engines.station_engine import estimate as estimate_station
 from app.engines.roll_logic_engine import generate as generate_roll_logic
 from app.engines.shaft_engine import select_shaft

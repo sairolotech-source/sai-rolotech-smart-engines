@@ -2,7 +2,7 @@
 
 ## Overview
 
-SAI Rolotech Smart Engines is a pnpm workspace monorepo project focused on developing an advanced roll forming machine roll design tool. It provides engineers with capabilities for roll forming machine design, CNC G-code generation, and engineering calculations. The project aims to deliver a high-quality, stable, and accurate engineering suite with a premium user experience, incorporating advanced AI features and robust offline functionality for the roll forming and CNC engineering domain.
+SAI Rolotech Smart Engines is a pnpm workspace monorepo project developing an advanced roll forming machine roll design tool. It provides engineers with capabilities for roll forming machine design, CNC G-code generation, and engineering calculations. The project aims to deliver a high-quality, stable, and accurate engineering suite with a premium user experience, incorporating advanced AI features and robust offline functionality for the roll forming and CNC engineering domain.
 
 **Key Capabilities:**
 - Power pattern generation with springback compensation.
@@ -55,31 +55,30 @@ SAI Rolotech Smart Engines is a pnpm workspace monorepo project focused on devel
 
 ## System Architecture
 
-The project is structured as a pnpm workspace monorepo comprising `api-server`, `design-tool`, and `desktop` applications, along with shared `lib` packages.
+The project is structured as a pnpm workspace monorepo with `api-server`, `design-tool`, and `desktop` applications, and shared `lib` packages. It features a robust Python FastAPI server for engineering computations.
 
 **UI/UX Decisions:**
-- **Design System:** Premium desktop UI with a deep midnight navy background, electric amber/orange accents, and cyan highlights, utilizing glassmorphism panels and subtle depth.
-- **Navigation:** Sidebar-first with a slim left icon sidebar expanding into a tool panel; a slim top bar for branding, navigation, and user controls.
+- **Design System:** Premium desktop UI with a deep midnight navy background, electric amber/orange accents, cyan highlights, glassmorphism panels, and subtle depth.
+- **Navigation:** Sidebar-first with an expanding tool panel; a slim top bar for branding and controls.
 - **Typography:** Inter font with a refined hierarchy.
 - **Interactivity:** Micro-animations and amber glow shadows on primary buttons.
-- **Responsiveness:** Laptop-optimized layout with a responsive ribbon for smaller screens.
+- **Responsiveness:** Laptop-optimized with a responsive ribbon for smaller screens.
 - **Enhancements:** Figma-quality dashboards, shimmer loading, toast notifications, keyboard shortcut overlay, smooth transitions, polished error boundaries, contextual empty states.
-- **Theming:** Supports Dark/Light theme toggling via `useThemeStore.ts`.
+- **Theming:** Supports Dark/Light theme toggling.
 - **User Roles:** Implements a user role system (`admin`, `engineer`, `viewer`) with action-based access control.
 
 **Technical Implementations & Feature Specifications:**
 - **DXF/DWG Profile Upload:** Imports profiles with AutoCAD dimension extraction, reference point detection, and spline interpolation.
 - **Power Pattern:** Station-by-station bend progression with springback compensation, K-factor lookup, and iterative solvers.
-- **Roll Tooling:** K-factor + neutral axis calculations, per-roll specifications, roll gap calculator, and cantilever beam deflection. Includes various roll tooling calculators.
-- **SolidCAM Tool Database:** Comprehensive ISO 1832 insert code parser with cutting data and SVG insert preview, managed via an Admin Control System.
+- **Roll Tooling:** K-factor + neutral axis calculations, per-roll specifications, roll gap calculator, and cantilever beam deflection.
+- **SolidCAM Tool Database:** ISO 1832 insert code parser with cutting data and SVG insert preview, managed via Admin Control System.
 - **3D Visualization:** Uses Three.js/React Three Fiber for 3D strip forming visualization with stress/strain approximation and animated mesh.
-- **Hardware Acceleration:** Leverages Web Workers for heavy calculations, offloading computations to parallel threads.
-- **CNC G-Code:** Generates lathe G-code with adaptive chord tolerance, G71/G70 cycles, feed rate ramping, and multi-controller post-processors, including a Pro CNC Lathe Simulator.
-- **5-Axis CAM:** Advanced modules for 3+2 positional milling and 5-axis simultaneous operations.
+- **Hardware Acceleration:** Leverages Web Workers for heavy calculations.
+- **CNC G-Code:** Generates lathe G-code with adaptive chord tolerance, G71/G70 cycles, feed rate ramping, and multi-controller post-processors, including a Pro CNC Lathe Simulator. Includes advanced 5-axis CAM modules.
 - **Digital Twin:** Machine side-view SVG with animated strip flow, rolls, and station detail.
 - **Smart Defect Diagnosis:** Identifies 12 defect types with station-specific numeric corrections.
-- **AI Integration:** GPT-4o-mini powered AI for design analysis, G-code optimization, power pattern advising, material/tool recommendations, and a Master Designer Chatbot. Expanded with enhanced prompts and live project data context.
-- **Offline AI & Resilience:** Extensive offline knowledge base with a TF-IDF engine and an offline-first architecture with caching and an offline queue.
+- **AI Integration:** GPT-4o-mini powered AI for design analysis, G-code optimization, power pattern advising, material/tool recommendations, and a Master Designer Chatbot, using live project data context.
+- **Offline AI & Resilience:** Extensive offline knowledge base (TF-IDF engine) and an offline-first architecture with caching and an offline queue.
 - **Auto Backup System:** Auto-saves project state to localStorage every 5 minutes with smart change detection.
 - **Validation Pipeline:** 5-layer validation (Geometry, Flower Pattern, Roll Tooling, G-Code, AI Review) with strict gates.
 - **BOM Generator:** Generates comprehensive Bill of Materials.
@@ -89,65 +88,10 @@ The project is structured as a pnpm workspace monorepo comprising `api-server`, 
 - **Specialized Engineering Engines:** Includes Thickness Range, Geometry Recognition, Pass Angle, Engineering Formula Calculator, Design Rule, Defect Prediction, and Machine Fitment engines.
 - **AI Ultra Validation System:** Injects comprehensive rule sets into AI system prompts to enforce engineering standards and safety.
 - **Production Build Serving:** API Server serves gzipped production-built frontend with immutable cache headers.
-- **Critical Chunk Splitting:** Lazy loading of large dependencies like `@mlc-ai/web-llm` to reduce initial bundle size.
-- **Staged Loading Architecture:** App.tsx uses multi-stage deferred loading to prevent crash/hang on weak devices. Stage 1 (0ms): React + ErrorBoundary + AuthGate shell only. Stage 2 (1.5s): Toaster, UpdateNotification, Keyboard shortcuts, ContextualGuide. Stage 3 (3s): OfflineGuard + API sync. Stage 4 (3s): AutoBackup. Stage 5 (6s): GPU compute pipeline. Stage 6 (8s): Hardware engine + worker pool. Heavy stores (useCncStore, useRoleStore) are dynamically imported only when needed. FloatingToolbar is fully lazy. All deferred inits use `requestIdleCallback` + try/catch for crash safety. Entry chunk reduced from 350KB to 240KB.
-- **SW Recovery System:** Recovery page at `/` clears stale Service Workers and CacheStorage before redirecting to the app (`/?_app=1`). Cookie-based (`_sw_ok`) skip ensures recovery runs only once per browser. Self-destruct `sw.js` replaces any old SW (install→skipWaiting, activate→claim+clear+navigate, fetch→network-only). **IMPORTANT: Do NOT restore `manualChunks` in vite.config.ts** — it caused circular chunk dependencies (vendor-react ↔ vendor-radix) that crashed the app.
-
-## Python FastAPI Server (Port 9000)
-
-Added alongside the TypeScript/Express API server. Runs at `artifacts/python-api/`.
-
-**Architecture:** Fully modular — each engine is a separate Python file (17 total as of v2.3.0):
-- `app/utils/engineering_rules.py` — Single source of truth (mirrors `engineering-rules.ts`)
-- `app/engines/import_engine.py` — Entity list + real ezdxf DXF file parsing
-- `app/engines/geometry_engine.py` — Bbox, open/closed profile, degenerate segment cleanup
-- `app/engines/profile_analysis_engine.py` — Real bend detection (line angle changes + arcs)
-- `app/engines/flange_web_lip_engine.py` — NEW: Web/flange/lip detection, symmetry, section type classification
-- `app/engines/input_engine.py` — Thickness + material validation (Rule Book materials)
-- `app/engines/advanced_flower_engine.py` — Forming pass distribution by complexity tier
-- `app/engines/station_engine.py` — Rule Book §4 station formula
-- `app/engines/roll_logic_engine.py` — Roll group breakdown per station
-- `app/engines/shaft_engine.py` — Rule Book §6 duty-class shaft table
-- `app/engines/bearing_engine.py` — Rule Book §7 bearing table
-- `app/engines/duty_engine.py` — Final machine duty classification
-- `app/engines/roll_design_calc_engine.py` — Roll OD, pass gap, spacer, calibration
-- `app/engines/machine_layout_engine.py` — NEW: Stand spacing, shaft center distance, drive type, motor kW, gearbox, entry guide, straightener, frame, coil stand, line length
-- `app/engines/consistency_engine.py` — Cross-validation (14 checks: bend↔profile, shaft↔duty, OD↔shaft, etc.)
-- `app/engines/final_decision_engine.py` — Accuracy Control System: 100-pt confidence score → Auto/Semi Auto/Manual Review mode
-- `app/engines/report_engine.py` — 19-field engineering summary + 10-section readable report
-- `app/engines/pdf_export_engine.py` — ReportLab A4 PDF (3 pages)
-
-**Accuracy Control System (final_decision_engine):**
-- Confidence scoring: import/20 + geometry/20 + bend/20 + section/15 + flower/10 + station/10 + mech/5 = 100
-- ≥85 + consistency pass → AUTO MODE | 65–84 OR blocked → SEMI AUTO | <65 → MANUAL REVIEW
-- consistency_engine runs 14 cross-checks and blocks auto_mode if any critical check fails
-- Semi Auto triggers SemiAutoPanel in frontend — user can review/correct all detected values before re-run
-
-**machine_layout_engine rules:** LIGHT=400mm/3.7kW/chain≤8 | MEDIUM=500mm/7.5kW/gear 9-16 | HEAVY=600mm/15kW | INDUSTRIAL=700mm/22kW/tandem>16; SS/HR require straightener; wide sections get double-head decoiler
-
-**Endpoints (12 total as of v2.3.0):**
-- `GET  /api/health` — Health check (17 engines, all endpoint list)
-- `POST /api/auto-mode` — Full pipeline from entity list
-- `POST /api/manual-mode` — Pipeline from manual profile dimensions
-- `POST /api/dxf-upload` — Real DXF file upload → full pipeline (ezdxf)
-- `POST /api/auto-mode-dxf` — Canonical alias for /api/dxf-upload
-- `POST /api/preview-dxf` — Lightweight DXF preview (import + geometry + profile only, no full pipeline)
-- `POST /api/semi-auto-confirm` — Takes confirmed values, re-runs pipeline, marks mode=semi_auto_confirmed
-- `POST /api/auto-mode-export-pdf` — Auto pipeline + PDF result (JSON)
-- `POST /api/manual-mode-export-pdf` — Manual pipeline + PDF result (JSON)
-- `POST /api/manual-mode-download-pdf` — Manual pipeline → download PDF file
-- `POST /api/manual-mode-debug` — Pipeline + per-engine stage debug with mode/confidence
-- `GET  /api/run-tests` or `GET /api/run-manual-tests` — 8 built-in test cases (8/8 pass)
-
-**Frontend Dashboard** (`/python` — no auth required):
-- `DxfUploadPanel` — NEW: Drag-and-drop DXF upload, preview button, DXF preview result (entity counts, bbox, profile), then full pipeline trigger with material inputs
-- `MachineLayoutPanel` — NEW: Stand count/spacing, shaft center distance, drive type chip, motor/gearbox labels, entry guide, straightener, frame, coil stand, line length visualizer (entry + roll forming + exit bar)
-- `FinalDecisionPanel` — Mode badge (green/yellow/red) + 100-pt score + 7-bar confidence breakdown + blocking reasons
-- `SemiAutoPanel` — Appears when mode=semi_auto or manual_review; 12 editable fields with detected↔confirmed columns + "Confirm & Re-run Pipeline" button; PDF export locked until confirmed
-- `PipelineStatusPanel` — 14 engine stages (now includes flange_web_lip + machine_layout) with per-engine mode/confidence/consistency inline info
-- `TestResults` — 8 test cases showing mode (actual vs expected), confidence, line length, drive type, consistency status
-
-**Rule Book parity:** LIGHT→40mm→6208 | MEDIUM→50mm→6210 | HEAVY→60mm→6212 | INDUSTRIAL→70mm→6214
+- **Critical Chunk Splitting:** Lazy loading of large dependencies to reduce initial bundle size.
+- **Staged Loading Architecture:** Multi-stage deferred loading prevents crashes/hangs on weaker devices by progressively loading components and heavy stores on demand.
+- **SW Recovery System:** A recovery page at `/` clears stale Service Workers and CacheStorage before redirecting to the app, with a self-destructing `sw.js` to ensure clean updates.
+- **Python FastAPI Server:** Runs at `artifacts/python-api/` with a modular architecture of 17 distinct engineering engines, providing endpoints for auto/manual mode calculations, DXF upload, semi-auto confirmation, PDF export, and debugging. Features an Accuracy Control System for confidence scoring and automated review mode determination (Auto, Semi Auto, Manual Review).
 
 ## External Dependencies
 
@@ -155,21 +99,13 @@ Added alongside the TypeScript/Express API server. Runs at `artifacts/python-api
 - **Database:** PostgreSQL (via Drizzle ORM)
 - **3D Graphics:** Three.js, React Three Fiber (`@react-three/fiber`, `@react-three/drei`)
 - **UI Framework/State Management:** React, Zustand
-- **API Framework:** Express 5
+- **API Framework:** Express 5, FastAPI
 - **Package Management:** pnpm
 - **Build Tools:** Vite, esbuild
 - **TypeScript Tools:** Zod, Drizzle Kit, Orval
-- **PDF Generation:** jspdf
+- **PDF Generation:** jspdf, ReportLab (Python)
 - **Mapping:** Konva
 - **G-Code Parsing/Generation:** Custom `dxf-parser`, `jszip`, `jose`
 - **AI APIs:** Replit AI Integration (GPT-4o-mini), Gemini Flash, Claude Haiku, OpenRouter Llama, SambaNova Llama, Kimi Moonshot, NVIDIA Llama 3.1, GPT-5 Mini
 - **Cloud Services:** Google Drive API
 - **Desktop Application Framework:** Electron
-
-## Electron Desktop App Notes
-- **Native Splash Window:** Electron main process creates its own splash window (`createSplashWindow`) with real-time progress (license check → server start → frontend load). This is separate from the web-based SplashScreen3D component.
-- **Splash auto-closes** when `ready-to-show` fires on main window, with a 3-second failsafe timeout.
-- **Single instance lock** is handled ONCE at line ~1773 — do NOT add a second `requestSingleInstanceLock()` call.
-- **Google Fonts** in index.html uses `media="print" onload="this.media='all'"` pattern to avoid blocking render in offline Electron.
-- **API server** runs on port 3001 in packaged mode. Splash shows real progress during server startup.
-- **GPU acceleration flags** are set in main.ts: d3d11 ANGLE, GPU rasterization, WebGPU, ignore-gpu-blocklist.

@@ -39,6 +39,12 @@ from app.engines.test_runner_engine import run_all_tests as _run_all_tests
 from app.engines.roll_contour_engine import generate_roll_contour
 from app.engines.cad_export_engine import generate_cad_export
 from app.engines.cam_prep_engine import generate_cam_prep
+from app.engines.advanced_roll_engine import generate_advanced_rolls
+from app.engines.roll_interference_engine import check_roll_interference
+from app.engines.roll_dimension_engine import generate_roll_dimensions
+from app.engines.export_dxf_engine import export_rolls_dxf
+from app.engines.export_step_engine import export_roll_step
+from app.engines.export_pack_engine import build_export_pack
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -112,19 +118,40 @@ def _run_core_engines(
         station_result=station_result,
     )
 
+    # ── Advanced Roll Engine ───────────────────────────────────────────────
+    advanced_roll_result = generate_advanced_rolls(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+    )
+
+    # ── Roll Interference Engine ───────────────────────────────────────────
+    roll_interference_result = check_roll_interference(advanced_roll_result)
+
+    # ── Roll Dimension Engine ──────────────────────────────────────────────
+    roll_dimension_result = generate_roll_dimensions(
+        profile_result=profile_result,
+        input_result=input_result,
+        shaft_result=shaft_result,
+    )
+
     return {
         "status": "pass",
-        "flange_web_lip_engine":   flange_result,
-        "advanced_flower_engine":  flower_result,
-        "station_engine":          station_result,
-        "roll_logic_engine":       roll_logic_result,
-        "shaft_engine":            shaft_result,
-        "bearing_engine":          bearing_result,
-        "duty_engine":             duty_result,
-        "roll_design_calc_engine": roll_calc_result,
-        "machine_layout_engine":   layout_result,
-        "roll_contour_engine":     roll_contour_result,
-        "cam_prep_engine":         cam_prep_result,
+        "flange_web_lip_engine":     flange_result,
+        "advanced_flower_engine":    flower_result,
+        "station_engine":            station_result,
+        "roll_logic_engine":         roll_logic_result,
+        "shaft_engine":              shaft_result,
+        "bearing_engine":            bearing_result,
+        "duty_engine":               duty_result,
+        "roll_design_calc_engine":   roll_calc_result,
+        "machine_layout_engine":     layout_result,
+        "roll_contour_engine":       roll_contour_result,
+        "cam_prep_engine":           cam_prep_result,
+        "advanced_roll_engine":      advanced_roll_result,
+        "roll_interference_engine":  roll_interference_result,
+        "roll_dimension_engine":     roll_dimension_result,
     }
 
 
@@ -286,8 +313,10 @@ def health():
             "report", "pdf_export",
             "debug_test", "test_runner",
             "roll_contour", "cam_prep", "cad_export",
+            "advanced_roll", "roll_interference", "roll_dimension",
+            "export_dxf", "export_step", "export_pack",
         ],
-        "total_engines": 22,
+        "total_engines": 28,
         "endpoints": [
             "GET  /api/health",
             "POST /api/manual-mode",
@@ -301,6 +330,7 @@ def health():
             "GET  /api/run-manual-tests",
             "POST /api/cad-export",
             "GET  /api/download-file",
+            "POST /api/manual-mode-export-cad-pack",
         ],
     }
 
@@ -759,3 +789,75 @@ def download_file(path: str):
     media_type = media_map.get(ext, "application/octet-stream")
     return FileResponse(real_path, media_type=media_type,
                         filename=_os.path.basename(real_path))
+
+
+# ─── POST /api/manual-mode-export-cad-pack ───────────────────────────────────
+
+@router.post("/manual-mode-export-cad-pack")
+def run_manual_mode_export_cad_pack(data: ManualProfileInput):
+    """
+    Run full manual pipeline → generate advanced roll profiles → DXF + STEP export pack.
+
+    Returns:
+      • advanced_roll_engine   — pass-wise upper/lower roll profiles per stand
+      • roll_interference_engine — interference check result
+      • roll_dimension_engine  — roll OD, face width, bore, keyway
+      • export_dxf_engine      — 2D roll drawing pack (DXF)
+      • export_step_engine     — 3D roll solid (STEP AP203)
+      • export_pack_engine     — bundled file manifest (DXF + STEP + PDF)
+      • pdf_export_engine      — engineering report PDF
+
+    PRELIMINARY CAD/CAM HANDOFF — pending tooling verification.
+    """
+    logger.info(
+        "[manual-mode-export-cad-pack] bends=%d material=%s",
+        data.bend_count, data.material,
+    )
+
+    pipeline = execute_manual_pipeline(data)
+    if is_fail(pipeline):
+        return pipeline
+
+    profile_result  = pipeline.get("profile_analysis_engine", {})
+    input_result    = pipeline.get("input_engine", {})
+    flower_result   = pipeline.get("advanced_flower_engine", {})
+    station_result  = pipeline.get("station_engine", {})
+    shaft_result    = pipeline.get("shaft_engine", {})
+    report_result   = pipeline.get("report_engine", {})
+
+    # Advanced roll engines
+    advanced_roll_result = generate_advanced_rolls(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+    )
+    roll_interference_result = check_roll_interference(advanced_roll_result)
+    roll_dimension_result = generate_roll_dimensions(
+        profile_result=profile_result,
+        input_result=input_result,
+        shaft_result=shaft_result,
+    )
+
+    # Generate a shared session ID so DXF and STEP land in the same folder
+    import uuid as _uuid
+    import time as _time
+    session_id = f"{int(_time.time())}_{_uuid.uuid4().hex[:6]}"
+
+    dxf_result  = export_rolls_dxf(advanced_roll_result, roll_dimension_result, session_id=session_id)
+    step_result = export_roll_step(roll_dimension_result, session_id=session_id)
+    pdf_result  = export_report_pdf(report_result)
+
+    export_pack_result = build_export_pack(dxf_result, step_result, pdf_result)
+
+    return {
+        "status": "pass",
+        "session_id":               session_id,
+        "advanced_roll_engine":     advanced_roll_result,
+        "roll_interference_engine": roll_interference_result,
+        "roll_dimension_engine":    roll_dimension_result,
+        "export_dxf_engine":        dxf_result,
+        "export_step_engine":       step_result,
+        "pdf_export_engine":        pdf_result,
+        "export_pack_engine":       export_pack_result,
+    }

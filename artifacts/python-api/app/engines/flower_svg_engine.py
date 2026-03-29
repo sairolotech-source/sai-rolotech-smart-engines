@@ -4,8 +4,10 @@ flower_svg_engine.py — Real Flower Pattern SVG Generator
 Uses shapely to compute 2D cross-section polygons per forming station,
 then exports a composite flower pattern SVG (all stations overlaid).
 
-Supported profiles: c_channel, z_section, lipped_channel, hat_section,
-                    simple_angle, complex_section.
+Supported profiles (8 production types):
+  c_channel, u_channel, simple_channel, simple_angle,
+  z_section, lipped_channel, hat_section,
+  shutter_slat (+ shutter_profile alias), door_frame.
 """
 import io
 import math
@@ -56,11 +58,23 @@ def section_centerline(
     flange_mm: float,
     theta_deg: float,
     lip_mm: float = 0.0,
+    lip_mm_left: float = 0.0,
+    lip_mm_right: float = 0.0,
 ) -> List[Tuple[float, float]]:
     """
     Return a polyline (centerline) representing the section cross-section
     at forming angle theta_deg (0=flat, 90=fully formed).
     Coordinates are in mm; web is centred on x=0, y=0.
+
+    Supports all 8 production profile types:
+      c_channel, u_channel, simple_channel — symmetric C-shape
+      simple_angle           — single bend (right side only)
+      z_section              — asymmetric Z (left flange down, right flange up)
+      lipped_channel         — C with inward lips; supports asymmetric lips via
+                               lip_mm_left / lip_mm_right (falls back to lip_mm)
+      hat_section            — same geometry as lipped_channel (symmetric lips)
+      shutter_slat           — multi-rib trapezoidal wave
+      door_frame             — U with explicit inward return lips
     """
     th = math.radians(min(max(theta_deg, 0), 90))
     hw = web_mm / 2.0
@@ -79,33 +93,45 @@ def section_centerline(
     pt_fl_r  = ( hw + rx * flange_mm,  ry * flange_mm)
 
     if profile_type == "simple_angle":
+        # 1 bend: web + single right flange
         return [pt_web_l, pt_web_r, pt_fl_r]
 
     elif profile_type == "z_section":
-        # Left flange bends DOWN, right flange bends UP
+        # Asymmetric Z: left flange goes DOWN, right flange goes UP
         pt_fl_l_z = (-hw - math.cos(th) * flange_mm, -math.sin(th) * flange_mm)
         return [pt_fl_l_z, pt_web_l, pt_web_r, pt_fl_r]
 
-    elif profile_type in ("lipped_channel", "complex_section", "hat_section") and lip_mm > 0:
-        # Lips at 90° to flanges (inward-turning for lipped_channel).
-        # For hat_section the same geometry works — lips become the horizontal feet.
-        lip_angle_l = th + math.pi / 2
-        lip_angle_r = math.pi - th - math.pi / 2
-        lp_lx = math.cos(lip_angle_l) * lip_mm
-        lp_ly = math.sin(lip_angle_l) * lip_mm
-        lp_rx = -math.cos(lip_angle_r) * lip_mm
-        lp_ry =  math.sin(lip_angle_r) * lip_mm
-        return [
-            (pt_fl_l[0] + lp_lx, pt_fl_l[1] + lp_ly),
-            pt_fl_l,
-            pt_web_l, pt_web_r,
-            pt_fl_r,
-            (pt_fl_r[0] + lp_rx, pt_fl_r[1] + lp_ry),
-        ]
-
-    elif profile_type in ("lipped_channel", "hat_section"):
-        # Fallback: no lip_mm — render as plain C-channel
+    elif profile_type == "u_channel":
+        # Wide-web U: same geometry as c_channel — web + symmetric flanges
+        # Explicit branch so profile is unambiguously supported
         return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
+
+    elif profile_type in ("lipped_channel", "complex_section", "hat_section"):
+        # Resolve per-side lip lengths (asymmetric lip support)
+        _lip_l = lip_mm_left  if lip_mm_left  > 0 else lip_mm
+        _lip_r = lip_mm_right if lip_mm_right > 0 else lip_mm
+
+        if _lip_l > 0 or _lip_r > 0:
+            # Lips at 90° to flanges, turning inward.
+            # Left lip: angle = th + 90° (inward = toward +x axis)
+            # Right lip: angle = -(th + 90°) (inward = toward -x axis)
+            lip_angle_l = th + math.pi / 2
+            lip_angle_r = math.pi - th - math.pi / 2
+
+            pts: List[Tuple[float, float]] = []
+            if _lip_l > 0:
+                lp_lx = math.cos(lip_angle_l) * _lip_l
+                lp_ly = math.sin(lip_angle_l) * _lip_l
+                pts.append((pt_fl_l[0] + lp_lx, pt_fl_l[1] + lp_ly))
+            pts.extend([pt_fl_l, pt_web_l, pt_web_r, pt_fl_r])
+            if _lip_r > 0:
+                lp_rx = -math.cos(lip_angle_r) * _lip_r
+                lp_ry =  math.sin(lip_angle_r) * _lip_r
+                pts.append((pt_fl_r[0] + lp_rx, pt_fl_r[1] + lp_ry))
+            return pts
+        else:
+            # No lips — render as plain C-channel
+            return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
 
     elif profile_type in ("shutter_profile", "shutter_slat"):
         # Shutter slat: symmetric multi-rib trapezoidal wave at forming angle theta.
@@ -114,46 +140,37 @@ def section_centerline(
         #   base → up-arm (at angle theta from vertical) → flat top → down-arm → base
         #
         # Parameters derived from section dimensions:
-        #   web_mm  = total slat width (the "pitch" of the repeating pattern × n_ribs)
-        #   rib_h   = flange_mm / 2  (each arm projects this height)
-        #   n_ribs  = estimated from aspect ratio: web/(3×rib_h) capped to [2, 8]
-        #   flat_top_w = rib_pitch − 2 × arm_run   (flat portion of each rib crown)
+        #   web_mm   = total slat width (pitch × n_ribs)
+        #   rib_h    = flange_mm / 2  (each arm projects this height)
+        #   n_ribs   = estimated: web / (3×rib_h) capped [2, 8]
+        #   flat_top_w = rib_pitch − 2 × arm_run
         #
-        # At theta=0 (flat): all points lie on y=0 (strip not yet formed).
-        # At theta=90: ribs are fully formed, rib_h = flange_mm/2.
+        # At theta=0 (flat): all points lie on y=0.
+        # At theta=90: ribs fully formed, rib_h = flange_mm/2.
         rib_h = flange_mm / 2.0
         if rib_h < 0.1:
-            # Degenerate — fall through to c_channel
             return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
         n_ribs = max(2, min(8, round(web_mm / max(rib_h * 3.5, 1.0))))
         rib_pitch = web_mm / n_ribs
-        # Arm is at angle theta from the vertical plane → horizontal run per arm
-        arm_run = rib_h * math.sin(th)
+        arm_run  = rib_h * math.sin(th)
         arm_rise = rib_h * math.cos(th)
         flat_top_w = max(0.0, rib_pitch - 2.0 * arm_run)
 
-        pts: List[Tuple[float, float]] = []
+        pts_s: List[Tuple[float, float]] = []
         for ri in range(n_ribs):
-            x0 = -hw + ri * rib_pitch      # left base of this rib
-            # Base left
-            pts.append((x0, 0.0))
-            # Up-arm summit
-            pts.append((x0 + arm_run, arm_rise))
-            # Flat top (if geometry allows)
+            x0 = -hw + ri * rib_pitch
+            pts_s.append((x0, 0.0))
+            pts_s.append((x0 + arm_run, arm_rise))
             if flat_top_w > 0.01:
-                pts.append((x0 + arm_run + flat_top_w, arm_rise))
-            # Down-arm back to baseline
-            pts.append((x0 + rib_pitch, 0.0))
-        # Close right edge
-        pts.append((-hw + n_ribs * rib_pitch, 0.0))
-        return pts
+                pts_s.append((x0 + arm_run + flat_top_w, arm_rise))
+            pts_s.append((x0 + rib_pitch, 0.0))
+        pts_s.append((-hw + n_ribs * rib_pitch, 0.0))
+        return pts_s
 
     elif profile_type == "door_frame":
         # Door frame: U-channel (web + 2 flanges) with 90° inward return lips.
-        # Similar to lipped_channel but the return lip geometry is explicit.
+        # Return lips are perpendicular to flanges, turning inward.
         lip_len = lip_mm if lip_mm > 0 else flange_mm * 0.25
-        # Flanges go straight up at angle theta
-        # Lips turn inward (toward centre) at 90° from flange direction
         lip_dir_l_x =  math.sin(th)   # inward for left side
         lip_dir_l_y =  math.cos(th)
         lip_dir_r_x = -math.sin(th)   # inward for right side
@@ -163,7 +180,7 @@ def section_centerline(
         return [lip_l_end, pt_fl_l, pt_web_l, pt_web_r, pt_fl_r, lip_r_end]
 
     else:
-        # Default: c_channel / simple_channel
+        # Default: c_channel, simple_channel, and any unrecognised type
         return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
 
 

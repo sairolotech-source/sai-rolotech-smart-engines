@@ -39,8 +39,20 @@ def analyze_profile(geometry_result: Dict[str, Any]) -> Dict[str, Any]:
     bend_details = bend_result["bend_details"]
 
     complexity = classify_complexity(bend_count)
-    profile_type = classify_profile(bend_count, width, height)
+
+    # Compute return-bend count and lip signals BEFORE classify_profile so the
+    # classifier has full geometry context (critical for door_frame / z_section
+    # disambiguation and lipped_channel detection).
     return_bends = estimate_return_bends(bend_details)
+    has_lips: bool = geometry_result.get("has_lips", False)
+    lip_mm: float = float(geometry_result.get("lip_mm", 0.0))
+
+    profile_type = classify_profile(
+        bend_count, width, height,
+        has_lips=has_lips,
+        return_bends=return_bends,
+        lip_mm=lip_mm,
+    )
 
     logger.info(
         "[profile_analysis_engine] bends=%d complexity=%s return_bends=%d w=%.1f h=%.1f chains=%d",
@@ -59,6 +71,8 @@ def analyze_profile(geometry_result: Dict[str, Any]) -> Dict[str, Any]:
         "complexity_label": COMPLEXITY_LABELS[complexity],
         "profile_open": geometry_result.get("profile_open", True),
         "return_bends_count": return_bends,
+        "has_lips": has_lips,
+        "lip_mm": lip_mm,
         "symmetry_status": "unknown",
         "bend_details": bend_details,
         "chain_count": bend_result.get("chain_count", 0),

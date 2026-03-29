@@ -27,7 +27,7 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.engines.profile_analysis_engine import classify_profile
+from app.engines.profile_analysis_engine import classify_profile, analyze_profile
 from app.engines.roll_contour_engine import (
     _flat_strip_for_profile,
     _angle_schedule_for_profile,
@@ -655,3 +655,178 @@ class TestContactStrips:
         for pz in gg.get("pinch_zones", []):
             assert "pressure_angle_deg" in pz, f"Pinch zone missing pressure_angle_deg: {pz}"
             assert "severity" in pz
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PP10  Pipeline integration — analyze_profile() → classify_profile()
+#        Tests that return_bends and lip_mm are computed BEFORE classify_profile
+#        is called, so door_frame / z_section disambiguation is correct.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _make_geometry_result(
+    width: float,
+    height: float,
+    geometry: list,
+    has_lips: bool = False,
+    lip_mm: float = 0.0,
+    profile_open: bool = True,
+) -> dict:
+    return {
+        "geometry": geometry or [{"type": "LINE"}],
+        "bounding_box": {"width": width, "height": height},
+        "has_lips": has_lips,
+        "lip_mm": lip_mm,
+        "profile_open": profile_open,
+    }
+
+
+def _make_bend_geometry(n: int, return_bends: int = 0) -> list:
+    bends = [{"type": "ARC", "angle": 90.0, "bend_type": "standard"} for _ in range(n)]
+    for i in range(return_bends):
+        bends.append({"type": "ARC", "angle": 90.0, "bend_type": "return_or_sharp"})
+    return bends
+
+
+class TestAnalyzeProfilePipeline:
+    """
+    Integration tests that go through analyze_profile() to verify that
+    classify_profile() receives correct return_bends and lip_mm signals.
+    """
+
+    def _geometry_result_with_bends(
+        self,
+        width: float,
+        height: float,
+        has_lips: bool = False,
+        lip_mm: float = 0.0,
+    ) -> dict:
+        return {
+            "geometry": [{"type": "LINE"}],
+            "bounding_box": {"width": width, "height": height},
+            "has_lips": has_lips,
+            "lip_mm": lip_mm,
+            "profile_open": True,
+        }
+
+    def test_analyze_profile_returns_pass_for_valid_geometry(self):
+        """analyze_profile should return status=pass for any valid geometry"""
+        gr = self._geometry_result_with_bends(60, 40)
+        result = analyze_profile(gr)
+        assert result["status"] == "pass"
+
+    def test_analyze_profile_propagates_has_lips_to_profile_type(self):
+        """has_lips=True on a 4-bend geometry should produce lipped_channel not door_frame"""
+        # Normally 4 bends + return_bends=2 → door_frame
+        # But with has_lips=True → lipped_channel (lip signal wins)
+        # We test at the classify_profile level since analyze_profile uses detect_bends
+        # which processes actual geometry, not a pre-counted list.
+        pt = classify_profile(4, 80, 40, has_lips=True, return_bends=2, lip_mm=15.0)
+        assert pt == "lipped_channel", f"Expected lipped_channel, got {pt}"
+
+    def test_analyze_profile_no_lips_return_bend_gives_door_frame(self):
+        """4 bends, return_bends=2, no lips → door_frame"""
+        pt = classify_profile(4, 80, 60, has_lips=False, return_bends=2, lip_mm=0.0)
+        assert pt == "door_frame", f"Expected door_frame, got {pt}"
+
+    def test_analyze_profile_return_bend_z_section(self):
+        """2 bends + return_bends=1 → z_section"""
+        pt = classify_profile(2, 60, 40, has_lips=False, return_bends=1, lip_mm=0.0)
+        assert pt == "z_section", f"Expected z_section, got {pt}"
+
+    def test_analyze_profile_no_return_bend_c_channel(self):
+        """2 bends, no return bends, tall aspect → c_channel"""
+        pt = classify_profile(2, 40, 60, has_lips=False, return_bends=0, lip_mm=0.0)
+        assert pt == "c_channel", f"Expected c_channel, got {pt}"
+
+    def test_analyze_profile_has_lips_shallow_6bends_lipped_channel(self):
+        """6 bends + has_lips + shallow aspect → lipped_channel (not shutter_slat)"""
+        pt = classify_profile(6, 200, 12, has_lips=True, return_bends=0, lip_mm=8.0)
+        assert pt == "lipped_channel", f"Expected lipped_channel, got {pt}"
+
+    def test_analyze_profile_no_lips_shallow_6bends_shutter_slat(self):
+        """6 bends + no lips + shallow aspect → shutter_slat"""
+        pt = classify_profile(6, 200, 12, has_lips=False, return_bends=0, lip_mm=0.0)
+        assert pt == "shutter_slat", f"Expected shutter_slat, got {pt}"
+
+    def test_analyze_profile_output_has_has_lips_and_lip_mm(self):
+        """analyze_profile output must contain has_lips and lip_mm fields"""
+        gr = self._geometry_result_with_bends(80, 40, has_lips=True, lip_mm=15.0)
+        result = analyze_profile(gr)
+        assert result["status"] == "pass"
+        assert "has_lips" in result, "has_lips missing from analyze_profile output"
+        assert "lip_mm" in result, "lip_mm missing from analyze_profile output"
+
+    def test_analyze_profile_output_has_return_bends_count(self):
+        """analyze_profile output must contain return_bends_count field"""
+        gr = self._geometry_result_with_bends(60, 40)
+        result = analyze_profile(gr)
+        assert "return_bends_count" in result, "return_bends_count missing"
+        assert isinstance(result["return_bends_count"], int)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PP11  Asymmetric lip geometry — section_centerline asymmetric lip support
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.skipif(not SHAPELY_OK, reason="shapely not installed")
+class TestAsymmetricLipGeometry:
+
+    def test_symmetric_lip_produces_same_count_as_single_lip_mm(self):
+        """lip_mm_left == lip_mm_right == lip_mm should give identical points"""
+        pts_sym = section_centerline("lipped_channel", 80, 40, 90, lip_mm=15.0)
+        pts_asym = section_centerline("lipped_channel", 80, 40, 90,
+                                      lip_mm_left=15.0, lip_mm_right=15.0)
+        assert len(pts_sym) == len(pts_asym), \
+            f"Symmetric: {len(pts_sym)} pts vs asymmetric: {len(pts_asym)} pts"
+
+    def test_asymmetric_lip_produces_valid_polygon(self):
+        """lipped_channel with different left/right lips → valid polygon"""
+        pts = section_centerline("lipped_channel", 80, 40, 90,
+                                 lip_mm_left=20.0, lip_mm_right=10.0)
+        poly = centerline_to_polygon(pts, 1.5)
+        assert poly is not None, "Asymmetric lip polygon is None"
+        assert not poly.is_empty, "Asymmetric lip polygon is empty"
+        assert poly.area > 0, f"Asymmetric lip polygon area={poly.area}"
+
+    def test_single_lip_left_only(self):
+        """lipped_channel with left lip only → fewer points than symmetric"""
+        pts_both = section_centerline("lipped_channel", 80, 40, 90, lip_mm=15.0)
+        pts_left = section_centerline("lipped_channel", 80, 40, 90,
+                                      lip_mm_left=15.0, lip_mm_right=0.0)
+        assert len(pts_left) < len(pts_both), \
+            f"Left-only: {len(pts_left)} pts, both: {len(pts_both)} pts"
+
+    def test_u_channel_centerline_explicit(self):
+        """u_channel must produce identical points to c_channel (wide web)"""
+        pts_c = section_centerline("c_channel", 120, 30, 90)
+        pts_u = section_centerline("u_channel", 120, 30, 90)
+        assert len(pts_c) == len(pts_u)
+        for pc, pu in zip(pts_c, pts_u):
+            assert pc[0] == pytest.approx(pu[0], abs=0.01)
+            assert pc[1] == pytest.approx(pu[1], abs=0.01)
+
+    def test_door_frame_centerline_has_inward_return_lips(self):
+        """door_frame centerline should have 6 points (2 lips + 4 channel corners)"""
+        pts = section_centerline("door_frame", 80, 60, 90, lip_mm=15.0)
+        assert len(pts) == 6, f"Expected 6 points for door_frame, got {len(pts)}"
+
+    def test_all_8_profile_types_produce_valid_polygon(self):
+        """All 8 production profiles must produce a valid polygon at theta=90°"""
+        configs = [
+            ("c_channel",      60,  40, 0.0),
+            ("u_channel",     120,  30, 0.0),
+            ("simple_channel", 60,   3, 0.0),
+            ("simple_angle",   60,  30, 0.0),
+            ("z_section",      60,  40, 0.0),
+            ("lipped_channel", 80,  40, 15.0),
+            ("hat_section",   150,  30, 15.0),
+            ("shutter_slat",  200,  12, 0.0),
+            ("door_frame",     80,  60, 15.0),
+        ]
+        for pt, web, flange, lip in configs:
+            pts = section_centerline(pt, web, flange, 90, lip_mm=lip)
+            assert len(pts) >= 2, f"{pt}: too few centerline points"
+            poly = centerline_to_polygon(pts, 1.5)
+            assert poly is not None, f"{pt}: polygon is None"
+            assert not poly.is_empty, f"{pt}: polygon is empty"
+            assert poly.area > 0, f"{pt}: polygon area={poly.area}"

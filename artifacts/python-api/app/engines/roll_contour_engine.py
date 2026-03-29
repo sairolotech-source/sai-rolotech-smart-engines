@@ -706,21 +706,35 @@ def _strip_width_progression(
     section_height_mm: float = 0.0,
     inner_radius_mm: float = 0.0,
     material: str = "GI",
+    bend_groups: Optional[List[Dict[str, Any]]] = None,
 ) -> List[float]:
     """
     Flat strip width per station using neutral-axis bend allowance formula.
 
-    Flat strip = Web + Σ(Flange_i) + Σ(BA_i)
-    BA per bend  = (π/180) × 90° × (R + t/2)   [neutral-axis method per task spec]
+    When `bend_groups` is provided each group contributes its own R and BA so
+    different bends (e.g. flanges vs lips vs ribs) are correctly accounted for.
 
-    Example: web=60, flange=40×2, t=1.5, R=1.5 (GI)
+    Flat strip = Web + Σ_group(segment_height × bend_count_g) + Σ_group(BA_g × bend_count_g)
+    BA per bend = (π/180) × 90° × (R + k_g × t)   [neutral-axis, Machinery's Handbook]
+
+    Example without groups: web=60, flange=40×2, t=1.5, R=1.5 (GI)
       BA = 1.5708 × (1.5 + 0.75) = 1.5708 × 2.25 = 3.534 mm / bend
       Flat = 60 + 80 + 2×3.534 = 147.07 mm ✓
     """
-    ba_each = _bend_allowance(90.0, inner_radius_mm, thickness, material)
-    # Distribute flange height equally across bends (2 bends = 2 flanges for C, etc.)
-    total_flange = section_height_mm * max(bend_count, 0)
-    flat_strip_width = final_width_mm + total_flange + bend_count * ba_each
+    if bend_groups:
+        # Multi-group: compute flat strip as sum of per-group contributions
+        total_ba = sum(
+            g["ba_mm"] * g["bend_count"]
+            for g in bend_groups
+        )
+        # Segment height per group: use section_height_mm / total bends per segment type
+        # (lips counted separately via ba_mm already)
+        total_segment_h = section_height_mm * min(bend_count, 2)  # primary flange legs only
+        flat_strip_width = final_width_mm + total_segment_h + total_ba
+    else:
+        ba_each = _bend_allowance(90.0, inner_radius_mm, thickness, material)
+        total_flange = section_height_mm * max(bend_count, 0)
+        flat_strip_width = final_width_mm + total_flange + bend_count * ba_each
 
     widths = []
     for i in range(1, n_passes + 1):
@@ -1089,18 +1103,66 @@ def generate_roll_contour(
     # Legacy compat
     total_flange_mm = section_h * max(bend_count, 0)
 
+    # Per-station K-factor for the forming angle (same bend radius all passes)
+    k_factor_station = _per_station_k_factor(bend_radius_mm, thickness, material)
+
+    # ── Bend groups: per-group BA and K-factor (multi-radius support) ─────────
+    # Computed here so strip_widths can use per-group radii/BA.
+    # Primary group: flanges (all profiles)
+    _pt_lower_early = profile_type.lower()
+    _bg_early: List[Dict[str, Any]] = [
+        {
+            "group_id":        "flange",
+            "description":     "Primary flange bends",
+            "bend_count":      min(bend_count, 2),
+            "inner_radius_mm": bend_radius_mm,
+            "k_factor":        k_factor_station,
+            "ba_mm":           round(ba_each, 4),
+            "forming_start_pass": 1,
+            "forming_end_pass":   forming_passes,
+        },
+    ]
+    if has_lips and bend_count > 2 and _pt_lower_early in ("lipped_channel", "hat_section", "door_frame"):
+        _lip_bend_count_e = max(1, bend_count - 2)
+        _lip_radius_e     = round(bend_radius_mm * 0.85, 3)
+        _lip_k_e          = _per_station_k_factor(_lip_radius_e, thickness, material)
+        _ba_lip_e         = _bend_allowance(90.0, _lip_radius_e, thickness, material)
+        _lip_start_e      = max(1, round(forming_passes * 0.35))
+        _bg_early.append({
+            "group_id":        "lip",
+            "description":     "Inward lip bends (form after flanges)",
+            "bend_count":      _lip_bend_count_e,
+            "inner_radius_mm": _lip_radius_e,
+            "k_factor":        _lip_k_e,
+            "ba_mm":           round(_ba_lip_e, 4),
+            "forming_start_pass": _lip_start_e,
+            "forming_end_pass":   forming_passes,
+        })
+    if _pt_lower_early in ("shutter_slat", "shutter_profile"):
+        _bg_early[0]["description"] = "Rib-arm bends (outer ribs form first)"
+        _bg_early[0]["group_id"]    = "rib_arms"
+        _bg_early[0]["forming_end_pass"] = round(forming_passes * 0.40)
+        _bg_early.append({
+            "group_id":        "rib_inner",
+            "description":     "Inner rib bends (form in Stage 2)",
+            "bend_count":      bend_count - _bg_early[0]["bend_count"],
+            "inner_radius_mm": bend_radius_mm,
+            "k_factor":        k_factor_station,
+            "ba_mm":           round(ba_each, 4),
+            "forming_start_pass": round(forming_passes * 0.40) + 1,
+            "forming_end_pass":   forming_passes,
+        })
+
     strip_widths = _strip_width_progression(
         section_w, bend_count, thickness, forming_passes,
         section_height_mm=section_h,
         inner_radius_mm=bend_radius_mm,
         material=material,
+        bend_groups=_bg_early,
     )
 
     passes: List[Dict[str, Any]] = []
     station_interference: List[Dict[str, Any]] = []
-
-    # Per-station K-factor for the forming angle (same bend radius all passes)
-    k_factor_station = _per_station_k_factor(bend_radius_mm, thickness, material)
 
     for i, (angle, sw) in enumerate(zip(angles, strip_widths)):
         contour = _upper_lower_roll_contour(
@@ -1277,54 +1339,8 @@ def generate_roll_contour(
             "coil set and yield-point elongation are not modelled"
         )
 
-    # ── Bend groups: per-group BA and K-factor (multi-radius support) ─────────
-    # Primary group: flanges (all profiles)
-    bend_groups: List[Dict[str, Any]] = [
-        {
-            "group_id":        "flange",
-            "description":     "Primary flange bends",
-            "bend_count":      min(bend_count, 2),
-            "inner_radius_mm": bend_radius_mm,
-            "k_factor":        k_factor_station,
-            "ba_mm":           round(ba_each, 4),
-            "forming_start_pass": 1,
-            "forming_end_pass":   forming_passes,
-        },
-    ]
-    # Lip group: lipped_channel, hat_section, door_frame (remaining bends after flanges)
-    _pt_lower = profile_type.lower()
-    if has_lips and bend_count > 2 and _pt_lower in ("lipped_channel", "hat_section", "door_frame"):
-        lip_bend_count = max(1, bend_count - 2)
-        lip_radius_mm  = round(bend_radius_mm * 0.85, 3)   # lips typically tighter radius
-        lip_k          = _per_station_k_factor(lip_radius_mm, thickness, material)
-        ba_lip         = _bend_allowance(90.0, lip_radius_mm, thickness, material)
-        lip_start      = max(1, round(forming_passes * 0.35))
-        bend_groups.append({
-            "group_id":        "lip",
-            "description":     "Inward lip bends (form after flanges)",
-            "bend_count":      lip_bend_count,
-            "inner_radius_mm": lip_radius_mm,
-            "k_factor":        lip_k,
-            "ba_mm":           round(ba_lip, 4),
-            "forming_start_pass": lip_start,
-            "forming_end_pass":   forming_passes,
-        })
-    # Rib group: shutter slat (each rib root counted as 2 bends: up-arm + down-arm)
-    if _pt_lower in ("shutter_slat", "shutter_profile"):
-        ribs_count = max(2, bend_count // 2)
-        bend_groups[0]["description"] = "Rib-arm bends (outer ribs form first)"
-        bend_groups[0]["group_id"]    = "rib_arms"
-        bend_groups[0]["forming_end_pass"] = round(forming_passes * 0.40)
-        bend_groups.append({
-            "group_id":        "rib_inner",
-            "description":     "Inner rib bends (form in Stage 2)",
-            "bend_count":      bend_count - bend_groups[0]["bend_count"],
-            "inner_radius_mm": bend_radius_mm,
-            "k_factor":        k_factor_station,
-            "ba_mm":           round(ba_each, 4),
-            "forming_start_pass": round(forming_passes * 0.40) + 1,
-            "forming_end_pass":   forming_passes,
-        })
+    # bend_groups already computed before strip_widths (as _bg_early)
+    bend_groups: List[Dict[str, Any]] = _bg_early
 
     summary = {
         "flat_strip_width_mm":         flat_strip_mm,
@@ -1350,10 +1366,10 @@ def generate_roll_contour(
         "profile_type":                profile_type,
         "profile_category":            PROFILE_CATEGORY.get(profile_type.lower(), "unknown"),
         "angle_schedule_mode":         (
-            "two_phase_lipped" if (has_lips or _pt_lower == "door_frame")
-                                  and _pt_lower in ("lipped_channel", "hat_section", "door_frame")
-            else "shutter_delayed" if _pt_lower in ("shutter_profile", "shutter_slat")
-            else "z_asymmetric" if _pt_lower == "z_section"
+            "two_phase_lipped" if (has_lips or _pt_lower_early == "door_frame")
+                                  and _pt_lower_early in ("lipped_channel", "hat_section", "door_frame")
+            else "shutter_delayed" if _pt_lower_early in ("shutter_profile", "shutter_slat")
+            else "z_asymmetric" if _pt_lower_early == "z_section"
             else "cubic_ease"
         ),
         "bend_groups":                 bend_groups,

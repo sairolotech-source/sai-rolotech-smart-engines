@@ -16,7 +16,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 
-from app.api.schemas import AutoModeInput, ManualProfileInput, SvgProfileInput
+from app.api.schemas import AutoModeInput, ManualProfileInput
 from app.engines.import_engine import parse_entities, parse_dxf_bytes
 from app.engines.geometry_engine import clean_geometry
 from app.engines.profile_analysis_engine import analyze_profile
@@ -1210,14 +1210,14 @@ async def run_engineering_risk(payload: dict):
 # ─── POST /api/flower-svg ───────────────────────────────────────────────────────
 
 @router.post("/flower-svg")
-def endpoint_flower_svg(body: SvgProfileInput):
+def endpoint_flower_svg(body: ManualProfileInput):
     """
     Generate shapely-computed flower pattern SVG.
-
+    Accepts the same schema as /api/manual-mode-debug (bend_count defaults to 2).
     Returns: { status, svg_string, station_count, flat_strip_mm, profile_type, shapely_used }
     """
     try:
-        pipeline = execute_manual_pipeline(body.to_manual_profile_input())
+        pipeline = execute_manual_pipeline(body)
         if is_fail(pipeline):
             return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
 
@@ -1237,15 +1237,15 @@ def endpoint_flower_svg(body: SvgProfileInput):
 # ─── POST /api/roll-svg ─────────────────────────────────────────────────────────
 
 @router.post("/roll-svg")
-def endpoint_roll_svg(body: SvgProfileInput):
+def endpoint_roll_svg(body: ManualProfileInput):
     """
     Generate per-station shapely-computed roll groove SVG strings.
-
+    Accepts the same schema as /api/manual-mode-debug (bend_count defaults to 2).
     Returns: { status, svg_string, station_svgs: [...], total_stations, shapely_used }
     Top-level svg_string = first station SVG for quick preview.
     """
     try:
-        pipeline = execute_manual_pipeline(body.to_manual_profile_input())
+        pipeline = execute_manual_pipeline(body)
         if is_fail(pipeline):
             return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
 

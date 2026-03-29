@@ -48,8 +48,9 @@ def _station_colour(idx: int, total: int, is_calib: bool) -> Tuple[str, float]:
 
 
 # ── Profile cross-section centerline at angle theta (degrees) ─────────────────
+# These functions are exported for use by roll_groove_svg_engine.
 
-def _section_centerline(
+def section_centerline(
     profile_type: str,
     web_mm: float,
     flange_mm: float,
@@ -112,7 +113,7 @@ def _section_centerline(
         return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
 
 
-def _centerline_to_polygon(pts: List[Tuple[float, float]], thickness: float) -> Optional[Any]:
+def centerline_to_polygon(pts: List[Tuple[float, float]], thickness: float) -> Optional[Any]:
     """Buffer a polyline by t/2 to get a filled polygon."""
     if not SHAPELY_OK or len(pts) < 2:
         return None
@@ -217,8 +218,8 @@ def generate_flower_svg(
         is_calib  = p.get("stage_type") == "calibration"
         colour, opacity = _station_colour(i, n_total, is_calib)
 
-        pts = _section_centerline(ptype, web_mm, flange_mm, angle, lip_mm)
-        poly = _centerline_to_polygon(pts, thickness)
+        pts = section_centerline(ptype, web_mm, flange_mm, angle, lip_mm)
+        poly = centerline_to_polygon(pts, thickness)
         if poly is None or poly.is_empty:
             continue
 

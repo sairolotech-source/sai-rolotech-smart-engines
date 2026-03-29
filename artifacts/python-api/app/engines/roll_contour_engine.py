@@ -60,11 +60,12 @@ K_FACTOR: Dict[str, float] = {
 
 def _bend_allowance(angle_deg: float, inner_radius_mm: float, thickness: float, material: str) -> float:
     """
-    Factory-standard K-factor bend allowance formula.
-    BA = (π/180) × angle_deg × (R + K × T)
+    Neutral-axis bend allowance formula per task spec.
+    BA = (π/180) × angle_deg × (R + t/2)
+    K_FACTOR table retained for reference; t/2 = 0.5×T is used per the forming spec.
+    For GI 1.5mm 90°: BA = (π/2) × (1.5 + 0.75) = 3.534mm → flat_strip ≈ 147.1mm
     """
-    k = K_FACTOR.get(material, 0.44)
-    return (math.pi / 180.0) * angle_deg * (inner_radius_mm + k * thickness)
+    return (math.pi / 180.0) * angle_deg * (inner_radius_mm + thickness / 2.0)
 
 # ── Pass angle schedule  ──────────────────────────────────────────────────────
 # For a required 90° bend, typical industry schedule:
@@ -232,7 +233,7 @@ def generate_roll_contour(
 
     angles    = _angle_schedule(angle_with_springback, forming_passes)
 
-    # ── True flat strip width (K-factor BA formula) ────────────────────────────
+    # ── True flat strip width — neutral-axis formula: BA=(π/2)×(R+t/2) ──────
     ba_each         = _bend_allowance(90.0, bend_radius_mm, thickness, material)
     total_flange_mm = section_h * max(bend_count, 0)
     flat_strip_mm   = round(section_w + total_flange_mm + bend_count * ba_each, 2)
@@ -289,12 +290,13 @@ def generate_roll_contour(
     }
 
     # ── Forming summary ────────────────────────────────────────────────────────
-    k_factor = K_FACTOR.get(material, 0.44)
+    # Formula used: BA = (π/180)×angle×(R + t/2)  — neutral-axis method per task spec
+    half_t = round(thickness / 2.0, 3)
     summary = {
         "flat_strip_width_mm":         flat_strip_mm,
-        "flat_strip_formula":          f"web({section_w})+flanges({total_flange_mm})+BA×{bend_count}({round(ba_each,3)}×{bend_count}={round(ba_each*bend_count,2)})={flat_strip_mm}",
+        "flat_strip_formula":          f"web({section_w})+flanges({total_flange_mm})+BA×{bend_count}((π/2)×(R{bend_radius_mm}+t/2={half_t})×{bend_count}={round(ba_each*bend_count,3)})={flat_strip_mm}",
         "bend_allowance_per_bend_mm":  round(ba_each, 3),
-        "k_factor_used":               k_factor,
+        "neutral_axis_factor":         0.5,
         "final_section_width_mm":      section_w,
         "total_forming_stations":      n_stations,
         "forming_pass_count":          forming_passes,

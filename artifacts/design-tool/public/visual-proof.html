@@ -44,7 +44,7 @@ h1 { color: #f8fafc; font-size: 20px; margin-bottom: 6px; }
   <div class="summary-card">
     <h3>Q1 Profile Dimensions</h3>
     <div class="value" style="color:#4ade80">REAL</div>
-    <div class="label">K-factor BA formula ✓  flat_strip=146.79mm ✓  flange_count=2 ✓  web=60mm ✓  section_type=c_channel ✓</div>
+    <div class="label">Neutral-axis BA formula ✓  flat_strip=147.07mm ✓  flange_count=2 ✓  web=60mm ✓  section_type=c_channel ✓</div>
   </div>
   <div class="summary-card">
     <h3>Q2 Flower Pattern</h3>
@@ -79,10 +79,10 @@ h1 { color: #f8fafc; font-size: 20px; margin-bottom: 6px; }
   </div>
   <div class="code-block">
 <strong>FIXED Bug 1 — Flat Strip (roll_contour_engine.py):</strong>
-  BA = (π/180) × 90° × (R + K×T) = 1.5708 × (1.5 + 0.44×1.5) = 1.5708 × 2.16 = 3.39mm/bend
-  flat_strip = web(60) + flanges(80) + BA×2(6.79) = 146.79mm  [was: 65mm — WRONG]
-  K_FACTOR table: GI=0.44, MS=0.44, SS=0.50, HR=0.43, CR=0.44, AL=0.40
-  forming_summary now exposes: flat_strip_width_mm, flat_strip_formula, k_factor_used, bend_allowance_per_bend_mm
+  BA = (π/2) × (R + t/2) = 1.5708 × (1.5 + 0.75) = 1.5708 × 2.25 = 3.534mm/bend
+  flat_strip = web(60) + flanges(80) + BA×2(3.534×2=7.07) = 147.07mm ≈ 147.1mm  [was: 65mm — WRONG]
+  Formula: neutral-axis method per task spec (inner_radius + t/2)
+  forming_summary now exposes: flat_strip_width_mm, flat_strip_formula, neutral_axis_factor, bend_allowance_per_bend_mm
 
 <strong>FIXED Bug 2 — Flange Detection (flange_web_lip_engine.py):</strong>
   Manual mode (bends=[]) now uses bend_count_hint from profile input instead of len(bends)=0

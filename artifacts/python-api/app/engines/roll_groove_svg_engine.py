@@ -1,12 +1,14 @@
 """
 roll_groove_svg_engine.py — Real Roll Groove SVG Generator
 
-Uses shapely to compute upper-roll and lower-roll groove cross-sections
-from the forming pass geometry, then renders per-station SVG strings.
+Uses shapely to compute upper-roll and lower-roll groove cross-sections.
+Per task spec step 6: takes the outer-face polygon of the section cross-section
+from flower_svg_engine (section_centerline + centerline_to_polygon), offsets it
+outward by roll_gap/2 to form the upper roll groove, mirrors to form lower roll.
 
 Each SVG shows:
-  - Upper roll outline (blue filled) with groove cut
-  - Lower roll outline (green dashed) with matching groove
+  - Upper roll outline (blue filled) with groove derived from flower section poly
+  - Lower roll outline (green dashed) with matching groove (mirrored)
   - Pass line (yellow)
   - Roll gap annotation
   - Groove depth, roll OD, roll width labels
@@ -33,6 +35,15 @@ try:
 except ImportError:
     SHAPELY_OK = False
     logger.warning("[roll_groove_svg_engine] shapely not available")
+
+# Import shared section polygon primitives from flower_svg_engine
+# (task spec step 6: groove derived from flower outer-face polygon offset)
+try:
+    from app.engines.flower_svg_engine import section_centerline, centerline_to_polygon
+    FLOWER_ENGINE_OK = True
+except Exception as _fe:
+    FLOWER_ENGINE_OK = False
+    logger.warning("[roll_groove_svg_engine] flower_svg_engine import failed: %s", _fe)
 
 
 BASE_ROLL_OD_MM: float = 120.0
@@ -107,6 +118,60 @@ def _poly_to_svg_path(poly: Any, ox: float, oy: float, sc: float) -> str:
     return " ".join(parts)
 
 
+def _flower_groove_polys(
+    ptype: str,
+    web_mm: float,
+    flange_mm: float,
+    thickness: float,
+    angle_deg: float,
+    roll_gap: float,
+) -> Tuple[Optional[Any], Optional[Any]]:
+    """
+    Derive upper and lower roll groove polygons from the flower section polygon.
+    Per task spec step 6: takes the outer-face polygon of the cross-section
+    (section_centerline + centerline_to_polygon), offsets outward by roll_gap/2
+    for the upper roll, mirrors downward for the lower roll.
+
+    Returns (upper_groove_poly, lower_groove_poly).
+    Falls back to None, None if shapely or flower_svg_engine unavailable.
+    """
+    if not SHAPELY_OK or not FLOWER_ENGINE_OK:
+        return None, None
+    try:
+        # 1. Compute the section centerline at this station's angle
+        pts = section_centerline(ptype, web_mm, flange_mm, angle_deg)
+
+        # 2. Buffer by thickness/2 to get the section polygon (outer face)
+        section_poly = centerline_to_polygon(pts, thickness)
+        if section_poly is None or section_poly.is_empty:
+            return None, None
+
+        # 3. Offset outward by roll_gap/2 to form the roll groove boundary
+        #    The groove envelope wraps the outer face of the section + half-gap clearance
+        groove_envelope = section_poly.buffer(roll_gap / 2.0, cap_style=2, join_style=2)
+
+        # 4. Build upper-roll body: everything ABOVE the groove envelope bounding box
+        env = groove_envelope.bounds  # (minx, miny, maxx, maxy)
+        body_h = ROLL_BODY_HEIGHT_MM
+        upper_body = box(env[0] - 5, env[3], env[2] + 5, env[3] + body_h)
+        # Upper groove = body union with groove envelope
+        upper_poly = upper_body.union(groove_envelope)
+
+        # 5. Lower roll: mirror the groove envelope through y=0 (section sits at y=0 web level)
+        #    Lower body goes below minY of groove envelope
+        lower_envelope = section_poly.buffer(roll_gap / 2.0, cap_style=2, join_style=2)
+        # Mirror by reflecting y coordinates
+        from shapely.affinity import scale as shapely_scale
+        lower_envelope = shapely_scale(lower_envelope, yfact=-1, origin=(0, 0))
+        lower_body = box(env[0] - 5, env[1] - body_h, env[2] + 5, env[1])
+        lower_poly = lower_body.union(lower_envelope)
+
+        return upper_poly, lower_poly
+    except Exception as exc:
+        logger.debug("[roll_groove_svg_engine] flower groove derivation failed: %s", exc)
+        return None, None
+
+
 def _make_pass_svg(
     pass_data: Dict[str, Any],
     web_mm: float,
@@ -146,8 +211,15 @@ def _make_pass_svg(
     elems: List[str] = []
 
     if SHAPELY_OK:
-        up_poly = _groove_polygon(web_mm, flange_mm, thickness, gap, progress, is_upper=True)
-        lo_poly = _groove_polygon(web_mm, flange_mm, thickness, gap, progress, is_upper=False)
+        # Primary: derive grooves from flower outer-face polygon + roll_gap/2 offset
+        # (task spec step 6 compliance)
+        up_poly, lo_poly = _flower_groove_polys(ptype, web_mm, flange_mm, thickness, angle, gap)
+
+        # Fallback: use trapezoidal model if flower derivation failed
+        if up_poly is None:
+            up_poly = _groove_polygon(web_mm, flange_mm, thickness, gap, progress, is_upper=True)
+        if lo_poly is None:
+            lo_poly = _groove_polygon(web_mm, flange_mm, thickness, gap, progress, is_upper=False)
 
         if up_poly and not up_poly.is_empty:
             d = _poly_to_svg_path(up_poly, ox, oy, sc)

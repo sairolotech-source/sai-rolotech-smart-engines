@@ -11,7 +11,7 @@ class AutoModeInput(BaseModel):
 
 
 class ManualProfileInput(BaseModel):
-    bend_count: int = Field(..., ge=0, description="Number of bends in the profile")
+    bend_count: int = Field(2, ge=0, description="Number of bends in the profile (default 2 for C-section)")
     section_width_mm: float = Field(..., gt=0, description="Profile width in mm")
     section_height_mm: float = Field(..., gt=0, description="Profile height in mm")
     thickness: float = Field(..., gt=0, description="Sheet thickness in mm")

@@ -209,7 +209,9 @@ def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
         return fail_at("geometry_engine", geometry_result)
 
     # ── Centerline Sheet Converter (Arc-Aware) ─────────────────────────────
-    raw_entities = import_result.get("geometry", {}).get("entities", [])
+    raw_entities = import_result.get("geometry") or []
+    if isinstance(raw_entities, dict):
+        raw_entities = raw_entities.get("entities", [])
     _is_centerline = is_centerline_geometry(raw_entities)
     centerline_result = _EMPTY
     if _is_centerline and data.thickness and data.thickness > 0:
@@ -572,7 +574,9 @@ async def auto_mode_dxf(
         return fail_at("geometry_engine", geometry_result)
 
     # ── Centerline Sheet Converter (Arc-Aware) ─────────────────────────────
-    raw_entities = import_result.get("geometry", {}).get("entities", [])
+    raw_entities = import_result.get("geometry") or []
+    if isinstance(raw_entities, dict):
+        raw_entities = raw_entities.get("entities", [])
     _is_centerline = is_centerline_geometry(raw_entities)
     centerline_result = _EMPTY
     if _is_centerline and thickness and thickness > 0:
@@ -732,8 +736,9 @@ async def preview_centerline_conversion(
             "result": import_result,
         }
 
-    geometry = import_result.get("geometry", {})
-    raw_entities = geometry.get("entities", [])
+    raw_entities = import_result.get("geometry") or []
+    if isinstance(raw_entities, dict):
+        raw_entities = raw_entities.get("entities", [])
 
     if not is_centerline_geometry(raw_entities):
         return {

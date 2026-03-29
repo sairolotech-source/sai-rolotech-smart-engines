@@ -758,16 +758,15 @@ def _strip_width_progression(
             bc  = g["bend_count"]
             ba  = g["ba_mm"]
             total_ba += ba * bc
-            if gid in ("flange", "rib_arms"):
-                # Primary forming segments: full section_height contribution per bend
+            if gid == "flange":
+                # Primary flange segments: full section_height per bend
                 total_leg_h += section_height_mm * bc
+            elif gid in ("rib_arms", "rib_inner"):
+                # Shutter rib arms: each arm ≈ section_height/2
+                # (matches _flat_strip_for_profile multi-group leg logic)
+                total_leg_h += (section_height_mm / 2.0) * bc
             elif gid in ("lip", "return_lip"):
-                # Lip segment height stored per group or falls back to nothing
-                # (already encoded in the ba_mm via tighter radius)
                 total_leg_h += g.get("leg_mm", section_height_mm * 0.25) * bc
-            elif gid == "rib_inner":
-                # Inner rib arms: same height as outer arms
-                total_leg_h += section_height_mm * bc
             # else: unknown groups contribute only BA, no leg height
         flat_strip_width = final_width_mm + total_leg_h + total_ba
     else:

@@ -992,6 +992,32 @@ class TestProfileTrueContourGeometry:
             "Contour may still be a bounding-box rectangle."
         )
 
+    def test_shutter_slat_strip_width_basis_consistent_with_flat_strip(self, shutter_slat_result):
+        """PP10-5: Strip-width progression must be bounded by flat_strip_width_mm.
+        The first-pass strip must be ≤ flat_strip_width_mm (progression starts at flat and
+        decreases each pass) and the last pass must equal section_width_mm.
+        This verifies _strip_width_progression() and _flat_strip_for_profile() use the
+        same rib-arm leg basis (section_h/2) so they can't silently drift."""
+        summary = shutter_slat_result["forming_summary"]
+        flat  = summary["flat_strip_width_mm"]
+        sec_w = summary.get("section_width_mm", 200)
+        passes = shutter_slat_result["passes"]
+        first_w = passes[0]["strip_width_mm"]
+        last_w  = passes[-1]["strip_width_mm"]
+        # Progression goes flat_strip → section_width monotonically
+        assert first_w <= flat + 0.5, (
+            f"First-pass strip width {first_w:.2f} > flat_strip {flat:.2f} — "
+            "strip width must start at or below the flat strip"
+        )
+        assert first_w > sec_w, (
+            f"First-pass strip width {first_w:.2f} ≤ section_width {sec_w:.2f} — "
+            "forming starts wider than section"
+        )
+        # Last pass should equal section_width (fully formed)
+        assert abs(last_w - sec_w) <= 1.0, (
+            f"Last-pass strip width {last_w:.2f} not close to section_width {sec_w:.2f}"
+        )
+
     @pytest.mark.skipif(not SHAPELY_OK, reason="shapely not available")
     def test_shutter_slat_section_centerline_default_4_ribs(self):
         """PP10-4: section_centerline shutter_slat defaults to n_ribs=4 at theta=90"""

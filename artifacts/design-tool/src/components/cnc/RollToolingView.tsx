@@ -14,6 +14,7 @@ import { AIToolRecommender } from "./AIToolRecommender";
 import { CompletePackagePanel } from "./CompletePackagePanel";
 import { RollFlowerIntegratedView } from "./RollFlowerIntegratedView";
 import { FlowerStationSuggestions } from "./FlowerStationSuggestions";
+import { StationReadinessBadge, StationReadinessSummary, runExportPreflight } from "./StationReadinessBadge";
 
 const UPPER_COLOR = "#3b82f6";
 const LOWER_COLOR = "#f97316";
@@ -411,6 +412,7 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle }: {
       >
         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stColor }} />
         <span className="font-semibold text-zinc-100 text-sm">{rt.label}</span>
+        <StationReadinessBadge rt={rt} />
         <span
           className="text-[10px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
           style={{ backgroundColor: phase.color + "25", color: phase.color, border: `1px solid ${phase.color}50` }}
@@ -685,9 +687,10 @@ function ManufacturingView({ rollTooling }: { rollTooling: RollToolingResult[] }
       "  STATION ROLL SCHEDULE",
       `  ${"Stn".padEnd(6)} ${"Label".padEnd(10)} ${"Upper Roll".padEnd(12)} ${"Lower Roll".padEnd(12)} ${"Roll OD".padEnd(12)} ${"Width".padEnd(10)} ${"Gap"}`,
       hr,
-      ...rollTooling.filter(rt => !!rt.rollProfile).map(rt =>
-        `  ${String(rt.stationNumber).padEnd(6)} ${rt.label.padEnd(10)} R${String(rt.rollProfile!.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rt.rollProfile!.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rt.rollProfile!.rollDiameter.toFixed(2).padEnd(11)} ${rt.rollProfile!.rollWidth.toFixed(3).padEnd(10)} ${rt.rollProfile!.gap.toFixed(3)} mm`
-      ),
+      ...rollTooling.filter(rt => !!rt.rollProfile).map(rt => {
+        const rp = rt.rollProfile!;
+        return `  ${String(rt.stationNumber).padEnd(6)} ${rt.label.padEnd(10)} R${String(rp.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rp.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rp.rollDiameter.toFixed(2).padEnd(11)} ${rp.rollWidth.toFixed(3).padEnd(10)} ${rp.gap.toFixed(3)} mm`;
+      }),
     ];
 
     const page2 = [
@@ -1908,13 +1911,18 @@ export function RollToolingView() {
           </>
         )}
 
-        {view === "stations" && rollTooling.map((rt) => (
-          <StationRollPair key={rt.stationNumber} rt={rt}
-            totalStations={rollTooling.length}
-            isExpanded={expandedStation === rt.stationNumber}
-            onToggle={() => setExpandedStation(expandedStation === rt.stationNumber ? null : rt.stationNumber)}
-          />
-        ))}
+        {view === "stations" && (
+          <>
+            <StationReadinessSummary rollTooling={rollTooling} />
+            {rollTooling.map((rt) => (
+              <StationRollPair key={rt.stationNumber} rt={rt}
+                totalStations={rollTooling.length}
+                isExpanded={expandedStation === rt.stationNumber}
+                onToggle={() => setExpandedStation(expandedStation === rt.stationNumber ? null : rt.stationNumber)}
+              />
+            ))}
+          </>
+        )}
 
         {view === "gap" && <RollGapTable gaps={rollGaps} />}
 

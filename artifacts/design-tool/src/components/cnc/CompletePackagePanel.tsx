@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import JSZip from "jszip";
 import { useCncStore, type RollToolingResult, type MachineData, type BomResult } from "../../store/useCncStore";
 import { splitGcode } from "../../lib/gcode-split";
@@ -6,6 +6,7 @@ import { downloadRollDxf, generateRollDxf } from "../../lib/roll-dxf";
 import { BomView } from "./BomView";
 import { generateRollTooling as apiGenerateRollTooling } from "../../lib/api";
 import { autoDetectProfileType } from "../../store/useCncStore";
+import { StationReadinessSummary, runExportPreflight } from "./StationReadinessBadge";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -471,9 +472,10 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
       hr,
       `  ${"Stn".padEnd(5)} ${"Label".padEnd(10)} ${"Upper Roll".padEnd(12)} ${"Lower Roll".padEnd(12)} ${"OD(mm)".padEnd(12)} ${"Width".padEnd(10)} ${"Gap"}`,
       hr,
-      ...rollTooling.filter(rt => !!rt.rollProfile).map(rt =>
-        `  ${String(rt.stationNumber).padEnd(5)} ${rt.label.padEnd(10)} R${String(rt.rollProfile!.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rt.rollProfile!.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rt.rollProfile!.rollDiameter.toFixed(3).padEnd(11)} ${rt.rollProfile!.rollWidth.toFixed(3).padEnd(10)} ${rt.rollProfile!.gap.toFixed(3)} mm`
-      ),
+      ...rollTooling.filter(rt => !!rt.rollProfile).map(rt => {
+        const rp = rt.rollProfile!;
+        return `  ${String(rt.stationNumber).padEnd(5)} ${rt.label.padEnd(10)} R${String(rp.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rp.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rp.rollDiameter.toFixed(3).padEnd(11)} ${rp.rollWidth.toFixed(3).padEnd(10)} ${rp.gap.toFixed(3)} mm`;
+      }),
       "",
       ...(machineData?.overallWarnings.length ? [hr, "  CRITICAL WARNINGS", hr, ...machineData.overallWarnings.map(w => `  ⚠ ${w}`), ""] : []),
       HR,
@@ -620,12 +622,35 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
     return sum + (rp.upperLatheGcode?.split("\n").length ?? 0) + (rp.lowerLatheGcode?.split("\n").length ?? 0);
   }, 0);
 
+  const preflight = useMemo(() => runExportPreflight(rollTooling), [rollTooling]);
+  const exportAllowed = isPackageComplete && preflight.canExport;
+
   return (
     <div className="space-y-5">
+      {/* Station readiness preflight */}
+      <StationReadinessSummary rollTooling={rollTooling} />
+
       {/* Incomplete package warning */}
       {!isPackageComplete && (
         <div className="border border-amber-700/50 bg-amber-950/30 rounded-xl px-4 py-3 text-[11px] text-amber-300">
           ⚠ Package is incomplete — machine setup or BOM data is missing from older state. Please click <span className="font-bold">Generate Complete Package</span> to refresh all data before exporting.
+        </div>
+      )}
+
+      {/* Export preflight blockers */}
+      {preflight.blockers.length > 0 && (
+        <div className="border border-red-700/50 bg-red-950/20 rounded-xl px-4 py-3 space-y-1">
+          <div className="text-[11px] font-bold text-red-400 mb-1">✕ Export Blocked — Fix these issues first:</div>
+          {preflight.blockers.map((b, i) => (
+            <div key={i} className="text-[10px] text-red-300 flex items-start gap-1.5">
+              <span className="flex-shrink-0 mt-0.5">▸</span>{b}
+            </div>
+          ))}
+          {preflight.warnings.map((w, i) => (
+            <div key={`w${i}`} className="text-[10px] text-amber-400 flex items-start gap-1.5">
+              <span className="flex-shrink-0 mt-0.5">⚠</span>{w}
+            </div>
+          ))}
         </div>
       )}
 
@@ -654,9 +679,10 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
           </div>
           <button
             onClick={handleExportZip}
-            disabled={exporting || !isPackageComplete}
+            disabled={exporting || !exportAllowed}
+            title={!exportAllowed ? (preflight.blockers[0] ?? "Package incomplete") : "Download complete package ZIP"}
             className={`ml-auto flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
-              exporting || !isPackageComplete
+              exporting || !exportAllowed
                 ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
                 : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30"
             }`}

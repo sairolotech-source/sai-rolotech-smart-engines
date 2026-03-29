@@ -1,0 +1,195 @@
+Bahut badhiya — ye **real progress** hai. Ab project ka status kaafi clear ho gaya hai.
+
+## Abhi kya improve karna baki hai
+
+### 1) **T006 — Frontend StationReadinessBadge**
+
+Ye ab sabse important frontend item hai.
+
+**Kya karna hai:**
+
+* har station par status badge dikhao:
+
+  * `Complete`
+  * `Incomplete`
+  * `Blocked`
+  * `No Profile`
+* badge ka base ye ho:
+
+  * `rollProfile present hai ya nahi`
+  * `dimensions generated hain ya nahi`
+  * `flower pass data available hai ya nahi`
+  * `collision/interference issue hai ya nahi`
+
+**Expected logic:**
+
+```ts
+if (!station.rollProfile) status = "No Profile";
+else if (station.error) status = "Blocked";
+else if (!station.dimensions || !station.flowerData) status = "Incomplete";
+else status = "Complete";
+```
+
+**Kyun zaroori hai:**
+abhi backend audit strong ho gaya hai, lekin operator ko UI me turant pata chalna chahiye kis station par issue hai.
+
+---
+
+### 2) **T007 — Fake Success Removal**
+
+Ye trust ke liye mandatory hai.
+
+**Abhi rule ye hona chahiye:**
+success tabhi show ho jab:
+
+* code path complete hua ho
+* UI preview render hua ho
+* export object bana ho
+* validation pass ho gayi ho
+
+**Matlab:**
+sirf function chal gaya = success nahi
+sirf toast dikha diya = success nahi
+
+**Recommended gate:**
+
+```ts
+const canMarkSuccess =
+  geometryValid &&
+  profileGenerated &&
+  flowerGenerated &&
+  stations.every(s => s.rollProfile) &&
+  exportPayloadReady;
+```
+
+Agar ye fail ho:
+
+* green success mat dikhao
+* exact failure message dikhao
+
+Example:
+
+* `DXF parsed but flower generation failed`
+* `9 me se 3 stations incomplete`
+* `Export blocked: rollProfile missing`
+
+---
+
+### 3) **T010 — Null Guards / Crash-Proof UI**
+
+Ye React stability ke liye abhi bhi जरूरी hai.
+
+Tumne pehle bhi dekha tha:
+`rollProfile undefined` wali wajah se crash aa raha tha.
+
+**Ab har jagah safe render chahiye:**
+
+* tables
+* exports
+* station detail panel
+* digital twin
+* BOM
+* roll tooling views
+* CSV/XML generators
+
+**Pattern:**
+
+```ts
+if (!station?.rollProfile) {
+  return <EmptyState message="No roll profile generated" />;
+}
+```
+
+Aur direct access kabhi nahi:
+
+```ts
+station.rollProfile.rollDiameter
+```
+
+Isko safe banao:
+
+```ts
+station?.rollProfile?.rollDiameter ?? "-"
+```
+
+---
+
+# Current priority order
+
+## **P0 — abhi turant**
+
+1. Frontend `StationReadinessBadge`
+2. Fake success removal
+3. Full null-guard sweep
+4. Export pre-validation modal
+5. Station summary panel
+
+## **P1 — next**
+
+1. collision/interference UI overlay
+2. springback values frontend par show karo
+3. pass-wise angle chart
+4. operator warning panel
+
+## **P2 — advanced**
+
+1. complex profile visual debugger
+2. side-by-side target vs actual bend comparison
+3. CNC handoff validation report
+4. audit log persistence backend me
+
+---
+
+# Tumhare current audit ka seedha verdict
+
+## Already strong ho gaya:
+
+* auth timing attack fix
+* real bend radius detection
+* bend sign correction
+* flower engine numeric pass angles
+* calibration overbend
+* validation guards
+
+## Ab weak point sirf yaha hai:
+
+* frontend truthfulness
+* incomplete station visibility
+* null safety
+* operator-facing status clarity
+
+---
+
+# Mere hisab se next exact task
+
+Ab Codex/Replit ko ye next command deni chahiye:
+
+```text
+Implement the remaining frontend reliability tasks:
+
+1. Add StationReadinessBadge to every station card, detail view, and export summary.
+2. Remove fake success states. Success must only display if geometry, flower data, station roll profiles, and export payload all validate.
+3. Sweep the frontend for all null/undefined access paths related to station, rollProfile, dimensions, flowerPattern, and export state.
+4. Add disabled-state reasons to all export/generate buttons.
+5. Add an export preflight validator that lists incomplete stations before allowing CSV/XML/DXF export.
+
+Return:
+- affected files
+- exact code patches
+- before/after behavior
+- edge cases covered
+- remaining risks
+```
+
+# Final engineering score
+
+Abhi project ka score roughly:
+
+**Backend/logic side:** 82–88%
+**Frontend reliability side:** 58–68%
+**Overall production readiness:** 72–78%
+
+Frontend ke ye 3 remaining tasks complete hote hi score kaafi jump karega.
+
+Main ab isko **developer task sheet format** me bhi tod sakta hoon — file-wise, jaise:
+`CompletePackagePanel.tsx`, `DigitalTwinView.tsx`, `RollToolingView.tsx`, `BomView.tsx`, `SmartToolSelector.tsx`.

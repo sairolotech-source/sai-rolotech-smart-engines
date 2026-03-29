@@ -555,7 +555,14 @@ export function LeftPanel() {
         setConfidenceIntervals(result.confidenceIntervals);
       }
 
-      toast({ title: "Power Pattern Generated", description: `${result.stations.length} stations created for ${materialType} ${materialThickness}mm` });
+      {
+        const stCount = result.stations.length;
+        if (stCount === 0) {
+          toast({ title: "Generation Warning", description: "Power Pattern ran but returned 0 stations — check profile geometry and inputs.", variant: "destructive" });
+        } else {
+          toast({ title: "Power Pattern Generated", description: `${stCount} stations created for ${materialType} ${materialThickness}mm — now generate Roll Tooling to complete profiles` });
+        }
+      }
 
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to generate power pattern";
@@ -688,7 +695,17 @@ export function LeftPanel() {
           stationNumber: firstRoll.stationNumber,
           rollGap: result.rollGaps?.[0],
         });
-        toast({ title: "Roll Tooling Generated", description: `${result.rollTooling.length} roll sets created` });
+        const withProfile = result.rollTooling.filter(rt => !!rt.rollProfile).length;
+        const total = result.rollTooling.length;
+        if (withProfile < total) {
+          toast({
+            title: "Roll Tooling Partial",
+            description: `${withProfile}/${total} stations have roll profiles — ${total - withProfile} need regeneration`,
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Roll Tooling Generated", description: `${total} roll sets ready — all profiles complete` });
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to generate roll tooling";
@@ -1176,7 +1193,10 @@ export function LeftPanel() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-[11px] font-semibold text-green-300 truncate">{fileName}</p>
-                      <p className="text-[10px] text-green-500">File loaded successfully</p>
+                      {(geometry?.segments ?? []).length > 0
+                        ? <p className="text-[10px] text-green-500">Parsed — {geometry.segments.length} segments, {(geometry.bendPoints ?? []).length} bends detected</p>
+                        : <p className="text-[10px] text-amber-400">⚠ File parsed but no segments found — check DXF layer/entity type</p>
+                      }
                     </div>
                   </div>
                   <button

@@ -646,6 +646,206 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
   );
 }
 
+// ─── WORKFLOW CHAIN PANEL ────────────────────────────────────────────────────
+
+function WorkflowChain({
+  cur, total, activeIdx, material, thickness,
+}: {
+  cur: SimPass; total: number; activeIdx: number; material: string; thickness: number;
+}) {
+  const steps = [
+    { id: "profile",  label: "Input Profile",     icon: "📐", desc: `${material} · ${thickness}mm` },
+    { id: "strip",    label: "Developed Strip",    icon: "📏", desc: `Strip width: ${cur.strip_width_mm.toFixed(1)} mm` },
+    { id: "flower",   label: "Flower Pattern",     icon: "🌸", desc: `${total} stations · ${cur.pass_progress_pct.toFixed(0)}% formed` },
+    { id: "geometry", label: "Station Geometry",   icon: "⚙️", desc: `Station ${cur.pass_no}: ${cur.target_angle_deg.toFixed(1)}°` },
+    { id: "contour",  label: "Roll Contour",       icon: "🔵", desc: `Gap: ${cur.roll_gap_mm.toFixed(2)} mm · Depth: ${cur.forming_depth_mm.toFixed(1)} mm` },
+    { id: "drawing",  label: "Roll Drawing",       icon: "📄", desc: "Export → SVG / DXF / PDF" },
+  ];
+
+  const activeStep = activeIdx < 1 ? 0 :
+                     activeIdx < Math.ceil(total * 0.25) ? 1 :
+                     activeIdx < Math.ceil(total * 0.75) ? 2 :
+                     activeIdx < total - 1 ? 3 :
+                     cur.stage_type === "calibration" ? 4 : 5;
+
+  return (
+    <div className="px-5 py-3 border-b border-cyan-500/15 bg-cyan-500/3">
+      <div className="text-[9px] uppercase tracking-wider text-cyan-600 font-semibold mb-2 flex items-center gap-1">
+        <Link2 className="w-3 h-3" /> Profile → Flower → Roll Workflow Chain
+      </div>
+      <div className="flex items-center gap-0 overflow-x-auto">
+        {steps.map((step, i) => (
+          <div key={step.id} className="flex items-center shrink-0">
+            <div className={`flex flex-col items-center px-2 py-1.5 rounded-lg transition-all ${
+              i === activeStep
+                ? "bg-cyan-500/15 border border-cyan-500/40"
+                : i < activeStep
+                ? "opacity-60"
+                : "opacity-30"
+            }`}>
+              <span className="text-sm leading-none">{step.icon}</span>
+              <span className={`text-[9px] font-semibold mt-0.5 ${i === activeStep ? "text-cyan-300" : "text-gray-500"}`}>
+                {step.label}
+              </span>
+              <span className="text-[8px] text-gray-600 max-w-[70px] text-center leading-tight mt-0.5">
+                {step.desc}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`w-4 h-px mx-0.5 ${i < activeStep ? "bg-cyan-500/60" : "bg-gray-700"}`} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── STATION LOGIC EXPLANATION BOX ───────────────────────────────────────────
+
+function StationLogicBox({
+  cur, allPasses, thickness, material, open, onToggle,
+}: {
+  cur: SimPass; allPasses: SimPass[]; thickness: number; material: string;
+  open: boolean; onToggle: () => void;
+}) {
+  const explain = getStationExplanation(cur, allPasses, thickness, material);
+
+  const riskColors = {
+    ok:      { text: "text-green-400", bg: "bg-green-500/8", border: "border-green-500/20" },
+    caution: { text: "text-yellow-400", bg: "bg-yellow-500/8", border: "border-yellow-500/20" },
+    warning: { text: "text-red-400",   bg: "bg-red-500/8",    border: "border-red-500/20" },
+  };
+  const riskCfg = riskColors[explain.riskLevel];
+
+  return (
+    <div className="border-t border-violet-500/10">
+      <button
+        onClick={onToggle}
+        className="w-full px-5 py-2.5 flex items-center gap-2 hover:bg-white/2 transition-colors"
+      >
+        <Info className="w-3.5 h-3.5 text-blue-400" />
+        <span className="text-xs font-semibold text-blue-300 uppercase tracking-wider">
+          Station {cur.pass_no} — {STAGE_LABEL[cur.stage_type] ?? cur.stage_type}
+        </span>
+        <span className="ml-2 text-[9px] text-gray-600">Why does this station exist?</span>
+        <ChevronRight className={`ml-auto w-3.5 h-3.5 text-gray-500 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-5 pb-4 flex flex-col gap-2.5">
+          {/* Purpose */}
+          <div className="text-xs text-gray-300 leading-relaxed">
+            <span className="text-blue-400 font-semibold">Purpose: </span>{explain.purpose}
+          </div>
+          {/* Forming detail */}
+          <div className="text-xs text-gray-400 leading-relaxed">
+            <span className="text-violet-400 font-semibold">Forming: </span>{explain.forming}
+          </div>
+          {/* Next station note */}
+          <div className="text-xs text-gray-500 leading-relaxed">
+            <span className="text-gray-400 font-semibold">Next: </span>{explain.incremental}
+          </div>
+          {/* Technical note */}
+          <div className="text-[10px] text-gray-600 font-mono border-t border-white/5 pt-2">
+            {explain.noteText}
+          </div>
+          {/* Risk note */}
+          <div className={`text-xs rounded-lg border px-3 py-2 ${riskCfg.text} ${riskCfg.bg} ${riskCfg.border} leading-relaxed`}>
+            {explain.riskNote || "✓ No specific risk for this station type."}
+          </div>
+          {/* What if removed */}
+          <div className="text-[10px] text-gray-600 border border-gray-800 rounded-lg px-3 py-2 leading-relaxed">
+            <span className="text-gray-500 font-semibold">If removed: </span>
+            {cur.stage_type === "calibration"
+              ? "Strip will exit with springback error. Final profile angle will be incorrect by " + cur.springback_deg.toFixed(2) + "°."
+              : cur.stage_type === "flat"
+              ? "Strip entry tracking will be uncontrolled — potential mis-feed into Station 2."
+              : `The ${cur.target_angle_deg.toFixed(1)}° angle increment would be transferred to adjacent station, risking excessive single-pass forming.`}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MANUFACTURABILITY WARNINGS PANEL ────────────────────────────────────────
+
+function ManufacturabilityPanel({
+  passes, rollOD, bore, faceWidth, thickness, material, open, onToggle,
+}: {
+  passes: SimPass[]; rollOD: number; bore: number; faceWidth: number;
+  thickness: number; material: string; open: boolean; onToggle: () => void;
+}) {
+  const warnings = getManufacturabilityWarnings(passes, rollOD, bore, faceWidth, thickness, material);
+  const highCount = warnings.filter(w => w.severity === "HIGH").length;
+  const medCount  = warnings.filter(w => w.severity === "MEDIUM").length;
+
+  const severityColor: Record<string, string> = {
+    HIGH:   "text-red-300 bg-red-500/10 border-red-500/25",
+    MEDIUM: "text-yellow-300 bg-yellow-500/10 border-yellow-500/25",
+    LOW:    "text-blue-300 bg-blue-500/10 border-blue-500/25",
+  };
+
+  return (
+    <div className="border-t border-orange-500/15">
+      <button
+        onClick={onToggle}
+        className="w-full px-5 py-2.5 flex items-center gap-2 hover:bg-white/2 transition-colors"
+      >
+        <Cpu className="w-3.5 h-3.5 text-orange-400" />
+        <span className="text-xs font-semibold text-orange-300 uppercase tracking-wider">
+          Manufacturability Check
+        </span>
+        {warnings.length === 0 ? (
+          <span className="ml-2 text-[9px] text-green-500 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" /> All clear
+          </span>
+        ) : (
+          <div className="ml-2 flex items-center gap-1.5">
+            {highCount > 0 && (
+              <span className="text-[9px] bg-red-500/15 text-red-300 border border-red-500/25 rounded-full px-1.5 py-0.5">
+                {highCount} HIGH
+              </span>
+            )}
+            {medCount > 0 && (
+              <span className="text-[9px] bg-yellow-500/15 text-yellow-300 border border-yellow-500/25 rounded-full px-1.5 py-0.5">
+                {medCount} MED
+              </span>
+            )}
+          </div>
+        )}
+        <ChevronRight className={`ml-auto w-3.5 h-3.5 text-gray-500 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-5 pb-4 flex flex-col gap-2">
+          {warnings.length === 0 ? (
+            <div className="text-xs text-green-400 flex items-center gap-2 py-1">
+              <CheckCircle className="w-4 h-4" />
+              No manufacturability issues detected. Design is within acceptable geometry bounds.
+            </div>
+          ) : (
+            warnings.map((w, i) => (
+              <div key={i} className={`text-xs rounded-lg border px-3 py-2.5 ${severityColor[w.severity]}`}>
+                <div className="flex items-center gap-1.5 font-semibold mb-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  [{w.severity}] {w.title}
+                  {w.station && (
+                    <span className="ml-auto text-[9px] opacity-70 font-mono">Station {w.station}</span>
+                  )}
+                </div>
+                <div className="opacity-80 text-[10px] leading-relaxed">{w.detail}</div>
+              </div>
+            ))
+          )}
+          <div className="text-[9px] text-gray-600 mt-1 font-mono">
+            manufacturability_check_engine · roll_OD={rollOD} bore={bore} face={faceWidth}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AI OPTIMIZER PANEL ──────────────────────────────────────────────────────
 
 function AiOptimizerPanel({ optimizer }: { optimizer: OptimizerData }) {

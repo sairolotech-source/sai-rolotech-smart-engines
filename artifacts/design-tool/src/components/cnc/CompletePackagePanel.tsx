@@ -554,6 +554,7 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
       const dxfFolder = zip.folder("DXF");
       for (const rt of rollTooling) {
         const rp = rt.rollProfile;
+        if (!rp) continue;
         for (const [side, num] of [["upper", rp.upperRollNumber], ["lower", rp.lowerRollNumber]] as ["upper"|"lower", number][]) {
           const filename = `ROLL_${String(num).padStart(3,"0")}_${side.toUpperCase()}_${rt.label}.dxf`;
           try {

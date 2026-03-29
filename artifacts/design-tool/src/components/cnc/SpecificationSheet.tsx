@@ -94,6 +94,7 @@ function buildStationSpecs(
 
   return rollTooling.map((rt) => {
     const rp = rt.rollProfile;
+    if (!rp) return null;
     const spec = rt.mfgSpec;
 
     const stationRollDia = rp.rollDiameter || rollDiameter;
@@ -166,7 +167,7 @@ function buildStationSpecs(
             }
           : null,
     };
-  });
+  }).filter((s): s is StationSpec => s !== null);
 }
 
 function exportCSV(specs: StationSpec[], summary: { totalStations: number; totalPowerKw: number; totalWeightKg: number; material: string }, profileMeta?: GuardrailProfileMetadata | null) {
@@ -473,6 +474,7 @@ export function SpecificationSheet() {
     let totalWeightKg = 0;
     for (const rt of rollTooling) {
       const rp = rt.rollProfile;
+      if (!rp) continue;
       const spec = rt.mfgSpec;
       const rollVol = Math.PI / 4 * (rp.rollDiameter ** 2 - rp.shaftDiameter ** 2) * rp.rollWidth;
       totalWeightKg += rollVol * DENSITY * 2;

@@ -17,6 +17,7 @@ function generateSetupSheetHTML(store: ReturnType<typeof useCncStore.getState>):
 
   const rollRows = rollTooling.map((rt) => {
     const rp = rt.rollProfile;
+    if (!rp) return `<tr><td>${esc(rt.stationNumber)}</td><td>${esc(rt.label)}</td><td colspan="6">(profile pending)</td></tr>`;
     return `
       <tr>
         <td>${esc(rt.stationNumber)}</td>

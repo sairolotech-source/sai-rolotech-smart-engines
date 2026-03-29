@@ -1,0 +1,635 @@
+Haan. Neeche **Codex ke liye full master brief** de raha hoon jisme:
+
+* tumhare software ke **saare engine problems**
+* app ke **working functions ka expected behavior**
+* **roll forming logic**
+* **tooling engine**
+* **DXF/CNC/export**
+* **validation rules**
+* **migration repair**
+* **UI behavior**
+* **test cases**
+* **strict success criteria**
+
+sab ek jagah likha hai.
+
+Ek baat yaad rakho: Codex code ko **read, edit aur run** kar sakta hai, repo ke context me bugs fix kar sakta hai, aur parallel ya agent-style workflows me kaam kar sakta hai. Isliye is tarah ka structured brief dena vague prompt se kaafi zyada effective hoga. ([OpenAI][1])
+
+## Codex ke liye full master prompt
+
+You are the lead engineer for a production-grade Roll Forming + Tooling + CNC software system.
+
+You are NOT allowed to give fake completion messages.
+You must inspect the full repository, identify all broken or half-built systems, implement missing engines, connect them end-to-end, run validation, and leave the app in a working state.
+
+==================================================
+
+1. PRODUCT INTENT
+   ==================================================
+
+This app is a roll forming design and tooling generation system.
+
+The user should be able to:
+
+1. Upload or define a profile
+2. Enter material thickness
+3. Generate flower pattern / station progression
+4. Generate per-station roll tooling geometry
+5. Generate upper and lower roll groove coordinates
+6. Compute roll dimensions
+7. View station-by-station status
+8. Export DXF / CSV / XML
+9. Export CNC lathe G-code
+10. See dimensions, bend angles, and warnings
+11. Recover old saved jobs from localStorage without corruption
+12. Avoid crashes even when partial data exists
+
+This is not a demo app.
+This must behave like a real engineering workflow.
+
+==================================================
+2. CURRENT FAILURE SUMMARY
+==========================
+
+The app is partially built.
+Replit previously created UI guards and some status logic, but the real engineering engines are incomplete.
+
+Current known problems include:
+
+A. rollProfile is missing on some stations
+B. Some views crash when direct property access happens on missing rollProfile
+C. Stations are showing BASIC instead of VALID
+D. upperRoll[] is empty
+E. lowerRoll[] is empty or incomplete
+F. upperLatheGcode is empty string
+G. lowerLatheGcode is empty string
+H. Exports may appear to work but contain incomplete engineering data
+I. Old localStorage data is stale and not fully repaired
+J. DXF upload flow is incomplete
+K. Thickness-driven profile conversion is incomplete
+L. Flower pattern generation is incomplete
+M. Auto dimensions / bend angles are incomplete or missing
+N. Some features claim completion without actual working output
+
+Do not hide any of this.
+Fix it.
+
+==================================================
+3. CORE PRINCIPLE
+=================
+
+Do not patch only the UI.
+Do not only add guards.
+Do not weaken validation.
+Do not silently skip important engineering failures.
+
+You must make the system genuinely functional.
+
+==================================================
+4. REQUIRED ARCHITECTURE
+========================
+
+Audit the codebase and organize it into these logical engines if missing:
+
+1. profileImportEngine
+2. centerlineToSheetEngine
+3. flowerPatternEngine
+4. stationSynthesisEngine
+5. toolingEngine
+6. rollGeometryEngine
+7. cncLatheEngine
+8. dimensionEngine
+9. exportEngine
+10. migrationRepairEngine
+11. validationEngine
+
+If files already exist, repair and complete them.
+If files are missing, create them.
+
+==================================================
+5. PROFILE INPUT / IMPORT ENGINE
+================================
+
+The app must support profile input from either:
+
+* manual drawing / internal profile points
+* DXF upload
+* centerline-based sketch converted to sheet profile
+
+Required behavior:
+
+A. DXF upload must parse geometry into usable profile entities
+B. The profile must preserve:
+
+* lines
+* arcs
+* bend transitions where possible
+  C. The app must detect:
+* overall width
+* leg lengths
+* bend points
+* angle transitions
+  D. If profile is centerline-based, the app must convert it into sheet profile using material thickness
+  E. The app must explicitly ask or use:
+* thickness
+* profile reference mode
+* dimension basis
+  F. If the profile cannot be resolved, show exact reason
+
+No fake success state.
+
+==================================================
+6. CENTERLINE TO SHEET ENGINE
+=============================
+
+This is mandatory.
+
+If a user draws centerline geometry and provides thickness,
+the app must generate sheet boundaries correctly.
+
+Rules:
+
+1. For straight segments:
+
+   * offset equally around centerline when appropriate
+2. For bends:
+
+   * compute inner / outer / neutral path relationship
+3. Thickness must affect resulting profile
+4. Conversion must work for common roll-formed sections:
+
+   * C
+   * U
+   * Z
+   * hat / channel
+   * simple shutter-type profiles
+5. Result must produce actual sheet edges, not only display lines
+
+Expected outputs:
+
+* innerProfilePoints
+* outerProfilePoints
+* centerlineProfilePoints
+* developedWidth estimate
+* segment metadata
+
+==================================================
+7. FLOWER PATTERN ENGINE
+========================
+
+This engine is mandatory and currently incomplete.
+
+The app must generate station progression from input profile.
+
+Required behavior:
+
+1. Analyze target profile bend sequence
+2. Split forming into stations
+3. Generate progressive bend state per station
+4. Support at minimum:
+
+   * simple channels
+   * C/U sections
+   * Z sections
+   * multi-flange sections
+5. Each station must contain:
+
+   * intermediate section points
+   * bend progress
+   * angle state
+   * notes / warnings
+6. If the final profile implies more stations than requested:
+
+   * show warning
+   * allow compressed pass schedule
+   * mark risk level
+7. Do not output nonsense flower diagrams
+
+Outputs required:
+
+* stationSections[]
+* stationAngles[]
+* stationMetadata[]
+* warnings[]
+
+==================================================
+8. STATION SYNTHESIS ENGINE
+===========================
+
+Each station must become a real engineering object.
+
+For every station create:
+
+* stationIndex
+* formedSectionPoints
+* passLineY
+* materialThickness
+* bendSummary
+* rollProfile
+* validationStatus
+* diagnostics
+
+If geometry exists, station cannot stay empty.
+
+==================================================
+9. TOOLING ENGINE
+=================
+
+This is the main missing engine.
+Implement fully.
+
+Create or repair toolingEngine.ts
+
+Required functions:
+
+* synthesizeGroove()
+* buildStationRollProfile()
+* buildAllStationTooling()
+
+Each station must generate:
+
+* upperRoll: Point2D[]
+* lowerRoll: Point2D[]
+* upperRollDiameter
+* lowerRollDiameter
+* shaftDiameter
+* grooveDepth
+* faceWidth
+* passLineY
+* notes[]
+
+Rules:
+
+1. Groove must be derived from station section
+2. Thickness must influence groove shape
+3. Upper and lower rolls must be complementary
+4. Small configurable clearance must exist
+5. No empty arrays
+6. No placeholder data
+7. No silent failure
+
+If a station has enough section geometry, rollProfile must be synthesized.
+
+==================================================
+10. ROLL GEOMETRY ENGINE
+========================
+
+Add real roll-related calculations.
+
+At minimum calculate:
+
+* roll diameter
+* shaft diameter
+* face width
+* groove depth
+* vertical relation to pass line
+* upper/lower roll gap
+* interference risk flag
+
+If exact manufacturing logic is unavailable, use clear engineering approximations and mark assumptions.
+
+But do not leave values undefined.
+
+==================================================
+11. CNC LATHE ENGINE
+====================
+
+Create or repair cncLatheEngine / gcodeLathe.ts
+
+Required function:
+
+* generateLatheGcode()
+
+For both upper and lower rolls generate real G-code strings.
+
+Required output characteristics:
+
+* G21
+* G18
+* safe start
+* spindle start
+* X/Z positioning
+* profile path feed moves
+* safe retract
+* stop
+* M30
+
+Do not leave:
+
+* upperLatheGcode = ""
+* lowerLatheGcode = ""
+
+If geometry exists, G-code must be generated.
+
+==================================================
+12. DIMENSION ENGINE
+====================
+
+This engine must show engineering dimensions.
+
+Required outputs:
+
+* profile width
+* flange lengths
+* bend angles
+* developed width
+* thickness
+* roll dimensions
+* station-by-station dimensions where possible
+
+UI should display:
+
+* dimension labels
+* angle labels
+* warnings when dimensions are inferred, not exact
+
+==================================================
+13. VALIDATION ENGINE
+=====================
+
+Validation must be strict.
+
+Statuses:
+
+* VALID
+* BASIC
+* MISSING_PROFILE
+* INVALID_GEOMETRY
+* EXPORT_BLOCKED
+
+Rules:
+
+VALID only if:
+
+* rollProfile exists
+* upperRoll has > 1 point
+* lowerRoll has > 1 point
+* upperLatheGcode length > 20
+* lowerLatheGcode length > 20
+
+BASIC if:
+
+* rollProfile exists
+* but groove data or G-code is incomplete
+
+MISSING_PROFILE if:
+
+* no rollProfile exists
+
+INVALID_GEOMETRY if:
+
+* section points are missing or invalid
+
+Return diagnostic reason text for every station.
+
+==================================================
+14. MIGRATION / LOCALSTORAGE REPAIR ENGINE
+==========================================
+
+Repair old saved projects fully.
+
+Create or repair migrationRepairEngine and migrate() logic.
+
+Required behavior:
+
+* detect stale versions
+* repair missing rollProfile
+* resynthesize missing groove arrays
+* regenerate missing G-code
+* preserve recoverable user data
+* mark irreparable stations with explicit diagnostics
+
+Do not only update schema numbers.
+Do real data repair.
+
+==================================================
+15. EXPORT ENGINE
+=================
+
+Exports must reflect actual data truthfully.
+
+A. DXF export
+
+* export geometry only when real geometry exists
+* include station-related profile data if supported
+
+B. CSV export
+
+* include per-station values
+* include validation status
+* include dimensions
+
+C. XML export
+
+* include tooling geometry and metadata
+
+D. CNC export
+
+* only allowed when station is VALID
+
+Rules:
+
+* VALID: allow all exports
+* BASIC: allow geometry exports only if data exists; block CNC export with exact reason
+* MISSING_PROFILE / INVALID_GEOMETRY: skip with console.warn and visible UI status
+
+No silent skip.
+
+==================================================
+16. UI / VIEW BEHAVIOR
+======================
+
+UI must never crash if data is partial.
+
+Keep safe guards such as:
+
+* optional chaining
+* if (!rp) return guard
+* placeholder state for missing profile
+
+But UI guards are only protective.
+They are not the actual fix.
+
+The app must also show:
+
+* station status panel
+* expanded diagnostic reason
+* export readiness
+* warning banners for incomplete stations
+
+==================================================
+17. DXF UPLOAD / WORKFLOW EXPECTATIONS
+======================================
+
+When user uploads DXF:
+
+1. Parse file
+2. Build profile
+3. Ask or use thickness
+4. Convert centerline to sheet if required
+5. Generate dimensions
+6. Generate flower pattern
+7. Generate stations
+8. Generate tooling
+9. Generate G-code
+10. Show per-station status
+
+If any step fails, surface exact step failure.
+
+==================================================
+18. WORKING FUNCTION CHECKLIST
+==============================
+
+The app must correctly perform these user-visible functions:
+
+1. Profile creation / import works
+2. Thickness input affects actual geometry
+3. Centerline converts to sheet profile
+4. Dimensions appear
+5. Bend angles appear
+6. Flower pattern appears
+7. Stations generate
+8. Per-station roll profiles generate
+9. Upper/lower roll geometry exists
+10. CNC lathe G-code exists
+11. Export panel truthfully reflects status
+12. Old projects reopen without breaking
+13. App does not claim completion when output is empty
+
+==================================================
+19. DEBUG LOGGING
+=================
+
+After generation print a per-station engineering summary:
+
+Station N
+
+* sectionPoints count
+* upperRoll count
+* lowerRoll count
+* upperLatheGcode length
+* lowerLatheGcode length
+* roll diameter values
+* validation status
+* diagnostics
+
+Print exact warnings for skipped or repaired stations.
+
+==================================================
+20. TESTS
+=========
+
+Create or repair tests for:
+
+1. centerline to sheet conversion
+2. flower pattern generation
+3. station synthesis
+4. tooling generation
+5. lathe G-code generation
+6. migration repair
+7. export blocking rules
+8. validation statuses
+
+Minimum expectations:
+
+* geometry arrays are non-empty
+* G-code strings are non-empty
+* valid station becomes VALID
+* incomplete station becomes BASIC with correct reason
+* missing station becomes MISSING_PROFILE
+* stale saved data gets repaired if enough inputs exist
+
+==================================================
+21. STRICT DO-NOT RULES
+=======================
+
+Do NOT:
+
+* mark BASIC as VALID
+* return empty arrays as successful output
+* return empty G-code strings
+* fake DXF success
+* hide broken engine behavior behind UI guards
+* say “completed” unless full output is real
+* remove validation just to make tests pass
+
+==================================================
+22. DELIVERY FORMAT
+===================
+
+You must produce:
+
+1. Repository audit summary
+2. List of broken modules found
+3. Files created
+4. Files modified
+5. Full code diffs
+6. Final architecture summary
+7. Test results
+8. Remaining limitations, if any
+9. Exact statement of what is now working end-to-end
+
+==================================================
+23. SUCCESS CRITERIA
+====================
+
+The task is successful only if:
+
+* a usable profile can move through the full workflow
+* station generation creates real station objects
+* roll tooling is synthesized
+* upper/lower groove coordinates exist
+* CNC G-code exists
+* validation correctly reports VALID
+* exports reflect actual capability
+* no fake completion remains
+
+If a part cannot be completed, say exactly why and what input is missing.
+But do not stop at partial UI-only fixes.
+
+## Codex ko aur strong banane ke liye ye bhi add karo
+
+Iske baad Codex ko ye second instruction bhi do:
+
+Before editing code, do a full repo audit.
+
+Return:
+
+1. all files related to profile import
+2. all files related to station generation
+3. all files related to tooling
+4. all files related to CNC export
+5. all files related to DXF / CSV / XML export
+6. all files related to migration / localStorage
+7. all components still reading rollProfile unsafely
+8. all fake-success paths where UI says complete but output is empty
+
+Then patch the system module by module.
+Run tests after each major engine.
+Do not skip missing modules.
+
+## Ye prompt kyu kaam karega
+
+Codex repo-level coding tasks karne, features likhne, bugs fix karne, aur codebase questions answer karne ke liye bana hai. Official docs ke mutabik ye local terminal, IDE, web/cloud aur app workflows me use ho sakta hai; isi liye repo-audit + engine-by-engine prompt uske liye sahi format hai. ([OpenAI][1])
+
+## Tumhare case me Codex ko kya bolna chahiye, ek line me
+
+Paste karne ke baad ye likho:
+
+Audit the repo first, then fully repair the roll forming workflow end-to-end.
+Do not stop at UI guards.
+Implement the missing engineering engines so the app produces real geometry, real tooling, real dimensions, and real CNC output.
+
+## Sabse important baat
+
+Tumhare software me abhi likely problem ye hai:
+
+* UI guard ka kaam aadha hua hai
+* real engineering engines complete nahi hue
+* system completion claim karta hai but output empty hai
+
+Isliye Codex ko **“bug fix”** nahi, **“engineering system completion”** mode me chalana hoga.
+
+Agar chaho, agle message me main isko aur bhi tight karke **module-wise patch checklist** bana deta hoon, jisse Codex har file par exact kaam kare.
+
+[1]: https://openai.com/index/introducing-codex/?utm_source=chatgpt.com "Introducing Codex"

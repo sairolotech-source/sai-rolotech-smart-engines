@@ -94,6 +94,7 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
     if (rollTooling.length === 0) { return { score: 0, issues: ["No roll tooling generated — run Roll Tooling first"], fix: "Go to Roll Tooling tab and generate rolls" }; }
     rollTooling.forEach(rt => {
       const rp = rt.rollProfile;
+      if (!rp) return;
       const shaftRatio = rp.shaftDiameter / rp.rollDiameter;
       if (shaftRatio < 0.25) issues.push(`Station ${rt.stationNumber}: shaft/roll ratio ${(shaftRatio * 100).toFixed(0)}% — deflection risk`);
       const grooveRatio = rp.grooveDepth / (rp.rollDiameter / 2);

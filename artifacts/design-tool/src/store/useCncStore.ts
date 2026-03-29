@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { buildStationRollProfile } from "../lib/toolingEngine";
+import { generateLatheGcode, debugRollProfile } from "../lib/gcodeLathe";
 
 export interface Segment {
   type: "line" | "arc";
@@ -467,7 +469,7 @@ export function validateStationProfiles(rollTooling: RollToolingResult[]): Stati
   }
   return rollTooling.map((rt) => {
     const rp = rt.rollProfile as (RollProfile & { _migratedFromFlat?: boolean }) | undefined;
-    const migratedFromFlat = !!(rp as Record<string, unknown>)?._migratedFromFlat;
+    const migratedFromFlat = !!(rp as unknown as Record<string, unknown>)?._migratedFromFlat;
 
     if (!rp) {
       return {
@@ -498,6 +500,115 @@ export function validateStationProfiles(rollTooling: RollToolingResult[]): Stati
       migratedFromFlat,
     };
   });
+}
+
+/**
+ * repairOrSynthesizeRollProfile — ensures every RollToolingResult has
+ * a complete RollProfile with real geometry (upperRoll, lowerRoll) and
+ * real CNC G-code (upperLatheGcode, lowerLatheGcode).
+ *
+ * Called from:
+ *   1. migrate() — repairs stale localStorage data on load
+ *   2. setRollTooling() — ensures fresh API results are always fully populated
+ *
+ * A station is VALID only when both conditions are true:
+ *   - upperRoll.length > 1 && lowerRoll.length > 1
+ *   - upperLatheGcode.length > 20 && lowerLatheGcode.length > 20
+ */
+export function repairOrSynthesizeRollProfile(
+  rt: RollToolingResult,
+  thickness = 1.5,
+): RollToolingResult {
+  const existing = rt.rollProfile;
+  const hasGeometry =
+    Array.isArray(existing?.upperRoll) && existing.upperRoll.length > 1 &&
+    Array.isArray(existing?.lowerRoll) && existing.lowerRoll.length > 1;
+  const hasGcode =
+    typeof existing?.upperLatheGcode === "string" && existing.upperLatheGcode.length > 20 &&
+    typeof existing?.lowerLatheGcode === "string" && existing.lowerLatheGcode.length > 20;
+
+  if (hasGeometry && hasGcode) return rt;
+
+  const upperOD  = rt.upperRollOD  ?? 100;
+  const lowerOD  = rt.lowerRollOD  ?? upperOD;
+  const gap      = rt.rollGap      ?? 1.0;
+  const passLineY = rt.passLineHeight ?? (lowerOD / 2 + gap / 2);
+  const shaftDia  = rt.shaftCalc?.selectedDiaMm ?? (rt.upperRollID ? rt.upperRollID - 2 : 40);
+  const rollWidth = rt.upperRollWidth ?? 50;
+  const grooveDepth  = rt.profileDepthMm ?? Math.max(thickness * 3, 2);
+  const bendAngleDeg = rt.rollType?.grooveAngleDeg ?? 30;
+  const stIdx    = rt.stationIndex ?? 1;
+  const upperRollNumber = stIdx * 2 - 1;
+  const lowerRollNumber = stIdx * 2;
+
+  const geo = !hasGeometry
+    ? buildStationRollProfile({
+        rollWidth,
+        grooveDepth,
+        bendAngleDeg,
+        thickness,
+        upperRollOD: upperOD,
+        lowerRollOD: lowerOD,
+      })
+    : { upperRoll: existing!.upperRoll, lowerRoll: existing!.lowerRoll };
+
+  const gcodeParams = {
+    rollDiameter:  upperOD,
+    shaftDiameter: shaftDia,
+    rollWidth,
+    grooveDepth,
+    bendAngleDeg,
+    thickness,
+    stationLabel: rt.label,
+    stationIndex: stIdx,
+  };
+
+  const upperGcode = !hasGcode
+    ? generateLatheGcode({ ...gcodeParams, rollNumber: upperRollNumber, side: "upper" })
+    : existing!.upperLatheGcode;
+
+  const lowerGcode = !hasGcode
+    ? generateLatheGcode({
+        ...gcodeParams,
+        rollDiameter: lowerOD,
+        rollNumber: lowerRollNumber,
+        side: "lower",
+      })
+    : existing!.lowerLatheGcode;
+
+  const kFactor          = rt.kFactor ?? 0.44;
+  const neutralAxisOffset = rt.neutralAxis ?? 0;
+
+  const repairedProfile: RollProfile = {
+    ...(existing ?? {}),
+    upperRoll: geo.upperRoll,
+    lowerRoll: geo.lowerRoll,
+    rollDiameter:      upperOD,
+    shaftDiameter:     shaftDia,
+    rollWidth,
+    gap,
+    passLineY,
+    upperRollCenterY:  passLineY + gap / 2 + upperOD / 2,
+    lowerRollCenterY:  passLineY - gap / 2 - lowerOD / 2,
+    grooveDepth,
+    upperRollNumber,
+    lowerRollNumber,
+    kFactor,
+    neutralAxisOffset,
+    upperLatheGcode:   upperGcode,
+    lowerLatheGcode:   lowerGcode,
+  };
+
+  debugRollProfile({
+    stationNumber:    rt.stationNumber,
+    label:            rt.label,
+    upperRollLength:  geo.upperRoll.length,
+    lowerRollLength:  geo.lowerRoll.length,
+    upperGcodeLength: upperGcode.length,
+    lowerGcodeLength: lowerGcode.length,
+  });
+
+  return { ...rt, rollProfile: repairedProfile };
 }
 
 // ─── Machine Data (forming parameters summary) ────────────────────────────────
@@ -1254,7 +1365,11 @@ export const useCncStore = create<CncState>()(persist((set) => ({
   setStations: (s) => set({ stations: s }),
   setSelectedStation: (n) => set({ selectedStation: n }),
   setGcodeOutputs: (o) => set({ gcodeOutputs: o }),
-  setRollTooling: (r) => set({ rollTooling: r }),
+  setRollTooling: (r) => set((state) => {
+    const thickness = state.materialThickness ?? 1.5;
+    const repaired = r.map(rt => repairOrSynthesizeRollProfile(rt, thickness));
+    return { rollTooling: repaired };
+  }),
   setRollGaps: (g) => set({ rollGaps: g }),
   setMachineData: (m) => set({ machineData: m }),
   setMotorCalc: (m) => set({ motorCalc: m }),
@@ -1384,36 +1499,10 @@ export const useCncStore = create<CncState>()(persist((set) => ({
     // This migration applies the same synthesis so every page load is safe regardless of age.
     if (fromVersion < 5) {
       const rawRt: unknown[] = Array.isArray(s.rollTooling) ? s.rollTooling : [];
-      s.rollTooling = rawRt.map((item: unknown, idx: number) => {
-        const rt = item as Record<string, unknown>;
-        if (rt.rollProfile && typeof rt.rollProfile === "object") return rt; // already normalised
-        // Synthesise rollProfile from flat server fields (same logic as LeftPanel.tsx lines 649-674)
-        const upperOD: number = (rt.upperRollOD as number) ?? (rt.rollDiameter as number) ?? 100;
-        const lowerOD: number = (rt.lowerRollOD as number) ?? upperOD;
-        const gap: number    = (rt.rollGap as number) ?? (rt.gap as number) ?? 1;
-        const passLineY: number = (rt.passLineHeight as number) ?? (lowerOD / 2 + gap / 2);
-        const stIdx: number  = (rt.stationIndex as number) ?? idx;
-        const shaftCalc = rt.shaftCalc as Record<string, unknown> | undefined;
-        rt.rollProfile = {
-          upperRoll:         [],
-          lowerRoll:         [],
-          rollDiameter:      upperOD,
-          shaftDiameter:     (shaftCalc?.selectedDiaMm as number) ?? ((rt.upperRollID as number) ? (rt.upperRollID as number) - 2 : 40),
-          rollWidth:         (rt.upperRollWidth as number) ?? (rt.rollWidth as number) ?? 50,
-          gap,
-          passLineY,
-          upperRollCenterY:  passLineY + gap / 2 + upperOD / 2,
-          lowerRollCenterY:  passLineY - gap / 2 - lowerOD / 2,
-          grooveDepth:       (rt.profileDepthMm as number) ?? 0,
-          upperRollNumber:   stIdx * 2 - 1,
-          lowerRollNumber:   stIdx * 2,
-          kFactor:           (rt.kFactor as number) ?? 0.44,
-          neutralAxisOffset: (rt.neutralAxis as number) ?? 0,
-          upperLatheGcode:   "",
-          lowerLatheGcode:   "",
-          _migratedFromFlat: true, // diagnostic flag — visible in JSON export
-        };
-        return rt;
+      const thickness: number = (s as Record<string, unknown>).materialThickness as number ?? 1.5;
+      s.rollTooling = rawRt.map((item: unknown) => {
+        const rt = item as RollToolingResult;
+        return repairOrSynthesizeRollProfile(rt, thickness);
       });
     }
 

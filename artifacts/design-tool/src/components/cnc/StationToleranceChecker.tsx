@@ -81,7 +81,7 @@ function getToleranceRows(
 
   if (rollData) {
     const rp = rollData.rollProfile;
-    if (rp.rollDiameter > 0 && rp.shaftDiameter > 0) {
+    if (rp && rp.rollDiameter > 0 && rp.shaftDiameter > 0) {
       const wallThickness = (rp.rollDiameter - rp.shaftDiameter) / 2;
       const minWall = 8;
       rows.push({

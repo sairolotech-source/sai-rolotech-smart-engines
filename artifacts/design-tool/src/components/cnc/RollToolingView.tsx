@@ -630,8 +630,8 @@ function PassLineDiagram({ rollTooling }: { rollTooling: RollToolingResult[] }) 
             <g key={rt.stationNumber}>
               <rect x={x - rollH * 1.1} y={passY - rollH * 2.1} width={rollH * 2.2} height={rollH * 2} rx={3} fill="#1e3a5f" stroke={UPPER_COLOR} strokeWidth={1.5} />
               <rect x={x - rollH * 1.1} y={passY + rollH * 0.1} width={rollH * 2.2} height={rollH * 2} rx={3} fill="#431407" stroke={LOWER_COLOR} strokeWidth={1.5} />
-              <text x={x} y={passY - rollH * 1.0} textAnchor="middle" fill={UPPER_COLOR} fontSize={8} fontFamily="monospace" fontWeight="bold">R{rp.upperRollNumber}</text>
-              <text x={x} y={passY + rollH * 1.4} textAnchor="middle" fill={LOWER_COLOR} fontSize={8} fontFamily="monospace" fontWeight="bold">R{rp.lowerRollNumber}</text>
+              <text x={x} y={passY - rollH * 1.0} textAnchor="middle" fill={UPPER_COLOR} fontSize={8} fontFamily="monospace" fontWeight="bold">R{rp?.upperRollNumber ?? "-"}</text>
+              <text x={x} y={passY + rollH * 1.4} textAnchor="middle" fill={LOWER_COLOR} fontSize={8} fontFamily="monospace" fontWeight="bold">R{rp?.lowerRollNumber ?? "-"}</text>
               <text x={x} y={H - 2} textAnchor="middle" fill="#52525b" fontSize={7} fontFamily="monospace">{rt.label}</text>
             </g>
           );
@@ -2179,6 +2179,7 @@ export function RollToolingView() {
                 <tbody>
                   {rollTooling.flatMap((rt) => {
                     const rp = rt.rollProfile;
+                    if (!rp) return [];
                     return [
                       { rollNum: rp.upperRollNumber, side: "Upper", color: UPPER_COLOR, gcode: rp.upperLatheGcode },
                       { rollNum: rp.lowerRollNumber, side: "Lower", color: LOWER_COLOR, gcode: rp.lowerLatheGcode },
@@ -2226,6 +2227,7 @@ export function RollToolingView() {
                   onClick={() => {
                     rollTooling.forEach((rt, si) => {
                       const rp = rt.rollProfile;
+                      if (!rp) return;
                       setTimeout(() => downloadFile(rp.upperLatheGcode, `ROLL_${String(rp.upperRollNumber).padStart(3,"0")}_UPPER_${rt.label}.nc`), si * 100);
                       setTimeout(() => downloadFile(rp.lowerLatheGcode, `ROLL_${String(rp.lowerRollNumber).padStart(3,"0")}_LOWER_${rt.label}.nc`), si * 100 + 50);
                     });
@@ -2240,6 +2242,7 @@ export function RollToolingView() {
                   onClick={() => {
                     rollTooling.forEach((rt, si) => {
                       const rp = rt.rollProfile;
+                      if (!rp) return;
                       setTimeout(() => downloadAllRollFiles(rp.upperLatheGcode, rp.upperRollNumber, "upper", rt.label), si * 800);
                       setTimeout(() => downloadAllRollFiles(rp.lowerLatheGcode, rp.lowerRollNumber, "lower", rt.label), si * 800 + 400);
                     });
@@ -2255,6 +2258,7 @@ export function RollToolingView() {
                   onClick={() => {
                     rollTooling.forEach((rt, si) => {
                       const rp = rt.rollProfile;
+                      if (!rp) return;
                       setTimeout(() => downloadRollDxf({ rollNumber: rp.upperRollNumber, side: "upper", stationLabel: rt.label, rollDiameter: rp.rollDiameter, boreDiameter: rp.shaftDiameter, rollWidth: rp.rollWidth, grooveDepth: rp.grooveDepth, gap: rp.gap, materialType: "GI" }), si * 200);
                       setTimeout(() => downloadRollDxf({ rollNumber: rp.lowerRollNumber, side: "lower", stationLabel: rt.label, rollDiameter: rp.rollDiameter, boreDiameter: rp.shaftDiameter, rollWidth: rp.rollWidth, grooveDepth: rp.grooveDepth, gap: rp.gap, materialType: "GI" }), si * 200 + 100);
                     });

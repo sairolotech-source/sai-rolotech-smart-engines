@@ -47,9 +47,9 @@ export function StripWidthView() {
 
   const kFactor = K_FACTORS[materialType] ?? 0.44;
 
-  const bendDeductions: BendDeduction[] = useMemo(() => geometry.bendPoints.map((bp, i) => {
-    const angle = bp.angle;
-    const radius = bp.radius > 0 ? bp.radius : customBendRadius;
+  const bendDeductions: BendDeduction[] = useMemo(() => (geometry.bendPoints ?? []).map((bp, i) => {
+    const angle = bp.angle ?? 0;
+    const radius = (bp.radius ?? 0) > 0 ? bp.radius : customBendRadius;
     const ba = calcBendAllowance(angle, radius, thickness, kFactor);
     const bd = calcBendDeduction(angle, radius, thickness, kFactor);
     const neutralAxis = radius + kFactor * thickness;
@@ -57,7 +57,13 @@ export function StripWidthView() {
     return { bendIndex: i + 1, angle, radius, kFactor, bendAllowance: ba, bendDeduction: bd, neutralAxisShift: neutralAxis - radius, arcLength: arcLen };
   }), [geometry.bendPoints, customBendRadius, thickness, kFactor]);
 
-  const flatLengths = useMemo(() => geometry.segments.map(seg => Math.hypot(seg.endX - seg.startX, seg.endY - seg.startY)), [geometry.segments]);
+  const flatLengths = useMemo(() => (geometry.segments ?? []).map(seg => {
+    const x1 = seg.startX ?? (seg as unknown as Record<string,number>).x1 ?? 0;
+    const y1 = seg.startY ?? (seg as unknown as Record<string,number>).y1 ?? 0;
+    const x2 = seg.endX   ?? (seg as unknown as Record<string,number>).x2 ?? 0;
+    const y2 = seg.endY   ?? (seg as unknown as Record<string,number>).y2 ?? 0;
+    return Math.hypot(x2 - x1, y2 - y1);
+  }), [geometry.segments]);
 
   const totalFlatLength = flatLengths.reduce((s, l) => s + l, 0);
   const totalBendAllowance = bendDeductions.reduce((s, b) => s + b.bendAllowance, 0);
@@ -124,7 +130,7 @@ export function StripWidthView() {
               <text x={w / 2} y={h / 2} fill="#555" fontSize="14" fontFamily="sans-serif" textAnchor="middle">Load a profile to calculate strip width</text>
             ) : (
               <>
-                <text x={15} y={25} fill="#888" fontSize="10" fontFamily="sans-serif">{materialType} | t={thickness}mm | K={kFactor} | {geometry.bendPoints.length} bends</text>
+                <text x={15} y={25} fill="#888" fontSize="10" fontFamily="sans-serif">{materialType} | t={thickness}mm | K={kFactor} | {(geometry.bendPoints ?? []).length} bends</text>
 
                 <rect x={startX} y={cy - stripH / 2} width={totalW * scale} height={stripH} rx={3} fill="rgba(59,130,246,0.1)" stroke="rgba(59,130,246,0.4)" strokeWidth={2} />
 

@@ -162,7 +162,7 @@ export function ProfileCanvas() {
           {geometry && !hasStations && (
             <>
               {renderSegments(geometry.segments, "#3b82f6", 2.5)}
-              {geometry.bendPoints.map((bp, i) => (
+              {(geometry.bendPoints ?? []).map((bp, i) => (
                 <React.Fragment key={`bp-${i}`}>
                   <Circle
                     x={bp.x * transform.scaleX + transform.offsetX}

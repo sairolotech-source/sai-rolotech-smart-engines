@@ -393,7 +393,7 @@ export function FlowerPatternView() {
                     )}
                   </div>
                   <div className="text-[10px] text-zinc-600 font-mono">
-                    {st.totalAngle.toFixed(1)}° · {st.bendAngles.length}B
+                    {(st.totalAngle ?? 0).toFixed(1)}° · {(st.bendAngles ?? []).length}B
                     {st.angleIncrementDeg !== undefined && st.angleIncrementDeg > 0 && (
                       <span className="text-zinc-500"> +{st.angleIncrementDeg.toFixed(1)}°</span>
                     )}
@@ -523,15 +523,15 @@ export function FlowerPatternView() {
                 CALIBRATION PASS — Gap = t+0.03mm
               </span>
             )}
-            <span className="text-zinc-400">Bends: <span className="text-zinc-200">{st.bendAngles.length}</span></span>
-            <span className="text-zinc-400">Total: <span className="text-zinc-200 font-mono">{st.totalAngle.toFixed(1)}°</span></span>
+            <span className="text-zinc-400">Bends: <span className="text-zinc-200">{(st.bendAngles ?? []).length}</span></span>
+            <span className="text-zinc-400">Total: <span className="text-zinc-200 font-mono">{(st.totalAngle ?? 0).toFixed(1)}°</span></span>
             {st.angleIncrementDeg !== undefined && st.angleIncrementDeg > 0 && (
               <span className="text-zinc-400">+Δ: <span className="text-amber-400 font-mono">{st.angleIncrementDeg.toFixed(1)}°</span></span>
             )}
             {st.springbackCompensationAngle !== undefined && st.springbackCompensationAngle > 0 && (
               <span className="text-zinc-400">SB comp: <span className="text-amber-400 font-mono">+{st.springbackCompensationAngle.toFixed(1)}°</span></span>
             )}
-            {st.bendAngles.map((a, i) => (
+            {(st.bendAngles ?? []).map((a, i) => (
               <span key={i} className="text-zinc-400">B{i + 1}: <span className="text-blue-400 font-mono">{a.toFixed(1)}°</span></span>
             ))}
           </div>

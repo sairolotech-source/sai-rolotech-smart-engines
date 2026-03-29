@@ -192,7 +192,8 @@ export function SpringbackView() {
   }, [stations, materialType, thickness, customRadius]);
 
   const results: SpringbackResult[] = (workerResults && workerResults.length === stations.length) ? workerResults : stations.map((st, idx) => {
-    const maxAngle = Math.max(...(st.bendAngles.length ? st.bendAngles : [0]));
+    const safeAngles = st.bendAngles ?? [];
+    const maxAngle = Math.max(...(safeAngles.length ? safeAngles : [0]));
     const radius = getStationBendRadius(idx);
     const { springbackAngle, compensatedAngle, ratio } = calculateSpringback(maxAngle, materialType, thickness, radius);
     return {

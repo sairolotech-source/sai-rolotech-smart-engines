@@ -760,7 +760,7 @@ function StepFlower({ onDone, onBack }: { onDone: () => void; onBack: () => void
                   <span className="text-zinc-600 w-6">{st.stationNumber}</span>
                   <span className="text-zinc-300 flex-1">{st.label}</span>
                   <span className={`text-[10px] font-bold ${phaseColor}`}>{phase}</span>
-                  <span className="text-zinc-400">{st.totalAngle.toFixed(1)}°</span>
+                  <span className="text-zinc-400">{(st.totalAngle ?? 0).toFixed(1)}°</span>
                   <span className="text-zinc-600">{st.segments?.length || 0} seg</span>
                 </div>
               );

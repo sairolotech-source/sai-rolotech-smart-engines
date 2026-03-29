@@ -365,9 +365,9 @@ function FormingSimSVG({ w, h, stations, currentStation, totalStations, viewMode
             const segMidY = (seg.startY + seg.endY) / 2;
             let nearestBendAngle = 0;
             let nearestDist = Infinity;
-            geometry.bendPoints.forEach((bp: any, bpi: number) => {
-              const d = Math.hypot(bp.x - segMidX, bp.y - segMidY);
-              if (d < nearestDist) { nearestDist = d; nearestBendAngle = Math.abs(st.bendAngles[bpi] ?? 0); }
+            (geometry.bendPoints ?? []).forEach((bp: any, bpi: number) => {
+              const d = Math.hypot((bp.x ?? 0) - segMidX, (bp.y ?? 0) - segMidY);
+              if (d < nearestDist) { nearestDist = d; nearestBendAngle = Math.abs((st.bendAngles ?? [])[bpi] ?? 0); }
             });
             const stressVal = Math.min(fp * nearestBendAngle / 90, 1);
             const pts = `${px(ps.startX, pz)},${py(ps.startY, pz)} ${px(ps.endX, pz)},${py(ps.endY, pz)} ${px(seg.endX, z)},${py(seg.endY, z)} ${px(seg.startX, z)},${py(seg.startY, z)}`;
@@ -487,8 +487,8 @@ function FormingSimSVG({ w, h, stations, currentStation, totalStations, viewMode
           stroke="rgba(255,255,255,0.4)" strokeWidth={1.5} />
       ))}
 
-      {geometry.bendPoints.map((bp: any, i: number) => (
-        <circle key={`bp${i}`} cx={tx(bp.x)} cy={ty(bp.y)} r={6}
+      {(geometry.bendPoints ?? []).map((bp: any, i: number) => (
+        <circle key={`bp${i}`} cx={tx(bp.x ?? 0)} cy={ty(bp.y ?? 0)} r={6}
           fill="rgba(251,191,36,0.15)" stroke="#fbbf24" strokeWidth={1.5} />
       ))}
 
@@ -565,8 +565,8 @@ export function FormingSimulationView() {
 
     const closestBendData = (px: number, py: number): { dist: number; bendIdx: number; R: number; angle: number } => {
       let best = { dist: Infinity, bendIdx: -1, R: safeThickness * 2, angle: 0 };
-      geometry.bendPoints.forEach((bp, bi) => {
-        const d = Math.hypot(bp.x - px, bp.y - py);
+      (geometry.bendPoints ?? []).forEach((bp, bi) => {
+        const d = Math.hypot((bp.x ?? 0) - px, (bp.y ?? 0) - py);
         if (d < best.dist) {
           const baseR = bp.radius || safeThickness * 2;
           const R = rollBendR > 0 ? Math.min(baseR, rollBendR) : baseR;

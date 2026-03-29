@@ -39,8 +39,8 @@ function buildProjectContext(store: ReturnType<typeof useCncStore.getState>): st
       motorRpm: store.motorRPM,
     },
     geometry: store.geometry ? {
-      segments: store.geometry.segments.length,
-      bendPoints: store.geometry.bendPoints.length,
+      segments: (store.geometry.segments ?? []).length,
+      bendPoints: (store.geometry.bendPoints ?? []).length,
       widthMm: parseFloat((store.geometry.boundingBox.maxX - store.geometry.boundingBox.minX).toFixed(2)),
       heightMm: parseFloat((store.geometry.boundingBox.maxY - store.geometry.boundingBox.minY).toFixed(2)),
     } : null,

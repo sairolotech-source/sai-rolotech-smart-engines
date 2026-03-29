@@ -687,7 +687,7 @@ export function LeftPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-semibold text-emerald-300 truncate">{fileName}</p>
                 <p className="text-[9px] text-emerald-600">
-                  {geometry.segments.length} seg · {geometry.bendPoints.length} bends ·{" "}
+                  {(geometry.segments ?? []).length} seg · {(geometry.bendPoints ?? []).length} bends ·{" "}
                   {(geometry.boundingBox.maxX - geometry.boundingBox.minX).toFixed(1)} mm wide
                 </p>
               </div>
@@ -1082,14 +1082,14 @@ export function LeftPanel() {
                     <span>Max X: <strong className="text-zinc-300 font-mono">{geometry.boundingBox.maxX.toFixed(3)} mm</strong></span>
                     <span>Min Y: <strong className="text-zinc-300 font-mono">{geometry.boundingBox.minY.toFixed(3)} mm</strong></span>
                     <span>Max Y: <strong className="text-zinc-300 font-mono">{geometry.boundingBox.maxY.toFixed(3)} mm</strong></span>
-                    <span>Segments: <strong className="text-zinc-300 font-mono">{geometry.segments.length}</strong></span>
-                    <span>Bends: <strong className="text-zinc-300 font-mono">{geometry.bendPoints.length}</strong></span>
+                    <span>Segments: <strong className="text-zinc-300 font-mono">{(geometry.segments ?? []).length}</strong></span>
+                    <span>Bends: <strong className="text-zinc-300 font-mono">{(geometry.bendPoints ?? []).length}</strong></span>
                   </div>
-                  {geometry.bendPoints.length > 0 && (
+                  {(geometry.bendPoints ?? []).length > 0 && (
                     <div className="border-t border-green-900 pt-1 mt-1">
                       <span className="text-zinc-500">Bend angles: </span>
                       <strong className="text-yellow-300 font-mono">
-                        {geometry.bendPoints.map(bp => `${bp.angle.toFixed(3)}°`).join(" | ")}
+                        {(geometry.bendPoints ?? []).map(bp => `${(bp.angle ?? 0).toFixed(3)}°`).join(" | ")}
                       </strong>
                     </div>
                   )}
@@ -1132,14 +1132,15 @@ export function LeftPanel() {
 
       {/* ANALYSIS RESULTS */}
       {geometry && (() => {
-        const bendCount = geometry.bendPoints.length;
+        const safeBP = geometry.bendPoints ?? [];
+        const bendCount = safeBP.length;
         // Step 1 pass formula (document): base + thin sheet + SS + per-bend penalties
         let suggestedPasses = bendCount * 2;
         if (materialThickness < 0.5) suggestedPasses += 1;
         if (materialType === "SS") suggestedPasses += 2;
-        geometry.bendPoints.forEach(bp => {
-          if (bp.radius > 0 && bp.radius < 1) suggestedPasses += 1; // tight radius per bend
-          if (Math.abs(bp.angle) > 90) suggestedPasses += 1;         // high angle per bend
+        safeBP.forEach(bp => {
+          if ((bp.radius ?? 0) > 0 && bp.radius < 1) suggestedPasses += 1; // tight radius per bend
+          if (Math.abs(bp.angle ?? 0) > 90) suggestedPasses += 1;          // high angle per bend
         });
         // Step 1 risk logic (document): bend count → thickness → material
         let riskLevel: string;
@@ -1147,7 +1148,7 @@ export function LeftPanel() {
         else if (materialThickness < 0.4) riskLevel = "medium";
         else if (materialType === "SS") riskLevel = "high";
         else riskLevel = matProps.crackingRisk; // fallback to material default
-        const totalBendDeg = geometry.bendPoints.reduce((s, bp) => s + Math.abs(bp.angle), 0);
+        const totalBendDeg = safeBP.reduce((s, bp) => s + Math.abs(bp.angle ?? 0), 0);
         return (
           <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
             <SectionHeader
@@ -1192,8 +1193,8 @@ export function LeftPanel() {
                 </div>
                 {/* File 05 Rules: Tight radius + High angle warnings */}
                 {bendCount > 0 && (() => {
-                  const tightBends = geometry.bendPoints.filter(bp => bp.radius > 0 && bp.radius < 2 * materialThickness);
-                  const highAngleBends = geometry.bendPoints.filter(bp => Math.abs(bp.angle) > 90);
+                  const tightBends = safeBP.filter(bp => (bp.radius ?? 0) > 0 && bp.radius < 2 * materialThickness);
+                  const highAngleBends = safeBP.filter(bp => Math.abs(bp.angle ?? 0) > 90);
                   return (
                     <div className="space-y-1.5">
                       {tightBends.length > 0 && (

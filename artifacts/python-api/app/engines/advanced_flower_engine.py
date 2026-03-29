@@ -2,7 +2,8 @@ from typing import Dict, Any, List
 from app.utils.response import pass_response, fail_response
 
 VALID_SECTION_TYPES = {
-    "simple_channel", "lipped_channel", "z_purlin", "hat_section",
+    "simple_channel", "c_channel", "angle_section",
+    "lipped_channel", "z_purlin", "hat_section",
     "box_section", "complex_section", "shutter_profile", "unknown"
 }
 
@@ -202,7 +203,8 @@ def _infer_bend_angles(
     lips: list
 ) -> List[float]:
     """Return inferred target angles (deg) for each bend when DXF data is unavailable."""
-    if section_type in {"simple_channel", "lipped_channel", "z_purlin"}:
+    if section_type in {"simple_channel", "c_channel", "angle_section",
+                        "lipped_channel", "z_purlin"}:
         flange_angles = [90.0] * min(len(flanges) or 2, bend_count)
         lip_angles = [90.0] * min(len(lips), bend_count - len(flange_angles))
         result = flange_angles + lip_angles
@@ -266,7 +268,7 @@ def build_pass_plan(
     else:
         labels.append("asymmetric side-controlled progression")
 
-    if section_type in {"simple_channel", "lipped_channel"}:
+    if section_type in {"simple_channel", "c_channel", "angle_section", "lipped_channel"}:
         labels.append("web stabilization")
         labels.append("main flange angle progression")
 

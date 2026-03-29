@@ -1,12 +1,12 @@
 {
-  "startedAt": "2026-03-29T19:01:39.295Z",
-  "lastHealthCheck": "2026-03-29T19:25:39.606Z",
+  "startedAt": "2026-03-29T19:37:50.053Z",
+  "lastHealthCheck": "2026-03-29T19:39:50.122Z",
   "lastGitPush": null,
   "lastGitPushResult": null,
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
-  "healthChecksPassed": 12,
+  "healthChecksPassed": 1,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
@@ -15,72 +15,17 @@
   "isElectron": false,
   "logs": [
     {
-      "time": "07:01:39 pm",
+      "time": "07:37:50 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
     },
     {
-      "time": "07:01:49 pm",
+      "time": "07:38:00 pm",
       "type": "info",
       "message": "Startup auto-push check kar raha hai..."
     },
     {
-      "time": "07:03:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:05:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:07:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:09:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:11:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:13:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:15:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:17:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:19:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:21:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:23:39 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "07:25:39 pm",
+      "time": "07:39:50 pm",
       "type": "info",
       "message": "Health: API OK"
     }

@@ -1,0 +1,223 @@
+Theek hai — **95+ target rakhte hain**, aur ab main isko **meri zimmedari ke hisaab se structure** kar deta hoon.
+
+Lekin ek seedhi honest line:
+
+**Main 95+ tak pahunchne ka plan, prompts, checks, logic, audit criteria, failure isolation, aur build order dunga.**
+**Codex implementation karega, Replit run/test karega, aur tum final live verify karoge.**
+Is model me **95+ achieve karna realistic hai**.
+
+## Ab target kya hoga
+
+Humein **score 95+** lane ke liye ye 5 cheezein almost perfect karni hongi:
+
+1. **Phase 2 score 95+/100**
+2. **DXF import + centerline to sheet reliable**
+3. **flower pattern + station logic strong**
+4. **special roll design + production drawing usable**
+5. **export + validation + no fake completion fully truthful**
+
+## Ab meri responsibility kya hogi
+
+Main tumhare liye:
+
+* exact phase order dunga
+* har phase ka master command dunga
+* score rubric dunga
+* Codex ke output ka review standard dunga
+* kis jagah kaam hua / bacha hai uska audit framework dunga
+* fake completion rokne ka system dunga
+
+## 95+ ke liye exact scoring strategy
+
+### Phase 2 Hardening Target
+
+**Target: 96/100**
+
+Isme:
+
+* Groove audit pass
+* Complementarity pass
+* G-code audit pass
+* Migration scenarios pass
+* 12/12 tests pass
+* export gating truthful
+* TypeScript no new errors
+
+### Phase 3 Core Engineering Target
+
+**Target: 95/100**
+
+Isme:
+
+* DXF import
+* centerline to sheet
+* dimensions
+* flower pattern
+* station optimization
+
+### Phase 4 Production Target
+
+**Target: 95/100**
+
+Isme:
+
+* special roll design
+* production drawings
+* PDF package
+* DXF export clean
+* DWG path defined
+* bearing/motor/machine estimate clearly labeled
+
+## Sabse pehle kya karna hoga
+
+Abhi **turant next focus Phase 2 close karna** hai.
+95+ lane ke liye pehle current foundation ko lock karna padega.
+
+### Immediate order
+
+1. Phase 2 audit
+2. Phase 2 fixes
+3. Phase 2 tests
+4. Phase 2 final self-score
+5. Phase 3 audit
+6. Phase 3 build in 3 blocks
+
+## 95+ ke liye non-negotiable rules
+
+Ye Codex ko har baar follow karna hoga:
+
+You are responsible for driving this repository to a verified engineering score above 95.
+
+Rules:
+
+1. Do not optimize for speed.
+2. Do not claim completion without proof.
+3. Audit first, patch second, test third.
+4. Never rewrite a working module without a proven defect.
+5. Every fix must include:
+
+   * exact failing file
+   * exact failing condition
+   * minimal diff
+   * post-fix proof
+6. Every engineering module must output truthful diagnostics.
+7. Any incomplete state must remain visible and must never be disguised as complete.
+8. Every phase ends with a self-score and a list of remaining real issues only.
+9. The target is not “looks good”; the target is verified 95+ reliability.
+10. Stop after each phase and report score before moving to the next phase.
+
+## Ab tumhe kis order me chalna hai
+
+### COMMAND 1 — Phase 2 audit only
+
+Run Phase 2 audit only.
+Do not patch yet.
+
+Cover:
+
+* groove geometry rules
+* upper/lower roll complementarity
+* G-code quality rules
+* migration repair scenarios
+* export truthfulness
+* debug logging presence
+* TypeScript check for touched files
+
+Return:
+
+* PASS/FAIL by section
+* exact failing lines
+* actual computed values
+* estimated current Phase 2 score out of 100
+
+### COMMAND 2 — fix only FAIL items
+
+Patch only FAIL items from the Phase 2 audit.
+
+Rules:
+
+* minimum code changes only
+* no refactor unless required
+* do not touch PASS logic
+* rerun affected checks after each patch
+
+Then rerun full Phase 2 tests and generate final Phase 2 self-score.
+Target score: 95+
+
+### COMMAND 3 — Phase 3 audit only
+
+Start Phase 3 audit only.
+
+Audit these modules:
+
+1. DXF import
+2. centerline-to-sheet conversion
+3. dimension extraction
+4. flower pattern / station progression
+5. station optimization
+6. special roll design
+7. production drawing generation
+8. DXF/PDF export readiness
+
+Return:
+
+* existing files
+* missing files
+* partial implementations
+* real engineering gaps
+* build order required to reach 95+
+  Do not patch yet.
+
+## 95+ ka real roadmap
+
+### Block A
+
+**DXF import + centerline to sheet + dimensions**
+
+Ye complete hua to input side strong hogi.
+
+### Block B
+
+**flower pattern + station progression + station optimization**
+
+Ye complete hua to roll forming brain strong hoga.
+
+### Block C
+
+**special rolls + production drawings + export pack**
+
+Ye complete hua to industrial usability strong hogi.
+
+## Main tumse kya expect karta hoon
+
+Tum har phase ke baad mujhe ye bhejo:
+
+* Codex audit output
+* current self-score
+* fail items
+* diffs
+* test results
+
+Main tumhe bataunga:
+
+* kahan cheating hui
+* kahan real fix hua
+* kahan score genuine hai
+* kahan next patch chahiye
+
+## Final honest commitment
+
+**95+ lane ke liye main tumhare saath hoon.**
+Lekin iska matlab ye nahi ki bina proof ke main 95 bol dunga.
+
+Mera kaam hoga:
+
+* tumhe **genuine 95+ tak le jana**
+* fake score nahi dena
+* har module ka sach batana
+* A to Z industrial level tak system push karna
+
+Ab next step seedha ye hai:
+
+**COMMAND 1 run karo: “Run Phase 2 audit only.”**
+Uska output yahan bhejo, fir main uska **professional score review** karunga.

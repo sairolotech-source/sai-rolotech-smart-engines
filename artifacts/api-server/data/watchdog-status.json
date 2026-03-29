@@ -1,12 +1,12 @@
 {
-  "startedAt": "2026-03-29T15:06:48.928Z",
-  "lastHealthCheck": "2026-03-29T15:24:49.169Z",
+  "startedAt": "2026-03-29T15:33:43.075Z",
+  "lastHealthCheck": null,
   "lastGitPush": null,
   "lastGitPushResult": null,
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
-  "healthChecksPassed": 9,
+  "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
@@ -15,59 +15,9 @@
   "isElectron": false,
   "logs": [
     {
-      "time": "03:06:48 pm",
+      "time": "03:33:43 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "03:06:58 pm",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "03:08:48 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:10:48 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:12:49 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:14:49 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:16:49 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:18:49 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:20:49 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:22:49 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "03:24:49 pm",
-      "type": "info",
-      "message": "Health: API OK"
     }
   ]
 }

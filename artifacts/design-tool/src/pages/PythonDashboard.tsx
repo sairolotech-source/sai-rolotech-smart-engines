@@ -14,6 +14,7 @@ import CenterlineConversionPreview from "@/components/python-dashboard/Centerlin
 import MachineLayoutPanel from "@/components/python-dashboard/MachineLayoutPanel";
 import RollContourPanel from "@/components/python-dashboard/RollContourPanel";
 import CadExportPanel from "@/components/python-dashboard/CadExportPanel";
+import RollFormingSimulator from "@/components/python-dashboard/RollFormingSimulator";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -30,6 +31,8 @@ export default function PythonDashboard() {
   const [cadExportResult, setCadExportResult] = useState<Record<string, unknown> | null>(null);
   const [centerlinePreviewData, setCenterlinePreviewData] = useState<Record<string, unknown> | null>(null);
   const [centerlinePreviewLoading, setCenterlinePreviewLoading] = useState(false);
+  const [simulationData, setSimulationData] = useState<Record<string, unknown> | null>(null);
+  const [simulationLoading, setSimulationLoading] = useState(false);
   const [payload, setPayload] = useState<ManualModePayload | null>(null);
   const [pipelineResult, setPipelineResult] = useState<Record<string, unknown> | null>(null);
   const [debugResult, setDebugResult] = useState<{
@@ -118,6 +121,26 @@ export default function PythonDashboard() {
     setPayload(confirmed);
     runDebug(confirmed, true);
   }, [runDebug]);
+
+  const handleRunSimulation = useCallback(async (file: File, thickness: number, material: string) => {
+    setSimulationLoading(true);
+    setSimulationData(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("thickness", String(thickness));
+      form.append("material", material);
+      form.append("bend_radius", String(thickness));
+      form.append("strip_speed", "15");
+      const resp = await fetch("/papi/api/simulate", { method: "POST", body: form });
+      const data = await resp.json();
+      setSimulationData(data);
+    } catch (e) {
+      setSimulationData({ status: "fail", reason: e instanceof Error ? e.message : "Simulation failed" });
+    } finally {
+      setSimulationLoading(false);
+    }
+  }, []);
 
   const handleCenterlinePreview = useCallback(async (file: File, thickness: number) => {
     setCenterlinePreviewLoading(true);
@@ -283,6 +306,7 @@ export default function PythonDashboard() {
             <DxfUploadPanel
               onPipelineResult={handleDxfPipelineResult}
               onCenterlinePreview={handleCenterlinePreview}
+              onSimulationReady={handleRunSimulation}
             />
 
             <div className="rounded-xl border border-gray-700/50 bg-gray-900/60 p-4 space-y-2">
@@ -357,6 +381,10 @@ export default function PythonDashboard() {
             <SummaryCards summary={summary} />
             {machineLayout && <MachineLayoutPanel data={machineLayout as any} />}
             <RollContourPanel data={rollContour as any} />
+            <RollFormingSimulator
+              data={(simulationData?.simulation_engine ?? null) as any}
+              loading={simulationLoading}
+            />
             <CadExportPanel
               cadExport={cadExportData as any}
               camPrep={cadCamPrep as any}

@@ -36,11 +36,12 @@ interface DxfPreviewResult {
 interface Props {
   onPipelineResult?: (result: Record<string, unknown>) => void;
   onCenterlinePreview?: (file: File, thickness: number) => void;
+  onSimulationReady?: (file: File, thickness: number, material: string) => void;
 }
 
 const MATERIALS = ["GI", "CR", "HR", "SS", "AL", "MS"];
 
-export default function DxfUploadPanel({ onPipelineResult, onCenterlinePreview }: Props) {
+export default function DxfUploadPanel({ onPipelineResult, onCenterlinePreview, onSimulationReady }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [thickness, setThickness] = useState("1.0");
@@ -123,6 +124,7 @@ export default function DxfUploadPanel({ onPipelineResult, onCenterlinePreview }
       const res = await fetch(url, { method: "POST", body: form });
       const data = await res.json();
       if (onPipelineResult) onPipelineResult(data);
+      if (onSimulationReady) onSimulationReady(file, thick, material);
     } catch (e) {
       setPipelineError(e instanceof Error ? e.message : "Pipeline request failed");
     } finally {

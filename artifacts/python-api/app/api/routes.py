@@ -49,6 +49,7 @@ from app.engines.centerline_sheet_converter_arc_engine import (
     convert_centerline_to_sheet_arc_aware,
     is_centerline_geometry,
 )
+from app.engines.simulation_engine import run_simulation as run_sim_engine
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -978,4 +979,136 @@ def run_manual_mode_export_cad_pack(data: ManualProfileInput):
         "export_step_engine":       step_result,
         "pdf_export_engine":        pdf_result,
         "export_pack_engine":       export_pack_result,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# POST /api/simulate
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/api/simulate")
+async def simulate_roll_forming(
+    file: UploadFile = File(...),
+    thickness: float = Form(1.5),
+    material: str   = Form("GI"),
+    bend_radius: float = Form(1.5),
+    strip_speed: float = Form(15.0),
+):
+    """
+    Run a full roll-forming simulation from a DXF file.
+
+    Steps:
+      1. Parse DXF → geometry
+      2. Profile analysis → get segment dimensions
+      3. Roll contour engine → per-station pass data
+      4. Simulation engine → per-pass deformation, strain, force, defects
+
+    Returns: simulation_engine result with all passes.
+    """
+    raw = await file.read()
+
+    # ── Import ──────────────────────────────────────────────────
+    import_result = parse_dxf_bytes(raw)
+    if import_result.get("status") != "pass":
+        return {"status": "fail", "reason": "DXF import failed", "import_engine": import_result}
+
+    raw_geo = import_result.get("geometry") or []
+    if isinstance(raw_geo, dict):
+        raw_geo = raw_geo.get("entities", [])
+
+    # ── Clean geometry ───────────────────────────────────────────
+    clean_result = clean_geometry(raw_geo)
+    cleaned_entities = clean_result.get("entities") or []
+
+    # ── Profile analysis ─────────────────────────────────────────
+    profile_result = analyze_profile(cleaned_entities)
+
+    # ── Validate inputs ──────────────────────────────────────────
+    input_result = validate_inputs({
+        "bend_count":  profile_result.get("bend_count", 4),
+        "width":       profile_result.get("section_width_mm", 120),
+        "height":      profile_result.get("section_height_mm", 50),
+        "thickness":   thickness,
+        "material":    material,
+        "profile_type": profile_result.get("profile_type", "unknown"),
+    })
+
+    # ── Roll contour engine ───────────────────────────────────────
+    station_result = estimate_station(profile_result)
+    roll_contour_result = generate_roll_contour(
+        profile_result,
+        station_result,
+        {"thickness": thickness, "material": material},
+        input_result,
+    )
+
+    passes = roll_contour_result.get("passes", [])
+    calib  = roll_contour_result.get("calibration_pass")
+
+    # ── Build DXF profile points ─────────────────────────────────
+    # Use actual DXF entities as profile points (centred, Y-up)
+    profile_points: list = []
+    if cleaned_entities:
+        # Build polyline from line entities
+        pts_map: dict = {}
+        for e in cleaned_entities:
+            if e.get("type", "").lower() == "line":
+                s = e.get("start") or {}
+                en = e.get("end") or {}
+                key_s = (round(s.get("x", 0), 3), round(s.get("y", 0), 3))
+                key_e = (round(en.get("x", 0), 3), round(en.get("y", 0), 3))
+                pts_map[key_s] = key_e
+
+        # Walk the chain
+        if pts_map:
+            start = min(pts_map.keys(), key=lambda k: k[0])
+            chain = [start]
+            visited = {start}
+            cur = start
+            for _ in range(len(pts_map)):
+                nxt = pts_map.get(cur)
+                if nxt is None or nxt in visited:
+                    break
+                chain.append(nxt)
+                visited.add(nxt)
+                cur = nxt
+            profile_points = [{"x": p[0], "y": p[1]} for p in chain]
+
+    # Fallback: derive from profile dimensions
+    if len(profile_points) < 3:
+        w = profile_result.get("section_width_mm", 156)
+        h = profile_result.get("section_height_mm", 50)
+        bend_details = profile_result.get("bend_details", [])
+        if bend_details and len(bend_details) >= 4:
+            # Use bend_details at_points to reconstruct
+            pts = [(0.0, 0.0)]
+            for bd in bend_details:
+                ap = bd.get("at_point", [0, 0])
+                pts.append((float(ap[0]), float(ap[1])))
+            # final tip
+            last_bd = bend_details[-1].get("at_point", [w, 0])
+            pts.append((float(last_bd[0]) + (w - float(last_bd[0])), float(last_bd[1])))
+            profile_points = [{"x": p[0], "y": p[1]} for p in pts]
+        else:
+            profile_points = [
+                {"x": 0.0,   "y": 0.0},
+                {"x": w,     "y": 0.0},
+            ]
+
+    # ── Run simulation ────────────────────────────────────────────
+    simulation_result = run_sim_engine(
+        profile_points=profile_points,
+        passes=passes,
+        thickness_mm=thickness,
+        material=material,
+        bend_radius_mm=bend_radius,
+        calibration_pass=calib,
+        strip_speed_mpm=strip_speed,
+    )
+
+    return {
+        "status": "pass",
+        "profile_analysis_engine": profile_result,
+        "roll_contour_engine":     roll_contour_result,
+        "simulation_engine":       simulation_result,
     }

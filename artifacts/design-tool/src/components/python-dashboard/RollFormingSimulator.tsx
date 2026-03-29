@@ -1,0 +1,520 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight,
+  Activity, Zap, AlertTriangle, CheckCircle, Info, Layers
+} from "lucide-react";
+
+interface ProfilePoint { x: number; y: number; }
+interface RollProfile   { x: number; y: number; }
+
+interface Defect {
+  type: string;
+  severity: "HIGH" | "MEDIUM" | "LOW";
+  icon: string;
+  message: string;
+}
+
+interface SimPass {
+  pass_no: number;
+  station_label: string;
+  stage_type: string;
+  stage_color: string;
+  pass_progress_pct: number;
+  target_angle_deg: number;
+  springback_deg: number;
+  corrected_angle_deg: number;
+  strain: number;
+  forming_force_kn: number;
+  motor_power_kw: number;
+  strip_width_mm: number;
+  roll_gap_mm: number;
+  forming_depth_mm: number;
+  defects: Defect[];
+  profile_points: ProfilePoint[];
+  upper_roll_profile?: RollProfile[] | null;
+  lower_roll_profile?: RollProfile[] | null;
+}
+
+interface SimData {
+  status: string;
+  engine: string;
+  note: string;
+  material: string;
+  thickness_mm: number;
+  bend_radius_mm: number;
+  springback_factor: number;
+  strip_speed_mpm: number;
+  total_passes: number;
+  quality: { score: number; label: string; high_defects: number; med_defects: number };
+  simulation_passes: SimPass[];
+}
+
+interface Props {
+  data: SimData | null;
+  loading?: boolean;
+}
+
+const STAGE_LABEL: Record<string, string> = {
+  flat:                "Flat Strip",
+  pre_bend:            "Pre-Bend",
+  initial_bend:        "Initial Bend",
+  progressive_forming: "Progressive Forming",
+  lip_forming:         "Lip Forming",
+  calibration:         "Calibration",
+};
+
+const SEVERITY_COLOR: Record<string, string> = {
+  HIGH:   "text-red-400 bg-red-500/10 border-red-500/30",
+  MEDIUM: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
+  LOW:    "text-blue-400 bg-blue-500/10 border-blue-500/30",
+};
+
+// ─── SVG PROFILE RENDERER ───────────────────────────────────────────────────
+
+function calcViewBox(allPasses: SimPass[], padding = 20): { vb: string; scale: number } {
+  const allPts = allPasses.flatMap(p => p.profile_points ?? []);
+  if (!allPts.length) return { vb: "-100 -60 200 120", scale: 1 };
+  const xs = allPts.map(p => p.x);
+  const ys = allPts.map(p => p.y);
+  const minX = Math.min(...xs) - padding;
+  const maxX = Math.max(...xs) + padding;
+  const minY = Math.min(...ys) - padding;
+  const maxY = Math.max(...ys) + padding;
+  const w = maxX - minX;
+  const h = maxY - minY;
+  const scale = Math.min(560 / w, 260 / h);
+  return { vb: `${minX} ${minY} ${w} ${h}`, scale };
+}
+
+function toPolyline(pts: ProfilePoint[]): string {
+  return pts.map(p => `${p.x},${p.y}`).join(" ");
+}
+
+function toPath(pts: ProfilePoint[]): string {
+  if (!pts.length) return "";
+  return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+}
+
+// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
+
+export default function RollFormingSimulator({ data, loading }: Props) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [playing,   setPlaying]   = useState(false);
+  const [showFlower, setShowFlower] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const passes = data?.simulation_passes ?? [];
+  const total  = passes.length;
+
+  const go = useCallback((idx: number) => {
+    setActiveIdx(Math.max(0, Math.min(total - 1, idx)));
+  }, [total]);
+
+  // Auto-play
+  useEffect(() => {
+    if (playing && total > 1) {
+      intervalRef.current = setInterval(() => {
+        setActiveIdx(prev => {
+          if (prev >= total - 1) { setPlaying(false); return prev; }
+          return prev + 1;
+        });
+      }, 900);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [playing, total]);
+
+  useEffect(() => { setActiveIdx(0); setPlaying(false); }, [data]);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-violet-500/20 bg-[#0d0d1a] p-6 space-y-3">
+        <div className="flex items-center gap-2 text-violet-400">
+          <Activity className="w-5 h-5 animate-pulse" />
+          <span className="text-sm font-semibold">Running Simulation…</span>
+        </div>
+        <div className="h-48 flex items-center justify-center">
+          <div className="w-10 h-10 border-2 border-violet-500/40 border-t-violet-400 rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!data || !passes.length) {
+    return (
+      <div className="rounded-2xl border border-violet-500/20 bg-[#0d0d1a] p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Layers className="w-5 h-5 text-violet-400" />
+          <span className="text-sm font-bold text-violet-300 uppercase tracking-wider">
+            Roll Forming Simulator
+          </span>
+          <span className="ml-auto text-[10px] text-gray-600 font-mono">v2.3.0</span>
+        </div>
+        <div className="h-36 flex flex-col items-center justify-center text-center gap-2">
+          <Layers className="w-8 h-8 text-gray-700" />
+          <p className="text-gray-500 text-xs">Run the pipeline to launch the simulator.</p>
+          <p className="text-gray-600 text-[10px]">Station-by-station deformation · Strain · Force · Defect detection</p>
+        </div>
+      </div>
+    );
+  }
+
+  const cur   = passes[activeIdx];
+  const qual  = data.quality;
+  const { vb } = calcViewBox(passes, 25);
+
+  const qualColor = qual.score >= 90 ? "text-green-400" :
+                    qual.score >= 75 ? "text-blue-400"  :
+                    qual.score >= 55 ? "text-yellow-400" : "text-red-400";
+
+  return (
+    <div className="rounded-2xl border border-violet-500/20 bg-[#0d0d1a] overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-3 border-b border-violet-500/10 flex items-center gap-3 flex-wrap">
+        <Layers className="w-5 h-5 text-violet-400 shrink-0" />
+        <div>
+          <div className="text-sm font-bold text-violet-300 uppercase tracking-wider">
+            Roll Forming Simulator
+          </div>
+          <div className="text-[10px] text-gray-500 font-mono mt-0.5">
+            {data.material} · {data.thickness_mm}mm · r={data.bend_radius_mm}mm · {data.strip_speed_mpm}m/min
+          </div>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {/* Quality badge */}
+          <div className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+            qual.score >= 90 ? "border-green-500/30 bg-green-500/10 text-green-400" :
+            qual.score >= 75 ? "border-blue-500/30 bg-blue-500/10 text-blue-400" :
+            qual.score >= 55 ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" :
+                               "border-red-500/30 bg-red-500/10 text-red-400"
+          }`}>
+            {qual.label} · {qual.score}%
+          </div>
+          {/* Flower toggle */}
+          <button
+            onClick={() => setShowFlower(s => !s)}
+            className={`text-[10px] px-2 py-1 rounded border transition-colors ${
+              showFlower
+                ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                : "border-gray-700 text-gray-500 hover:border-gray-500"
+            }`}
+          >
+            🌸 Flower
+          </button>
+        </div>
+      </div>
+
+      {/* SVG Viewer */}
+      <div className="relative bg-[#080810] border-b border-violet-500/10" style={{ height: 280 }}>
+        <svg
+          viewBox={vb}
+          className="w-full h-full"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* Grid */}
+          <defs>
+            <pattern id="sim-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1a1a2e" strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect x="-9999" y="-9999" width="99999" height="99999" fill="url(#sim-grid)" />
+
+          {/* Centre axis */}
+          <line x1="-9999" y1="0" x2="9999" y2="0" stroke="#1e2040" strokeWidth="0.8" strokeDasharray="4,4" />
+          <line x1="0" y1="-9999" x2="0" y2="9999" stroke="#1e2040" strokeWidth="0.8" strokeDasharray="4,4" />
+
+          {/* Flower diagram — all passes faded */}
+          {showFlower && passes.map((p, i) => {
+            if (i === activeIdx) return null;
+            const opacity = 0.08 + (i / passes.length) * 0.15;
+            return (
+              <polyline
+                key={`flower-${i}`}
+                points={toPolyline(p.profile_points)}
+                fill="none"
+                stroke={p.stage_color}
+                strokeWidth="0.8"
+                opacity={opacity}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            );
+          })}
+
+          {/* Active profile — glowing */}
+          <polyline
+            points={toPolyline(cur.profile_points)}
+            fill="none"
+            stroke={cur.stage_color}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#glow)"
+          />
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Dotted nodes on active profile */}
+          {cur.profile_points.map((pt, i) => (
+            <circle key={i} cx={pt.x} cy={pt.y} r="1.2"
+              fill={cur.stage_color} opacity="0.9" />
+          ))}
+
+          {/* Roll profiles (upper = orange, lower = blue) */}
+          {cur.upper_roll_profile && (
+            <polyline
+              points={toPolyline(cur.upper_roll_profile as ProfilePoint[])}
+              fill="none" stroke="#f97316" strokeWidth="1.2"
+              strokeDasharray="3,2" opacity="0.6"
+              strokeLinecap="round"
+            />
+          )}
+          {cur.lower_roll_profile && (
+            <polyline
+              points={toPolyline(cur.lower_roll_profile as ProfilePoint[])}
+              fill="none" stroke="#3b82f6" strokeWidth="1.2"
+              strokeDasharray="3,2" opacity="0.6"
+              strokeLinecap="round"
+            />
+          )}
+        </svg>
+
+        {/* Stage badge overlay */}
+        <div className="absolute top-3 left-3 flex items-center gap-2">
+          <div
+            className="text-[10px] font-bold px-2 py-0.5 rounded"
+            style={{ backgroundColor: cur.stage_color + "30", color: cur.stage_color, border: `1px solid ${cur.stage_color}50` }}
+          >
+            {STAGE_LABEL[cur.stage_type] ?? cur.stage_type}
+          </div>
+          {cur.defects.length > 0 && (
+            <div className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400 flex items-center gap-1">
+              <AlertTriangle className="w-2.5 h-2.5" />
+              {cur.defects.length} defect{cur.defects.length > 1 ? "s" : ""}
+            </div>
+          )}
+        </div>
+
+        {/* Legend (top-right) */}
+        {cur.upper_roll_profile && (
+          <div className="absolute top-3 right-3 text-[9px] space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 border-t border-dashed border-orange-400" />
+              <span className="text-gray-500">Upper Roll</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 border-t border-dashed border-blue-400" />
+              <span className="text-gray-500">Lower Roll</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 border-t border-solid" style={{ borderColor: cur.stage_color }} />
+              <span className="text-gray-500">Sheet Profile</span>
+            </div>
+          </div>
+        )}
+
+        {/* Progress bar (bottom) */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900">
+          <div
+            className="h-full transition-all duration-500"
+            style={{
+              width: `${cur.pass_progress_pct}%`,
+              backgroundColor: cur.stage_color,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="px-5 py-3 border-b border-violet-500/10 flex items-center gap-3">
+        <button onClick={() => { go(0); setPlaying(false); }}
+          className="p-1.5 rounded text-gray-500 hover:text-white hover:bg-white/5 transition-colors">
+          <SkipBack className="w-4 h-4" />
+        </button>
+        <button onClick={() => go(activeIdx - 1)}
+          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => setPlaying(p => !p)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+          style={{ backgroundColor: cur.stage_color + "25", color: cur.stage_color, border: `1px solid ${cur.stage_color}40` }}
+        >
+          {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+          {playing ? "Pause" : "Animate"}
+        </button>
+        <button onClick={() => go(activeIdx + 1)}
+          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        <button onClick={() => { go(total - 1); setPlaying(false); }}
+          className="p-1.5 rounded text-gray-500 hover:text-white hover:bg-white/5 transition-colors">
+          <SkipForward className="w-4 h-4" />
+        </button>
+
+        {/* Slider */}
+        <div className="flex-1 mx-2">
+          <input
+            type="range" min={0} max={total - 1} value={activeIdx}
+            onChange={e => { go(Number(e.target.value)); setPlaying(false); }}
+            className="w-full accent-violet-500 cursor-pointer"
+          />
+        </div>
+
+        <span className="text-xs text-gray-500 font-mono whitespace-nowrap">
+          {cur.station_label} ({activeIdx + 1}/{total})
+        </span>
+      </div>
+
+      {/* Station selector pills */}
+      <div className="px-5 py-2.5 border-b border-violet-500/10 flex gap-1.5 overflow-x-auto">
+        {passes.map((p, i) => (
+          <button
+            key={i}
+            onClick={() => { go(i); setPlaying(false); }}
+            title={p.station_label}
+            className="shrink-0 w-7 h-7 rounded-full text-[9px] font-bold transition-all border"
+            style={i === activeIdx ? {
+              backgroundColor: p.stage_color + "40",
+              borderColor: p.stage_color,
+              color: p.stage_color,
+            } : {
+              backgroundColor: "transparent",
+              borderColor: "#2d2d4a",
+              color: "#6b7280",
+            }}
+          >
+            {p.pass_no}
+          </button>
+        ))}
+      </div>
+
+      {/* Engineering metrics row */}
+      <div className="px-5 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-violet-500/10">
+        <MetricCard
+          label="Bend Angle"
+          value={`${cur.target_angle_deg.toFixed(1)}°`}
+          sub={`Corrected: ${cur.corrected_angle_deg.toFixed(1)}°`}
+          icon={<Activity className="w-3.5 h-3.5" />}
+          color="violet"
+        />
+        <MetricCard
+          label="Outer Strain"
+          value={`${(cur.strain * 100).toFixed(2)}%`}
+          sub={cur.strain > 0.2 ? "⚠ Near limit" : "✓ In range"}
+          icon={<Zap className="w-3.5 h-3.5" />}
+          color={cur.strain > 0.2 ? "red" : "green"}
+        />
+        <MetricCard
+          label="Forming Force"
+          value={`${cur.forming_force_kn.toFixed(2)} kN`}
+          sub={`Power: ${cur.motor_power_kw.toFixed(2)} kW`}
+          icon={<Zap className="w-3.5 h-3.5" />}
+          color="blue"
+        />
+        <MetricCard
+          label="Strip Width"
+          value={`${cur.strip_width_mm.toFixed(1)} mm`}
+          sub={`Gap: ${cur.roll_gap_mm.toFixed(2)} mm · Depth: ${cur.forming_depth_mm.toFixed(1)} mm`}
+          icon={<Layers className="w-3.5 h-3.5" />}
+          color="orange"
+        />
+      </div>
+
+      {/* Springback row */}
+      <div className="px-5 py-2 border-b border-violet-500/10 flex items-center gap-4 text-xs flex-wrap">
+        <div className="text-gray-500">
+          Springback: <span className="text-yellow-400 font-mono">{cur.springback_deg.toFixed(2)}°</span>
+        </div>
+        <div className="text-gray-500">
+          Progress: <span className="text-violet-400 font-mono">{cur.pass_progress_pct.toFixed(1)}%</span>
+        </div>
+        <div className="text-gray-500 ml-auto text-[10px] italic opacity-60">{data.note}</div>
+      </div>
+
+      {/* Defects */}
+      {cur.defects.length > 0 ? (
+        <div className="px-5 py-3 space-y-1.5 border-b border-violet-500/10">
+          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            Defect Alerts — Station {cur.pass_no}
+          </div>
+          {cur.defects.map((d, i) => (
+            <div
+              key={i}
+              className={`flex items-start gap-2 text-xs px-3 py-2 rounded-lg border ${SEVERITY_COLOR[d.severity]}`}
+            >
+              <span>{d.icon}</span>
+              <div>
+                <span className="font-semibold mr-1">[{d.severity}]</span>
+                {d.message}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="px-5 py-2 border-b border-violet-500/10 flex items-center gap-2 text-xs text-green-500/70">
+          <CheckCircle className="w-3.5 h-3.5" />
+          No defects detected at this station
+        </div>
+      )}
+
+      {/* Quality summary footer */}
+      <div className="px-5 py-3 flex items-center gap-4 flex-wrap">
+        <div className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">
+          Forming Quality
+        </div>
+        <div className={`text-sm font-bold ${qualColor}`}>
+          {qual.score}/100 — {qual.label}
+        </div>
+        {qual.high_defects > 0 && (
+          <div className="text-xs text-red-400">
+            {qual.high_defects} HIGH severity issue{qual.high_defects > 1 ? "s" : ""}
+          </div>
+        )}
+        {qual.med_defects > 0 && (
+          <div className="text-xs text-yellow-400">
+            {qual.med_defects} MEDIUM issue{qual.med_defects > 1 ? "s" : ""}
+          </div>
+        )}
+        <div className="ml-auto text-[10px] text-gray-600 font-mono">
+          simulation_engine · {data.total_passes} passes
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── METRIC CARD ────────────────────────────────────────────────────────────
+
+function MetricCard({
+  label, value, sub, icon, color,
+}: {
+  label: string; value: string; sub?: string; icon: React.ReactNode;
+  color: "violet" | "green" | "blue" | "orange" | "red";
+}) {
+  const colors = {
+    violet: "border-violet-500/20 bg-violet-500/5 text-violet-300",
+    green:  "border-green-500/20 bg-green-500/5 text-green-300",
+    blue:   "border-blue-500/20 bg-blue-500/5 text-blue-300",
+    orange: "border-orange-500/20 bg-orange-500/5 text-orange-300",
+    red:    "border-red-500/20 bg-red-500/5 text-red-300",
+  };
+  return (
+    <div className={`rounded-xl border px-3 py-2.5 ${colors[color]}`}>
+      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider opacity-70 mb-1">
+        {icon}
+        {label}
+      </div>
+      <div className="text-base font-bold font-mono leading-tight">{value}</div>
+      {sub && <div className="text-[9px] opacity-60 mt-0.5 font-mono">{sub}</div>}
+    </div>
+  );
+}

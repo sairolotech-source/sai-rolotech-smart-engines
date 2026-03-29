@@ -1,0 +1,670 @@
+Theek hai — ab main aapko **FULL SIMULATOR PACKAGE** de raha hoon:
+
+* **Simulation UI**
+* **AI Optimizer**
+* **COPRA-level approximation blueprint**
+* **Replit ke liye single master prompt**
+
+Ye aapke app ka next real powerful part hoga.
+
+---
+
+# 1. FINAL TARGET
+
+Aapka simulator ye kare:
+
+* pass-by-pass strip deformation dikhaye
+* har stand ka profile preview de
+* springback estimate kare
+* strain aur force dikhaye
+* defects detect kare
+* AI se pass correction suggest kare
+* final optimized flower / station / roll plan de
+
+---
+
+# 2. BACKEND ARCHITECTURE
+
+```text
+app/engines/
+├─ deformation_engine.py
+├─ strain_engine.py
+├─ springback_engine.py
+├─ force_engine.py
+├─ defect_engine.py
+├─ simulation_engine.py
+├─ ai_optimizer_engine.py
+└─ simulation_decision_engine.py
+```
+
+---
+
+# 3. `deformation_engine.py`
+
+```python
+from typing import List, Tuple
+
+Point = Tuple[float, float]
+
+
+def deform_profile(profile: List[Point], pass_ratio: float) -> List[Point]:
+    """
+    Simple progressive deformation model.
+    pass_ratio: 0.0 to 1.0
+    """
+    deformed = []
+    for x, y in profile:
+        deformed.append((round(x, 4), round(y * pass_ratio, 4)))
+    return deformed
+```
+
+---
+
+# 4. `strain_engine.py`
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+
+
+def calculate_strain(radius_mm: float, thickness_mm: float) -> Dict[str, Any]:
+    if radius_mm <= 0:
+        return fail_response("strain_engine", "Invalid radius")
+    if thickness_mm <= 0:
+        return fail_response("strain_engine", "Invalid thickness")
+
+    strain = thickness_mm / (2.0 * radius_mm)
+
+    severity = "low"
+    if strain > 0.15:
+        severity = "medium"
+    if strain > 0.30:
+        severity = "high"
+
+    return pass_response("strain_engine", {
+        "strain_value": round(strain, 6),
+        "severity": severity,
+        "confidence": "medium",
+        "blocking": strain > 0.35
+    })
+```
+
+---
+
+# 5. `springback_engine.py`
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response
+
+
+def calculate_springback(material: str, target_angle_deg: float) -> Dict[str, Any]:
+    material = str(material).upper()
+
+    springback_map = {
+        "GI": 1.5,
+        "GP": 1.5,
+        "MS": 2.5,
+        "CR": 2.5,
+        "HR": 3.0,
+        "SS": 4.0,
+        "ALUMINIUM": 3.0
+    }
+
+    comp = springback_map.get(material, 2.0)
+    corrected_angle = target_angle_deg + comp
+
+    return pass_response("springback_engine", {
+        "target_angle_deg": round(target_angle_deg, 4),
+        "springback_compensation_deg": comp,
+        "corrected_angle_deg": round(corrected_angle, 4),
+        "confidence": "medium",
+        "blocking": False
+    })
+```
+
+---
+
+# 6. `force_engine.py`
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+
+
+MATERIAL_STRENGTH = {
+    "GI": 280,
+    "GP": 280,
+    "MS": 350,
+    "CR": 320,
+    "HR": 380,
+    "SS": 520,
+    "ALUMINIUM": 180
+}
+
+
+def estimate_forming_force(thickness_mm: float, width_mm: float, material: str) -> Dict[str, Any]:
+    if thickness_mm <= 0:
+        return fail_response("force_engine", "Invalid thickness")
+    if width_mm <= 0:
+        return fail_response("force_engine", "Invalid width")
+
+    strength = MATERIAL_STRENGTH.get(str(material).upper(), 300)
+    force = thickness_mm * width_mm * strength * 0.8
+
+    level = "light"
+    if force > 30000:
+        level = "medium"
+    if force > 80000:
+        level = "heavy"
+
+    return pass_response("force_engine", {
+        "estimated_force_n": round(force, 3),
+        "force_level": level,
+        "material_strength_basis": strength,
+        "confidence": "medium",
+        "blocking": False
+    })
+```
+
+---
+
+# 7. `defect_engine.py`
+
+```python
+from typing import Dict, Any, List
+from app.utils.response import pass_response
+
+
+def detect_defects(
+    strain_value: float,
+    pass_ratio: float,
+    thickness_mm: float,
+    profile_type: str,
+    return_bends_count: int
+) -> Dict[str, Any]:
+    defects: List[str] = []
+    severity = "low"
+    blocking = False
+
+    if strain_value > 0.30:
+        defects.append("Cracking risk")
+        severity = "high"
+        blocking = True
+    elif strain_value > 0.18:
+        defects.append("High strain zone")
+        severity = "medium"
+
+    if pass_ratio > 0.85 and thickness_mm < 1.0:
+        defects.append("Wrinkling risk")
+
+    if profile_type in {"complex_profile", "complex_section", "shutter_profile"}:
+        defects.append("Twist/camber review required")
+        if severity == "low":
+            severity = "medium"
+
+    if return_bends_count > 0:
+        defects.append("Return bend closure instability risk")
+
+    return pass_response("defect_engine", {
+        "defects": defects,
+        "defect_severity": severity,
+        "confidence": "medium",
+        "blocking": blocking
+    })
+```
+
+---
+
+# 8. `simulation_engine.py`
+
+```python
+from typing import Dict, Any, List
+from app.utils.response import pass_response, fail_response
+from app.engines.deformation_engine import deform_profile
+from app.engines.strain_engine import calculate_strain
+from app.engines.springback_engine import calculate_springback
+from app.engines.force_engine import estimate_forming_force
+from app.engines.defect_engine import detect_defects
+
+
+def run_roll_forming_simulation(
+    advanced_roll_result: Dict[str, Any],
+    profile_result: Dict[str, Any],
+    input_result: Dict[str, Any],
+    station_result: Dict[str, Any]
+) -> Dict[str, Any]:
+    if not advanced_roll_result or advanced_roll_result.get("status") != "pass":
+        return fail_response("simulation_engine", "Advanced roll result missing")
+
+    thickness = float(input_result.get("sheet_thickness_mm", 0))
+    material = str(input_result.get("material", "")).upper()
+    width = float(profile_result.get("section_width_mm", 0))
+    profile_type = str(profile_result.get("profile_type", "custom"))
+    return_bends = int(profile_result.get("return_bends_count", 0))
+    stand_data = advanced_roll_result.get("stand_data", [])
+
+    if not stand_data:
+        return fail_response("simulation_engine", "No stand data available")
+
+    simulation_steps: List[Dict[str, Any]] = []
+    max_severity = "low"
+    blocking = False
+
+    for stand in stand_data:
+        stand_no = stand["stand_no"]
+        ratio = float(stand["pass_ratio"])
+        base_profile = stand.get("lower_profile", [])
+
+        simulated_profile = deform_profile(base_profile, ratio)
+
+        radius_for_calc = max(2.0, thickness * 4.0 + (1 - ratio) * 5.0)
+        strain_result = calculate_strain(radius_for_calc, thickness)
+        springback_result = calculate_springback(material, 90.0 * ratio)
+        force_result = estimate_forming_force(thickness, width, material)
+        defect_result = detect_defects(
+            strain_value=strain_result.get("strain_value", 0),
+            pass_ratio=ratio,
+            thickness_mm=thickness,
+            profile_type=profile_type,
+            return_bends_count=return_bends
+        )
+
+        if defect_result.get("blocking"):
+            blocking = True
+
+        sev = defect_result.get("defect_severity", "low")
+        if sev == "high":
+            max_severity = "high"
+        elif sev == "medium" and max_severity == "low":
+            max_severity = "medium"
+
+        simulation_steps.append({
+            "stand_no": stand_no,
+            "pass_ratio": ratio,
+            "profile": simulated_profile,
+            "strain_result": strain_result,
+            "springback_result": springback_result,
+            "force_result": force_result,
+            "defect_result": defect_result
+        })
+
+    return pass_response("simulation_engine", {
+        "step_count": len(simulation_steps),
+        "simulation_steps": simulation_steps,
+        "max_defect_severity": max_severity,
+        "confidence": "medium",
+        "blocking": blocking,
+        "warnings": [
+            "Simulation is engineering approximation, not full FEM"
+        ]
+    })
+```
+
+---
+
+# 9. `ai_optimizer_engine.py`
+
+```python
+from typing import Dict, Any, List
+from app.utils.response import pass_response, fail_response
+
+
+def optimize_roll_forming_plan(
+    simulation_result: Dict[str, Any],
+    station_result: Dict[str, Any],
+    flower_result: Dict[str, Any]
+) -> Dict[str, Any]:
+    if not simulation_result or simulation_result.get("status") != "pass":
+        return fail_response("ai_optimizer_engine", "Simulation result missing")
+
+    steps = simulation_result.get("simulation_steps", [])
+    recommended_station_count = int(station_result.get("recommended_station_count", 0))
+    current_pass_logic = list(flower_result.get("pass_distribution_logic", []))
+
+    suggestions: List[str] = []
+    score = 100
+
+    for step in steps:
+        defects = step.get("defect_result", {}).get("defects", [])
+        stand_no = step.get("stand_no")
+
+        if "Cracking risk" in defects:
+            suggestions.append(f"Increase stations before stand {stand_no} or reduce bend progression")
+            score -= 20
+
+        if "Wrinkling risk" in defects:
+            suggestions.append(f"Increase support/control around stand {stand_no}")
+            score -= 10
+
+        if "Return bend closure instability risk" in defects:
+            suggestions.append(f"Add controlled return bend stage near stand {stand_no}")
+            score -= 8
+
+    optimized_station_count = recommended_station_count
+    if score < 85:
+        optimized_station_count += 1
+    if score < 70:
+        optimized_station_count += 1
+
+    optimized_pass_logic = list(current_pass_logic)
+    if optimized_station_count > recommended_station_count:
+        optimized_pass_logic.insert(-1, "AI-added stabilization stage")
+
+    return pass_response("ai_optimizer_engine", {
+        "optimization_score": max(score, 0),
+        "suggestions": suggestions,
+        "optimized_station_count": optimized_station_count,
+        "optimized_pass_logic": optimized_pass_logic,
+        "confidence": "medium",
+        "blocking": False
+    })
+```
+
+---
+
+# 10. `simulation_decision_engine.py`
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response
+
+
+def decide_simulation_status(
+    simulation_result: Dict[str, Any],
+    optimizer_result: Dict[str, Any]
+) -> Dict[str, Any]:
+    severity = simulation_result.get("max_defect_severity", "low")
+    score = int(optimizer_result.get("optimization_score", 0))
+
+    if severity == "high":
+        decision = "manual_review"
+        action = "Defects too severe. Manual engineering correction required."
+    elif score < 70:
+        decision = "semi_auto_rework"
+        action = "Apply optimizer suggestions and re-run simulation."
+    else:
+        decision = "acceptable_for_preliminary_export"
+        action = "Simulation acceptable for preliminary export, still requires tooling validation."
+
+    return pass_response("simulation_decision_engine", {
+        "decision": decision,
+        "recommended_action": action,
+        "confidence": "medium",
+        "blocking": decision == "manual_review"
+    })
+```
+
+---
+
+# 11. FRONTEND SIMULATION UI
+
+## New component: `SimulationViewer.jsx`
+
+```javascript
+import { useMemo, useState } from "react";
+
+function polylinePoints(points = []) {
+  return points.map((p) => `${p[0]},${-p[1]}`).join(" ");
+}
+
+function calcViewBox(steps = []) {
+  const all = [];
+  steps.forEach((s) => (s.profile || []).forEach((p) => all.push(p)));
+  if (!all.length) return "0 -100 100 100";
+
+  const xs = all.map((p) => p[0]);
+  const ys = all.map((p) => p[1]);
+
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const pad = 10;
+  return `${minX - pad} ${-(maxY + pad)} ${maxX - minX + 2 * pad} ${maxY - minY + 2 * pad}`;
+}
+
+export default function SimulationViewer({ simulationResult, optimizerResult, decisionResult }) {
+  const steps = simulationResult?.simulation_steps || [];
+  const [index, setIndex] = useState(0);
+
+  const current = steps[index] || null;
+  const viewBox = useMemo(() => calcViewBox(steps), [steps]);
+
+  if (!simulationResult) {
+    return (
+      <div className="rounded-2xl border p-4 bg-white shadow-sm">
+        <div className="text-lg font-semibold mb-2">Simulation Viewer</div>
+        <div className="text-sm text-gray-500">No simulation data</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border p-4 bg-white shadow-sm grid gap-4">
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-semibold">Simulation Viewer</div>
+        <div className="text-sm text-gray-500">
+          Step {steps.length ? index + 1 : 0} / {steps.length}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border bg-gray-50 p-3">
+        <svg viewBox={viewBox} className="w-full h-[360px]" preserveAspectRatio="xMidYMid meet">
+          {current?.profile?.length > 1 && (
+            <polyline
+              points={polylinePoints(current.profile)}
+              fill="none"
+              stroke="black"
+              strokeWidth="1.4"
+            />
+          )}
+        </svg>
+      </div>
+
+      {steps.length > 0 && (
+        <input
+          type="range"
+          min={0}
+          max={steps.length - 1}
+          value={index}
+          onChange={(e) => setIndex(Number(e.target.value))}
+        />
+      )}
+
+      {current && (
+        <div className="grid md:grid-cols-4 gap-3 text-sm">
+          <div className="rounded-xl border p-3">
+            <div className="text-gray-500">Stand</div>
+            <div className="font-semibold">{current.stand_no}</div>
+          </div>
+          <div className="rounded-xl border p-3">
+            <div className="text-gray-500">Strain</div>
+            <div className="font-semibold">{current.strain_result?.strain_value}</div>
+          </div>
+          <div className="rounded-xl border p-3">
+            <div className="text-gray-500">Corrected Angle</div>
+            <div className="font-semibold">{current.springback_result?.corrected_angle_deg}</div>
+          </div>
+          <div className="rounded-xl border p-3">
+            <div className="text-gray-500">Force</div>
+            <div className="font-semibold">{current.force_result?.estimated_force_n}</div>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-xl border p-3 text-sm">
+        <div className="font-medium mb-2">Defects</div>
+        {(current?.defect_result?.defects || []).length === 0 ? (
+          <div className="text-gray-500">No visible defects in this step</div>
+        ) : (
+          <ul className="grid gap-1">
+            {current.defect_result.defects.map((d, i) => (
+              <li key={i}>• {d}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {optimizerResult && (
+        <div className="rounded-xl border p-3 text-sm">
+          <div className="font-medium mb-2">AI Optimizer</div>
+          <div>Score: {optimizerResult.optimization_score}</div>
+          <div>Optimized Stations: {optimizerResult.optimized_station_count}</div>
+          <ul className="grid gap-1 mt-2">
+            {(optimizerResult.suggestions || []).map((s, i) => (
+              <li key={i}>• {s}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {decisionResult && (
+        <div className="rounded-xl border p-3 text-sm">
+          <div className="font-medium mb-2">Simulation Decision</div>
+          <div>Decision: {decisionResult.decision}</div>
+          <div>Action: {decisionResult.recommended_action}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+# 12. BACKEND ROUTE
+
+```python
+@router.post("/manual-mode-simulate")
+def run_manual_mode_simulate(data: ManualProfileInput):
+    result = execute_manual_pipeline(data)
+
+    if result.get("status") != "pass":
+        return result
+
+    advanced_roll_result = generate_advanced_rolls(
+        profile_result=result["profile_analysis_engine"],
+        input_result=result["input_engine"],
+        flower_result=result["flower_engine"],
+        station_result=result["station_engine"]
+    )
+
+    simulation_result = run_roll_forming_simulation(
+        advanced_roll_result=advanced_roll_result,
+        profile_result=result["profile_analysis_engine"],
+        input_result=result["input_engine"],
+        station_result=result["station_engine"]
+    )
+
+    optimizer_result = optimize_roll_forming_plan(
+        simulation_result=simulation_result,
+        station_result=result["station_engine"],
+        flower_result=result["flower_engine"]
+    )
+
+    decision_result = decide_simulation_status(
+        simulation_result=simulation_result,
+        optimizer_result=optimizer_result
+    )
+
+    return {
+        "status": "pass",
+        "pipeline_result": result,
+        "advanced_roll_engine": advanced_roll_result,
+        "simulation_engine": simulation_result,
+        "ai_optimizer_engine": optimizer_result,
+        "simulation_decision_engine": decision_result
+    }
+```
+
+---
+
+# 13. REPLIT SINGLE MASTER PROMPT
+
+Build a high-level Roll Forming Simulator for the engineering app.
+
+Goal:
+Create a fast, visual, engineering-grade simulation system that approximates roll forming behavior better than a simple rule engine.
+
+Required backend engines:
+
+1. deformation_engine
+2. strain_engine
+3. springback_engine
+4. force_engine
+5. defect_engine
+6. simulation_engine
+7. ai_optimizer_engine
+8. simulation_decision_engine
+
+Rules:
+
+* Do not attempt full FEM
+* Build a fast engineering approximation
+* Simulate pass-by-pass deformation
+* For each stand, calculate:
+
+  * deformed profile
+  * strain
+  * corrected angle with springback
+  * estimated forming force
+  * defects
+* Add AI optimizer suggestions if defects are found
+* Add a final simulation decision:
+
+  * acceptable_for_preliminary_export
+  * semi_auto_rework
+  * manual_review
+
+Frontend:
+
+* Create a SimulationViewer component
+* Show profile animation/slider per pass
+* Show strain, angle, force, and defects per step
+* Show AI optimizer suggestions
+* Show final simulation decision
+
+API:
+
+* Add POST /api/manual-mode-simulate
+* Reuse the engineering pipeline
+* Then generate advanced roll result
+* Then run simulation
+* Then run AI optimizer
+* Then return full output
+
+Safety:
+
+* Never claim exact FEM accuracy
+* Clearly label output as engineering approximation
+* If high defect severity is found, force manual review
+
+---
+
+# 14. SABSE IMPORTANT SACH
+
+Is system ke baad aapke paas ye flow ho jayega:
+
+**DXF / Manual → Profile Analysis → Flower → Rolls → Simulation → AI Correction → Export**
+
+Ye bahut powerful hai.
+
+Lekin final production se pehle fir bhi:
+
+* tooling expert review
+* SolidCAM simulation
+* trial run validation
+
+zaroori rahega.
+
+Agle step me main aapke liye **poora final integrated mega prompt** ek hi copy-paste block me bana sakta hoon jisme:
+
+* centerline converter
+* auto/semi-auto/manual
+* rolls
+* exports
+* simulator
+* AI optimizer
+  sab ek hi prompt me hoga.

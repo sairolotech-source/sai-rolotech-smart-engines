@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight,
   Activity, Zap, AlertTriangle, CheckCircle, Info, Layers,
-  Bot, ShieldCheck, ShieldAlert, ShieldOff, Plus, Wrench
+  Bot, ShieldCheck, ShieldAlert, ShieldOff, Plus, Wrench,
+  GitBranch, Link2, Cpu, Settings2,
 } from "lucide-react";
+import { getStationExplanation, getManufacturabilityWarnings } from "@/lib/stationLogicEngine";
 
 interface ProfilePoint { x: number; y: number; }
 interface RollProfile   { x: number; y: number; }
@@ -85,7 +87,13 @@ interface Props {
   optimizerData?: OptimizerData | null;
   decisionData?: DecisionData | null;
   loading?: boolean;
+  rollOD?: number;
+  bore?: number;
+  faceWidth?: number;
 }
+
+type AnimSpeed = "slow" | "normal" | "fast";
+const SPEED_MS: Record<AnimSpeed, number> = { slow: 1600, normal: 900, fast: 400 };
 
 const STAGE_LABEL: Record<string, string> = {
   flat:                "Flat Strip",
@@ -130,10 +138,14 @@ function toPath(pts: ProfilePoint[]): string {
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
-export default function RollFormingSimulator({ data, optimizerData, decisionData, loading }: Props) {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [playing,   setPlaying]   = useState(false);
-  const [showFlower, setShowFlower] = useState(true);
+export default function RollFormingSimulator({ data, optimizerData, decisionData, loading, rollOD = 100, bore = 50, faceWidth = 60 }: Props) {
+  const [activeIdx,   setActiveIdx]   = useState(0);
+  const [playing,     setPlaying]     = useState(false);
+  const [showFlower,  setShowFlower]  = useState(true);
+  const [animSpeed,   setAnimSpeed]   = useState<AnimSpeed>("normal");
+  const [showExplain, setShowExplain] = useState(true);
+  const [showWarnings,setShowWarnings]= useState(true);
+  const [showChain,   setShowChain]   = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const passes = data?.simulation_passes ?? [];
@@ -143,7 +155,7 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
     setActiveIdx(Math.max(0, Math.min(total - 1, idx)));
   }, [total]);
 
-  // Auto-play
+  // Auto-play with speed control
   useEffect(() => {
     if (playing && total > 1) {
       intervalRef.current = setInterval(() => {
@@ -151,12 +163,12 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
           if (prev >= total - 1) { setPlaying(false); return prev; }
           return prev + 1;
         });
-      }, 900);
+      }, SPEED_MS[animSpeed]);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [playing, total]);
+  }, [playing, total, animSpeed]);
 
   useEffect(() => { setActiveIdx(0); setPlaying(false); }, [data]);
 
@@ -214,7 +226,7 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
             {data.material} · {data.thickness_mm}mm · r={data.bend_radius_mm}mm · {data.strip_speed_mpm}m/min
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
           {/* Quality badge */}
           <div className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
             qual.score >= 90 ? "border-green-500/30 bg-green-500/10 text-green-400" :
@@ -224,6 +236,17 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
           }`}>
             {qual.label} · {qual.score}%
           </div>
+          {/* Chain view button */}
+          <button
+            onClick={() => setShowChain(s => !s)}
+            className={`text-[10px] px-2 py-1 rounded border transition-colors flex items-center gap-1 ${
+              showChain
+                ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+                : "border-gray-700 text-gray-500 hover:border-gray-500"
+            }`}
+          >
+            <Link2 className="w-2.5 h-2.5" /> Chain
+          </button>
           {/* Flower toggle */}
           <button
             onClick={() => setShowFlower(s => !s)}
@@ -237,6 +260,17 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
           </button>
         </div>
       </div>
+
+      {/* ── Workflow Chain Panel ────────────────────────────────────── */}
+      {showChain && (
+        <WorkflowChain
+          cur={cur}
+          total={total}
+          activeIdx={activeIdx}
+          material={data.material}
+          thickness={data.thickness_mm}
+        />
+      )}
 
       {/* SVG Viewer */}
       <div className="relative bg-[#080810] border-b border-violet-500/10" style={{ height: 280 }}>
@@ -318,6 +352,43 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
               strokeLinecap="round"
             />
           )}
+
+          {/* Contact-point red dots — strip↔roll intersections */}
+          {cur.profile_points.length > 1 && (() => {
+            const pts = cur.profile_points;
+            const contactPts: ProfilePoint[] = [];
+            // First, last, and bend vertices are key contact points
+            contactPts.push(pts[0]);
+            contactPts.push(pts[pts.length - 1]);
+            // Detect corner/bend vertices (angle change)
+            for (let i = 1; i < pts.length - 1; i++) {
+              const dx1 = pts[i].x - pts[i-1].x;
+              const dy1 = pts[i].y - pts[i-1].y;
+              const dx2 = pts[i+1].x - pts[i].x;
+              const dy2 = pts[i+1].y - pts[i].y;
+              const angle = Math.abs(Math.atan2(dy1*dx2-dx1*dy2, dx1*dx2+dy1*dy2));
+              if (angle > 0.12) contactPts.push(pts[i]);
+            }
+            return contactPts.map((pt, ci) => (
+              <g key={`cp-${ci}`}>
+                <circle cx={pt.x} cy={pt.y} r="3.5" fill="#ef4444" opacity="0.25" />
+                <circle cx={pt.x} cy={pt.y} r="2" fill="#ef4444" opacity="0.9" />
+                <circle cx={pt.x} cy={pt.y} r="0.8" fill="#ffffff" opacity="0.9" />
+              </g>
+            ));
+          })()}
+
+          {/* Bend completion annotation */}
+          {(() => {
+            const finalAngle = passes[total - 1]?.target_angle_deg ?? cur.target_angle_deg;
+            const bentPct = finalAngle > 0 ? Math.min(100, (cur.pass_progress_pct)) : 0;
+            const remaining = Math.max(0, finalAngle - cur.target_angle_deg);
+            return (
+              <text x="4" y="-4" fontSize="4" fill="#7c3aed" opacity="0.8" fontFamily="monospace">
+                {`✓ ${bentPct.toFixed(0)}% formed · ${remaining.toFixed(1)}° remaining`}
+              </text>
+            );
+          })()}
         </svg>
 
         {/* Stage badge overlay */}
@@ -405,6 +476,24 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
         <span className="text-xs text-gray-500 font-mono whitespace-nowrap">
           {cur.station_label} ({activeIdx + 1}/{total})
         </span>
+
+        {/* Speed control */}
+        <div className="flex items-center gap-1 border border-gray-700 rounded-lg px-1.5 py-1">
+          <Settings2 className="w-3 h-3 text-gray-600" />
+          {(["slow","normal","fast"] as AnimSpeed[]).map(s => (
+            <button
+              key={s}
+              onClick={() => setAnimSpeed(s)}
+              className={`text-[9px] px-1.5 py-0.5 rounded transition-colors font-mono ${
+                animSpeed === s
+                  ? "bg-violet-500/20 text-violet-300"
+                  : "text-gray-600 hover:text-gray-400"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Station selector pills */}
@@ -500,7 +589,7 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
       )}
 
       {/* Quality summary footer */}
-      <div className="px-5 py-3 flex items-center gap-4 flex-wrap">
+      <div className="px-5 py-3 flex items-center gap-4 flex-wrap border-b border-violet-500/10">
         <div className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">
           Forming Quality
         </div>
@@ -521,6 +610,28 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
           simulation_engine · {data.total_passes} passes
         </div>
       </div>
+
+      {/* ── Station Logic Explanation Box ──────────────────── */}
+      <StationLogicBox
+        cur={cur}
+        allPasses={passes}
+        thickness={data.thickness_mm}
+        material={data.material}
+        open={showExplain}
+        onToggle={() => setShowExplain(s => !s)}
+      />
+
+      {/* ── Manufacturability Warnings ─────────────────────── */}
+      <ManufacturabilityPanel
+        passes={passes}
+        rollOD={rollOD}
+        bore={bore}
+        faceWidth={faceWidth}
+        thickness={data.thickness_mm}
+        material={data.material}
+        open={showWarnings}
+        onToggle={() => setShowWarnings(s => !s)}
+      />
 
       {/* ── AI Optimizer Panel ──────────────────────────────── */}
       {optimizerData && (

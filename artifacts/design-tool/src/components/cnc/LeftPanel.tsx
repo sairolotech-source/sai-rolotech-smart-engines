@@ -635,7 +635,7 @@ export function LeftPanel() {
               `${stCount} stations · ${materialType} ${materialThickness}mm`,
               isSynthesized ? "⚠ No bends found — angles are estimated, not derived from geometry" : "",
               vAutoFixes > 0 ? `⚠ ${vAutoFixes} auto-correction(s) applied (roll gap)` : "",
-              vWarnings.length > 0 ? `⚠ ${vWarnings[0]}` : "",
+              vWarnings.length > 0 ? `⚠ ${typeof vWarnings[0] === "string" ? vWarnings[0] : (vWarnings[0] as Record<string,unknown>).issue ?? JSON.stringify(vWarnings[0])}` : "",
             ].filter(Boolean).join(" · "),
             variant: "destructive",
           });

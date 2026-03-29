@@ -929,6 +929,12 @@ interface CncState {
   profileSourceType: "centerline" | "sheetProfile" | null;
   setProfileSourceType: (t: "centerline" | "sheetProfile" | null) => void;
 
+  flowerGenerateTrigger: number;
+  requestFlowerGeneration: () => void;
+
+  leftPanelScrollTarget: string | null;
+  setLeftPanelScrollTarget: (t: string | null) => void;
+
   dxfDimensions: DxfDimension[];
   setDxfDimensions: (dims: DxfDimension[]) => void;
   confirmedDimensions: (DxfDimension & { confirmed: boolean; override?: number })[];
@@ -1083,6 +1089,12 @@ export const useCncStore = create<CncState>()(persist((set) => ({
 
   profileSourceType: null,
   setProfileSourceType: (t) => set({ profileSourceType: t }),
+
+  flowerGenerateTrigger: 0,
+  requestFlowerGeneration: () => set((s) => ({ flowerGenerateTrigger: s.flowerGenerateTrigger + 1 })),
+
+  leftPanelScrollTarget: null,
+  setLeftPanelScrollTarget: (t) => set({ leftPanelScrollTarget: t }),
 
   dxfDimensions: [],
   setDxfDimensions: (dims) => set({ dxfDimensions: dims }),
@@ -1247,6 +1259,8 @@ export const useCncStore = create<CncState>()(persist((set) => ({
       // Reset section model so user must re-select at start of every new workflow
       sectionModel: null,
       profileSourceType: null,
+      flowerGenerateTrigger: 0,
+      leftPanelScrollTarget: null,
       // Reset validation and dimension confirmation state for new workflow
       validationResults: [],
       validationApproved: false,

@@ -76,15 +76,30 @@ interface FlowerEmptyStateProps {
   materialThickness: number;
 }
 
+function segmentLength(seg: { startX: number; startY: number; endX: number; endY: number }) {
+  const dx = seg.endX - seg.startX;
+  const dy = seg.endY - seg.startY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps) {
-  const { profileSourceType, setActiveTab } = useCncStore();
+  const { profileSourceType, setActiveTab, requestFlowerGeneration, setLeftPanelScrollTarget } = useCncStore();
+  const [generating, setGenerating] = React.useState(false);
+
+  const segments = geometry?.segments ?? [];
+  const bendPoints = geometry?.bendPoints ?? [];
+  const bbox = geometry?.boundingBox;
+
+  const profileWidth = bbox ? Math.abs(bbox.maxX - bbox.minX) : 0;
+  const profileHeight = bbox ? Math.abs(bbox.maxY - bbox.minY) : 0;
+  const totalLength = segments.reduce((sum, s) => sum + segmentLength(s), 0);
 
   const checks = [
     {
       id: "profile",
       label: "DXF profile loaded",
-      ok: !!(geometry?.segments?.length),
-      okMsg: `${(geometry?.segments ?? []).length} segments, ${(geometry?.bendPoints ?? []).length} bends`,
+      ok: segments.length > 0,
+      okMsg: `${segments.length} segments · ${bendPoints.length} bend${bendPoints.length !== 1 ? "s" : ""} detected`,
       failMsg: "No profile geometry — upload a DXF or draw a profile first",
       action: () => setActiveTab?.("setup"),
       actionLabel: "Go to Setup",
@@ -93,8 +108,8 @@ function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps
       id: "thickness",
       label: "Material thickness set",
       ok: materialThickness > 0,
-      okMsg: `${materialThickness}mm nominal`,
-      failMsg: "Thickness is 0 — set material and thickness in Setup",
+      okMsg: `${materialThickness}mm nominal thickness`,
+      failMsg: "Thickness is 0 — set material thickness in Setup",
       action: () => setActiveTab?.("setup"),
       actionLabel: "Set Thickness",
     },
@@ -102,8 +117,8 @@ function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps
       id: "source",
       label: "Profile type confirmed",
       ok: profileSourceType !== null,
-      okMsg: profileSourceType === "centerline" ? "Center line converted to sheet profile" : "Sheet profile ready",
-      failMsg: "Profile type not confirmed — re-upload DXF to configure",
+      okMsg: profileSourceType === "centerline" ? "Center line converted to sheet profile" : "Sheet profile ready to use",
+      failMsg: "Profile type not confirmed — re-upload DXF to trigger conversion modal",
       action: null,
       actionLabel: null,
     },
@@ -112,33 +127,44 @@ function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps
       label: "Generate Power Pattern",
       ok: false,
       okMsg: "",
-      failMsg: "Go to Station Config section and click Generate Power Pattern",
-      action: () => setActiveTab?.("station"),
-      actionLabel: "Go to Station Config",
+      failMsg: "Station Config needed — set station count then generate",
+      action: () => {
+        setLeftPanelScrollTarget("station");
+      },
+      actionLabel: "Open Station Config",
     },
   ];
 
   const completedCount = checks.filter(c => c.ok).length;
   const allPrereqsMet = checks.slice(0, 3).every(c => c.ok);
 
+  const handleGenerateNow = () => {
+    setGenerating(true);
+    requestFlowerGeneration();
+    setTimeout(() => setGenerating(false), 3000);
+  };
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 p-8">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="flex-1 flex flex-col items-center justify-start bg-zinc-950 p-6 overflow-y-auto">
+      <div className="w-full max-w-sm space-y-4 pb-8">
+
         {/* Header */}
-        <div className="text-center">
-          <div className="text-4xl mb-3">🌸</div>
+        <div className="text-center pt-4">
+          <div className="text-4xl mb-2">🌸</div>
           <div className="text-base font-bold text-zinc-300 mb-1">Power Pattern — Not Yet Generated</div>
-          <div className="text-xs text-zinc-500">Complete all steps below to unlock Power Pattern generation</div>
+          <div className="text-xs text-zinc-500">Complete all steps below to unlock generation</div>
         </div>
 
-        {/* Progress */}
-        <div className="w-full bg-zinc-800 rounded-full h-1.5">
-          <div
-            className="bg-gradient-to-r from-orange-500 to-amber-400 h-1.5 rounded-full transition-all duration-500"
-            style={{ width: `${(completedCount / checks.length) * 100}%` }}
-          />
+        {/* Progress bar */}
+        <div>
+          <div className="w-full bg-zinc-800 rounded-full h-1.5">
+            <div
+              className="bg-gradient-to-r from-orange-500 to-amber-400 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${(completedCount / checks.length) * 100}%` }}
+            />
+          </div>
+          <div className="text-center text-[10px] text-zinc-500 mt-1">{completedCount} of {checks.length} steps complete</div>
         </div>
-        <div className="text-center text-[10px] text-zinc-500">{completedCount} of {checks.length} steps complete</div>
 
         {/* Checklist */}
         <div className="space-y-2">
@@ -181,12 +207,73 @@ function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps
           ))}
         </div>
 
-        {/* All prereqs met banner */}
+        {/* Profile Summary — shown once geometry is loaded */}
+        {segments.length > 0 && (
+          <div className="rounded-xl border border-zinc-700/40 bg-zinc-900/40 p-3 space-y-2">
+            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Profile Summary</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              <div className="text-[10px] text-zinc-500">Source type</div>
+              <div className="text-[10px] font-semibold text-zinc-300 text-right">
+                {profileSourceType === "centerline" ? "Center line → Sheet" : profileSourceType === "sheetProfile" ? "Sheet profile" : "Unknown"}
+              </div>
+              <div className="text-[10px] text-zinc-500">Segments</div>
+              <div className="text-[10px] font-semibold text-zinc-300 text-right">{segments.length}</div>
+              <div className="text-[10px] text-zinc-500">Bends</div>
+              <div className="text-[10px] font-semibold text-zinc-300 text-right">{bendPoints.length}</div>
+              {materialThickness > 0 && (
+                <>
+                  <div className="text-[10px] text-zinc-500">Thickness</div>
+                  <div className="text-[10px] font-semibold text-zinc-300 text-right">{materialThickness} mm</div>
+                </>
+              )}
+              {profileWidth > 0 && (
+                <>
+                  <div className="text-[10px] text-zinc-500">Profile W × H</div>
+                  <div className="text-[10px] font-semibold font-mono text-zinc-300 text-right">
+                    {profileWidth.toFixed(1)} × {profileHeight.toFixed(1)} mm
+                  </div>
+                </>
+              )}
+              {totalLength > 0 && (
+                <>
+                  <div className="text-[10px] text-zinc-500">Total path length</div>
+                  <div className="text-[10px] font-semibold font-mono text-zinc-300 text-right">{totalLength.toFixed(1)} mm</div>
+                </>
+              )}
+            </div>
+
+            {/* Bend angle list */}
+            {bendPoints.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-zinc-700/30">
+                <div className="text-[10px] text-zinc-500 mb-1.5">Bend angles</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {bendPoints.map((bp, bi) => (
+                    <span
+                      key={bi}
+                      className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-950/60 border border-blue-700/30 text-[10px] font-mono text-blue-300"
+                    >
+                      B{bi + 1}: {(bp.angle ?? 0).toFixed(1)}°
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CTA when all prereqs met */}
         {allPrereqsMet && (
-          <div className="rounded-xl border border-green-500/30 bg-green-950/20 p-3 text-center">
-            <div className="text-xs font-semibold text-green-300 mb-1">✓ Profile ready</div>
-            <div className="text-[11px] text-zinc-400">
-              Open <span className="text-orange-400 font-semibold">Station Config</span> in the left panel and click <span className="text-orange-400 font-semibold">Generate Power Pattern</span>.
+          <div className="rounded-xl border border-green-500/30 bg-green-950/20 p-4 space-y-3">
+            <div className="text-xs font-semibold text-green-300 text-center">✓ Profile ready — generate now</div>
+            <button
+              onClick={handleGenerateNow}
+              disabled={generating}
+              className="w-full py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white shadow-lg shadow-orange-500/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {generating ? "Generating…" : "⚡ Generate Power Pattern Now"}
+            </button>
+            <div className="text-center text-[10px] text-zinc-500">
+              Or open <button onClick={() => setLeftPanelScrollTarget("station")} className="text-orange-400 hover:underline">Station Config</button> in the left panel to adjust station count first.
             </div>
           </div>
         )}

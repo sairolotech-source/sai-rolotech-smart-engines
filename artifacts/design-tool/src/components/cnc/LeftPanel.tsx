@@ -220,6 +220,8 @@ export function LeftPanel() {
     confirmedDimensions,
     sectionModel, setSectionModel,
     profileSourceType, setProfileSourceType,
+    flowerGenerateTrigger,
+    leftPanelScrollTarget, setLeftPanelScrollTarget,
     validationResults, validationApproved,
     setValidationResults, setValidationApproved,
   } = useCncStore();
@@ -562,6 +564,25 @@ export function LeftPanel() {
     }
   }, [geometry, numStations, stationPrefix, materialType, materialThickness, openSectionType, setStations, setLoading, setError, setRollTooling, setGcodeOutputs, scoreTask]);
 
+  // Remote-trigger: FlowerPatternView can call requestFlowerGeneration() to start generation from outside LeftPanel
+  useEffect(() => {
+    if (flowerGenerateTrigger === 0) return;
+    handleGenerateFlower();
+  }, [flowerGenerateTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Remote scroll: FlowerPatternView can call setLeftPanelScrollTarget("station") to open + scroll to that section
+  const leftPanelRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!leftPanelScrollTarget) return;
+    const key = leftPanelScrollTarget as keyof typeof sections;
+    setSections((s) => ({ ...s, [key]: true }));
+    setTimeout(() => {
+      const el = leftPanelRef.current?.querySelector(`[data-section="${leftPanelScrollTarget}"]`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setLeftPanelScrollTarget(null);
+    }, 120);
+  }, [leftPanelScrollTarget, setLeftPanelScrollTarget]);
+
   const handleGenerateGcode = useCallback(async () => {
     if (!geometry) return;
     setLoading(true);
@@ -659,7 +680,7 @@ export function LeftPanel() {
       }}
     />
 
-    <div className="w-72 flex flex-col overflow-y-auto flex-shrink-0"
+    <div ref={leftPanelRef} className="w-72 flex flex-col overflow-y-auto flex-shrink-0"
       style={{ background: "rgba(9, 10, 24, 0.6)", backdropFilter: "blur(28px) saturate(1.6)", WebkitBackdropFilter: "blur(28px) saturate(1.6)", borderRight: "1px solid rgba(255,255,255,0.08)" }}>
 
       {/* ── AUTO AI MODE BUTTON ── */}
@@ -1327,7 +1348,7 @@ export function LeftPanel() {
       </div>
 
       {/* STATION CONFIG */}
-      <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
+      <div data-section="station" className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
         <SectionHeader title="Station Config" icon={<Settings className="w-4 h-4" />} expanded={sections.station} onToggle={() => toggleSection("station")} />
         {sections.station && (
           <div className="mt-3 space-y-2">

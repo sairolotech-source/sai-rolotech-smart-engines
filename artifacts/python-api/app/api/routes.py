@@ -34,6 +34,8 @@ from app.engines.consistency_engine import validate_consistency
 from app.engines.final_decision_engine import make_final_decision
 from app.engines.flange_web_lip_engine import detect_flange_web_lip
 from app.engines.machine_layout_engine import generate_machine_layout
+from app.engines.debug_test_engine import extract_stage_debug
+from app.engines.test_runner_engine import run_all_tests as _run_all_tests
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -255,8 +257,9 @@ def health():
             "shaft", "bearing", "duty", "roll_design_calc", "machine_layout",
             "consistency", "final_decision",
             "report", "pdf_export",
+            "debug_test", "test_runner",
         ],
-        "total_engines": 17,
+        "total_engines": 19,
         "endpoints": [
             "GET  /api/health",
             "POST /api/manual-mode",
@@ -363,140 +366,33 @@ def run_manual_mode(data: ManualProfileInput):
 @router.get("/run-tests")
 @router.get("/run-manual-tests")
 def run_tests():
-    """Run 8 built-in test cases and return pass/fail for each."""
-    from app.api.schemas import ManualProfileInput
-
-    CASES = [
-        # ── Standard profiles ────────────────────────────────────────────
-        {"name": "TC-01: GI Simple Channel", "bend_count": 2, "section_width_mm": 100, "section_height_mm": 40, "thickness": 0.8, "material": "GI", "profile_type": "simple_channel",
-         "_expected_mode": "auto_mode", "_expected_min_confidence": 70},
-        {"name": "TC-02: CR Lipped Channel", "bend_count": 4, "section_width_mm": 120, "section_height_mm": 55, "thickness": 1.0, "material": "CR", "profile_type": "lipped_channel",
-         "_expected_mode": "auto_mode", "_expected_min_confidence": 80},
-        {"name": "TC-03: SS Heavy Section", "bend_count": 6, "section_width_mm": 150, "section_height_mm": 60, "thickness": 1.5, "material": "SS", "profile_type": "lipped_channel",
-         "_expected_mode": "auto_mode", "_expected_min_confidence": 75},
-        {"name": "TC-04: HR Complex Profile", "bend_count": 8, "section_width_mm": 200, "section_height_mm": 80, "thickness": 2.0, "material": "HR", "profile_type": "complex_profile",
-         "_expected_mode": None, "_expected_min_confidence": 60},
-        {"name": "TC-05: HR Shutter 8 Bends", "bend_count": 8, "section_width_mm": 250, "section_height_mm": 30, "thickness": 1.2, "material": "HR", "profile_type": "shutter_profile",
-         "_expected_mode": None, "_expected_min_confidence": 65},
-        # ── Edge cases ───────────────────────────────────────────────────
-        {"name": "TC-06: Contradiction — Lipped Channel No Lips", "bend_count": 2, "section_width_mm": 100, "section_height_mm": 40, "thickness": 1.0, "material": "GI", "profile_type": "lipped_channel",
-         "_expected_mode": "manual_review", "_expected_min_confidence": 0},
-        {"name": "TC-07: Contradiction — Heavy Duty Small Shaft Input", "bend_count": 8, "section_width_mm": 300, "section_height_mm": 100, "thickness": 3.0, "material": "HR", "profile_type": "complex_profile",
-         "_expected_mode": None, "_expected_min_confidence": 50},
-        {"name": "TC-08: MS Industrial Wide Section", "bend_count": 10, "section_width_mm": 400, "section_height_mm": 120, "thickness": 3.5, "material": "MS", "profile_type": "complex_profile",
-         "_expected_mode": None, "_expected_min_confidence": 50},
-    ]
-
-    results = []
-    all_pass = True
-
-    for tc in CASES:
-        name = tc.pop("name")
-        expected_mode       = tc.pop("_expected_mode", None)
-        expected_min_conf   = tc.pop("_expected_min_confidence", 0)
-        try:
-            data = ManualProfileInput(**tc)
-            result = execute_manual_pipeline(data)
-            status = "pass" if result.get("status") == "pass" else "fail"
-            if status == "fail":
-                all_pass = False
-            summary     = result.get("report_engine", {}).get("engineering_summary", {})
-            decision    = result.get("final_decision_engine", {})
-            consistency = result.get("consistency_engine", {})
-            actual_mode = decision.get("selected_mode")
-            actual_conf = decision.get("overall_confidence", 0)
-            mode_ok     = (expected_mode is None) or (actual_mode == expected_mode)
-            conf_ok     = actual_conf >= expected_min_conf
-            validation  = "pass" if (mode_ok and conf_ok) else "warning"
-            results.append({
-                "name": name,
-                "status": status,
-                "validation": validation,
-                "expected_mode": expected_mode,
-                "actual_mode": actual_mode,
-                "expected_min_confidence": expected_min_conf,
-                "actual_confidence": actual_conf,
-                "stations": summary.get("recommended_station_count"),
-                "shaft_mm": summary.get("shaft_diameter_mm"),
-                "bearing": summary.get("bearing_type"),
-                "roll_od_mm": summary.get("estimated_roll_od_mm"),
-                "line_length_m": result.get("machine_layout_engine", {}).get("total_line_length_m"),
-                "drive_type": result.get("machine_layout_engine", {}).get("drive_type"),
-                "complexity": summary.get("forming_complexity_class"),
-                "selected_mode": actual_mode,
-                "overall_confidence": actual_conf,
-                "consistency_status": consistency.get("consistency_status"),
-                "failed_stage": result.get("failed_stage"),
-            })
-        except Exception as e:
-            all_pass = False
-            results.append({"name": name, "status": "error", "reason": str(e)})
-
-    return {
-        "status": "pass" if all_pass else "partial",
-        "total": len(CASES),
-        "passed": sum(1 for r in results if r["status"] == "pass"),
-        "failed": sum(1 for r in results if r["status"] != "pass"),
-        "validation_warnings": sum(1 for r in results if r.get("validation") == "warning"),
-        "test_cases": results,
-    }
+    """
+    Run 8 standard test cases via test_runner_engine.
+    TC-01: simple channel | TC-02: lipped channel | TC-03: shutter profile
+    TC-04: invalid thickness | TC-05: empty DXF | TC-06: unsupported entities
+    TC-07: contradiction case | TC-08: heavy duty mismatch
+    """
+    from app.api.schemas import ManualProfileInput as MPI, AutoModeInput as AMI
+    return _run_all_tests(
+        execute_manual_pipeline=execute_manual_pipeline,
+        execute_auto_pipeline=execute_auto_pipeline,
+        ManualProfileInput=MPI,
+        AutoModeInput=AMI,
+    )
 
 
 # ─── POST /api/manual-mode-debug ─────────────────────────────────────────────
 
 @router.post("/manual-mode-debug")
 def run_manual_mode_debug(data: ManualProfileInput):
-    """Manual mode pipeline with per-engine stage debug breakdown."""
+    """Manual mode pipeline with per-engine stage debug breakdown (via debug_test_engine)."""
     logger.info("[manual-mode-debug] bends=%d material=%s", data.bend_count, data.material)
     pipeline = execute_manual_pipeline(data)
-
-    ENGINE_ORDER = [
-        "profile_analysis_engine",
-        "input_engine",
-        "flange_web_lip_engine",
-        "advanced_flower_engine",
-        "station_engine",
-        "roll_logic_engine",
-        "shaft_engine",
-        "bearing_engine",
-        "duty_engine",
-        "roll_design_calc_engine",
-        "machine_layout_engine",
-        "consistency_engine",
-        "final_decision_engine",
-        "report_engine",
-    ]
-
-    stage_debug = []
-    first_failed = None
-
-    for engine_key in ENGINE_ORDER:
-        eng = pipeline.get(engine_key, {})
-        st = eng.get("status", "not_run")
-        reason = eng.get("reason") if st == "fail" else None
-        if st == "fail" and not first_failed:
-            first_failed = engine_key
-        entry: Dict[str, Any] = {"stage": engine_key, "status": st, "reason": reason}
-        if engine_key == "consistency_engine":
-            entry["consistency_status"] = eng.get("consistency_status")
-            entry["blocking"] = eng.get("blocking")
-            entry["issues_found"] = eng.get("issues_found", 0)
-        if engine_key == "final_decision_engine":
-            entry["selected_mode"] = eng.get("selected_mode")
-            entry["overall_confidence"] = eng.get("overall_confidence")
-            entry["blocking_reasons"] = eng.get("blocking_reasons", [])
-        stage_debug.append(entry)
-
-    if pipeline.get("status") == "fail" and not first_failed:
-        first_failed = pipeline.get("failed_stage")
-
+    debug = extract_stage_debug(pipeline)
     return {
         "status": pipeline.get("status"),
         "pipeline_result": pipeline,
-        "debug_result": {
-            "first_failed_stage": first_failed,
-            "stage_debug": stage_debug,
-        },
+        "debug_result": debug,
     }
 
 

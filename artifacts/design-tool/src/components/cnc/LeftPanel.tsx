@@ -8,6 +8,7 @@ import {
   OPEN_SECTION_OPTIONS,
   getKeywaySizeForShaft,
   autoDetectProfileType,
+  validateStationProfiles,
 } from "../../store/useCncStore";
 import { uploadDxf, generateFlower, generateGcode, generateRollTooling, calcStripWidth } from "../../lib/api";
 import { PipelineDebugPanel } from "../PipelineDebugPanel";
@@ -715,6 +716,23 @@ export function LeftPanel() {
       setLoading(false);
     }
   }, [geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, openSectionType, setStations, setRollTooling, setRollGaps, setMachineData, setMotorCalc, setBomResult, setLoading, setError, scoreTask]);
+
+  // ─── Regenerate incomplete stations ──────────────────────────────────────────
+  const handleRegenerateIncomplete = useCallback(async () => {
+    if (!geometry) return;
+    const currentRollTooling = useCncStore.getState().rollTooling;
+    const validations = validateStationProfiles(currentRollTooling);
+    const incomplete = validations.filter(v => v.status !== "VALID");
+    if (incomplete.length === 0) {
+      toast({ title: "All Stations Complete", description: "No incomplete stations to regenerate" });
+      return;
+    }
+    toast({
+      title: "Regenerating Incomplete Stations",
+      description: `Regenerating ${incomplete.length} station(s) — rerunning full roll tooling pipeline`,
+    });
+    await handleGenerateRollTooling();
+  }, [geometry, handleGenerateRollTooling]);
 
   const inputCls = "rt-input";
   const inputSmCls = "rt-input-sm";

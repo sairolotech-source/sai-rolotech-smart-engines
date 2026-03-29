@@ -1,0 +1,337 @@
+Bilkul — ab target **97%+ production readiness** rakhte hain.
+
+OpenAI ke official docs ke hisaab se Codex code **read, edit, run, test, review** kar sakta hai, aur long-horizon workflow me plan → edit → run tests/build/lint → observe → repair → repeat loop follow karta hai. `AGENTS.md` se aap repo-level rules bhi force kar sakte ho, aur current OpenAI guidance me complex coding/review workflows ke liye GPT-5.4 aur Codex-tuned model options dono relevant hain. ([OpenAI Developers][1])
+
+## Abhi 97% tak pahunchne ka seedha roadmap
+
+Tumhare project me ab “basic bugs” se zyada important hai **full feature reliability audit**. Iska matlab:
+
+1. **Har feature ka happy path test**
+2. **Har feature ka failure path test**
+3. **Cross-feature integration test**
+4. **Export / generate / regenerate / simulate / G-code safety test**
+5. **UI truthfulness test**
+6. **Null / empty / bad input / partial data test**
+
+## Sabse pehle Codex ko ye 8 audit buckets do
+
+### 1. DXF import pipeline
+
+Check:
+
+* valid DXF
+* empty DXF
+* broken polyline
+* zero segments
+* no bends
+* arc + line mixed profile
+* reversed contour
+* duplicate entities
+
+Pass condition:
+
+* parser honest summary de
+* bad file par success toast na aaye
+* dimension engine silently fail na kare
+
+### 2. Centerline / inner / outer conversion
+
+Check:
+
+* centerline with thickness
+* centerline without thickness
+* inner profile to sheet
+* outer profile to sheet
+* multi-bend profile
+* narrow flange
+* impossible offset cases
+
+Pass condition:
+
+* exact geometry mode visible ho
+* wrong mode par warning aaye
+* strip/profile output deterministic ho
+
+### 3. Flower pattern engine
+
+Check:
+
+* 1 bend
+* 2 bend
+* 4 bend
+* complex asymmetric profile
+* zero-division edge case
+* calibration pass
+* springback overbend pass
+* invalid section type
+
+Pass condition:
+
+* every pass me numeric angle array ho
+* final pass target ke close ho
+* no fake “flower generated” state
+
+### 4. Roll tooling engine
+
+Check:
+
+* all stations complete
+* some stations synthesized
+* some stations missing
+* blocked station
+* regenerate one station
+* regenerate all incomplete stations
+* clash/interference condition
+
+Pass condition:
+
+* readiness badge sahi ho
+* station summary honest ho
+* no profile = export blocked
+
+### 5. Export engine
+
+Check:
+
+* ZIP
+* CSV
+* XML
+* DXF
+* no station profiles
+* partial station profiles
+* corrupted export payload
+* export after regeneration
+
+Pass condition:
+
+* disabled buttons with exact reason
+* preflight summary
+* incomplete data par no green success
+
+### 6. Simulation / Digital twin / package views
+
+Check:
+
+* complete data
+* partial data
+* missing rollProfile
+* missing dimensions
+* missing flower data
+* missing gcode
+* empty project state
+
+Pass condition:
+
+* crash nahi
+* fallback UI ho
+* operator ko clear reason mile
+
+### 7. G-code / CNC safety
+
+Check:
+
+* generated but incomplete code
+* tool missing
+* feed/spindle missing
+* invalid axis move
+* impossible retract
+* post mismatch
+* unsafe default values
+
+Pass condition:
+
+* generated ≠ safe
+* “CNC ready” sirf validator pass hone par hi
+
+### 8. Auth / backend / persistence
+
+Check:
+
+* timing-safe token compare
+* malformed headers
+* session restore
+* failed save
+* stale cached state
+* export history persistence
+* audit logs available
+
+Pass condition:
+
+* security + persistence + traceability stable ho
+
+---
+
+# 97% ke liye ab jo features aur chahiye
+
+## P0
+
+* **Export Preflight Modal**
+* **Regenerate Selected / All Incomplete**
+* **Per-station root cause details**
+* **Collision / interference visual overlay**
+* **CNC readiness validator**
+
+## P1
+
+* pass-wise angle report
+* springback summary
+* material-aware warnings
+* operator action suggestions
+
+## P2
+
+* audit PDF
+* persistent debug logs
+* benchmark profiles library
+* golden regression suite
+
+---
+
+# Codex ko dene ke liye best master audit prompt
+
+```text
+Perform a full production-readiness audit of this roll forming software and raise the project from current state to 97%+ reliability.
+
+Goals:
+- No fake success states
+- No silent failure
+- No frontend crash on null/partial data
+- No export allowed when stations are incomplete
+- No CNC-ready label unless validated
+- Every feature must work on both normal and edge-case inputs
+
+Audit all modules in depth:
+
+1. DXF import and geometry normalization
+2. Centerline / inner / outer conversion to sheet profile
+3. Auto-dimension generation
+4. Flower pattern generation with per-pass numeric angle arrays
+5. Roll tooling generation per station
+6. Station readiness badges and summary logic
+7. Export pipelines: ZIP, CSV, XML, DXF
+8. CompletePackagePanel, RollToolingView, DigitalTwinView, FormingSimulationView
+9. G-code generation and CNC-readiness validation
+10. Auth, persistence, and audit logging
+
+For every issue found, return:
+- severity: P0 / P1 / P2
+- root cause
+- affected files
+- exact patch
+- user-visible risk
+- backend risk
+- regression risk
+- test cases required
+
+Mandatory requirements:
+- Run code review across every feature and tool path
+- Check success, warning, failure, partial-data, and empty-state paths
+- Flag all places where geometry, dimensions, flower data, rollProfile, export payload, or gcode can be undefined, stale, synthesized, or misleading
+- Replace all dishonest success toasts with truthful result summaries
+- Add explicit export blockers and exact failure reasons
+- Validate every badge against real underlying data
+- Add missing integration tests and regression tests
+- Report anything that can still break during actual operator use
+
+Final output format:
+A. Executive summary
+B. File-by-file bug list
+C. Immediate P0 fixes
+D. Test matrix by feature
+E. Remaining risks after patches
+F. Final readiness score with justification
+```
+
+---
+
+# AGENTS.md ke liye strict rules
+
+OpenAI docs ke mutabik Codex `AGENTS.md` ko kaam shuru karne se pehle padhta hai, isliye waha ye rules daalo taaki har baar same discipline follow ho. ([OpenAI Developers][2])
+
+```md
+# Roll Forming Project Rules
+
+## Truthfulness
+Never mark a task complete unless:
+- code path exists
+- UI renders correctly
+- export output exists if applicable
+- validation passes
+- edge-case handling is present
+
+## Safety
+Never label output as CNC-ready unless the CNC validator passes.
+
+## UI rules
+Do not show success toasts for partial, synthesized, blocked, or empty results.
+All disabled buttons must show exact reasons.
+
+## Station rules
+Every station must be classified as exactly one of:
+- Complete
+- Incomplete
+- No Profile
+- Blocked
+
+Every status must be backed by real validation data.
+
+## Null safety
+No direct unsafe access to rollProfile, flower data, dimensions, geometry, export payload, or gcode.
+
+## Export rules
+Block export if any required station data is missing.
+Show exact blocking station numbers and reasons.
+
+## Audit rules
+For every patch:
+- explain bug
+- explain fix
+- add/update tests
+- list remaining risks
+```
+
+---
+
+# Test matrix bhi force karna zaroori hai
+
+Codex se ye bhi banwao:
+
+```text
+Create a feature test matrix covering:
+- valid input
+- invalid input
+- empty input
+- partial input
+- regenerated state
+- stale cached state
+- export attempt
+- simulation view
+- digital twin view
+- package summary view
+- cnc validator
+
+Return the matrix as:
+feature | scenario | expected UI | expected backend state | expected export behavior | pass/fail
+```
+
+---
+
+# Mera honest verdict
+
+Abhi tum **82–86%** zone me ho.
+**97%** tak pahunchne ke liye sirf coding nahi, **verification discipline** chahiye.
+
+Sabse zyada value ye 5 cheezein dengi:
+
+* collision overlay
+* CNC validator
+* export preflight
+* regenerate incomplete stations
+* full regression test matrix
+
+Ye lag gaye to software “kaam karta hai” se “bharose ke saath chal sakta hai” zone me aa jayega.
+
+Main ab iska **file-wise Codex execution pack** bana deta hoon: `AGENTS.md + audit prompt + test matrix + patch checklist` ek saath.
+
+[1]: https://developers.openai.com/codex/ide/?utm_source=chatgpt.com "Codex IDE extension"
+[2]: https://developers.openai.com/codex/guides/agents-md/?utm_source=chatgpt.com "Custom instructions with AGENTS.md – Codex"

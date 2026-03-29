@@ -106,6 +106,79 @@ function ProfileWithAnnotations({ segments, bendAngles, segmentLengths, width = 
   );
 }
 
+// ─── Interference / Collision Warning Panel ──────────────────────────────────
+function InterferenceWarningPanel({ rollGaps, rollTooling, materialThickness }: {
+  rollGaps: RollGapInfo[];
+  rollTooling: RollToolingResult[];
+  materialThickness: number;
+}) {
+  const MIN_SAFE_GAP = materialThickness * 0.05;
+
+  interface IssueEntry {
+    label: string;
+    stationNumber: number;
+    springbackGap: number;
+    nominalGap: number;
+    severity: "CLASH" | "CRITICAL" | "TIGHT";
+  }
+
+  const issues: IssueEntry[] = [];
+  for (const gap of rollGaps) {
+    const rt = rollTooling.find(r => r.stationNumber === gap.stationNumber);
+    const label = rt?.label ?? `Stn ${gap.stationNumber}`;
+    if (gap.springbackGap <= 0) {
+      issues.push({ label, stationNumber: gap.stationNumber, springbackGap: gap.springbackGap, nominalGap: gap.nominalGap, severity: "CLASH" });
+    } else if (gap.springbackGap < MIN_SAFE_GAP) {
+      issues.push({ label, stationNumber: gap.stationNumber, springbackGap: gap.springbackGap, nominalGap: gap.nominalGap, severity: "CRITICAL" });
+    } else if (gap.springbackGap < materialThickness * 0.5) {
+      issues.push({ label, stationNumber: gap.stationNumber, springbackGap: gap.springbackGap, nominalGap: gap.nominalGap, severity: "TIGHT" });
+    }
+  }
+
+  if (issues.length === 0) return null;
+
+  const SEV_STYLE = {
+    CLASH:    { border: "border-red-600/60",    bg: "bg-red-950/30",    text: "text-red-400",    badge: "bg-red-700/50 text-red-200 border-red-600/50",    icon: "🔴", desc: "ROLL CLASH — Interference detected" },
+    CRITICAL: { border: "border-red-700/40",    bg: "bg-red-950/20",    text: "text-red-400",    badge: "bg-red-900/50 text-red-300 border-red-700/50",    icon: "🟠", desc: "CRITICAL — Gap below safe minimum" },
+    TIGHT:    { border: "border-amber-700/40",  bg: "bg-amber-950/15",  text: "text-amber-400",  badge: "bg-amber-900/40 text-amber-300 border-amber-700/40", icon: "🟡", desc: "TIGHT — Gap near material thickness limit" },
+  };
+
+  return (
+    <div className="flex-shrink-0 px-5 py-2.5 border-t border-zinc-800">
+      <div className="rounded-xl border border-red-800/40 bg-red-950/10 px-4 py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[11px] font-bold text-red-400 uppercase tracking-widest">⚠ Collision / Interference Warnings</span>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-red-900/50 text-red-300 border-red-700/50 ml-auto">
+            {issues.filter(i => i.severity === "CLASH").length} CLASH · {issues.filter(i => i.severity === "CRITICAL").length} CRITICAL · {issues.filter(i => i.severity === "TIGHT").length} TIGHT
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {issues.map(issue => {
+            const sty = SEV_STYLE[issue.severity];
+            return (
+              <div key={issue.stationNumber} className={`rounded-lg border px-3 py-1.5 ${sty.border} ${sty.bg} flex items-center gap-2`}>
+                <span className="text-[11px]">{sty.icon}</span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-zinc-200">{issue.label}</span>
+                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded border ${sty.badge}`}>{issue.severity}</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-zinc-500">
+                    nominal: {formatMM(issue.nominalGap)} · springback: <span className={issue.springbackGap <= 0 ? "text-red-400 font-bold" : sty.text}>{formatMM(issue.springbackGap)}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-[9px] text-zinc-600 mt-2">
+          Safe minimum gap = material thickness × 5% = {formatMM(MIN_SAFE_GAP)} mm. Clash → adjust clearance or re-run roll tooling.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DigitalTwinView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { rollTooling, stations, rollGaps, materialThickness, materialType, lineSpeed } = useCncStore();
@@ -345,6 +418,9 @@ export function DigitalTwinView() {
           </text>
         </svg>
       </div>
+
+      {/* ── Collision / Interference Warning Panel ── */}
+      <InterferenceWarningPanel rollGaps={rollGaps} rollTooling={rollTooling} materialThickness={materialThickness} />
 
       <div className="flex-1 overflow-y-auto">
         {selectedSt !== null ? (

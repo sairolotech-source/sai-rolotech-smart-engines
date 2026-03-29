@@ -7,6 +7,7 @@ import { BomView } from "./BomView";
 import { generateRollTooling as apiGenerateRollTooling } from "../../lib/api";
 import { autoDetectProfileType } from "../../store/useCncStore";
 import { StationReadinessSummary, runExportPreflight } from "./StationReadinessBadge";
+import { ExportPreflightModal } from "./ExportPreflightModal";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -426,6 +427,25 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
 }) {
   const { materialType } = useCncStore();
   const [exporting, setExporting] = useState(false);
+  const [showPreflightModal, setShowPreflightModal] = useState(false);
+
+  const handleRegenerateIncomplete = useCallback(async () => {
+    setShowPreflightModal(false);
+    const { geometry, validateStationProfiles: _v, rollTooling: rt } = useCncStore.getState() as any;
+    if (!geometry) return;
+    const { generateRollTooling: apiRT } = await import("../../lib/api");
+    const { numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType: mt, postProcessorId, openSectionType } = useCncStore.getState();
+    const { autoDetectProfileType: aDP, sectionModel } = useCncStore.getState() as any;
+    const resolvedSection = openSectionType === "Auto" ? aDP(geometry) : openSectionType;
+    const result = await apiRT(geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, mt, postProcessorId, resolvedSection, sectionModel);
+    const { setStations, setRollTooling, setRollGaps, setMachineData, setMotorCalc, setBomResult } = useCncStore.getState();
+    if (result.stations) setStations(result.stations);
+    if (result.rollTooling) setRollTooling(result.rollTooling);
+    if (result.rollGaps) setRollGaps(result.rollGaps);
+    if (result.machineData) setMachineData(result.machineData);
+    if (result.motorCalc) setMotorCalc(result.motorCalc);
+    if (result.bom) setBomResult(result.bom);
+  }, []);
 
   const buildSetupSheet = (): string => {
     const DATE = new Date().toISOString().split("T")[0];
@@ -627,6 +647,17 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
 
   return (
     <div className="space-y-5">
+      {/* Export Preflight Modal */}
+      {showPreflightModal && (
+        <ExportPreflightModal
+          rollTooling={rollTooling}
+          projectName={`${materialType} · ${rollTooling.length} Stations`}
+          onClose={() => setShowPreflightModal(false)}
+          onExport={handleExportZip}
+          onRegenerateIncomplete={handleRegenerateIncomplete}
+        />
+      )}
+
       {/* Station readiness preflight */}
       <StationReadinessSummary rollTooling={rollTooling} />
 
@@ -677,6 +708,13 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
             <div className="text-sm font-bold text-zinc-100">Download Complete Package (ZIP)</div>
             <div className="text-[11px] text-zinc-400 mt-0.5">All G-code files, DXF drawings, setup sheets, and BOM in one ZIP</div>
           </div>
+          <button
+            onClick={() => setShowPreflightModal(true)}
+            className="ml-auto mr-2 flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-[11px] bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 transition-all"
+            title="Open full preflight health report before exporting"
+          >
+            🛡 Preflight Report
+          </button>
           <button
             onClick={handleExportZip}
             disabled={exporting || !exportAllowed}

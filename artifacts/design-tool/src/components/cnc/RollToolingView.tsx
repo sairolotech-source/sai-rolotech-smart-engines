@@ -15,6 +15,8 @@ import { CompletePackagePanel } from "./CompletePackagePanel";
 import { RollFlowerIntegratedView } from "./RollFlowerIntegratedView";
 import { FlowerStationSuggestions } from "./FlowerStationSuggestions";
 import { StationReadinessBadge, StationReadinessSummary, runExportPreflight } from "./StationReadinessBadge";
+import { generateRollTooling as apiGenerateRollTooling } from "../../lib/api";
+import { autoDetectProfileType, validateStationProfiles } from "../../store/useCncStore";
 
 const UPPER_COLOR = "#3b82f6";
 const LOWER_COLOR = "#f97316";
@@ -374,6 +376,69 @@ function RollCard({ rp, side, rollNum, stationLabel, stationNum, rollType, rollM
   );
 }
 
+// ─── Pass Angle Mini Chart ────────────────────────────────────────────────────
+function PassAngleMiniChart({ bendAngles, stationNumber, totalStations }: {
+  bendAngles: number[];
+  stationNumber: number;
+  totalStations: number;
+}) {
+  if (!bendAngles || bendAngles.length === 0) {
+    return (
+      <div className="rounded border border-zinc-700/50 bg-zinc-900/50 px-3 py-2 text-[9px] text-zinc-600 italic">
+        No bend angle data — run Flower Pattern generation for pass-wise schedule
+      </div>
+    );
+  }
+
+  const pct = (stationNumber - 1) / Math.max(totalStations - 1, 1);
+  const maxAngle = Math.max(...bendAngles, 1);
+
+  return (
+    <div className="rounded-lg border border-zinc-700/40 bg-zinc-900/50 p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Pass Angle Schedule</span>
+        <span className="text-[9px] text-zinc-600 ml-auto">Station {stationNumber}/{totalStations} · {(pct * 100).toFixed(0)}% progression</span>
+      </div>
+
+      {/* Progression bar */}
+      <div className="w-full h-1.5 rounded-full bg-zinc-800 mb-3 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${Math.max(pct * 100, 2)}%`,
+            background: pct < 0.35 ? "#3b82f6" : pct < 0.8 ? "#f97316" : "#22c55e",
+          }}
+        />
+      </div>
+
+      {/* Bend bars */}
+      <div className="flex items-end gap-1.5 h-12">
+        {bendAngles.map((angle, i) => {
+          const h = (angle / maxAngle) * 100;
+          const barColor = angle >= 85 && angle <= 95 ? "#22c55e" : angle > 120 ? "#ef4444" : "#f59e0b";
+          return (
+            <div key={i} className="flex flex-col items-center flex-1 gap-0.5">
+              <span className="text-[8px] font-mono" style={{ color: barColor }}>{angle.toFixed(0)}°</span>
+              <div
+                className="w-full rounded-t-sm transition-all"
+                style={{ height: `${Math.max(h, 8)}%`, backgroundColor: barColor + "99", border: `1px solid ${barColor}60` }}
+              />
+              <span className="text-[7px] text-zinc-600 font-mono">B{i + 1}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2 text-[8px] text-zinc-600">
+        <span className="text-green-400">■ 85–95° (right angle)</span>
+        <span className="text-amber-400">■ other angles</span>
+        <span className="text-red-400">■ &gt;120° (aggressive)</span>
+        <span className="ml-auto">Springback included in angle values</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Station phase helper ─────────────────────────────────────────────────────
 function getRollPhase(stIdx: number, total: number): { label: string; color: string; desc: string } {
   if (total === 1) return { label: "ENTRY+FINAL", color: "#f59e0b", desc: "Soft contact + calibration" };
@@ -431,6 +496,13 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle }: {
 
       {isExpanded && (
         <div className="border-t border-zinc-700 p-4 space-y-4">
+
+          {/* ── Pass Angle Mini Chart ── */}
+          <PassAngleMiniChart
+            bendAngles={rt.bendAngles ?? []}
+            stationNumber={rt.stationNumber}
+            totalStations={totalStations}
+          />
 
           {/* ── STEP 3: Roll Behavior Panel ── */}
           {rt.behavior && (() => {
@@ -1754,6 +1826,30 @@ export function RollToolingView() {
   const [expandedStation, setExpandedStation] = useState<number | null>(1);
   const [view, setView] = useState<RollView>("integrated");
   const [showPackagePanel, setShowPackagePanel] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+
+  const handleRegenerateIncomplete = React.useCallback(async () => {
+    const state = useCncStore.getState() as any;
+    const { geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, openSectionType, sectionModel } = state;
+    if (!geometry) return;
+    const validations = validateStationProfiles(useCncStore.getState().rollTooling);
+    const incomplete = validations.filter((v: { status: string }) => v.status !== "VALID");
+    if (incomplete.length === 0) return;
+    setRegenerating(true);
+    try {
+      const resolvedSection = openSectionType === "Auto" ? autoDetectProfileType(geometry) : openSectionType;
+      const result = await apiGenerateRollTooling(geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, resolvedSection, sectionModel);
+      const { setStations, setRollTooling, setRollGaps, setMachineData, setMotorCalc, setBomResult } = useCncStore.getState();
+      if (result.stations) (setStations as any)(result.stations);
+      if (result.rollTooling) (setRollTooling as any)(result.rollTooling);
+      if (result.rollGaps) (setRollGaps as any)(result.rollGaps);
+      if (result.machineData) (setMachineData as any)(result.machineData);
+      if (result.motorCalc) (setMotorCalc as any)(result.motorCalc);
+      if (result.bom) (setBomResult as any)(result.bom);
+    } finally {
+      setRegenerating(false);
+    }
+  }, []);
 
   const totalRolls = rollTooling.length * 2;
 
@@ -1855,13 +1951,31 @@ export function RollToolingView() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3 ml-auto text-xs">
+        <div className="flex items-center gap-3 ml-auto text-xs flex-wrap">
           {latestToolingScore && (
             <AccuracyBadge score={latestToolingScore.overallScore} threshold={accuracyThreshold} size="sm" />
           )}
           <span className="text-green-400 font-mono">Pass Line Y = {passLine.toFixed(3)} mm</span>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-zinc-400">Upper (Top)</span></div>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500" /><span className="text-zinc-400">Lower (Bottom)</span></div>
+          {(() => {
+            const validations = validateStationProfiles(rollTooling);
+            const incompleteCount = validations.filter(v => v.status !== "VALID").length;
+            return incompleteCount > 0 ? (
+              <button
+                onClick={handleRegenerateIncomplete}
+                disabled={regenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-[11px] bg-amber-900/40 hover:bg-amber-900/60 border border-amber-700/50 text-amber-300 transition-all disabled:opacity-50"
+                title={`${incompleteCount} stations have incomplete or missing profiles — regenerate all`}
+              >
+                {regenerating ? (
+                  <><svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Regenerating...</>
+                ) : (
+                  <>⟳ Regenerate {incompleteCount} Incomplete</>
+                )}
+              </button>
+            ) : null;
+          })()}
           <button
             onClick={() => setShowPackagePanel(prev => !prev)}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-xl font-bold text-[12px] transition-all shadow-lg ${

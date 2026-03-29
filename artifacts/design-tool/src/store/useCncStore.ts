@@ -787,7 +787,7 @@ export const OPEN_SECTION_OPTIONS: { value: OpenSectionType; label: string; icon
 ];
 
 export function autoDetectProfileType(geometry: ProfileGeometry): OpenSectionType {
-  const bends = geometry.bendPoints;
+  const bends = Array.isArray(geometry.bendPoints) ? geometry.bendPoints : [];
   const bendCount = bends.length;
   const angles = bends.map(b => Math.abs(b.angle));
   const hasHighAngle = angles.some(a => a >= 85 && a <= 130);

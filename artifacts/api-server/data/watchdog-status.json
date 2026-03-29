@@ -1,33 +1,23 @@
 {
-  "startedAt": "2026-03-29T10:32:07.943Z",
-  "lastHealthCheck": "2026-03-29T10:34:08.053Z",
+  "startedAt": "2026-03-29T10:46:05.512Z",
+  "lastHealthCheck": null,
   "lastGitPush": null,
   "lastGitPushResult": null,
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
   "healthChecksPassed": 0,
-  "healthChecksFailed": 1,
-  "consecutiveFailures": 1,
+  "healthChecksFailed": 0,
+  "consecutiveFailures": 0,
   "gitPushCount": 0,
   "gitPushErrors": 0,
   "apiPort": 8080,
   "isElectron": false,
   "logs": [
     {
-      "time": "10:32:07 am",
+      "time": "10:46:05 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "10:32:17 am",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "10:34:08 am",
-      "type": "warn",
-      "message": "Health: API FAIL (consecutive: 1/5)"
     }
   ]
 }

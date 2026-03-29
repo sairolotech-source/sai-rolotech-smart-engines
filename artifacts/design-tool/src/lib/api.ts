@@ -1,5 +1,58 @@
 import type { ProfileGeometry, GcodeConfig, MachineProfile, MaterialType, OpenSectionType } from "../store/useCncStore";
 
+function normalizeServerGeometry(raw: any): ProfileGeometry {
+  if (!raw || typeof raw !== "object") {
+    return { segments: [], bendPoints: [], boundingBox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } };
+  }
+
+  const rawSegments: any[] = Array.isArray(raw.segments) ? raw.segments : [];
+  const segments = rawSegments.map((s: any) => ({
+    type: s.type ?? "line",
+    startX: s.startX ?? s.x1 ?? 0,
+    startY: s.startY ?? s.y1 ?? 0,
+    endX:   s.endX   ?? s.x2 ?? 0,
+    endY:   s.endY   ?? s.y2 ?? 0,
+    centerX: s.centerX ?? s.cx,
+    centerY: s.centerY ?? s.cy,
+    radius:     s.radius,
+    startAngle: s.startAngle,
+    endAngle:   s.endAngle,
+    bulge:      s.bulge,
+  }));
+
+  const rawBends: any[] = Array.isArray(raw.bendPoints)
+    ? raw.bendPoints
+    : Array.isArray(raw.bends)
+    ? raw.bends
+    : [];
+
+  const bendPoints = rawBends.map((b: any, idx: number) => {
+    const segIdx = b.segmentIndex ?? idx;
+    const refSeg = segments[segIdx];
+    return {
+      x:            b.x ?? (refSeg ? (refSeg.startX + refSeg.endX) / 2 : 0),
+      y:            b.y ?? (refSeg ? (refSeg.startY + refSeg.endY) / 2 : 0),
+      angle:        b.angle ?? 0,
+      radius:       b.radius ?? 2,
+      segmentIndex: segIdx,
+    };
+  });
+
+  const bb = raw.boundingBox ?? {};
+
+  return {
+    segments,
+    bendPoints,
+    boundingBox: {
+      minX: bb.minX ?? 0,
+      minY: bb.minY ?? 0,
+      maxX: bb.maxX ?? bb.width ?? 0,
+      maxY: bb.maxY ?? bb.height ?? 0,
+    },
+    dimensions: Array.isArray(raw.dimensions) ? raw.dimensions : undefined,
+  };
+}
+
 function getApiUrl(path: string): string {
   const base = window.location.origin;
   return `${base}/api${path}`;
@@ -126,7 +179,7 @@ async function safeFetchWithCache<T>(
   }
 }
 
-export async function uploadDxf(file: File) {
+export async function uploadDxf(file: File): Promise<{ geometry: ProfileGeometry; fileName: string }> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await authFetch(getApiUrl("/upload-dxf"), {
@@ -137,7 +190,11 @@ export async function uploadDxf(file: File) {
     const err = await res.json().catch(() => ({ error: "Upload failed" }));
     throw new Error(err.error || "Upload failed");
   }
-  return res.json();
+  const data = await res.json();
+  return {
+    ...data,
+    geometry: normalizeServerGeometry(data.geometry),
+  };
 }
 
 export async function analyzeProfile(

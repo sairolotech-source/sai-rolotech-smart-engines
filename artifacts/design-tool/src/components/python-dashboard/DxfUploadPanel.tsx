@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, FileText, Eye, Play, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, Eye, Play, AlertCircle, CheckCircle, Loader2, Layers } from "lucide-react";
 
 const PAPI = "/papi";
 
@@ -35,15 +35,18 @@ interface DxfPreviewResult {
 
 interface Props {
   onPipelineResult?: (result: Record<string, unknown>) => void;
+  onCenterlinePreview?: (file: File, thickness: number) => void;
 }
 
 const MATERIALS = ["GI", "CR", "HR", "SS", "AL", "MS"];
 
-export default function DxfUploadPanel({ onPipelineResult }: Props) {
+export default function DxfUploadPanel({ onPipelineResult, onCenterlinePreview }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [thickness, setThickness] = useState("1.0");
   const [material, setMaterial] = useState("CR");
+  const [isCenterline, setIsCenterline] = useState(false);
+  const [clPreviewLoading, setClPreviewLoading] = useState(false);
 
   const [previewResult, setPreviewResult] = useState<DxfPreviewResult | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -85,6 +88,22 @@ export default function DxfUploadPanel({ onPipelineResult }: Props) {
       setError(e instanceof Error ? e.message : "Preview request failed");
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const runCenterlinePreview = async () => {
+    if (!file || !onCenterlinePreview) return;
+    const thick = parseFloat(thickness);
+    if (isNaN(thick) || thick <= 0) {
+      setError("Thickness must be a positive number");
+      return;
+    }
+    setClPreviewLoading(true);
+    setError(null);
+    try {
+      await onCenterlinePreview(file, thick);
+    } finally {
+      setClPreviewLoading(false);
     }
   };
 
@@ -160,16 +179,43 @@ export default function DxfUploadPanel({ onPipelineResult }: Props) {
         </div>
       )}
 
-      {/* Preview button */}
+      {/* Centerline checkbox — always visible once file is picked */}
       {file && (
-        <button
-          onClick={runPreview}
-          disabled={previewLoading}
-          className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-white text-sm transition-colors"
-        >
-          {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-          {previewLoading ? "Parsing DXF…" : "Preview DXF"}
-        </button>
+        <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-neutral-300 px-1">
+          <input
+            type="checkbox"
+            checked={isCenterline}
+            onChange={(e) => setIsCenterline(e.target.checked)}
+            className="accent-cyan-500 w-3.5 h-3.5"
+          />
+          <Layers className="w-3.5 h-3.5 text-cyan-400" />
+          Centerline profile (DXF contains only the midline, not the sheet outline)
+        </label>
+      )}
+
+      {/* Preview buttons */}
+      {file && (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={runPreview}
+            disabled={previewLoading}
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-white text-sm transition-colors"
+          >
+            {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+            {previewLoading ? "Parsing DXF…" : "Preview DXF"}
+          </button>
+
+          {isCenterline && onCenterlinePreview && (
+            <button
+              onClick={runCenterlinePreview}
+              disabled={clPreviewLoading}
+              className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-cyan-900/50 hover:bg-cyan-800/60 border border-cyan-600/40 disabled:opacity-50 text-cyan-300 text-sm transition-colors"
+            >
+              {clPreviewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
+              {clPreviewLoading ? "Converting centerline…" : "Preview Centerline Conversion"}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Preview result */}

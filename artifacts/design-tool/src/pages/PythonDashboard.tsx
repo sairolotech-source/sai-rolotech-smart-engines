@@ -10,6 +10,7 @@ import { TestResults } from "@/components/python-dashboard/TestResults";
 import FinalDecisionPanel from "@/components/python-dashboard/FinalDecisionPanel";
 import SemiAutoPanel from "@/components/python-dashboard/SemiAutoPanel";
 import DxfUploadPanel from "@/components/python-dashboard/DxfUploadPanel";
+import CenterlineConversionPreview from "@/components/python-dashboard/CenterlineConversionPreview";
 import MachineLayoutPanel from "@/components/python-dashboard/MachineLayoutPanel";
 import RollContourPanel from "@/components/python-dashboard/RollContourPanel";
 import CadExportPanel from "@/components/python-dashboard/CadExportPanel";
@@ -27,6 +28,8 @@ export default function PythonDashboard() {
   const [testLoading, setTestLoading] = useState(false);
   const [cadLoading, setCadLoading] = useState(false);
   const [cadExportResult, setCadExportResult] = useState<Record<string, unknown> | null>(null);
+  const [centerlinePreviewData, setCenterlinePreviewData] = useState<Record<string, unknown> | null>(null);
+  const [centerlinePreviewLoading, setCenterlinePreviewLoading] = useState(false);
   const [payload, setPayload] = useState<ManualModePayload | null>(null);
   const [pipelineResult, setPipelineResult] = useState<Record<string, unknown> | null>(null);
   const [debugResult, setDebugResult] = useState<{
@@ -115,6 +118,25 @@ export default function PythonDashboard() {
     setPayload(confirmed);
     runDebug(confirmed, true);
   }, [runDebug]);
+
+  const handleCenterlinePreview = useCallback(async (file: File, thickness: number) => {
+    setCenterlinePreviewLoading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("thickness", String(thickness));
+      const resp = await fetch("/papi/api/preview-centerline-conversion", {
+        method: "POST",
+        body: form,
+      });
+      const data = await resp.json();
+      setCenterlinePreviewData(data);
+    } catch (e) {
+      setCenterlinePreviewData({ status: "fail", reason: e instanceof Error ? e.message : "Request failed" });
+    } finally {
+      setCenterlinePreviewLoading(false);
+    }
+  }, []);
 
   const handleRunTests = useCallback(async () => {
     setTestLoading(true);
@@ -258,7 +280,10 @@ export default function PythonDashboard() {
           {/* LEFT COLUMN */}
           <div className="lg:col-span-1 space-y-4">
             <InputPanel onRun={handleRun} loading={loading} />
-            <DxfUploadPanel onPipelineResult={handleDxfPipelineResult} />
+            <DxfUploadPanel
+              onPipelineResult={handleDxfPipelineResult}
+              onCenterlinePreview={handleCenterlinePreview}
+            />
 
             <div className="rounded-xl border border-gray-700/50 bg-gray-900/60 p-4 space-y-2">
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</div>
@@ -312,6 +337,9 @@ export default function PythonDashboard() {
 
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-2 space-y-4">
+            {(centerlinePreviewData || centerlinePreviewLoading) && (
+              <CenterlineConversionPreview data={centerlinePreviewLoading ? null : centerlinePreviewData as any} />
+            )}
             <FinalDecisionPanel finalDecision={finalDecision as any} consistency={consistency as any} />
 
             {showSemiAutoPanel && (

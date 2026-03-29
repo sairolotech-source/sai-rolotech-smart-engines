@@ -13,7 +13,7 @@ Modes:
 import logging
 from typing import Any, Dict
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 
 from app.api.schemas import AutoModeInput, ManualProfileInput
@@ -698,6 +698,74 @@ async def preview_dxf(
         },
         "ready_for_full_pipeline": profile_result.get("status") == "pass",
         "note": "This is a preview only — run /api/auto-mode-dxf for full engineering analysis.",
+    }
+
+
+# ─── POST /api/preview-centerline-conversion ─────────────────────────────────
+
+@router.post("/preview-centerline-conversion")
+async def preview_centerline_conversion(
+    file: UploadFile = File(...),
+    thickness: float = Form(...),
+):
+    """
+    Standalone centerline-to-sheet conversion preview.
+    Parses the DXF, runs the arc-aware centerline converter, and returns the
+    full profile output (centerline, outer, inner, sheet) for SVG rendering.
+    """
+    if not file.filename or not file.filename.lower().endswith(".dxf"):
+        raise HTTPException(status_code=400, detail="Only .dxf files accepted")
+    if thickness <= 0:
+        raise HTTPException(status_code=422, detail="thickness must be > 0")
+
+    dxf_bytes = await file.read()
+    logger.info(
+        "[preview-centerline-conversion] file=%s size=%d bytes thickness=%.3f",
+        file.filename, len(dxf_bytes), thickness,
+    )
+
+    import_result = parse_dxf_bytes(dxf_bytes)
+    if is_fail(import_result):
+        return {
+            "status": "fail",
+            "failed_stage": "file_import_engine",
+            "result": import_result,
+        }
+
+    geometry = import_result.get("geometry", {})
+    raw_entities = geometry.get("entities", [])
+
+    if not is_centerline_geometry(raw_entities):
+        return {
+            "status": "fail",
+            "failed_stage": "centerline_detection",
+            "result": {
+                "reason": "DXF does not appear to be a centerline drawing. "
+                          "Expected mostly LINE/ARC entities without HATCH/SOLID.",
+                "entity_count": len(raw_entities),
+            },
+        }
+
+    conversion_result = convert_centerline_to_sheet_arc_aware(
+        geometry=raw_entities,
+        thickness=thickness,
+        mode="both",
+        arc_segments=24,
+    )
+
+    if is_fail(conversion_result):
+        return {
+            "status": "fail",
+            "failed_stage": "centerline_sheet_converter_arc_engine",
+            "result": conversion_result,
+        }
+
+    return {
+        "status": "pass",
+        "source_file": file.filename,
+        "file_size_bytes": len(dxf_bytes),
+        "entity_count": len(raw_entities),
+        "centerline_converter_engine": conversion_result,
     }
 
 

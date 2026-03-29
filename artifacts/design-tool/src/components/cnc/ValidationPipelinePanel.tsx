@@ -57,8 +57,8 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
 
   if (layerId === 1) {
     if (!geometry) { return { score: 0, issues: ["No profile geometry loaded — upload a DXF or draw a profile"], fix: "Upload a DXF file or use the AutoCAD Draw tool to create a profile" }; }
-    const segs = geometry.segments.length;
-    const bends = geometry.bendPoints.length;
+    const segs = (geometry.segments ?? []).length;
+    const bends = (geometry.bendPoints ?? []).length;
     if (segs < 2) issues.push(`Profile has only ${segs} segment(s) — minimum 2 required`);
     if (bends === 0) issues.push("No bend points detected — profile may be a straight line");
     const bb = geometry.boundingBox;
@@ -76,10 +76,10 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
     stations.forEach((st, i) => {
       if (i > 0) {
         const prev = stations[i - 1];
-        const delta = Math.abs(st.totalAngle - prev.totalAngle) * (180 / Math.PI);
+        const delta = Math.abs((st.totalAngle ?? 0) - (prev.totalAngle ?? 0)) * (180 / Math.PI);
         if (delta > maxAngle * 2) issues.push(`Station ${st.label}: angle jump ${delta.toFixed(1)}° too large (max ${maxAngle * 2}°)`);
       }
-      st.bendAngles.forEach((a, bi) => {
+      (st.bendAngles ?? []).forEach((a, bi) => {
         const deg = Math.abs(a) * (180 / Math.PI);
         if (deg > maxAngle) issues.push(`Station ${st.label} bend ${bi + 1}: ${deg.toFixed(1)}° exceeds ${maxAngle}° limit`);
       });
@@ -137,8 +137,8 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
     if (materialThickness < mat.minThick || materialThickness > mat.maxThick)
       issues.push(`Thickness ${materialThickness}mm outside ${materialType} range (${mat.minThick}–${mat.maxThick}mm)`);
     if (geometry) {
-      geometry.bendPoints.forEach((bp, i) => {
-        const rt = bp.radius / Math.max(materialThickness, 0.1);
+      (geometry.bendPoints ?? []).forEach((bp, i) => {
+        const rt = (bp.radius ?? 0) / Math.max(materialThickness, 0.1);
         if (rt < mat.minRt) issues.push(`Bend ${i + 1}: R/t ratio ${rt.toFixed(2)} < min ${mat.minRt} for ${materialType}`);
       });
     }
@@ -155,8 +155,10 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
     if (!hasCompensation && hasSpringback) issues.push("Springback detected but no compensation angles applied");
     stations.forEach((st, i) => {
       if (i > 0) {
-        const prevMax = Math.max(...stations[i - 1].bendAngles.map(Math.abs));
-        const currMax = Math.max(...st.bendAngles.map(Math.abs));
+        const prevAngles = stations[i - 1].bendAngles ?? [];
+        const currAngles = st.bendAngles ?? [];
+        const prevMax = prevAngles.length > 0 ? Math.max(...prevAngles.map(Math.abs)) : 0;
+        const currMax = currAngles.length > 0 ? Math.max(...currAngles.map(Math.abs)) : 0;
         if (currMax < prevMax - 0.01) issues.push(`Station ${st.label}: angle decreased from ${prevMax.toFixed(1)}° to ${currMax.toFixed(1)}° — check sequence`);
       }
     });
@@ -167,14 +169,15 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
   if (layerId === 7) {
     if (!geometry || stations.length === 0) return { score: 0, issues: ["Need geometry + stations for strain analysis"], fix: "Load profile and generate stations" };
     const mat = MAT_LIMITS[materialType] ?? MAT_LIMITS.GI;
-    const totalBend = geometry.bendPoints.reduce((s, bp) => s + Math.abs(bp.angle), 0);
+    const safeBendPoints = geometry.bendPoints ?? [];
+    const totalBend = safeBendPoints.reduce((s, bp) => s + Math.abs(bp.angle ?? 0), 0);
     const maxPerStation = totalBend / Math.max(stations.length - 2, 1);
     const edgeStrain = (materialThickness / (2 * (materialThickness * 2) + materialThickness)) * (maxPerStation * Math.PI / 180) * 100;
     if (edgeStrain > 2.0) issues.push(`Edge strain ${edgeStrain.toFixed(2)}% exceeds 2.0% limit — cracking risk`);
     else if (edgeStrain > 1.5) issues.push(`Edge strain ${edgeStrain.toFixed(2)}% approaching 2.0% limit — monitor carefully`);
-    geometry.bendPoints.forEach((bp, i) => {
-      const r = Math.max(bp.radius, materialThickness * 0.5);
-      const thinPct = (1 - r / (r + materialThickness)) * (Math.abs(bp.angle) * Math.PI / 180) / (Math.PI / 2) * 100;
+    safeBendPoints.forEach((bp, i) => {
+      const r = Math.max(bp.radius ?? materialThickness, materialThickness * 0.5);
+      const thinPct = (1 - r / (r + materialThickness)) * (Math.abs(bp.angle ?? 0) * Math.PI / 180) / (Math.PI / 2) * 100;
       if (thinPct > 10) issues.push(`Bend ${i + 1}: thinning ${thinPct.toFixed(1)}% exceeds 10% safe limit`);
     });
     const score = issues.length === 0 ? 100 : Math.max(0, 100 - issues.length * 20);
@@ -184,7 +187,13 @@ function runLayerValidation(layerId: number, store: ReturnType<typeof useCncStor
   if (layerId === 8) {
     if (!geometry || stations.length === 0) return { score: 0, issues: ["Need geometry + stations for machine check"], fix: "Load profile and generate stations" };
     const mat = MAT_LIMITS[materialType] ?? MAT_LIMITS.GI;
-    const stripW = geometry.segments.reduce((s, seg) => s + Math.hypot(seg.endX - seg.startX, seg.endY - seg.startY), 0);
+    const stripW = (geometry.segments ?? []).reduce((s, seg) => {
+      const x1 = seg.startX ?? (seg as unknown as Record<string, number>).x1 ?? 0;
+      const y1 = seg.startY ?? (seg as unknown as Record<string, number>).y1 ?? 0;
+      const x2 = seg.endX ?? (seg as unknown as Record<string, number>).x2 ?? 0;
+      const y2 = seg.endY ?? (seg as unknown as Record<string, number>).y2 ?? 0;
+      return s + Math.hypot(x2 - x1, y2 - y1);
+    }, 0);
     const formingForce = mat.yieldMPa * materialThickness * stripW * 0.001;
     if (formingForce > 500) issues.push(`Forming force ~${formingForce.toFixed(0)}kN exceeds 500kN — check machine capacity`);
     const motorKw = formingForce * 30 / (60 * 1000) * 1.3;

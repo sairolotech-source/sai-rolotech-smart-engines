@@ -416,8 +416,9 @@ export function LeftPanel() {
 
   const calcRecommendedStations = useCallback((geo: typeof geometry) => {
     if (!geo) return null;
-    const bendCount = geo.bendPoints.length;
-    const totalBendDeg = geo.bendPoints.reduce((sum, bp) => sum + Math.abs(bp.angle), 0) || bendCount * 30;
+    const safeBendPoints = geo.bendPoints ?? [];
+    const bendCount = safeBendPoints.length;
+    const totalBendDeg = safeBendPoints.reduce((sum, bp) => sum + Math.abs(bp.angle ?? 0), 0) || bendCount * 30;
     const springbackBonus = matProps.springbackFactor > 1.10 ? 2 : matProps.springbackFactor > 1.07 ? 1 : 0;
     const rec = Math.max(3, Math.min(20, Math.ceil(totalBendDeg / 15) + springbackBonus));
     return { recommended: rec, bendCount, totalBendDeg };

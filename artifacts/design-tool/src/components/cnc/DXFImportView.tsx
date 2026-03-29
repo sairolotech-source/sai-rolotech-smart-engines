@@ -165,7 +165,7 @@ function parseDXF(text: string): { entities: DXFEntity[]; layers: DXFLayer[]; st
   entities.forEach(e => {
     if (e.type === "LINE") { minX=Math.min(minX,e.x1,e.x2); minY=Math.min(minY,e.y1,e.y2); maxX=Math.max(maxX,e.x1,e.x2); maxY=Math.max(maxY,e.y1,e.y2); }
     else if (e.type === "ARC" || e.type === "CIRCLE") { minX=Math.min(minX,e.cx-e.radius); minY=Math.min(minY,e.cy-e.radius); maxX=Math.max(maxX,e.cx+e.radius); maxY=Math.max(maxY,e.cy+e.radius); }
-    else if (e.type === "LWPOLYLINE") { e.pts.forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }); }
+    else if (e.type === "LWPOLYLINE") { (e.pts ?? []).forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }); }
     else if (e.type === "TEXT") { minX=Math.min(minX,e.x); minY=Math.min(minY,e.y); maxX=Math.max(maxX,e.x+e.text.length*e.height*0.6); maxY=Math.max(maxY,e.y+e.height); }
   });
 
@@ -420,7 +420,7 @@ function CADCanvas({ entities, layers, showGrid, hiddenLayers, onMeasure }:
   entities.forEach(e => {
     if (e.type === "LINE") { minX=Math.min(minX,e.x1,e.x2); minY=Math.min(minY,e.y1,e.y2); maxX=Math.max(maxX,e.x1,e.x2); maxY=Math.max(maxY,e.y1,e.y2); }
     else if (e.type === "ARC"||e.type==="CIRCLE") { minX=Math.min(minX,e.cx-e.radius); minY=Math.min(minY,e.cy-e.radius); maxX=Math.max(maxX,e.cx+e.radius); maxY=Math.max(maxY,e.cy+e.radius); }
-    else if (e.type === "LWPOLYLINE") e.pts.forEach(p=>{minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);});
+    else if (e.type === "LWPOLYLINE") (e.pts ?? []).forEach(p=>{minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);});
     else if (e.type === "TEXT") { minX=Math.min(minX,e.x); minY=Math.min(minY,e.y); }
   });
 
@@ -520,7 +520,7 @@ function CADCanvas({ entities, layers, showGrid, hiddenLayers, onMeasure }:
           const r = e.radius * scale;
           return <circle key={i} cx={tx(e.cx)} cy={ty(e.cy)} r={r} fill="none" stroke={col} strokeWidth={r < 3 ? 1 : 1.5} />;
         } else if (e.type === "LWPOLYLINE") {
-          const d = e.pts.map((p, j) => `${j === 0 ? "M" : "L"}${tx(p.x)},${ty(p.y)}`).join(" ") + (e.closed ? " Z" : "");
+          const d = (e.pts ?? []).map((p, j) => `${j === 0 ? "M" : "L"}${tx(p.x)},${ty(p.y)}`).join(" ") + (e.closed ? " Z" : "");
           return <path key={i} d={d} fill="none" stroke={col} strokeWidth={1.5} />;
         } else if (e.type === "TEXT") {
           const fs = Math.max(8, Math.min(e.height * scale, 24));

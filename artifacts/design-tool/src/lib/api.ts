@@ -53,6 +53,25 @@ function normalizeServerGeometry(raw: any): ProfileGeometry {
   };
 }
 
+function normalizeStation(raw: any): any {
+  if (!raw || typeof raw !== "object") return raw;
+  return {
+    ...raw,
+    bendAngles: Array.isArray(raw.bendAngles) ? raw.bendAngles : [],
+    segmentLengths: Array.isArray(raw.segmentLengths) ? raw.segmentLengths : [],
+    springbackAngles: Array.isArray(raw.springbackAngles) ? raw.springbackAngles : [],
+    segments: Array.isArray(raw.segments) ? raw.segments.map((s: any) => ({
+      ...s,
+      startX: s.startX ?? s.x1 ?? 0,
+      startY: s.startY ?? s.y1 ?? 0,
+      endX:   s.endX   ?? s.x2 ?? 0,
+      endY:   s.endY   ?? s.y2 ?? 0,
+    })) : [],
+    totalAngle: raw.totalAngle ?? 0,
+    springbackCompensationAngle: raw.springbackCompensationAngle ?? 0,
+  };
+}
+
 function getApiUrl(path: string): string {
   const base = window.location.origin;
   return `${base}/api${path}`;
@@ -229,7 +248,11 @@ export async function generateFlower(
       const err = await res.json().catch(() => ({ error: "Generation failed" }));
       throw new Error(err.error || "Generation failed");
     }
-    return res.json();
+    const data = await res.json();
+    if (data && Array.isArray(data.stations)) {
+      data.stations = data.stations.map(normalizeStation);
+    }
+    return data;
   });
 }
 

@@ -77,7 +77,7 @@ export function RightPanel() {
     accuracyLog,
     accuracyThreshold,
   } = useCncStore();
-  const latestGcodeScore = [...accuracyLog].reverse().find(e => e.taskType === "gcode");
+  const latestGcodeScore = [...(accuracyLog ?? [])].reverse().find(e => e.taskType === "gcode");
 
   const refInputRef = useRef<HTMLInputElement>(null);
 

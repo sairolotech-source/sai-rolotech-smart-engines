@@ -1259,7 +1259,48 @@ export const useCncStore = create<CncState>()(persist((set) => ({
 }), {
   name: "sai-rolotech-smart-enginesai-cnc-v3",
   storage: createJSONStorage(() => localStorage),
-  version: 3,
+  version: 4,
+  migrate: (persistedState: unknown, fromVersion: number) => {
+    const s = (persistedState ?? {}) as Record<string, unknown>;
+    if (fromVersion < 4) {
+      const geo = s.geometry as Record<string, unknown> | null | undefined;
+      if (geo && typeof geo === "object") {
+        const rawSegs: unknown[] = Array.isArray(geo.segments) ? geo.segments : [];
+        geo.segments = rawSegs.map((seg: unknown) => {
+          const sg = seg as Record<string, unknown>;
+          return {
+            ...sg,
+            startX: sg.startX ?? sg.x1 ?? 0,
+            startY: sg.startY ?? sg.y1 ?? 0,
+            endX:   sg.endX   ?? sg.x2 ?? 0,
+            endY:   sg.endY   ?? sg.y2 ?? 0,
+          };
+        });
+        const rawBends: unknown[] = Array.isArray(geo.bendPoints)
+          ? geo.bendPoints
+          : Array.isArray((geo as Record<string, unknown>).bends)
+          ? (geo as Record<string, unknown>).bends as unknown[]
+          : [];
+        geo.bendPoints = rawBends.map((b: unknown, idx: number) => {
+          const bp = b as Record<string, unknown>;
+          return { angle: 0, radius: 2, segmentIndex: idx, ...bp };
+        });
+      }
+      const rawStations: unknown[] = Array.isArray(s.stations) ? s.stations : [];
+      s.stations = rawStations.map((st: unknown) => {
+        const station = st as Record<string, unknown>;
+        return {
+          ...station,
+          bendAngles: Array.isArray(station.bendAngles) ? station.bendAngles : [],
+          segmentLengths: Array.isArray(station.segmentLengths) ? station.segmentLengths : [],
+          springbackAngles: Array.isArray(station.springbackAngles) ? station.springbackAngles : [],
+          totalAngle: station.totalAngle ?? 0,
+        };
+      });
+      s.accuracyLog = Array.isArray(s.accuracyLog) ? s.accuracyLog : [];
+    }
+    return s;
+  },
   partialize: (state) => ({
     activeTab: state.activeTab,
     profileName: state.profileName,

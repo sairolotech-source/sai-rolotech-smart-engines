@@ -1,0 +1,130 @@
+Kyoki **calculation engine sahi ho sakta hai**, lekin **software flow toot raha hai**.
+
+Matlab:
+
+Jab aap Replit me seedha puchte ho:
+
+* angle
+* thickness
+* material
+
+to AI ya calculation function **single input lekar single output** de deta hai. Isme UI, state, screen switching, saved data, parser, confirm view ka load sab involve nahi hota.
+
+Lekin software me ye extra cheezein hoti hain:
+
+**1. Calculation alag, display system alag**
+Calculator sahi result nikal raha hai, par confirm screen us result ko sahi format me receive nahi kar rahi.
+
+Example:
+
+* calculator ne value di
+* but UI ko array chahiye thi
+* usko `undefined` mil gaya
+* phir `.forEach()` crash ho gaya
+
+**2. Prompt test aur real app test alag hote hain**
+Chat/prompt me aap ideal data dete ho.
+Software me:
+
+* kabhi field empty reh jati hai
+* kabhi DXF se partial data aata hai
+* kabhi thickness string me aati hai
+* kabhi material object missing hota hai
+* kabhi async loading late hoti hai
+
+To formula sahi hone ke baad bhi app toot sakti hai.
+
+**3. App me multiple stages hain**
+Aapke software me likely flow kuch aisa hai:
+
+* input form
+* validation
+* calculation engine
+* strip result
+* dimensions array
+* confirm screen
+* export/render
+
+Inme se koi bhi ek stage galat hua to final screen error degi.
+
+**4. Replit AI aksar “happy path” bana deta hai**
+Yani normal case me kaam karega.
+Lekin edge case handle nahi karega:
+
+* blank input
+* NaN
+* null
+* undefined
+* mm vs inch mismatch
+* angle list missing
+* bends array empty
+* API response incomplete
+* state reset after refresh
+
+**5. Console answer aur production logic same nahi hota**
+Ho sakta hai backend ya function me result sahi aa raha ho, lekin frontend mapping galat ho.
+
+Example:
+
+```js
+return {
+  stripWidth: 120,
+  bendAngles: [45, 90]
+}
+```
+
+Lekin UI expect kar rahi ho:
+
+```js
+result.dimensions.forEach(...)
+```
+
+Yahan `dimensions` hai hi nahi, isliye crash.
+
+**6. Real issue calculation nahi, data contract hai**
+Sabse common problem hoti hai:
+
+* function kya return karega
+* next component kya expect karega
+
+Dono same nahi hue to app fail.
+
+Aapke case me sabse likely reason ye hai:
+
+* strip calculation correct ho rahi hai
+* but `dimension-confirm view` ko jo data chahiye wo ya to pass nahi ho raha
+* ya wrong key name me pass ho raha
+* ya array ki jagah object/string aa rahi hai
+* ya screen render calculation complete hone se pehle ho rahi hai
+
+Isliye chat me answer sahi, software me error.
+
+Replit ko ye exact bolo:
+
+```text
+The strip calculation logic works when tested directly, but the app crashes during software usage. This means the problem is not the math engine alone, but the UI/state/data flow between calculation and dimension-confirm view.
+
+Do a full audit of the software flow:
+1. Trace data from input form -> calculation engine -> result normalization -> dimension-confirm view.
+2. Compare expected schema vs actual returned schema.
+3. Find all places where arrays are assumed and `.forEach()`, `.map()`, or `.length` are used.
+4. Add runtime guards for undefined, null, NaN, and wrong types.
+5. Log the exact payload entering dimension-confirm view.
+6. Block rendering until all required calculation data is present.
+7. Create fallback empty arrays and default values.
+8. Add strict validation for angle, thickness, material, bend count, strip width, and dimensions.
+9. Test with both ideal input and incomplete/partial input.
+10. Fix root cause instead of only hiding the error.
+
+Return:
+- root cause
+- broken file/component names
+- corrected code
+- defensive validation added
+- test cases used
+```
+
+Ek line me:
+**software isliye problem kar raha hai kyoki “calculation sahi hai, lekin calculation ka data agle component tak safely nahi pahunch raha.”**
+
+Agar aap chaho to main abhi aapke liye **full master debugging prompt** bana deta hoon jo aap Replit me paste karke poore app ka audit kara sako.

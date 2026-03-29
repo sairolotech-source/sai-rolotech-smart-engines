@@ -1,163 +1,23 @@
 {
-  "startedAt": "2026-03-29T08:11:17.656Z",
-  "lastHealthCheck": "2026-03-29T08:41:18.615Z",
-  "lastGitPush": "2026-03-29T08:41:19.380Z",
-  "lastGitPushResult": "pushed → d7da025b37",
+  "startedAt": "2026-03-29T09:19:24.285Z",
+  "lastHealthCheck": null,
+  "lastGitPush": null,
+  "lastGitPushResult": null,
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
-  "healthChecksPassed": 15,
+  "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
-  "gitPushCount": 4,
+  "gitPushCount": 0,
   "gitPushErrors": 0,
   "apiPort": 8080,
   "isElectron": false,
   "logs": [
     {
-      "time": "08:11:17 am",
+      "time": "09:19:24 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "08:11:27 am",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "08:11:27 am",
-      "type": "info",
-      "message": "[startup] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "08:11:27 am",
-      "type": "info",
-      "message": "[startup] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:11:28 am",
-      "type": "success",
-      "message": "GitHub push DONE! 1 commit(s) — HEAD: f5b21fbab1"
-    },
-    {
-      "time": "08:11:28 am",
-      "type": "success",
-      "message": "Startup push: 1 commit(s) pushed"
-    },
-    {
-      "time": "08:13:17 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:15:17 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:17:17 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:19:17 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:21:17 am",
-      "type": "info",
-      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "08:21:17 am",
-      "type": "info",
-      "message": "[scheduled] 2 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:21:17 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:21:18 am",
-      "type": "success",
-      "message": "GitHub push DONE! 2 commit(s) — HEAD: 67bca400d8"
-    },
-    {
-      "time": "08:23:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:25:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:27:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:29:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:31:17 am",
-      "type": "info",
-      "message": "[scheduled] Uncommitted changes mili — commit kar raha hai..."
-    },
-    {
-      "time": "08:31:18 am",
-      "type": "info",
-      "message": "[scheduled] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:31:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:31:18 am",
-      "type": "success",
-      "message": "GitHub push DONE! 1 commit(s) — HEAD: 6173ba7e08"
-    },
-    {
-      "time": "08:33:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:35:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:37:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:39:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:41:17 am",
-      "type": "info",
-      "message": "[scheduled] 1 commit(s) push ho rahe hain GitHub pe..."
-    },
-    {
-      "time": "08:41:18 am",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:41:19 am",
-      "type": "success",
-      "message": "GitHub push DONE! 1 commit(s) — HEAD: d7da025b37"
     }
   ]
 }

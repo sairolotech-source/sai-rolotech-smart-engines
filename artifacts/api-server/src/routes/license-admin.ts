@@ -5,15 +5,15 @@ import crypto from "crypto";
 
 const REGISTRY_PATH = path.resolve("/home/runner/workspace/data/license-registry.json");
 const ADMIN_PASSWORD = process.env["ADMIN_PASSWORD"] || "SAIRTECH-ADMIN-2026";
-const DEMO_KEY = "SAIR-DEMO-2026-TRIAL";
+const DEMO_KEY = "SAIRDEMO2026TRIAL";
 const DEMO_TRIAL_HOURS = 72; // 3 din = 72 ghante
 
 const VALID_LICENSE_KEYS = new Set([
-  "SAIR-2026-ROLL-FORM",
-  "SAIR-2026-ENGI-NEER",
-  "SAIR-2026-PREM-IUMS",
-  "SAIR-PRO-2026-MSTR",
-  DEMO_KEY,
+  "SAIR2026ROLLFORM",
+  "SAIR2026ENGINEER",
+  "SAIR2026PREMIUMS",
+  "SAIRPRO2026MSTR",
+  "SAIRDEMO2026TRIAL",
 ]);
 
 interface LicenseEntry {
@@ -95,7 +95,7 @@ licenseRouter.post("/register", (req: Request, res: Response) => {
     return;
   }
 
-  const cleanKey = (key ?? "").trim().toUpperCase();
+  const cleanKey = (key ?? "").trim().toUpperCase().replace(/-/g, "");
   if (!VALID_LICENSE_KEYS.has(cleanKey)) {
     res.status(403).json({ ok: false, error: "Invalid license key — sahi key daalo" });
     return;

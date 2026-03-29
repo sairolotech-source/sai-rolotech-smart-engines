@@ -413,7 +413,23 @@ function AuthGate() {
   );
 }
 
+const LazyPinGate = lazy(() =>
+  import("@/components/auth/PinGateScreen").then(m => ({ default: m.PinGateScreen }))
+);
+
 function App() {
+  const [pinOk, setPinOk] = useState(() => {
+    try { return sessionStorage.getItem("sai_pin_ok") === "1"; } catch { return false; }
+  });
+
+  if (!pinOk) {
+    return (
+      <Suspense fallback={<PageSpinner />}>
+        <LazyPinGate onUnlocked={() => setPinOk(true)} />
+      </Suspense>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>

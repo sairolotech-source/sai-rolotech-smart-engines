@@ -76,47 +76,68 @@ def classify_profile(
     """
     Classify profile type from geometry and bend structure.
 
-    Hierarchy (in order of precedence):
-      shutter_profile  — 6+ bends AND relatively shallow (height/width ≤ 0.35)
-      lipped_channel   — 4-5 bends OR 4 bends with lips present
-      hat_section      — 4 bends, very wide+shallow (height/width ≤ 0.20)
-      z_section        — 2 bends, return_bends > 0 OR width/height aspect suggests Z
-      c_channel        — 2-4 bends, standard
-      simple_channel   — ≤ 2 bends, shallow
+    Returned types (in order of evaluation precedence):
+      shutter_slat     — 6+ bends AND shallow (height/width ≤ 0.35), no explicit lips
+      door_frame       — 4 bends AND return_bends > 0 (return-lip U-channel)
+      lipped_channel   — 4-6+ bends with explicit lips or standard lipped geometry
+      hat_section      — 4 bends, very wide+shallow (aspect ≤ 0.20), no lips
+      z_section        — 2 bends with return-bend direction change
+      u_channel        — 2 bends, wide-web (aspect ≤ 0.50, width ≥ 60mm)
+      c_channel        — 2 bends, standard channel (height ≥ 5mm)
+      simple_angle     — 1 bend only
+      simple_channel   — ≤ 2 bends, shallow (height < 5mm)
+
+    Profile category families:
+      panel:      shutter_slat
+      structural: door_frame, lipped_channel, hat_section, z_section
+      channel:    c_channel, u_channel, simple_channel
+      flat_open:  simple_angle
     """
     aspect = height / max(width, 1.0)
 
+    # ── 6+ bends ──────────────────────────────────────────────────────────────
     if bend_count >= 6:
-        # Explicit lips → definitely NOT a shutter: it's a lipped/ceiling channel
         if has_lips or lip_mm > 0:
             return "lipped_channel"
-        # Very shallow profiles (rib height ≪ width) → shutter pattern
         if aspect <= 0.20:
-            return "shutter_profile"
-        # Moderately shallow AND small absolute height → still shutter
+            return "shutter_slat"
         if aspect <= 0.35 and height < 15.0:
-            return "shutter_profile"
+            return "shutter_slat"
         return "lipped_channel"
 
+    # ── 5 bends ───────────────────────────────────────────────────────────────
     if bend_count == 5:
         return "lipped_channel"
 
+    # ── 4 bends ───────────────────────────────────────────────────────────────
     if bend_count == 4:
-        if has_lips or lip_mm > 0 or return_bends > 0:
+        # Return bends + 4 bends → door frame (U-channel with inward return lips)
+        if return_bends > 0 and not has_lips and lip_mm <= 0:
+            return "door_frame"
+        if has_lips or lip_mm > 0:
             return "lipped_channel"
         if aspect <= 0.20:
             return "hat_section"
         return "lipped_channel"
 
+    # ── 3 bends ───────────────────────────────────────────────────────────────
     if bend_count == 3:
         return "lipped_channel"
 
+    # ── 1 bend ────────────────────────────────────────────────────────────────
+    if bend_count == 1:
+        return "simple_angle"
+
+    # ── 2 bends ───────────────────────────────────────────────────────────────
     if bend_count == 2:
         if return_bends > 0:
             return "z_section"
-        if height >= 5.0:
-            return "c_channel"
-        return "simple_channel"
+        if height < 5.0:
+            return "simple_channel"
+        # Distinguish u_channel (wide web, shallow) from c_channel (standard)
+        if aspect <= 0.50 and width >= 60.0:
+            return "u_channel"
+        return "c_channel"
 
     return "simple_channel"
 

@@ -112,6 +112,7 @@ def compute_groove_geometry(
     thickness: float = 1.5,
     springback_deg: float = 2.0,
     material: str = "GI",
+    profile_type: str = "c_channel",
 ) -> Dict[str, Any]:
     """
     [MANUFACTURING-GRADE] Derive all roll groove parameters from the real strip
@@ -258,6 +259,92 @@ def compute_groove_geometry(
                     "label": f"Exit r={exit_radius_mm}mm",
                 },
             ]
+
+        # ── Profile-type-specific contact strip additions ─────────────────────
+        pt_lower = (profile_type or "c_channel").lower().replace(" ", "_")
+        rt_ratio_local = bend_radius_mm / max(thickness, 0.01)
+        # Local pressure angle: steeper for tight-radius / panel profiles
+        if pt_lower in ("shutter_slat", "shutter_profile"):
+            _local_pressure_angle = 55.0    # steep rib-root contact
+        elif pt_lower == "door_frame":
+            _local_pressure_angle = 40.0    # return-lip contact
+        elif pt_lower == "lipped_channel" and rt_ratio_local < 2.0:
+            _local_pressure_angle = 35.0    # inward lip
+        else:
+            _local_pressure_angle = 20.0    # standard flange
+
+        # Re-compute pinch zones with pressure-angle component
+        _sev_pa = _pinch_severity(bend_radius_mm, thickness, material, _local_pressure_angle)
+        for pz in pinch_zones:
+            pz["pressure_angle_deg"] = round(_local_pressure_angle, 1)
+            pz["severity"] = _sev_pa
+
+        if pt_lower in ("shutter_slat", "shutter_profile"):
+            # Shutter: alternating narrow rib-root contact strips
+            n_ribs = max(2, round(width / max(height * 3.5, 1.0)))
+            rib_pitch = round(width / n_ribs, 3) if n_ribs > 0 else width
+            rib_strip_w = round(min(rib_pitch * 0.25, 3.0 * thickness), 3)
+            for ri in range(n_ribs):
+                cx = round(-web_half + ri * rib_pitch, 3)
+                side = "left" if ri % 2 == 0 else "right"
+                contact_strips.append({
+                    "strip_type": f"rib_root_{side}_contact",
+                    "x_from": round(cx - rib_strip_w / 2, 3),
+                    "x_to":   round(cx + rib_strip_w / 2, 3),
+                    "y_from": 0.0, "y_to": round(-height * 0.5, 3),
+                    "color": "#f97316",     # orange — rib root
+                    "label": f"Rib {ri + 1}/{n_ribs} root  pitch={rib_pitch}mm",
+                })
+
+        elif pt_lower == "door_frame":
+            # Door frame: rebate-contact strip (inward return lip) + inner-flange strip
+            return_lip_h = round(height * 0.25, 3)
+            contact_strips.append({
+                "strip_type": "return_lip_left_contact",
+                "x_from": round(-web_half - t, 3), "x_to": round(-web_half + t * 0.5, 3),
+                "y_from": round(-height, 3), "y_to": round(-height - return_lip_h, 3),
+                "color": "#a855f7",     # purple — return lip
+                "label": f"Return lip L  h={return_lip_h}mm",
+            })
+            contact_strips.append({
+                "strip_type": "return_lip_right_contact",
+                "x_from": round(+web_half - t * 0.5, 3), "x_to": round(+web_half + t, 3),
+                "y_from": round(-height, 3), "y_to": round(-height - return_lip_h, 3),
+                "color": "#a855f7",
+                "label": f"Return lip R  h={return_lip_h}mm",
+            })
+            contact_strips.append({
+                "strip_type": "inner_flange_left_contact",
+                "x_from": round(-web_half - t * 2, 3), "x_to": round(-web_half, 3),
+                "y_from": round(-height * 0.6, 3), "y_to": round(-height, 3),
+                "color": "#6366f1",     # indigo — inner flange
+                "label": "Inner flange L",
+            })
+            contact_strips.append({
+                "strip_type": "inner_flange_right_contact",
+                "x_from": round(+web_half, 3), "x_to": round(+web_half + t * 2, 3),
+                "y_from": round(-height * 0.6, 3), "y_to": round(-height, 3),
+                "color": "#6366f1",
+                "label": "Inner flange R",
+            })
+
+        elif pt_lower == "lipped_channel":
+            # Lipped channel: add inward lip-contact strips at flange tips
+            lip_len = round(height * 0.20, 3)   # estimated lip from height
+            contact_strips.append({
+                "strip_type": "lip_left_inward_contact",
+                "x_from": round(-web_half + t * 0.5, 3), "x_to": round(-web_half + lip_len, 3),
+                "y_from": round(-height, 3), "y_to": round(-height - t, 3),
+                "color": "#ec4899",     # pink — inward lip
+                "label": f"Lip inward L  len={lip_len}mm",
+            })
+            contact_strips.append({
+                "strip_type": "lip_right_inward_contact",
+                "x_from": round(+web_half - lip_len, 3), "x_to": round(+web_half - t * 0.5, 3),
+                "y_from": round(-height, 3), "y_to": round(-height - t, 3),
+                "color": "#ec4899",
+                "label": f"Lip inward R  len={lip_len}mm",
+            })
 
         # ── Per-station K-factor (Machinery's Handbook R/t table) ─────────────
         k_factor_used = _per_station_k_factor(bend_radius_mm, thickness, material)
@@ -521,13 +608,14 @@ def _angle_schedule(target_deg: float, n_passes: int) -> List[float]:
 # ── Profile category lookup ────────────────────────────────────────────────────
 PROFILE_CATEGORY: Dict[str, str] = {
     "c_channel":        "channel",
+    "u_channel":        "channel",
     "simple_channel":   "channel",
     "lipped_channel":   "structural",
     "hat_section":      "structural",
     "z_section":        "structural",
     "simple_angle":     "flat_open",
-    "shutter_profile":  "panel",
     "shutter_slat":     "panel",
+    "shutter_profile":  "panel",   # legacy alias
     "door_frame":       "structural",
     "complex_profile":  "structural",
     "complex_section":  "structural",
@@ -565,7 +653,7 @@ def _angle_schedule_for_profile(
     """
     pt = (profile_type or "c_channel").lower().replace(" ", "_")
 
-    if pt in ("lipped_channel", "hat_section", "door_frame") and has_lips:
+    if pt in ("lipped_channel", "hat_section", "door_frame") and (has_lips or pt == "door_frame"):
         angles: List[float] = []
         for i in range(1, n_passes + 1):
             t = i / n_passes
@@ -581,15 +669,19 @@ def _angle_schedule_for_profile(
         return angles
 
     if pt in ("shutter_profile", "shutter_slat"):
+        # Shutter slats: outer ribs form first (low angle), inner ribs follow.
+        # Modelled as a two-stage ramp:
+        #   Stage 1 (first 40% of passes): gentle linear ramp 0→30% of target
+        #   Stage 2 (remaining 60%): cubic ease from 30% to 100% of target
+        # This delays inner-rib engagement and prevents edge marking on thin gauge.
         angles = []
         for i in range(1, n_passes + 1):
             t = i / n_passes
-            if t < 0.10:
-                # Very first pass: linear 0→15% to prevent edge marking
-                eased = t / 0.10 * target_deg * 0.12
+            if t <= 0.40:
+                eased = (t / 0.40) * target_deg * 0.30
             else:
-                t_norm = (t - 0.10) / 0.90
-                eased = target_deg * 0.12 + t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.88
+                t_norm = (t - 0.40) / 0.60
+                eased = target_deg * 0.30 + t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.70
             angles.append(round(eased, 1))
         return angles
 
@@ -666,7 +758,7 @@ def _flat_strip_for_profile(
     """
     pt = (profile_type or "c_channel").lower().replace(" ", "_")
 
-    if pt in ("c_channel", "simple_channel", "simple_angle", "z_section"):
+    if pt in ("c_channel", "u_channel", "simple_channel", "simple_angle", "z_section"):
         n_flanges = min(bend_count, 2)
         flat = round(section_w + n_flanges * section_h + n_flanges * ba_each, 2)
         formula = (
@@ -685,13 +777,26 @@ def _flat_strip_for_profile(
             f"+{bend_count}×BA({round(ba_each,3)})={flat}"
         )
 
+    elif pt == "door_frame":
+        # Door frame: web + 2 flanges + 2 return lips (inward)
+        return_lip_mm = lip_mm if lip_mm > 0 else round(section_h * 0.25, 2)
+        n_flanges = 2
+        n_return_lips = max(0, bend_count - 2)
+        flat = round(section_w + n_flanges * section_h + n_return_lips * return_lip_mm
+                     + bend_count * ba_each, 2)
+        formula = (
+            f"web({section_w})+{n_flanges}×flange({section_h})"
+            f"+{n_return_lips}×return_lip({return_lip_mm})"
+            f"+{bend_count}×BA({round(ba_each,3)})={flat} [door_frame]"
+        )
+
     elif pt in ("shutter_profile", "shutter_slat"):
         rib_arm_mm = section_h / 2.0   # each arm of a rib ≈ half the rib height
         flat = round(section_w + bend_count * rib_arm_mm + bend_count * ba_each, 2)
         formula = (
             f"web({section_w})+{bend_count}×rib_arm({round(rib_arm_mm,2)})"
             f"+{bend_count}×BA({round(ba_each,3)})={flat}"
-            f" [shutter: rib_arm=section_h/2={round(rib_arm_mm,2)}mm, HEURISTIC]"
+            f" [shutter_slat: rib_arm=section_h/2={round(rib_arm_mm,2)}mm, HEURISTIC]"
         )
 
     else:
@@ -705,9 +810,14 @@ def _flat_strip_for_profile(
     return flat, formula
 
 
-def _pinch_severity(bend_radius_mm: float, thickness: float, material: str) -> str:
+def _pinch_severity(
+    bend_radius_mm: float,
+    thickness: float,
+    material: str,
+    pressure_angle_deg: float = 0.0,
+) -> str:
     """
-    Rate pinch zone severity from R/t ratio and material.
+    Rate pinch zone severity from R/t ratio, material, and local pressure angle.
 
     Severity table (R/t):
       < 0.5  → critical  (extreme thinning, risk of cracking)
@@ -716,8 +826,13 @@ def _pinch_severity(bend_radius_mm: float, thickness: float, material: str) -> s
       ≥ 2.0  → low       (gentle bend, no concern)
 
     Material adjustments:
-      SS, HSLA: +1 level  (springback causes extra contact stress)
-      AL:       -1 level  (soft, bends easily)
+      SS, HSLA, TI: +1 level  (springback causes extra contact stress)
+      AL:           -1 level  (soft, bends easily)
+
+    Pressure-angle adjustment (local tool-strip contact angle):
+      > 60° → +1 level  (high contact stress due to steep approach)
+      > 30° → no change
+      ≤ 30° → -1 level  (shallow approach, stress well distributed)
     """
     levels = ["low", "medium", "high", "critical"]
     rt = bend_radius_mm / max(thickness, 0.01)
@@ -729,11 +844,19 @@ def _pinch_severity(bend_radius_mm: float, thickness: float, material: str) -> s
         idx = 1
     else:
         idx = 0
+
     mat = material.upper()
     if mat in ("SS", "HSLA", "TI"):
         idx = min(idx + 1, 3)
     elif mat in ("AL",):
         idx = max(idx - 1, 0)
+
+    # Pressure-angle adjustment
+    if pressure_angle_deg > 60.0:
+        idx = min(idx + 1, 3)
+    elif pressure_angle_deg <= 30.0 and pressure_angle_deg > 0.0:
+        idx = max(idx - 1, 0)
+
     return levels[idx]
 
 
@@ -779,7 +902,8 @@ def _upper_lower_roll_contour(
             gg = compute_groove_geometry(section_poly, bend_radius_mm, gap,
                                          thickness=thickness,
                                          springback_deg=springback_deg,
-                                         material=material)
+                                         material=material,
+                                         profile_type=profile_type)
             upper_env = gg.get("groove_envelope_upper")
             lower_env = gg.get("groove_envelope_lower")
 
@@ -1011,10 +1135,24 @@ def generate_roll_contour(
             "manufacturing_grade" if geometry_source_pass == "shapely_section_polygon"
             else "heuristic_fallback"
         )
+        # Clash risk: high/critical pinch zones + station-gap threshold (< 1.15 × design gap)
         clash_markers = [
             pz for pz in contour.get("pinch_zones", [])
             if pz.get("severity") in ("high", "critical")
         ]
+        # Gap-threshold marker: flag if effective roll gap approaches minimum clearance
+        design_min_gap = thickness + _gap_clearance(thickness)
+        effective_gap  = contour.get("roll_gap_mm", roll_gap)
+        if isinstance(effective_gap, (int, float)) and effective_gap < design_min_gap * 1.15:
+            clash_markers.append({
+                "zone_type": "gap_threshold_warning",
+                "label": (
+                    f"Roll gap {round(effective_gap,3)}mm "
+                    f"< 1.15×min_clearance ({round(design_min_gap * 1.15, 3)}mm)"
+                ),
+                "severity": "high" if effective_gap < design_min_gap * 1.05 else "medium",
+                "pass_no": i + 1,
+            })
         support_surfaces: List[Dict[str, Any]] = []
         fss = contour.get("flange_support_surface", {})
         wcs = contour.get("web_contact_surface", {})
@@ -1139,6 +1277,55 @@ def generate_roll_contour(
             "coil set and yield-point elongation are not modelled"
         )
 
+    # ── Bend groups: per-group BA and K-factor (multi-radius support) ─────────
+    # Primary group: flanges (all profiles)
+    bend_groups: List[Dict[str, Any]] = [
+        {
+            "group_id":        "flange",
+            "description":     "Primary flange bends",
+            "bend_count":      min(bend_count, 2),
+            "inner_radius_mm": bend_radius_mm,
+            "k_factor":        k_factor_station,
+            "ba_mm":           round(ba_each, 4),
+            "forming_start_pass": 1,
+            "forming_end_pass":   forming_passes,
+        },
+    ]
+    # Lip group: lipped_channel, hat_section, door_frame (remaining bends after flanges)
+    _pt_lower = profile_type.lower()
+    if has_lips and bend_count > 2 and _pt_lower in ("lipped_channel", "hat_section", "door_frame"):
+        lip_bend_count = max(1, bend_count - 2)
+        lip_radius_mm  = round(bend_radius_mm * 0.85, 3)   # lips typically tighter radius
+        lip_k          = _per_station_k_factor(lip_radius_mm, thickness, material)
+        ba_lip         = _bend_allowance(90.0, lip_radius_mm, thickness, material)
+        lip_start      = max(1, round(forming_passes * 0.35))
+        bend_groups.append({
+            "group_id":        "lip",
+            "description":     "Inward lip bends (form after flanges)",
+            "bend_count":      lip_bend_count,
+            "inner_radius_mm": lip_radius_mm,
+            "k_factor":        lip_k,
+            "ba_mm":           round(ba_lip, 4),
+            "forming_start_pass": lip_start,
+            "forming_end_pass":   forming_passes,
+        })
+    # Rib group: shutter slat (each rib root counted as 2 bends: up-arm + down-arm)
+    if _pt_lower in ("shutter_slat", "shutter_profile"):
+        ribs_count = max(2, bend_count // 2)
+        bend_groups[0]["description"] = "Rib-arm bends (outer ribs form first)"
+        bend_groups[0]["group_id"]    = "rib_arms"
+        bend_groups[0]["forming_end_pass"] = round(forming_passes * 0.40)
+        bend_groups.append({
+            "group_id":        "rib_inner",
+            "description":     "Inner rib bends (form in Stage 2)",
+            "bend_count":      bend_count - bend_groups[0]["bend_count"],
+            "inner_radius_mm": bend_radius_mm,
+            "k_factor":        k_factor_station,
+            "ba_mm":           round(ba_each, 4),
+            "forming_start_pass": round(forming_passes * 0.40) + 1,
+            "forming_end_pass":   forming_passes,
+        })
+
     summary = {
         "flat_strip_width_mm":         flat_strip_mm,
         "flat_strip_formula":          flat_strip_formula,
@@ -1163,11 +1350,13 @@ def generate_roll_contour(
         "profile_type":                profile_type,
         "profile_category":            PROFILE_CATEGORY.get(profile_type.lower(), "unknown"),
         "angle_schedule_mode":         (
-            "two_phase_lipped" if has_lips and profile_type.lower() in ("lipped_channel", "hat_section", "door_frame")
-            else "shutter_delayed" if profile_type.lower() in ("shutter_profile", "shutter_slat")
-            else "z_asymmetric" if profile_type.lower() == "z_section"
+            "two_phase_lipped" if (has_lips or _pt_lower == "door_frame")
+                                  and _pt_lower in ("lipped_channel", "hat_section", "door_frame")
+            else "shutter_delayed" if _pt_lower in ("shutter_profile", "shutter_slat")
+            else "z_asymmetric" if _pt_lower == "z_section"
             else "cubic_ease"
         ),
+        "bend_groups":                 bend_groups,
         "remaining_weaknesses":        _weaknesses,
     }
 

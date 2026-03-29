@@ -11,6 +11,9 @@
  * VALID requirement fulfilled: output > 20 characters ✓
  */
 
+/** Single source of truth for VALID G-code length threshold — used by both repair and validation */
+export const MIN_GCODE_LENGTH = 20;
+
 export interface LatheGcodeParams {
   rollDiameter: number;
   shaftDiameter: number;
@@ -144,9 +147,21 @@ export function generateLatheGcode(params: LatheGcodeParams): string {
   return lines.join("\n");
 }
 
+export interface RollProfileDebugSummary {
+  stationNumber:    number;
+  label:            string;
+  upperRollLength:  number;
+  lowerRollLength:  number;
+  upperGcodeLength: number;
+  lowerGcodeLength: number;
+  status:           "VALID" | "BASIC";
+  issues:           string[];
+}
+
 /**
- * debugRollProfile — prints station statistics to console.
- * Called after generation to confirm VALID status.
+ * debugRollProfile — returns station statistics as a structured object.
+ * C6 FIX: now returns RollProfileDebugSummary instead of void so it can
+ * be captured, tested, and used in structured logging.
  */
 export function debugRollProfile(params: {
   stationNumber: number;
@@ -155,14 +170,30 @@ export function debugRollProfile(params: {
   lowerRollLength: number;
   upperGcodeLength: number;
   lowerGcodeLength: number;
-}): void {
+}): RollProfileDebugSummary {
   const { stationNumber, label, upperRollLength, lowerRollLength, upperGcodeLength, lowerGcodeLength } = params;
-  const status = upperRollLength > 1 && lowerRollLength > 1 && upperGcodeLength > 20 && lowerGcodeLength > 20
-    ? "VALID"
-    : "BASIC";
+
+  const issues: string[] = [];
+  if (upperRollLength <= 1)                 issues.push(`upperRoll too short (${upperRollLength} segs, need >1)`);
+  if (lowerRollLength <= 1)                 issues.push(`lowerRoll too short (${lowerRollLength} segs, need >1)`);
+  if (upperGcodeLength <= MIN_GCODE_LENGTH) issues.push(`upperGcode too short (${upperGcodeLength} chars, need >${MIN_GCODE_LENGTH})`);
+  if (lowerGcodeLength <= MIN_GCODE_LENGTH) issues.push(`lowerGcode too short (${lowerGcodeLength} chars, need >${MIN_GCODE_LENGTH})`);
+
+  const status: "VALID" | "BASIC" = issues.length === 0 ? "VALID" : "BASIC";
+
+  const summary: RollProfileDebugSummary = {
+    stationNumber, label,
+    upperRollLength, lowerRollLength,
+    upperGcodeLength, lowerGcodeLength,
+    status, issues,
+  };
+
   console.log(
     `[ToolingEngine] Station ${stationNumber} (${label}): ` +
     `upperRoll=${upperRollLength} segs | lowerRoll=${lowerRollLength} segs | ` +
-    `upperGcode=${upperGcodeLength} chars | lowerGcode=${lowerGcodeLength} chars → ${status}`
+    `upperGcode=${upperGcodeLength} chars | lowerGcode=${lowerGcodeLength} chars → ${status}` +
+    (issues.length > 0 ? ` | ISSUES: ${issues.join("; ")}` : "")
   );
+
+  return summary;
 }

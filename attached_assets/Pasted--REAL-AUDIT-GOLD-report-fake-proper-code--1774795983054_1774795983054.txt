@@ -1,0 +1,255 @@
+🔥 **अब ये REAL AUDIT है — और ये GOLD है**
+👉 तुमने जो report भेजी है वो fake नहीं है, proper code-read audit है
+📌 मैं confirm करता हूँ: 
+
+---
+
+# 🧠 FINAL HONEST REVIEW (NO BAKWAS)
+
+## 🎯 CURRENT SCORE
+
+👉 **51/100 (correct)**
+
+✔ कोई cheating नहीं
+✔ audit सही किया गया
+✔ major issues सही पकड़े गए
+
+---
+
+# 🚨 95+ क्यों नहीं है (ROOT CAUSE)
+
+## ❌ TOP 3 CRITICAL BLOCKERS
+
+### 1️⃣ **NO TEST SYSTEM (BIGGEST PROBLEM)**
+
+👉 0 test files
+👉 0 test runner
+👉 मतलब:
+
+❌ कोई proof नहीं
+❌ कोई reliability नहीं
+❌ 95+ impossible
+
+---
+
+### 2️⃣ **Tooling + G-code mismatch (C2)**
+
+👉 सबसे dangerous bug:
+
+* toolingEngine → Segment[] बनाता है
+* gcode → Segment[] use ही नहीं करता
+
+👉 मतलब:
+
+❌ geometry ≠ machining
+❌ CNC गलत बन सकता है
+
+---
+
+### 3️⃣ **Complementarity fake (B1/B2/B3)**
+
+👉 upper और lower independent हैं
+👉 कोई pairing नहीं
+
+👉 risk:
+
+* roll clash
+* strip jam
+* production failure
+
+---
+
+# ⚠️ SECOND LEVEL CRITICAL
+
+### ❌ grooveDepth wrong (A2)
+
+👉 thickness + 0.1 ❌
+👉 होना चाहिए: thickness * 1.5
+
+---
+
+### ❌ wallRun unsafe (A1)
+
+👉 no minimum
+👉 razor edge बन सकता है
+
+---
+
+### ❌ Export gating broken (E1)
+
+👉 BASIC भी export हो रहा
+
+👉 मतलब:
+❌ fake production data
+
+---
+
+### ❌ debug useless (C6)
+
+👉 return void
+
+👉 मतलब:
+❌ testing impossible
+
+---
+
+# 📊 REAL स्थिति
+
+| Area            | Status           |
+| --------------- | ---------------- |
+| Migration       | ✅ PERFECT        |
+| UI crash safety | ✅ GOOD           |
+| Tooling base    | ⚠️ PARTIAL       |
+| CNC             | ⚠️ DANGEROUS GAP |
+| Validation      | ⚠️ INCONSISTENT  |
+| Export          | ❌ WRONG          |
+| Testing         | ❌ ZERO           |
+
+---
+
+# 🔥 अब क्या करना है (95+ PATH)
+
+👉 अब हम **Command 2 blindly run नहीं करेंगे**
+👉 हम इसे **SMART FIX MODE** में करेंगे
+
+---
+
+# 🚀 STEP 1 — FIRST FIX (MOST IMPORTANT)
+
+👉 Codex को ये दो:
+
+Fix ONLY these 3 CRITICAL items first:
+
+1. Add Vitest test infrastructure
+
+   * install vitest
+   * add "test" script
+   * create 12 test files:
+     T01–T04 synthesizeGroove
+     T05–T08 generateLatheGcode
+     T09–T12 repairOrSynthesizeRollProfile
+
+2. Fix grooveDepth formula:
+   Replace:
+   thickness + clearance
+   With:
+   Math.max(thickness * 1.5, 2.0)
+
+3. Add wallRun guard:
+   wallRun = Math.max(wallRun, 2.0)
+
+Rules:
+
+* Do NOT touch any other logic
+* Do NOT refactor
+* Show exact diff
+* Run tests after creation
+
+Return:
+
+* files created
+* test results
+* new score estimate
+
+---
+
+# 🚀 STEP 2 — SECOND FIX (ENGINE CORE)
+
+👉 उसके बाद ये:
+
+Fix complementarity and G-code mismatch:
+
+1. Connect G-code to Segment[]
+
+   * generateLatheGcode must iterate over Segment[]
+   * remove independent param-based geometry
+
+2. Add checkRollInterference()
+
+3. Implement:
+   upperGrooveBottomWidth = lowerLandWidth
+   stripGap = thickness
+
+Rules:
+
+* minimal change only
+* do not rewrite synthesizeGroove fully
+* show before/after diff
+
+Return:
+
+* proof of connection between geometry and G-code
+* interference check output
+
+---
+
+# 🚀 STEP 3 — THIRD FIX (VALIDATION + EXPORT)
+
+Fix validation and export truthfulness:
+
+1. Unify VALID threshold:
+   use constant MIN_GCODE_LENGTH = 20 everywhere
+
+2. Fix export gating:
+   disable export if validationStatus !== "VALID"
+
+3. Add content length check before download
+
+4. debugRollProfile must return object
+
+Return:
+
+* diff
+* validation proof
+
+---
+
+# 🧠 EXPECTED SCORE AFTER EACH STEP
+
+| Step    | Score       |
+| ------- | ----------- |
+| Current | 51          |
+| Step 1  | ~65         |
+| Step 2  | ~85         |
+| Step 3  | **92–96 ✅** |
+
+---
+
+# 🔥 FINAL TRUTH
+
+👉 तुम्हारा system खराब नहीं है
+👉 लेकिन अभी:
+
+❌ engineering incomplete
+❌ verification zero
+❌ CNC mismatch
+
+---
+
+# 💪 FINAL LINE
+
+👉 तुम अभी **real software बनाने के edge पर हो**
+
+अगर ये 3 steps सही कर दिए:
+
+🔥 तुम्हारा app:
+
+* fake नहीं रहेगा
+* CNC safe होगा
+* production usable होगा
+* और **95+ genuinely achieve करेगा**
+
+---
+
+## 🚀 NEXT ACTION
+
+👉 Step 1 run करो
+👉 output यहाँ भेजो
+
+मैं:
+
+* verify करूँगा
+* fake test पकड़ूँगा
+* next fix दूँगा
+
+🔥 अब हम सच में **PRO LEVEL पर build कर रहे हैं**

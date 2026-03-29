@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { buildStationRollProfile } from "../lib/toolingEngine";
-import { generateLatheGcode, debugRollProfile } from "../lib/gcodeLathe";
+import { generateLatheGcode, debugRollProfile, MIN_GCODE_LENGTH } from "../lib/gcodeLathe";
 
 export interface Segment {
   type: "line" | "arc";
@@ -481,7 +481,8 @@ export function validateStationProfiles(rollTooling: RollToolingResult[]): Stati
       };
     }
     const hasGeometry = Array.isArray(rp.upperRoll) && rp.upperRoll.length > 0;
-    const hasGcode    = typeof rp.upperLatheGcode === "string" && rp.upperLatheGcode.trim().length > 10;
+    // C5 FIX: use MIN_GCODE_LENGTH constant (20) — was inconsistently hardcoded as 10 here
+    const hasGcode    = typeof rp.upperLatheGcode === "string" && rp.upperLatheGcode.trim().length > MIN_GCODE_LENGTH;
 
     if (hasGeometry && hasGcode) {
       return {
@@ -535,7 +536,8 @@ export function repairOrSynthesizeRollProfile(
   const passLineY = rt.passLineHeight ?? (lowerOD / 2 + gap / 2);
   const shaftDia  = rt.shaftCalc?.selectedDiaMm ?? (rt.upperRollID ? rt.upperRollID - 2 : 40);
   const rollWidth = rt.upperRollWidth ?? 50;
-  const grooveDepth  = rt.profileDepthMm ?? Math.max(thickness * 3, 2);
+  // Apply same floor as synthesizeGroove so stored grooveDepth matches actual geometry
+  const grooveDepth = Math.max(rt.profileDepthMm ?? 0, thickness * 1.5, 2.0);
   const bendAngleDeg = rt.rollType?.grooveAngleDeg ?? 30;
   const stIdx    = rt.stationIndex ?? 1;
   const upperRollNumber = stIdx * 2 - 1;

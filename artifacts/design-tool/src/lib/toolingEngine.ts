@@ -64,12 +64,14 @@ export function synthesizeGroove(params: GrooveParams): Segment[] {
   const clearance = params.clearance ?? 0.1;
 
   const W = rollWidth;
-  const D = Math.max(grooveDepth, thickness + clearance, 1.0);
+  // A2 FIX: grooveDepth must be >= max(thickness * 1.5, 2.0) — not just thickness + clearance
+  const D = Math.max(grooveDepth, thickness * 1.5, 2.0);
   const thetaDeg = Math.max(bendAngleDeg, 5);
   const thetaRad = (thetaDeg * Math.PI) / 180;
 
   const webHalf = Math.max(W * 0.10, thickness * 1.5, 3.0);
-  const wallRun = D / Math.tan(thetaRad);
+  // A1 FIX: wallRun must be >= 2.0mm to prevent razor-thin groove walls
+  const wallRun = Math.max(D / Math.tan(thetaRad), 2.0);
   const clampedWallRun = Math.min(wallRun, (W / 2 - webHalf) * 0.75);
   const flangeHalf = (W / 2 - webHalf - clampedWallRun) * 0.5;
 

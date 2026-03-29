@@ -70,12 +70,13 @@ interface PassData {
 interface Props {
   rollContour: {
     passes?:          PassData[];
-    forming_summary?: { flat_strip_width_mm?: number };
+    forming_summary?: { flat_strip_width_mm?: number; profile_category?: string };
     thickness_mm?:    number;
   } | null;
-  webMm?:       number;
-  flangeMm?:    number;
-  thicknessMm?: number;
+  webMm?:           number;
+  flangeMm?:        number;
+  thicknessMm?:     number;
+  profileCategory?: string | null;
 }
 
 // ─── Konva helpers ────────────────────────────────────────────────────────────
@@ -191,17 +192,21 @@ function AngleMark({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ProfileAnnotationPanel({
-  rollContour, webMm = 60, flangeMm = 40, thicknessMm = 1.5,
+  rollContour, webMm = 60, flangeMm = 40, thicknessMm = 1.5, profileCategory,
 }: Props) {
   const passes = rollContour?.passes ?? [];
   const n      = passes.length;
+  // Resolve profile category from prop or forming_summary
+  const profCat = profileCategory ?? rollContour?.forming_summary?.profile_category ?? null;
 
-  const [activeIdx,    setActiveIdx]    = useState(0);
-  const [showAll,      setShowAll]      = useState(true);
-  const [showDims,     setShowDims]     = useState(true);
-  const [showContact,  setShowContact]  = useState(true);
-  const [showZones,    setShowZones]    = useState(true);
-  const [showPinch,    setShowPinch]    = useState(true);
+  const [activeIdx,        setActiveIdx]        = useState(0);
+  const [showAll,          setShowAll]          = useState(true);
+  const [showDims,         setShowDims]         = useState(true);
+  const [showContact,      setShowContact]      = useState(true);
+  const [showZones,        setShowZones]        = useState(true);
+  const [showPinch,        setShowPinch]        = useState(true);
+  const [showHighPinch,    setShowHighPinch]    = useState(true);
+  const [showCritPinch,    setShowCritPinch]    = useState(true);
 
   const go = useCallback((i: number) => setActiveIdx(Math.max(0, Math.min(n - 1, i))), [n]);
 
@@ -351,6 +356,20 @@ export default function ProfileAnnotationPanel({
             }`}>
             <Eye className="w-3 h-3" /> Pinch
           </button>
+          <button onClick={() => setShowHighPinch(s => !s)}
+            title="Toggle high-severity pinch zones"
+            className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
+              showHighPinch ? "border-orange-500/30 bg-orange-500/10 text-orange-300" : "border-gray-700 text-gray-600"
+            }`}>
+            <Eye className="w-3 h-3" /> High
+          </button>
+          <button onClick={() => setShowCritPinch(s => !s)}
+            title="Toggle critical-severity pinch zones"
+            className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
+              showCritPinch ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-gray-700 text-gray-600"
+            }`}>
+            <Eye className="w-3 h-3" /> Crit
+          </button>
           <button onClick={() => setShowContact(s => !s)}
             className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
               showContact ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-gray-700 text-gray-600"
@@ -394,7 +413,7 @@ export default function ProfileAnnotationPanel({
                            dash={[5, 4]} opacity={0.4} lineCap="round" />;
             })()}
 
-            {/* ── Contact strips — strip_type-aware colors ──────────────────── */}
+            {/* ── Contact strips — profile-category-specific rendering ──────── */}
             {showZones && (cur?.contact_strips ?? []).map((cs, i) => {
               const a = toCanvas(cs.x_from, cs.y_from);
               const b = toCanvas(cs.x_to,   cs.y_to);
@@ -402,25 +421,44 @@ export default function ProfileAnnotationPanel({
               const ry = Math.min(a.cy, b.cy);
               const rw = Math.abs(b.cx - a.cx) || 4;
               const rh = Math.abs(b.cy - a.cy) || 4;
-              // strip_type → override color regardless of backend color field
-              const STRIP_COLOR: Record<string, string> = {
-                web_contact:       "#10b981",  // emerald
-                flange_contact:    "#3b82f6",  // blue
-                chamfer_contact:   "#f59e0b",  // amber (default)
-                shutter_rib_contact: "#f59e0b",// amber
-                lip_contact:       "#06b6d4",  // cyan
-                rebate_contact:    "#a855f7",  // purple
+
+              // strip_type → semantic color
+              const STRIP_COLOR_MAP: Record<string, string> = {
+                web_contact:         "#10b981",
+                flange_contact:      "#3b82f6",
+                chamfer_contact:     "#f59e0b",
+                shutter_rib_contact: "#f59e0b",
+                lip_contact:         "#06b6d4",
+                rebate_contact:      "#a855f7",
               };
-              const fillColor = STRIP_COLOR[cs.strip_type] ?? cs.color ?? "#94a3b8";
+              const fillColor = STRIP_COLOR_MAP[cs.strip_type] ?? cs.color ?? "#94a3b8";
               const isWeb     = cs.strip_type === "web_contact";
-              const opacity   = isWeb ? 0.14 : 0.11;
-              const borderOp  = isWeb ? 0.55 : 0.40;
+
+              // Profile-category-specific visual treatment:
+              // shutter_slat: narrow strips with dashed border (ribs are narrow + periodic)
+              // door_frame / rebate_contact: thicker border + wider dash (rebate slot highlight)
+              // lipped_channel / lip_contact: dotted border (thin lip contact)
+              // default: solid border
+              const isShutter   = profCat === "shutter_slat" || cs.strip_type === "shutter_rib_contact";
+              const isDoorFrame = profCat === "door_frame"   || cs.strip_type === "rebate_contact";
+              const isLip       = profCat === "lipped_channel" || cs.strip_type === "lip_contact";
+
+              const strokeDash  = isShutter ? [3, 3] : isDoorFrame ? [5, 2] : isLip ? [1, 2] : undefined;
+              const strokeW     = isDoorFrame ? 1.4 : isShutter ? 0.8 : 0.8;
+              const fillOpacity = isWeb ? 0.15 : isShutter ? 0.09 : isDoorFrame ? 0.14 : 0.11;
+              const borderOp    = isWeb ? 0.60 : isDoorFrame ? 0.55 : 0.40;
+
+              // Shutter ribs: display as a narrowed horizontal band (half height, centred)
+              const displayRy = isShutter ? ry + rh * 0.25 : ry;
+              const displayRh = isShutter ? rh * 0.5        : rh;
+
               return (
                 <Group key={i}>
-                  <Rect x={rx} y={ry} width={rw} height={rh}
-                        fill={fillColor} opacity={opacity} />
-                  <Rect x={rx} y={ry} width={rw} height={rh}
-                        stroke={fillColor} strokeWidth={0.8} opacity={borderOp} />
+                  <Rect x={rx} y={displayRy} width={rw} height={displayRh}
+                        fill={fillColor} opacity={fillOpacity} />
+                  <Rect x={rx} y={displayRy} width={rw} height={displayRh}
+                        stroke={fillColor} strokeWidth={strokeW} dash={strokeDash}
+                        opacity={borderOp} />
                 </Group>
               );
             })}
@@ -445,16 +483,23 @@ export default function ProfileAnnotationPanel({
               </>
             )}
 
-            {/* ── Pinch zone markers — severity-aware colors ────────────────── */}
-            {showPinch && (cur?.pinch_zones ?? []).map((pz, i) => {
-              const { cx, cy } = toCanvas(pz.x, pz.y);
-              const isFlange = pz.zone_type.includes("flange");
-              // severity: critical → red bold, high → orange, default → amber
+            {/* ── Pinch zone markers — severity-aware with independent toggles ─ */}
+            {(cur?.pinch_zones ?? []).map((pz, i) => {
               const isCritical = pz.severity === "critical";
               const isHigh     = pz.severity === "high";
+              // Apply toggle logic: default-severity uses showPinch, high uses showHighPinch, critical uses showCritPinch
+              const visible = isCritical ? (showPinch && showCritPinch)
+                            : isHigh     ? (showPinch && showHighPinch)
+                            : showPinch;
+              if (!visible) return null;
+
+              const { cx, cy } = toCanvas(pz.x, pz.y);
+              const isFlange = pz.zone_type.includes("flange");
               const ringColor  = isCritical ? "#ef4444" : isHigh ? "#f97316" : "#f59e0b";
               const dotColor   = isCritical ? "#fca5a5" : isHigh ? "#fdba74" : "#fbbf24";
               const strokeW    = isCritical ? 2.0 : 1.2;
+              // Severity label shown below the zone marker
+              const sevLabel = isCritical ? "CRITICAL" : isHigh ? "HIGH" : null;
               return (
                 <Group key={i}>
                   <Circle x={cx} y={cy} radius={isFlange ? 5 : 10}
@@ -471,6 +516,17 @@ export default function ProfileAnnotationPanel({
                     fontStyle={isCritical ? "bold" : "normal"}
                     opacity={0.9}
                   />
+                  {sevLabel && (
+                    <Text
+                      x={cx + 8} y={cy + 3}
+                      text={sevLabel}
+                      fontSize={7}
+                      fill={ringColor}
+                      fontFamily="monospace"
+                      fontStyle="bold"
+                      opacity={0.85}
+                    />
+                  )}
                 </Group>
               );
             })}

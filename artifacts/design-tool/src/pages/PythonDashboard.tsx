@@ -42,7 +42,7 @@ function RemainingWeaknessesCard({ weaknesses }: { weaknesses: string[] }) {
         className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-amber-500/8 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">Remaining Weaknesses</span>
+          <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">Known Limitations</span>
           <span className="text-[10px] font-mono text-amber-600 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
             {weaknesses.length}
           </span>
@@ -73,6 +73,7 @@ export default function PythonDashboard() {
   const setProfileCategory        = useCncStore(s => s.setProfileCategory);
   const setRemainingWeaknesses    = useCncStore(s => s.setRemainingWeaknesses);
   const remainingWeaknesses       = useCncStore(s => s.remainingWeaknesses);
+  const profileCategory           = useCncStore(s => s.profileCategory);
 
   const [loading, setLoading] = useState(false);
   const [semiAutoLoading, setSemiAutoLoading] = useState(false);
@@ -674,6 +675,7 @@ export default function PythonDashboard() {
               webMm={(payload?.section_height_mm as number) ?? (detectedValues.section_height_mm as number) ?? 60}
               flangeMm={(payload?.section_width_mm as number) ?? (detectedValues.section_width_mm as number) ?? 40}
               thicknessMm={(payload?.thickness as number) ?? 1.5}
+              profileCategory={profileCategory}
             />
 
             {/* ── Codex Engineer AI ─────────────────────────────────────── */}

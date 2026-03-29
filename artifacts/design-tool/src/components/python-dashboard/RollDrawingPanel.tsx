@@ -10,9 +10,11 @@
  *  - Roll specification table
  */
 import { useState, useCallback } from "react";
+import JSZip from "jszip";
 import {
   ChevronLeft, ChevronRight, Printer, Download,
-  Layers, Circle, AlignCenter, ZoomIn, Info, FileDown, Package
+  Layers, Circle, AlignCenter, ZoomIn, Info, FileDown, Package,
+  FileText, Archive, Stamp, Edit3, CheckCircle, Lock
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────

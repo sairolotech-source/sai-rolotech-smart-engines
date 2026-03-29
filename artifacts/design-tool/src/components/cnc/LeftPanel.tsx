@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { makeNotifier, getNotificationStyle } from "../../lib/useNotification";
 import {
   useCncStore,
   type LatheToolConfig,
@@ -272,6 +273,25 @@ export function LeftPanel() {
   const toggleSection = (key: keyof typeof sections) =>
     setSections((s) => ({ ...s, [key]: !s[key] }));
 
+  // ── Typed notification dispatcher (replaces setError("✅ ...") anti-pattern) ─
+  const notify = React.useMemo(() => makeNotifier((msg) => setError(msg as any)), [setError]);
+
+  // ── Python API health probe ───────────────────────────────────────────────
+  const [pyApiStatus, setPyApiStatus] = useState<"checking" | "pass" | "fail">("checking");
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const r = await fetch("/api/python-health");
+        if (!cancelled) setPyApiStatus(r.ok ? "pass" : "fail");
+      } catch {
+        if (!cancelled) setPyApiStatus("fail");
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
   const postProcessorId = useCncStore(state => state.postProcessorId);
   const localSetPostProcessorId = setPostProcessorId;
   const stations = useCncStore(state => state.stations);
@@ -379,7 +399,7 @@ export function LeftPanel() {
         maxAcceleration: selectedPP.machineProfile.maxAcceleration,
         exactStopMode: selectedPP.machineProfile.exactStopMode,
       });
-      setError(`✅ Post Processor: ${selectedPP.name} applied — saZ=${selectedPP.machineProfile.safeZ} | ${selectedPP.machineProfile.spindleDirection} | ${selectedPP.machineProfile.feedUnit}`);
+      notify.success(`Post Processor: ${selectedPP.name} applied — saZ=${selectedPP.machineProfile.safeZ} | ${selectedPP.machineProfile.spindleDirection} | ${selectedPP.machineProfile.feedUnit}`);
     }
   }, [selectedPP, setGcodeConfig, setError]);
 
@@ -546,7 +566,11 @@ export function LeftPanel() {
     setError(null);
     try {
       const resolvedSection = openSectionType === "Auto" ? autoDetectProfileType(geometry) : openSectionType;
-      const result = await generateFlower(geometry, numStations, stationPrefix, materialType, materialThickness, resolvedSection, sectionModel);
+      const result = await generateFlower(
+        geometry, numStations, stationPrefix, materialType, materialThickness,
+        resolvedSection, sectionModel,
+        thicknessBandMin, thicknessBandMax, profileSourceType
+      );
       setStations(result.stations);
       setRollTooling([]);
       setGcodeOutputs([]);
@@ -677,7 +701,12 @@ export function LeftPanel() {
     setError(null);
     try {
       const resolvedSection = openSectionType === "Auto" ? autoDetectProfileType(geometry) : openSectionType;
-      const result = await generateRollTooling(geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, resolvedSection, sectionModel);
+      const result = await generateRollTooling(
+        geometry, numStations, stationPrefix, materialThickness,
+        rollDiameter, shaftDiameter, clearance, materialType, postProcessorId,
+        resolvedSection, sectionModel,
+        thicknessBandMin, thicknessBandMax, profileSourceType
+      );
       setStations(result.stations);
 
       // Build normalized rollTooling: add rollProfile object from flat server fields
@@ -782,6 +811,30 @@ export function LeftPanel() {
 
     <div ref={leftPanelRef} className="w-72 flex flex-col overflow-y-auto flex-shrink-0"
       style={{ background: "rgba(9, 10, 24, 0.6)", backdropFilter: "blur(28px) saturate(1.6)", WebkitBackdropFilter: "blur(28px) saturate(1.6)", borderRight: "1px solid rgba(255,255,255,0.08)" }}>
+
+      {/* ── Python Engine Status Indicator ── */}
+      <div className={`flex items-center gap-1.5 px-3 py-1 text-[9px] border-b ${
+        pyApiStatus === "pass"     ? "bg-green-950/20 border-green-900/30 text-green-500" :
+        pyApiStatus === "fail"     ? "bg-red-950/20 border-red-900/30 text-red-400" :
+                                     "bg-zinc-900/20 border-zinc-800 text-zinc-600"
+      }`}>
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+          pyApiStatus === "pass" ? "bg-green-500 animate-pulse" :
+          pyApiStatus === "fail" ? "bg-red-500" : "bg-zinc-600 animate-pulse"
+        }`} />
+        Python Engines:&nbsp;
+        <span className="font-semibold">
+          {pyApiStatus === "pass" ? "29 engines online" :
+           pyApiStatus === "fail" ? "offline — simulation mode" :
+           "checking..."}
+        </span>
+        {pyApiStatus === "fail" && (
+          <button onClick={() => {
+            setPyApiStatus("checking");
+            fetch("/api/python-health").then(r => setPyApiStatus(r.ok ? "pass" : "fail")).catch(() => setPyApiStatus("fail"));
+          }} className="ml-auto underline hover:no-underline">retry</button>
+        )}
+      </div>
 
       {/* ── AUTO AI MODE BUTTON ── */}
       <div className="p-3 border-b border-white/[0.05]">
@@ -2166,19 +2219,18 @@ export function LeftPanel() {
         <GearboxCalculator />
       </div>
 
-      {/* Status messages */}
-      {error && (
-        <div className={`mx-4 mb-4 p-3 rounded-lg text-xs border flex items-start gap-2 ${
-          error.startsWith("✅")
-            ? "bg-emerald-500/8 border-emerald-500/20 text-emerald-300"
-            : error.startsWith("⚠")
-            ? "bg-amber-500/8 border-amber-500/20 text-amber-300"
-            : "bg-red-500/8 border-red-500/20 text-red-300"
-        }`}>
-          <span className="flex-shrink-0 mt-0.5">{error.startsWith("✅") ? "✅" : error.startsWith("⚠") ? "⚠" : "✗"}</span>
-          <span>{error.replace(/^(✅|⚠)\s*/, "")}</span>
-        </div>
-      )}
+      {/* Status messages — channel-aware styled display */}
+      {error && (() => {
+        const style = getNotificationStyle(String(error));
+        return (
+          <div className={`mx-4 mb-4 p-3 rounded-lg text-xs border flex items-start gap-2 ${style.bgColor} ${style.borderColor} ${style.textColor}`}>
+            <span className="flex-shrink-0 mt-0.5">
+              {style.channel === "success" ? "✓" : style.channel === "warning" ? "⚠" : style.channel === "error" ? "✕" : "ℹ"}
+            </span>
+            <span>{String(error).replace(/^[✓⚠✕ℹ✅]\s*/, "")}</span>
+          </div>
+        );
+      })()}
 
       {isLoading && (
         <div className="mx-4 mb-4 p-3 rounded-lg bg-blue-500/8 border border-blue-500/20 text-xs text-blue-300 text-center rt-loading flex items-center justify-center gap-2">

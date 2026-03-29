@@ -241,12 +241,28 @@ export async function generateFlower(
   materialType: MaterialType = "GI",
   materialThickness: number = 1.0,
   openSectionType: OpenSectionType = "C-Section",
-  sectionModel?: "open" | "closed" | null
+  sectionModel?: "open" | "closed" | null,
+  thicknessBandMin?: number,
+  thicknessBandMax?: number,
+  profileSourceType?: string | null
 ) {
-  EngineLogger.logInput("Flower", { numStations, materialType, materialThickness, openSectionType, segments: geometry?.segments?.length ?? 0 });
-  const cacheKey = `flower-${numStations}-${materialType}-${materialThickness}-${openSectionType}`;
+  // Apply profile source offset before engine call (geometry normalization layer)
+  const { resolveGeometryForEngine } = await import("./profileNormalization");
+  const normalizedGeometry = profileSourceType
+    ? resolveGeometryForEngine(geometry, profileSourceType as import("./engineContract").ProfileSourceType, materialThickness)
+    : geometry;
+
+  const bandMin = thicknessBandMin ?? materialThickness * 0.95;
+  const bandMax = thicknessBandMax ?? materialThickness * 1.05;
+
+  EngineLogger.logInput("Flower", { numStations, materialType, materialThickness, openSectionType, segments: geometry?.segments?.length ?? 0, thicknessBandMin: bandMin, thicknessBandMax: bandMax, profileSourceType });
+  const cacheKey = `flower-${numStations}-${materialType}-${materialThickness}-${openSectionType}-${bandMin}-${bandMax}-${profileSourceType}`;
   return safeFetchWithCache(cacheKey, async () => {
-    const res = await authFetchJson(getApiUrl("/generate-flower"), { geometry, numStations, stationPrefix, materialType, materialThickness, openSectionType, sectionModel: sectionModel ?? undefined });
+    const res = await authFetchJson(getApiUrl("/generate-flower"), {
+      geometry: normalizedGeometry, numStations, stationPrefix, materialType, materialThickness,
+      thicknessBandMin: bandMin, thicknessBandMax: bandMax, profileSourceType: profileSourceType ?? "centerline",
+      openSectionType, sectionModel: sectionModel ?? undefined,
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Generation failed" }));
       EngineLogger.error("Flower", `Generation failed: ${err.error}`);
@@ -300,13 +316,27 @@ export async function generateRollTooling(
   materialType: string = "GI",
   postProcessorId: string = "delta_2x",
   openSectionType: OpenSectionType = "C-Section",
-  sectionModel?: "open" | "closed" | null
+  sectionModel?: "open" | "closed" | null,
+  thicknessBandMin?: number,
+  thicknessBandMax?: number,
+  profileSourceType?: string | null
 ) {
-  EngineLogger.logInput("RollTooling", { numStations, rollDiameter, shaftDiameter, materialThickness, materialType, clearance, openSectionType });
-  const cacheKey = `tooling-${numStations}-${rollDiameter}-${shaftDiameter}-${materialType}`;
+  // Apply profile source offset (same normalization as flower — consistent geometry)
+  const { resolveGeometryForEngine } = await import("./profileNormalization");
+  const normalizedGeometry = profileSourceType
+    ? resolveGeometryForEngine(geometry, profileSourceType as import("./engineContract").ProfileSourceType, materialThickness)
+    : geometry;
+
+  const bandMin = thicknessBandMin ?? materialThickness * 0.95;
+  const bandMax = thicknessBandMax ?? materialThickness * 1.05;
+
+  EngineLogger.logInput("RollTooling", { numStations, rollDiameter, shaftDiameter, materialThickness, materialType, clearance, openSectionType, thicknessBandMin: bandMin, thicknessBandMax: bandMax, profileSourceType });
+  const cacheKey = `tooling-${numStations}-${rollDiameter}-${shaftDiameter}-${materialType}-${bandMin}-${bandMax}`;
   return safeFetchWithCache(cacheKey, async () => {
     const res = await authFetchJson(getApiUrl("/generate-roll-tooling"), {
-      geometry, numStations, stationPrefix, materialThickness,
+      geometry: normalizedGeometry, numStations, stationPrefix, materialThickness,
+      thicknessBandMin: bandMin, thicknessBandMax: bandMax,
+      profileSourceType: profileSourceType ?? "centerline",
       rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, openSectionType,
       sectionModel: sectionModel ?? undefined,
     });

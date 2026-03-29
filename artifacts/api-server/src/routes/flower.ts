@@ -196,7 +196,16 @@ function applyOpenSectionRules(stations: FlowerStation[]): FlowerStation[] {
 
 router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res: Response) => {
   try {
-    const { geometry, numStations, stationPrefix, materialType, materialThickness, openSectionType, sectionModel } = req.body;
+    const {
+      geometry, numStations, stationPrefix, materialType, materialThickness,
+      openSectionType, sectionModel,
+    } = req.body;
+
+    // ── Extract new Phase-1 contract fields ──────────────────────────────────
+    const body = req.body as Record<string, unknown>;
+    const thicknessBandMin = typeof body.thicknessBandMin === "number" ? body.thicknessBandMin : undefined;
+    const thicknessBandMax = typeof body.thicknessBandMax === "number" ? body.thicknessBandMax : undefined;
+    const profileSourceType = typeof body.profileSourceType === "string" ? body.profileSourceType : "centerline";
 
     if (!geometry || !geometry.segments || geometry.segments.length === 0) {
       res.status(400).json({ error: "No geometry provided" });
@@ -220,8 +229,12 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
     const matThickness = parseFloat(String(materialThickness)) || 1.0;
     const sectionType = openSectionType || "C-Section";
 
-    // Generate base flower pattern
-    const result = generateFlowerPattern(geometry, stations, prefix, matType, matThickness);
+    // Generate base flower pattern — pass thickness band for conservative roll gap
+    const result = generateFlowerPattern(geometry, stations, prefix, matType, matThickness, {
+      thicknessBandMin,
+      thicknessBandMax,
+      profileSourceType,
+    });
 
     // Apply model-specific rules
     let processedStations = result.stations;

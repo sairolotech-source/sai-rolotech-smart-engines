@@ -66,6 +66,8 @@ export function validateFlowerInputs(inputs: FlowerInputs): ValidationResult {
 
   if (!Number.isFinite(inputs.numStations) || !Number.isInteger(inputs.numStations)) {
     errors.push({ field: "numStations", value: inputs.numStations, issue: "Number of stations must be a finite integer", corrected: 5 });
+  } else if (inputs.numStations <= 0) {
+    errors.push({ field: "numStations", value: inputs.numStations, issue: "Number of stations must be ≥ 1 — zero or negative stations is invalid", corrected: 5 });
   } else if (inputs.numStations < 2) {
     warnings.push({ field: "numStations", value: inputs.numStations, issue: "Minimum 2 stations recommended for progressive forming" });
   } else if (inputs.numStations > 30) {

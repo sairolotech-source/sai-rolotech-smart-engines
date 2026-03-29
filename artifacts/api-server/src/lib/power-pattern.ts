@@ -156,15 +156,25 @@ const MAX_ANGLE_PER_STATION: Record<string, { open: number; closed: number }> = 
   HSLA: { open: 12, closed: 10 }, // FIX: HSLA high-strength — limit to 12° (was 15°)
 };
 
+export interface FlowerPatternOptions {
+  thicknessBandMin?: number;  // conservative strip width (tightest fit)
+  thicknessBandMax?: number;  // conservative roll gap (widest fit)
+  profileSourceType?: string; // informational — offset applied upstream by client
+}
+
 export function generateFlowerPattern(
   geometry: ProfileGeometry,
   numStations: number,
   stationPrefix = "S",
   materialType = "GI",
-  materialThickness = 1.0
+  materialThickness = 1.0,
+  options: FlowerPatternOptions = {}
 ): FlowerPattern {
   const mat = (materialType ?? "GI").toUpperCase();
   const t = sanitizeNumber(materialThickness, 1.0, 0.1, 20.0);
+  // Conservative thickness band — use bandMax for roll gap, bandMin for strip width
+  const tBandMin = options.thicknessBandMin && options.thicknessBandMin > 0 ? options.thicknessBandMin : t;
+  const tBandMax = options.thicknessBandMax && options.thicknessBandMax > 0 ? options.thicknessBandMax : t;
   const n = Math.max(1, Math.min(30, Math.round(sanitizeNumber(numStations, 5, 1, 30))));
 
   const K  = K_FACTORS[mat]  ?? 0.44;
@@ -263,7 +273,8 @@ export function generateFlowerPattern(
      */
     const isCalibration = i >= Math.floor(n * 0.85);
     const gapFactor = isCalibration ? Math.max(1.0, gapOversize - 0.02) : gapOversize;
-    const rollGap = parseFloat((t * gapFactor).toFixed(4));
+    // Use tBandMax (upper tolerance) for conservative roll gap — ensures gap is never too tight
+    const rollGap = parseFloat((tBandMax * gapFactor).toFixed(4));
 
     const stationBendRadius = Math.max(t * Kr, rollDiameter * 0.075);
     const formingForce = computeFormingForce(uts, t, baseStripWidth, stationBendRadius);

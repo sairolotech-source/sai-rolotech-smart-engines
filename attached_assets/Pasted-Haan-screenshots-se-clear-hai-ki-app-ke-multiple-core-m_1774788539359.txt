@@ -1,0 +1,206 @@
+Haan — screenshots se clear hai ki **app ke multiple core modules ek saath fail ho rahe hain**. Ye normal chhota bug nahi hai.
+
+**Jo problems dikh rahi hain:**
+
+1. **Roll View crash**
+
+   * Error: `Cannot read properties of undefined (reading 'passLineY')`
+   * Matlab roll viewer ko jo pass data milna chahiye tha, wo **undefined / incomplete** aa raha hai.
+
+2. **Smart-Rolls View bhi crash**
+
+   * Same error: `reading 'passLineY'`
+   * Matlab issue UI ka nahi, **upstream data pipeline** ka hai.
+
+3. **Setup View bhi toot raha hai**
+
+   * `Minified React error #185`
+   * Matlab state/render logic me serious problem hai.
+
+4. **AI Flower Advisor backend connect nahi kar raha**
+
+   * `Failed to connect to smart engine service`
+   * Matlab API/service ya to down hai, ya URL/env/CORS problem hai.
+
+5. **Geometry output galat hai**
+
+   * Sirf colored lines aa rahi hain
+   * **Dimensions nahi**
+   * **Angles nahi**
+   * **Flower pattern proper nahi**
+   * **Center line → sheet/profile conversion nahi hua**
+
+### Seedhi baat
+
+App abhi “complete” nahi hai.
+AI ne 2 second me “done” bol diya, lekin actual engineering pipeline chal hi nahi rahi.
+
+## Root cause sabse likely ye hai
+
+**DXF/Profile → normalize → thickness apply → sheet conversion → bend extraction → pass generation → roll view render**
+
+Is chain me early stage par hi data break ho raha hai.
+Uske baad UI directly `passLineY` read kar raha hai bina validate kiye.
+
+---
+
+## Developer ko turant ye 8 fixes karne boliye
+
+### 1) Render se pehle guard lagao
+
+RollView / SmartRolls me:
+
+* `passes` array exist karti ho
+* har pass object me `passLineY`, `x`, `y`, `segments` valid hon
+* agar data missing ho to crash nahi, error panel dikhna chahiye
+
+### 2) DXF parser output inspect karo
+
+Console/file log me ye 5 stages print karo:
+
+* raw DXF entities
+* normalized profile
+* detected bends
+* thickness-applied sheet profile
+* generated passes
+
+Agar inme se kisi stage me empty data aa raha hai, wahi root bug hai.
+
+### 3) Center-line to sheet conversion fix karo
+
+Aapka main requirement ye tha:
+
+* center line draw karo
+* thickness do
+* profile dono side offset/neutral rule se sheet me convert ho
+* angles + dimensions auto nikle
+
+Ye module ya to run nahi hua, ya galat sequence me run hua.
+
+### 4) `passLineY` ki dependency hatao
+
+UI ko direct single field par dependent mat rakho.
+Fallback rakho:
+
+* missing ho to computed default lo
+* ya “Pass data unavailable” dikhao
+* crash mat karo
+
+### 5) Smart engine service health check banao
+
+AI Flower Advisor ke liye:
+
+* API base URL sahi hai?
+* env vars load ho rahe?
+* backend deployed hai?
+* CORS allowed hai?
+* timeout/error response log ho raha?
+
+### 6) Minified production build me debug mat karo
+
+Replit/dev ko bolo:
+
+* app ko **development mode** me run kare
+* full React stack trace dekhe
+* production minified build se bug fix mat kare
+
+### 7) Module dependency order fix karo
+
+Buttons/tab open hone se pehle ensure ho:
+
+* profile loaded
+* thickness confirmed
+* dimensions extracted
+* bends computed
+* passes generated
+* tab enabled
+
+Abhi lag raha hai tabs **data ready hone se pehle** open ho rahe hain.
+
+### 8) Fake success messages band karo
+
+AI ya app ko tab tak “complete” nahi bolna chahiye jab tak:
+
+* dimensions visible
+* flower pattern visible
+* roll stations visible
+* smart engine response OK
+* export payload generated
+
+---
+
+## Aap developer/AI ko ye exact message paste karo
+
+URGENT BUG FIX TASK — DO NOT CLAIM COMPLETION UNTIL VERIFIED
+
+Current build is broken across multiple modules.
+
+Observed failures:
+
+1. Roll View crash:
+   Cannot read properties of undefined (reading 'passLineY')
+
+2. Smart-Rolls View crash:
+   Cannot read properties of undefined (reading 'passLineY')
+
+3. Setup View crash:
+   Minified React error #185
+
+4. AI Flower Advisor:
+   Failed to connect to smart engine service
+
+5. Functional failures:
+
+   * DXF/profile import does not produce proper dimensions
+   * angles are missing
+   * flower pattern is incomplete/incorrect
+   * center-line to sheet/profile conversion is not happening
+   * app shows “work complete” even though output is invalid
+
+Required action plan:
+A. Add strict validation before rendering RollView and SmartRolls.
+B. Never read passLineY unless the pass object is fully validated.
+C. Add debug logs for the full geometry pipeline:
+raw DXF -> normalized profile -> thickness conversion -> bend extraction -> pass generation -> roll rendering
+D. Fix center-line to sheet conversion so entered thickness actually creates a valid sheet profile.
+E. Auto-generate dimensions and bend angles after profile normalization.
+F. Add health check and full error logging for smart engine service/API.
+G. Run in non-minified development mode and fix the actual React root error.
+H. Disable success/completion messages until real verification passes.
+
+Verification checklist before marking fixed:
+
+* No crash in Setup
+* No crash in Roll View
+* No crash in Smart-Rolls
+* Dimensions visible
+* Angles visible
+* Flower pattern generated correctly
+* Thickness conversion works
+* Smart engine connects successfully
+* No false “completed” message
+
+Return:
+
+1. root cause for each failure
+2. exact files changed
+3. before/after behavior
+4. proof with console logs and screenshots
+5. any remaining limitation explicitly listed
+
+---
+
+## Abhi aap kya karein
+
+**Recover / Full Reload** dabane se permanent solution nahi milega.
+Ye **code-level bug** hai, user-side issue nahi.
+
+Sabse pehle developer se ye 3 cheezein mangiye:
+
+1. **console error screenshot**
+2. **network tab screenshot** for smart engine API
+3. **DXF parse output log**
+
+In 3 cheezon se pata chal jayega break exact kaha ho raha hai.
+
+Agar chaho, main abhi isi bug ke liye **ek aur ultra-strong Replit/Gemini master fix prompt** bana deta hoon jo unko step-by-step force kare ki bina verify kiye “done” na bole.

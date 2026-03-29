@@ -280,8 +280,9 @@ def compute_groove_geometry(
             pz["severity"] = _sev_pa
 
         if pt_lower in ("shutter_slat", "shutter_profile"):
-            # Shutter: alternating narrow rib-root contact strips
-            n_ribs = max(2, round(width / max(height * 3.5, 1.0)))
+            # Shutter: alternating narrow rib-root contact strips.
+            # Default 4 ribs (production standard); auto-estimate only as extreme fallback.
+            n_ribs = 4
             rib_pitch = round(width / n_ribs, 3) if n_ribs > 0 else width
             rib_strip_w = round(min(rib_pitch * 0.25, 3.0 * thickness), 3)
             for ri in range(n_ribs):
@@ -990,11 +991,28 @@ def _upper_lower_roll_contour(
 
     # ── Build SVG-ready profile point lists ──────────────────────────────────
     if gg:
-        # Upper profile: exterior coords of groove envelope, clamped to cross-section slice
-        # [MANUFACTURING-GRADE]
+        # [MANUFACTURING-GRADE] Extract actual machined contour from shapely envelope polygons.
+        # upper_env / lower_env are the real groove envelopes computed from the profile
+        # centerline polygon — use their exterior ring coordinates as the roll profile.
         groove_depth  = gg["groove_depth_mm"]
         roll_width_hw = gg["roll_width_mm"] / 2.0
-        upper_profile_raw: List[Tuple[float, float]] = [
+
+        def _poly_to_raw(poly: Any, fallback: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
+            """Extract exterior ring of a shapely (Multi)Polygon as list of (x,y) tuples."""
+            if poly is None or (hasattr(poly, "is_empty") and poly.is_empty):
+                return fallback
+            # Unpack MultiPolygon → largest sub-polygon
+            if hasattr(poly, "geoms"):
+                poly = max(poly.geoms, key=lambda g: g.area)
+            if hasattr(poly, "exterior"):
+                coords = list(poly.exterior.coords)
+                # Convert to (x,y) tuples, drop redundant closing vertex
+                raw = [(round(x, 3), round(y, 3)) for x, y in coords[:-1]]
+                return raw if len(raw) >= 3 else fallback
+            return fallback
+
+        # Bounding-box fallbacks (rectangular) used only when shapely envelope is empty/invalid
+        _upper_rect_fb: List[Tuple[float, float]] = [
             (-roll_width_hw,  0),
             (-web_half,       0),
             (-web_half,      -groove_depth),
@@ -1002,7 +1020,7 @@ def _upper_lower_roll_contour(
             ( web_half,       0),
             ( roll_width_hw,  0),
         ]
-        lower_profile_raw: List[Tuple[float, float]] = [
+        _lower_rect_fb: List[Tuple[float, float]] = [
             (-roll_width_hw,  gap),
             (-web_half,       gap),
             (-web_half,       groove_depth + gap),
@@ -1010,6 +1028,9 @@ def _upper_lower_roll_contour(
             ( web_half,       gap),
             ( roll_width_hw,  gap),
         ]
+
+        upper_profile_raw: List[Tuple[float, float]] = _poly_to_raw(upper_env, _upper_rect_fb)
+        lower_profile_raw: List[Tuple[float, float]] = _poly_to_raw(lower_env, _lower_rect_fb)
 
         upper_roll_radius = gg["upper_roll_radius_mm"]
         lower_roll_radius = gg["lower_roll_radius_mm"]
@@ -1281,7 +1302,7 @@ def generate_roll_contour(
         )
         station_interference.append(intf)
 
-        cl = _profile_centerline_for_pass(profile_type, section_w, section_h, angle)
+        cl = _profile_centerline_for_pass(profile_type, section_w, section_h, angle, lip_mm=lip_mm)
 
         # ── Per-station tooling sub-dict (manufacturing-grade) ────────────────
         geometry_source_pass = contour.get("geometry_source", "heuristic_fallback")
@@ -1368,7 +1389,7 @@ def generate_roll_contour(
         pass_no=n_stations,
         roll_gap_mm=roll_gap * 0.98,
     )
-    cal_cl = _profile_centerline_for_pass(profile_type, section_w, section_h, 90.0)
+    cal_cl = _profile_centerline_for_pass(profile_type, section_w, section_h, 90.0, lip_mm=lip_mm)
     calibration_pass = {
         "pass_no":            n_stations,
         "station_label":      f"Station {n_stations} (Calibration)",

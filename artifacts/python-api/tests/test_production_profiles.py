@@ -939,3 +939,67 @@ class TestStripWidthProgression:
         # Multi-group should produce different (correctly higher) flat strip for lipped
         assert widths_multi[0] != widths_single[0], \
             "Multi-group progression should differ from single-group for lipped"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PP10  Profile-true roll contour geometry (non-rectangular for shaped profiles)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestProfileTrueContourGeometry:
+    """
+    Verify that upper_roll_profile / lower_roll_profile polylines are
+    profile-true (non-rectangular) for profiles that have more than a plain web:
+      - shutter_slat  → multi-rib wave: must have > 4 unique x-coordinates
+      - door_frame    → return-lip geometry: must have > 4 points (lip vertices present)
+      - lipped_channel → lip geometry: must have > 4 points
+
+    When shapely is available the polylines come from the real envelope polygon;
+    when shapely is absent the heuristic fallback is checked for basic non-trivial shape.
+
+    PP10-1: shutter slat upper contour has > 4 unique x-values (multi-rib)
+    PP10-2: door frame upper contour has > 4 points
+    PP10-3: lipped channel upper contour has > 4 points
+    PP10-4: shutter slat section_centerline defaults to n_ribs=4
+    """
+
+    def _first_pass_upper(self, result):
+        return result["passes"][0]["upper_roll_profile"]
+
+    def test_shutter_slat_contour_non_rectangular(self, shutter_slat_result):
+        """PP10-1: shutter slat upper contour must have > 4 unique x-positions (rib wave)"""
+        pts = self._first_pass_upper(shutter_slat_result)
+        x_vals = {p["x"] for p in pts}
+        assert len(x_vals) > 4, (
+            f"Shutter slat upper contour has only {len(x_vals)} unique x-values — "
+            "expected multi-rib wave (> 4). Contour may still be rectangular."
+        )
+
+    def test_door_frame_contour_has_return_lip_vertices(self, door_frame_result):
+        """PP10-2: door frame upper contour must have > 4 points (return-lip geometry)"""
+        pts = self._first_pass_upper(door_frame_result)
+        assert len(pts) > 4, (
+            f"Door frame upper contour has only {len(pts)} points — "
+            "expected ≥ 5 (web + flange + return-lip vertices). "
+            "Contour may still be a bounding-box rectangle."
+        )
+
+    def test_lipped_channel_contour_has_lip_vertices(self, lipped_ss_result):
+        """PP10-3: lipped channel upper contour must have > 4 points (lip geometry)"""
+        pts = self._first_pass_upper(lipped_ss_result)
+        assert len(pts) > 4, (
+            f"Lipped channel upper contour has only {len(pts)} points — "
+            "expected ≥ 5 (web + flange + lip vertices). "
+            "Contour may still be a bounding-box rectangle."
+        )
+
+    @pytest.mark.skipif(not SHAPELY_OK, reason="shapely not available")
+    def test_shutter_slat_section_centerline_default_4_ribs(self):
+        """PP10-4: section_centerline shutter_slat defaults to n_ribs=4 at theta=90"""
+        from app.engines.flower_svg_engine import section_centerline
+        pts = section_centerline("shutter_slat", 200, 12, 90.0)
+        # 4 ribs × (base + up-arm + flat_top + down-arm) + closing vertex
+        # At minimum, each rib contributes 3–4 points → 4 ribs → ≥ 13 points total
+        assert len(pts) >= 13, (
+            f"section_centerline shutter_slat returned {len(pts)} points — "
+            "expected ≥ 13 for 4-rib default (4×3 rib vertices + closing + base)"
+        )

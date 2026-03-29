@@ -60,6 +60,7 @@ def section_centerline(
     lip_mm: float = 0.0,
     lip_mm_left: float = 0.0,
     lip_mm_right: float = 0.0,
+    n_ribs: int = 4,
 ) -> List[Tuple[float, float]]:
     """
     Return a polyline (centerline) representing the section cross-section
@@ -150,7 +151,10 @@ def section_centerline(
         rib_h = flange_mm / 2.0
         if rib_h < 0.1:
             return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
-        n_ribs = max(2, min(8, round(web_mm / max(rib_h * 3.5, 1.0))))
+        # n_ribs defaults to 4; caller may pass explicit override via n_ribs parameter.
+        # Fallback auto-estimate only when caller passes n_ribs <= 0.
+        if n_ribs <= 0:
+            n_ribs = max(2, min(8, round(web_mm / max(rib_h * 3.5, 1.0))))
         rib_pitch = web_mm / n_ribs
         # theta=0 (flat): arm_run=rib_h (full horizontal), arm_rise=0 (no vertical)
         # theta=90 (formed): arm_run=0 (no horizontal spread), arm_rise=rib_h (full height)

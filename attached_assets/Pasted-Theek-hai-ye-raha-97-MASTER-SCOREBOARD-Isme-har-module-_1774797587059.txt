@@ -1,0 +1,410 @@
+Theek hai — ye raha **97% MASTER SCOREBOARD**.
+
+Isme har module ka:
+
+* target score
+* completion condition
+* fail condition
+* priority
+
+clear diya hai.
+
+# 97% MASTER SCOREBOARD
+
+## A. Reliability Foundation
+
+**Weight: 20**
+**Target: 19/20+**
+
+### A1. Crash safety
+
+Score: 4
+Pass tab:
+
+* `rollProfile` missing hone par crash na ho
+* all CNC views guarded ho
+* stale project open ho jaye
+
+Fail tab:
+
+* undefined property crash
+* render break
+* export click se exception
+
+### A2. Truthful validation
+
+Score: 4
+Pass tab:
+
+* `VALID`, `BASIC`, `MISSING_PROFILE`, `INVALID_GEOMETRY`
+* per-station reason text
+* no fake VALID
+
+Fail tab:
+
+* empty geometry ke saath VALID
+* empty gcode ke saath VALID
+
+### A3. Repair engine
+
+Score: 4
+Pass tab:
+
+* missing `rollProfile` repair
+* empty arrays repair
+* empty gcode regenerate
+* fallback defaults work
+
+### A4. Export truthfulness
+
+Score: 4
+Pass tab:
+
+* VALID only → CNC export
+* BASIC → blocked with reason
+* empty file never download
+
+### A5. Tests + TypeScript
+
+Score: 4
+Pass tab:
+
+* test runner configured
+* core tests pass
+* touched files me no new TS errors
+
+---
+
+## B. CNC / SolidCAM Parity
+
+**Weight: 25**
+**Target: 24/25+**
+
+### B1. Post compatibility
+
+Score: 5
+Pass tab:
+
+* uploaded `gpp`/`vmid`/real TAP style match ho
+* `O####`, `G53`, `G28 U0.`, `G28 W0.`, `G92`, `G96`, tool call format correct
+* output extension machine-compatible
+
+### B2. Geometry-driven G-code
+
+Score: 5
+Pass tab:
+
+* same groove/segment geometry se toolpath bane
+* independent dummy math na ho
+
+### B3. SolidCAM turning sections
+
+Score: 5
+Pass tab:
+
+* Geometry
+* Tool
+* Levels
+* Technology
+* Feed points
+* Rough
+* Finish
+* Strategies
+* Break edges
+  real data se linked hon
+
+### B4. Tool library
+
+Score: 5
+Pass tab:
+
+* profile/groove/cutoff tools
+* nose radius
+* insert geometry
+* holder data
+* operator-readable mapping
+
+### B5. CNC simulation
+
+Score: 5
+Pass tab:
+
+* stock removal preview
+* rough + finish path
+* safe travel warnings
+* holder/access warnings
+* overtravel checks
+
+---
+
+## C. Roll Forming Intelligence
+
+**Weight: 30**
+**Target: 29/30+**
+
+### C1. DXF import
+
+Score: 5
+Pass tab:
+
+* LINE/ARC/POLYLINE parse
+* profile normalize
+* import failure reason clear
+
+### C2. Centerline to sheet
+
+Score: 5
+Pass tab:
+
+* thickness apply
+* inner/outer profile generate
+* invalid geometry detect
+
+### C3. Dimension engine
+
+Score: 5
+Pass tab:
+
+* width
+* height
+* flange lengths
+* bend angles
+* developed width
+* thickness labels
+
+### C4. Flower pattern
+
+Score: 5
+Pass tab:
+
+* station progression
+* angle progression
+* intermediate sections
+* no fake flower diagram
+
+### C5. Station optimization
+
+Score: 5
+Pass tab:
+
+* recommended vs reduced stations
+* risk grade
+* load increase note
+* springback/marking warnings
+
+### C6. Roll complementarity + interference
+
+Score: 5
+Pass tab:
+
+* upper/lower paired geometry
+* strip gap logic
+* no clash
+* interference warnings
+
+---
+
+## D. Production Output
+
+**Weight: 15**
+**Target: 14/15+**
+
+### D1. Production drawing engine
+
+Score: 5
+Pass tab:
+
+* front/side/section views
+* groove detail
+* bore/ID/OD
+* dimensions shown
+
+### D2. Export pack
+
+Score: 5
+Pass tab:
+
+* DXF
+* PDF
+* CSV/XML where needed
+* no silent blank export
+
+### D3. Manual operator support
+
+Score: 5
+Pass tab:
+
+* tool sheet
+* speed/feed
+* rough depth
+* retract
+* safety distance
+* setup notes
+* home return notes
+
+---
+
+## E. Final Polish / Trust
+
+**Weight: 10**
+**Target: 9/10+**
+
+### E1. Debug proof
+
+Score: 3
+Pass tab:
+
+* per-station debug summary
+* gcode length
+* geometry count
+* final status
+
+### E2. UX honesty
+
+Score: 3
+Pass tab:
+
+* no fake “complete”
+* blocked state visible
+* warnings clear
+
+### E3. Workflow completeness
+
+Score: 4
+Pass tab:
+
+* input → tooling → CNC → simulation → export
+  ek real sample par end-to-end chale
+
+---
+
+# Total score formula
+
+* Reliability Foundation = 20
+* CNC / SolidCAM Parity = 25
+* Roll Forming Intelligence = 30
+* Production Output = 15
+* Final Polish / Trust = 10
+
+**Total = 100**
+
+## 97% ka matlab
+
+97 tabhi milega jab:
+
+* koi major blocker open na ho
+* test coverage real ho
+* CNC output machine-aware ho
+* roll forming workflow real ho
+* production sheets usable hon
+
+---
+
+# Current estimated score
+
+Aaj ki info ke hisaab se:
+
+* Reliability Foundation: **11/20**
+* CNC / SolidCAM Parity: **9/25**
+* Roll Forming Intelligence: **7/30**
+* Production Output: **4/15**
+* Final Polish / Trust: **6/10**
+
+## Current total:
+
+**37/100** on full super-pro scoreboard
+
+Ye low isliye hai kyunki ab scoreboard me:
+
+* SolidCAM parity
+* DXF
+* flower pattern
+* production drawings
+* operator sheets
+
+sab count ho rahe hain.
+
+Agar sirf Phase 2 reliability dekhen to tum **51/100** par ho, jo audit me aaya tha.
+
+---
+
+# 97% tak pahunchne ka shortest path
+
+## Step 1
+
+**Phase 2 ko 95+ karo**
+
+* tests
+* groove fixes
+* complementarity
+* geometry-driven gcode
+* export gating
+
+Expected overall gain: **+18 to +22**
+
+## Step 2
+
+**CNC/SolidCAM parity**
+
+* turning tabs
+* tool library
+* post-aware output
+* simulation
+* operator mode
+
+Expected gain: **+20 to +24**
+
+## Step 3
+
+**DXF + sheet convert + dimensions + flower pattern**
+Expected gain: **+22 to +26**
+
+## Step 4
+
+**production drawing + PDF/DXF pack**
+Expected gain: **+12 to +15**
+
+---
+
+# Non-negotiable blockers for 97
+
+Ye open rahe to 97 nahi milega:
+
+1. no test runner
+2. BASIC station export possible
+3. geometry aur gcode disconnected
+4. no upper/lower interference logic
+5. no DXF-to-profile engine
+6. no flower pattern
+7. no production drawing pack
+
+---
+
+# Ab next command kya hona chahiye
+
+Use the 97% Master Scoreboard as the scoring rubric.
+
+Immediate mission:
+Raise Reliability Foundation from current state to at least 19/20.
+
+Priority fixes:
+
+1. test infrastructure + core tests
+2. grooveDepth formula
+3. wallRun minimum guard
+4. export gating
+5. content length guard
+6. unified VALID threshold
+7. debugRollProfile returns object
+8. upper/lower complementarity
+9. interference check
+10. geometry-driven G-code
+
+Return:
+
+* score before
+* exact files changed
+* score after
+* remaining blockers before moving to CNC/SolidCAM parity
+
+Agar chaho, agle message me main **is scoreboard ko table + command plan** me aur tight bana deta hoon, jisse tum seedha Codex me phase-wise chala sako.

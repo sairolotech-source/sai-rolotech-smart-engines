@@ -268,16 +268,16 @@ export default function PythonDashboard() {
   const showSemiAutoPanel = pipelineResult && (selectedMode === "semi_auto" || selectedMode === "manual_review");
 
   const detectedValues = {
-    bend_count: profEng.bend_count as number | undefined,
-    section_width_mm: profEng.section_width_mm as number | undefined,
-    section_height_mm: profEng.section_height_mm as number | undefined,
-    profile_type: (profEng.profile_type as string) ?? payload?.profile_type,
-    thickness: inputEng.sheet_thickness_mm as number | undefined,
-    material: inputEng.material as string | undefined,
-    return_bends: profEng.return_bends_count as number | undefined,
-    lips_present: (profEng.profile_type as string) === "lipped_channel",
+    bend_count: profEng?.bend_count as number | undefined,
+    section_width_mm: profEng?.section_width_mm as number | undefined,
+    section_height_mm: profEng?.section_height_mm as number | undefined,
+    profile_type: (profEng?.profile_type as string) ?? payload?.profile_type,
+    thickness: inputEng?.sheet_thickness_mm as number | undefined,
+    material: inputEng?.material as string | undefined,
+    return_bends: profEng?.return_bends_count as number | undefined,
+    lips_present: (profEng?.profile_type as string) === "lipped_channel",
     flanges_present: true,
-    station_count: stEng.recommended_station_count as number | undefined,
+    station_count: stEng?.recommended_station_count as number | undefined,
     shaft_mm: shEng.suggested_shaft_diameter_mm as number | undefined,
     bearing: brEng.suggested_bearing_type as string | undefined,
   };

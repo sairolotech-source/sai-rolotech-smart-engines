@@ -46,6 +46,26 @@ BEND_RADIUS_FACTOR: Dict[str, float] = {
     "AL":  1.0,
 }
 
+# ── K-factor per material (neutral axis position — factory standard) ──────────
+# GI/CR: 0.44 (ductile), SS: 0.50 (strain-hardens more), AL: 0.40 (soft)
+K_FACTOR: Dict[str, float] = {
+    "GI": 0.44,
+    "MS": 0.44,
+    "SS": 0.50,
+    "HR": 0.43,
+    "CR": 0.44,
+    "AL": 0.40,
+}
+
+
+def _bend_allowance(angle_deg: float, inner_radius_mm: float, thickness: float, material: str) -> float:
+    """
+    Factory-standard K-factor bend allowance formula.
+    BA = (π/180) × angle_deg × (R + K × T)
+    """
+    k = K_FACTOR.get(material, 0.44)
+    return (math.pi / 180.0) * angle_deg * (inner_radius_mm + k * thickness)
+
 # ── Pass angle schedule  ──────────────────────────────────────────────────────
 # For a required 90° bend, typical industry schedule:
 # Station 1: 20° → 2: 45° → 3: 70° → 4: 90° → +1 calibration
@@ -72,16 +92,22 @@ def _strip_width_progression(
     n_passes: int,
     section_height_mm: float = 0.0,
     inner_radius_mm: float = 0.0,
+    material: str = "GI",
 ) -> List[float]:
     """
-    Approximate strip width at each station (strip narrows as bends are formed).
-    Flat strip = web + 2×flange + 2×bend_allowance  (correct formula).
-    bend_allowance = (pi/2) × (inner_radius + t/2)  per 90° bend.
+    Flat strip width per station using factory K-factor bend allowance formula.
+
+    Flat strip = Web + Σ(Flange_i) + Σ(BA_i)
+    BA per bend  = (π/180) × 90° × (R + K × T)   [90° bends assumed for flanges]
+
+    Example: web=60, flange=40×2, t=1.5, R=1.5, K=0.44 (GI)
+      BA = 1.5708 × (1.5 + 0.44×1.5) = 1.5708 × 2.16 = 3.39 mm / bend
+      Flat = 60 + 80 + 2×3.39 = 146.78 mm ✓
     """
-    r_mid = inner_radius_mm + thickness / 2.0
-    bend_allowance = (math.pi / 2.0) * r_mid  # per 90° bend
+    ba_each = _bend_allowance(90.0, inner_radius_mm, thickness, material)
+    # Distribute flange height equally across bends (2 bends = 2 flanges for C, etc.)
     total_flange = section_height_mm * max(bend_count, 0)
-    flat_strip_width = final_width_mm + total_flange + bend_count * bend_allowance
+    flat_strip_width = final_width_mm + total_flange + bend_count * ba_each
 
     widths = []
     for i in range(1, n_passes + 1):
@@ -205,10 +231,17 @@ def generate_roll_contour(
     angle_with_springback = round(primary_angle + springback, 1)
 
     angles    = _angle_schedule(angle_with_springback, forming_passes)
+
+    # ── True flat strip width (K-factor BA formula) ────────────────────────────
+    ba_each         = _bend_allowance(90.0, bend_radius_mm, thickness, material)
+    total_flange_mm = section_h * max(bend_count, 0)
+    flat_strip_mm   = round(section_w + total_flange_mm + bend_count * ba_each, 2)
+
     strip_widths = _strip_width_progression(
         section_w, bend_count, thickness, forming_passes,
         section_height_mm=section_h,
         inner_radius_mm=bend_radius_mm,
+        material=material,
     )
 
     passes: List[Dict[str, Any]] = []
@@ -256,19 +289,22 @@ def generate_roll_contour(
     }
 
     # ── Forming summary ────────────────────────────────────────────────────────
-    flat_width = strip_widths[0] if strip_widths else section_w
+    k_factor = K_FACTOR.get(material, 0.44)
     summary = {
-        "flat_strip_width_mm":    round(flat_width, 2),
-        "final_section_width_mm": section_w,
-        "total_forming_stations": n_stations,
-        "forming_pass_count":     forming_passes,
-        "includes_calibration":   True,
-        "primary_bend_angle":     90.0,
+        "flat_strip_width_mm":         flat_strip_mm,
+        "flat_strip_formula":          f"web({section_w})+flanges({total_flange_mm})+BA×{bend_count}({round(ba_each,3)}×{bend_count}={round(ba_each*bend_count,2)})={flat_strip_mm}",
+        "bend_allowance_per_bend_mm":  round(ba_each, 3),
+        "k_factor_used":               k_factor,
+        "final_section_width_mm":      section_w,
+        "total_forming_stations":      n_stations,
+        "forming_pass_count":          forming_passes,
+        "includes_calibration":        True,
+        "primary_bend_angle":          90.0,
         "springback_compensation_deg": springback,
-        "overformed_to_deg":      angle_with_springback,
-        "roll_gap_mm":            roll_gap,
-        "bend_inner_radius_mm":   bend_radius_mm,
-        "has_lips":               has_lips,
+        "overformed_to_deg":           angle_with_springback,
+        "roll_gap_mm":                 roll_gap,
+        "bend_inner_radius_mm":        bend_radius_mm,
+        "has_lips":                    has_lips,
     }
 
     logger.info(

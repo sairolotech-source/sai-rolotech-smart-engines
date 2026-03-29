@@ -22,6 +22,7 @@ from app.engines.roll_logic_engine import generate as generate_roll_logic
 from app.engines.shaft_engine import select_shaft
 from app.engines.bearing_engine import select_bearing
 from app.engines.duty_engine import classify as classify_duty
+from app.engines.roll_design_calc_engine import generate_roll_design_calc
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -68,10 +69,17 @@ def run_pipeline_from_geometry(
         return fail_at("flower_pattern_engine", flower_result)
 
     station_result = estimate_station(profile_result, input_result, flower_result)
-    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
     shaft_result = select_shaft(profile_result, input_result, station_result)
     bearing_result = select_bearing(shaft_result, input_result)
     duty_result = classify_duty(profile_result, input_result, station_result, shaft_result)
+    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
+    roll_calc_result = generate_roll_design_calc(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+    )
 
     return {
         "status": "pass",
@@ -79,12 +87,13 @@ def run_pipeline_from_geometry(
         "geometry_engine": geometry_result,
         "profile_analysis_engine": profile_result,
         "input_engine": input_result,
-        "flower_pattern_engine": flower_result,
+        "advanced_flower_engine": flower_result,
         "station_engine": station_result,
         "roll_logic_engine": roll_logic_result,
         "shaft_engine": shaft_result,
         "bearing_engine": bearing_result,
         "duty_engine": duty_result,
+        "roll_design_calc_engine": roll_calc_result,
     }
 
 
@@ -142,10 +151,17 @@ async def dxf_upload(
         return fail_at("flower_pattern_engine", flower_result)
 
     station_result = estimate_station(profile_result, input_result, flower_result)
-    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
     shaft_result = select_shaft(profile_result, input_result, station_result)
     bearing_result = select_bearing(shaft_result, input_result)
     duty_result = classify_duty(profile_result, input_result, station_result, shaft_result)
+    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
+    roll_calc_result = generate_roll_design_calc(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+    )
 
     return {
         "status": "pass",
@@ -154,12 +170,13 @@ async def dxf_upload(
         "geometry_engine": geometry_result,
         "profile_analysis_engine": profile_result,
         "input_engine": input_result,
-        "flower_pattern_engine": flower_result,
+        "advanced_flower_engine": flower_result,
         "station_engine": station_result,
         "roll_logic_engine": roll_logic_result,
         "shaft_engine": shaft_result,
         "bearing_engine": bearing_result,
         "duty_engine": duty_result,
+        "roll_design_calc_engine": roll_calc_result,
     }
 
 
@@ -199,19 +216,27 @@ def run_manual_mode(data: ManualProfileInput):
         return fail_at("flower_pattern_engine", flower_result)
 
     station_result = estimate_station(profile_result, input_result, flower_result)
-    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
     shaft_result = select_shaft(profile_result, input_result, station_result)
     bearing_result = select_bearing(shaft_result, input_result)
     duty_result = classify_duty(profile_result, input_result, station_result, shaft_result)
+    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
+    roll_calc_result = generate_roll_design_calc(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+    )
 
     return {
         "status": "pass",
         "profile_analysis_engine": profile_result,
         "input_engine": input_result,
-        "flower_pattern_engine": flower_result,
+        "advanced_flower_engine": flower_result,
         "station_engine": station_result,
         "roll_logic_engine": roll_logic_result,
         "shaft_engine": shaft_result,
         "bearing_engine": bearing_result,
         "duty_engine": duty_result,
+        "roll_design_calc_engine": roll_calc_result,
     }

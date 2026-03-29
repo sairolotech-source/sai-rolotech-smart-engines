@@ -1,0 +1,469 @@
+Assessment sahi hai.
+Mere hisaab se **ab sabse pehle 1, 2, 4, 6** karne chahiye — kyunki ye low/medium effort me trust aur commercial readiness dono badha denge.
+
+## Best next priority order
+
+### P2.1
+
+**Persistent audit log (backend)**
+
+Ye turant hona chahiye, kyunki abhi session close hote hi history gayab ho jaati hai.
+Minimum backend log schema:
+
+* id
+* timestamp
+* user
+* role
+* action
+* station_no
+* filename
+* drawing_no
+* revision
+* customer
+* job_no
+* release_state
+* success/failure
+* metadata json
+
+Actions:
+
+* svg_export
+* dxf_export
+* pdf_export
+* pdf_all_export
+* zip_export
+* approval_change
+* revision_change
+
+---
+
+### P2.2
+
+**RBAC backend middleware**
+
+Ye bhi urgent hai. Frontend-only role kabhi secure nahi hota.
+
+Minimum roles:
+
+* admin
+* designer
+* checker
+* approver
+* viewer
+
+Server-side enforce:
+
+* viewer export nahi kare
+* designer draft edit kare
+* checker checked state set kare
+* approver manufacturing release kare
+* admin full access
+
+Critical:
+
+* token-based role claims
+* backend middleware
+* audit log integration
+* approval transition rules
+
+---
+
+### P2.3
+
+**ISO 7200 title block + customer/job tracking**
+
+Ye low effort, high business value hai.
+
+Add fields:
+
+* customer name
+* project/job number
+* drawing number
+* revision
+* sheet X of Y
+* scale
+* date
+* checked by
+* approved by
+* material
+* thickness
+
+Aur drawing number rule:
+`SRT-{customerCode}-{jobNo}-{profile}-{station}-{rev}`
+
+Isse export instantly zyada professional lagega.
+
+---
+
+### P2.4
+
+**Roll interference visual indicator**
+
+Backend engine already hai, to frontend visual banana quick win hai.
+
+Add:
+
+* red overlap highlight
+* station badge: `INTERFERENCE`
+* OD clash region shading
+* tooltip: kis wajah se clash ho raha hai
+* recommendation:
+
+  * increase OD
+  * reduce depth per pass
+  * adjust gap
+  * increase station count
+
+Ye UX aur engineering dono me strong value dega.
+
+---
+
+# Uske baad
+
+### P2.5
+
+**Springback compensation iteration loop**
+
+Ye engineering me bahut important hai, but isko safe tarike se build karo.
+
+3-stage design:
+
+* stage 1: estimated overbend suggestion
+* stage 2: iterative solver on target angle mismatch
+* stage 3: calibration pass auto-adjustment
+
+Important:
+isko “auto-correct exact final geometry” mat bolo.
+Isko bolo:
+**iterative empirical correction loop**
+
+---
+
+### P2.6
+
+**Multi-bend profile support**
+
+Ye difficult hai, but long-term me bahut important hai.
+Especially:
+
+* Z profile
+* omega
+* hat section
+* double return bends
+* asymmetric sections
+
+Iske liye flower engine ko refactor karna padega:
+
+* bend graph
+* bend order planner
+* multi-zone progression
+* symmetry/asymmetry handling
+
+Ye bada kaam hai, isliye springback loop ke baad karo ya parallel dedicated branch me.
+
+---
+
+### P2.7
+
+**True DWG export**
+
+Ye commercial demand ke liye important hai, but technically heavy hai.
+Agar native DWG write mushkil hai to do practical things:
+
+* “DXF R2000 shop-ready” ko strong banao
+* optional external converter pipeline do
+* export warning me clearly likho:
+
+  * native DWG unavailable
+  * DXF recommended
+  * DWG conversion path available
+
+False claim bilkul mat karo.
+
+---
+
+# Final recommended order
+
+## Immediate
+
+1. Persistent audit log backend
+2. RBAC backend middleware
+3. ISO 7200 title block
+4. Customer / Job No field
+5. Roll interference visual
+
+## Next
+
+6. Springback iteration loop
+
+## After that
+
+7. Multi-bend profile support
+
+## Last
+
+8. True DWG export
+
+---
+
+# Replit ko dene ke liye exact P2 prompt
+
+# P2 IMPLEMENTATION PROMPT
+
+## Persistent Audit Log + RBAC Backend + ISO Title Block + Roll Interference Visual
+
+You are a senior full-stack architect, CAD export engineer, and manufacturing workflow developer.
+
+Your task is to implement the next highest-value P2 upgrades.
+
+Preserve all current working features:
+
+* tests
+* engineering risk engine
+* calculation source labels
+* help tooltips
+* session audit log
+* DXF/PDF/SVG export
+* risk panel
+
+Do not rewrite stable modules unnecessarily.
+
+---
+
+## P2 TARGET 1 — PERSISTENT AUDIT LOG BACKEND
+
+Current weakness:
+
+* audit log only stored in sessionStorage
+* data lost when browser closes
+
+Implement backend persistence.
+
+### Requirements:
+
+Create backend audit log model with fields:
+
+* id
+* timestamp
+* user_id
+* username
+* role
+* action
+* station_no
+* filename
+* drawing_no
+* revision
+* customer_name
+* job_no
+* release_state
+* success
+* message
+* metadata_json
+
+### Actions to track:
+
+* svg_export
+* dxf_export
+* pdf_export
+* pdf_all_export
+* zip_export
+* approval_change
+* revision_change
+* role_change
+* release_attempt_blocked
+
+### Requirements:
+
+* API endpoint to create audit entries
+* API endpoint to query recent history
+* frontend audit panel must read backend history
+* fallback to local buffer if backend unavailable
+* never crash export flow if logging fails
+
+---
+
+## P2 TARGET 2 — RBAC BACKEND ENFORCEMENT
+
+Current weakness:
+
+* roles only exist in frontend localStorage
+* can be bypassed easily
+
+Implement backend-enforced RBAC.
+
+### Roles:
+
+* admin
+* designer
+* checker
+* approver
+* viewer
+
+### Server-side rules:
+
+* viewer cannot edit or export release packages
+* designer can create/edit draft
+* checker can mark checked
+* approver can approve for manufacturing
+* admin full access
+
+### Requirements:
+
+* token-based role claims
+* backend middleware for protected endpoints
+* block unauthorized actions on server
+* return clear 403 messages
+* audit all denied attempts
+
+### Enforce on:
+
+* export package endpoints
+* approval/revision endpoints
+* role update endpoints
+* manufacturing release actions
+
+---
+
+## P2 TARGET 3 — ISO 7200 TITLE BLOCK + CUSTOMER/JOB TRACKING
+
+Current weakness:
+
+* title block basic only
+* no standard commercial tracking fields
+
+Upgrade PDF/SVG title block toward ISO 7200 style.
+
+### Required fields:
+
+* company name
+* customer name
+* project / job number
+* part number
+* drawing number
+* revision
+* date
+* sheet X of Y
+* scale
+* unit = mm
+* checked by
+* approved by
+* material
+* thickness
+
+### Add input fields:
+
+* customer name
+* job number
+* project name optional
+
+### Drawing number rule:
+
+Use deterministic pattern:
+`SRT-{customerCode}-{jobNo}-{profileCode}-ST{stationNo}-R{rev}`
+
+### Requirements:
+
+* sync across SVG and PDF
+* prevent empty manufacturing release title block
+* keep layout readable on A3
+
+---
+
+## P2 TARGET 4 — ROLL INTERFERENCE VISUAL INDICATOR
+
+Current weakness:
+
+* backend interference logic exists
+* no frontend visual collision warning
+
+Implement visual interference feedback.
+
+### Requirements:
+
+* highlight overlap zones in red
+* show station badge: INTERFERENCE
+* tooltip with exact issue
+* recommended fix list:
+
+  * increase OD
+  * increase station count
+  * reduce depth per pass
+  * adjust gap
+
+### UI behavior:
+
+* always visible when clash detected
+* no hidden silent failure
+* must sync with selected station
+
+---
+
+## IMPLEMENTATION ORDER
+
+### P2-A
+
+1. backend audit log model
+2. audit API endpoints
+3. frontend audit log integration
+
+### P2-B
+
+4. backend RBAC middleware
+5. protected endpoints
+6. denied action handling
+
+### P2-C
+
+7. customer/job fields
+8. ISO 7200 title block upgrade
+9. drawing number generator
+
+### P2-D
+
+10. roll interference visual warning
+11. clash overlay
+12. recommendation text
+
+---
+
+## OUTPUT FORMAT REQUIRED
+
+## 1. Architecture Plan
+
+## 2. Files To Create / Modify
+
+## 3. Data Model
+
+## 4. RBAC Rules
+
+## 5. Audit Log API
+
+## 6. Title Block Mapping
+
+## 7. UI Changes
+
+## 8. Code Changes
+
+## 9. Validation Results
+
+## 10. Final Status
+
+---
+
+## IMPORTANT RULES
+
+* Preserve existing exports.
+* Do not fake security.
+* Enforce roles on backend, not only frontend.
+* Do not allow manufacturing approval without proper metadata.
+* If logging fails, export should continue but warn softly.
+* Keep title block professional and readable.
+
+# Final answer
+
+Haan — abhi sabse sahi next build yehi hai:
+
+**persistent audit log + backend RBAC + ISO title block + customer/job tracking + roll interference visual**
+
+Ye karne ke baad system ka trust aur commercial value dono noticeably badhenge.
+Uske baad **springback iteration loop**, phir **multi-bend support**, aur sabse last me **true DWG export**.

@@ -1,0 +1,438 @@
+Haan — report ke hisaab se **sabse badi kamiyaan clear hain**, aur inko systematically fix kiya ja sakta hai. Uploaded analysis me main gaps ye nikle: **FEA missing**, **zero test coverage**, **DWG/modern CAD export missing**, **help/manual missing**, **RBAC + audit log missing**, plus **bundle/performance** aur **error-handling inconsistency**. Overall score bhi isi wajah se `7.61/10` par ruk raha hai. 
+
+Mera seedha recommendation:
+
+## Sabse pehle ye 5 cheezein fix karo
+
+### 1. Test suite lagao
+
+Ye sabse practical aur fastest improvement hai.
+
+**Abhi problem:** report me **unit tests / integration tests = zero** bola gaya hai. 
+
+**Fix:**
+
+* Python engines ke liye `pytest`
+* Frontend logic ke liye `vitest`
+* Export pipeline ke liye golden-file tests:
+
+  * SVG export
+  * DXF export
+  * PDF export
+  * ZIP manifest
+* 5 benchmark profiles banao:
+
+  * 170×50×3 MS
+  * 100×40×1.2 GI
+  * 250×75×2 SS
+  * 60×25×0.8 CR
+  * 1 stress case
+
+**Result:** engineering trust aur regression control dono improve honge.
+
+---
+
+### 2. Engineering accuracy ko stronger banao
+
+Report me current model ko **empirical** bola gaya hai, aur FEA, bow/camber prediction, wrinkling analysis, deformation zone width missing hai. 
+
+**Fix in 3 levels:**
+
+**Level A — immediately**
+
+* strain/severity checker improve karo
+* pass-by-pass bend severity index
+* edge buckling risk rule
+* twist risk rule
+* over-compression warning
+* springback table per material refine karo
+
+**Level B — near-term**
+
+* simplified plate/strip numerical engine
+* station energy / deformation load estimate
+* longitudinal tendency estimator
+* calibration need scorer
+
+**Level C — future**
+
+* true FEM/FEA module
+* mesh-based profile deformation preview
+
+**Important:** full FEA baad me lao; pehle strong rule engine lao.
+
+---
+
+### 3. DWG / better CAD export add karo
+
+Report me SVG, DXF R12, PDF, ZIP, STEP present hain, but **DWG, IGES, DXF 2024 missing** bola gaya hai. 
+
+**Fix priority:**
+
+* pehle **DXF 2024-compatible cleaner exporter**
+* phir **DWG conversion pipeline**
+* IGES optional rakho
+
+**Minimum export upgrade:**
+
+* layer naming standard
+* arc preservation
+* no broken polyline fragments
+* title block optional in CAD export
+* geometry-only machining DXF
+* drawing DXF separate
+
+---
+
+### 4. Security + enterprise controls add karo
+
+Report ke hisaab se **RBAC nahi hai, audit log nahi hai, encryption at rest nahi hai**, enterprise readiness low hai. 
+
+**Fix:**
+
+* roles:
+
+  * Admin
+  * Designer
+  * Checker
+  * Approver
+  * Viewer
+* audit log:
+
+  * kisne station badla
+  * kisne export kiya
+  * kisne release approve ki
+  * revision kab change hui
+* release workflow:
+
+  * Draft
+  * Under Review
+  * Checked
+  * Approved for Manufacturing
+  * Superseded
+* export lock:
+
+  * approved data ke bina manufacturing package export na ho
+
+---
+
+### 5. User help/manual/wizard add karo
+
+Report me UI strong bola gaya hai, but **guided wizard** aur **help/manual** missing bola gaya hai. 
+
+**Fix:**
+
+* “New Job Wizard”
+
+  * profile input
+  * thickness/material
+  * station suggestion
+  * flower review
+  * roll review
+  * export
+* inline tooltips:
+
+  * gap
+  * OD
+  * face width
+  * bend distribution
+* “Why this warning?” button
+* sample projects library
+* operator mode tutorial
+
+Ye feature adoption ko bahut improve karega.
+
+---
+
+# Ab exact priority order
+
+## P0 — abhi turant
+
+1. test suite
+2. export validation
+3. error handling standardization
+4. calculation source labels
+5. benchmark profile validation pack
+
+## P1 — next phase
+
+1. simplified engineering risk engine
+2. guided wizard + help system
+3. role-based workflow
+4. audit logs
+5. modern DXF cleanup
+
+## P2 — advanced phase
+
+1. DWG export
+2. deformation predictor
+3. longitudinal bow/camber estimator
+4. partial FEM/FEA
+5. enterprise security hardening
+
+---
+
+# Replit ko dene ke liye exact master fix prompt
+
+# MASTER FIX PROMPT
+
+## SAI Rolotech — Weakness Fix Program
+
+You are a senior software architect, QA engineer, roll forming engineering systems developer, and export pipeline specialist.
+
+Your task is to fix the current weaknesses in the SAI Rolotech system based on the engineering review summary.
+
+Do not rewrite working modules unnecessarily.
+Preserve existing strengths:
+
+* animated flower pattern
+* AI integration
+* SVG/PDF/DXF/ZIP export
+* station logic
+* UI modes
+* smart warnings
+
+Your goal is to increase trust, reliability, engineering quality, and commercial readiness.
+
+---
+
+## TOP FIX TARGETS
+
+### 1. Test Coverage
+
+Current issue:
+
+* no unit tests
+* no integration tests
+* no export regression tests
+
+Implement:
+
+* pytest for Python engines
+* vitest for frontend logic
+* snapshot / golden-file validation for:
+
+  * SVG export
+  * PDF export
+  * DXF export
+  * ZIP manifest
+
+Create benchmark validation cases:
+
+* 170x50x3 MS
+* 100x40x1.2 GI
+* 250x75x2 SS
+* 60x25x0.8 CR
+* one stress case
+
+---
+
+### 2. Engineering Accuracy Upgrade
+
+Current issue:
+
+* empirical only
+* no FEA
+* no bow/camber prediction
+* no wrinkling/buckling predictor
+* no deformation zone width model
+
+Implement now:
+
+* bend severity index
+* pass-by-pass forming aggressiveness score
+* edge buckling risk warning
+* twist risk warning
+* calibration need estimator
+* improved springback compensation tables
+* deformation confidence score
+
+Do not fake FEA.
+Mark these as:
+
+* empirical engineering rules
+* estimated engineering recommendations
+
+---
+
+### 3. Export Upgrade
+
+Current issue:
+
+* DXF exists but only R12
+* no DWG
+* no modern CAD-oriented export layer strategy
+
+Implement:
+
+* cleaner DXF exporter with structured layers
+* geometry-only machining DXF
+* drawing DXF separate from machining DXF
+* deterministic file naming
+* export validation before download
+* no malformed or fragmented geometry
+
+Optional next:
+
+* DWG conversion/export pipeline
+* IGES placeholder architecture
+
+---
+
+### 4. Security + Workflow
+
+Current issue:
+
+* no RBAC
+* no audit log
+* weak enterprise readiness
+
+Implement:
+
+* roles: admin, designer, checker, approver, viewer
+* release states:
+
+  * Draft
+  * Under Review
+  * Checked
+  * Approved for Manufacturing
+  * Superseded
+* audit log for:
+
+  * profile change
+  * station change
+  * export action
+  * release approval
+  * revision change
+
+Block manufacturing release export if:
+
+* revision missing
+* approval metadata missing
+* critical dimensions missing
+
+---
+
+### 5. Help System + Guided Wizard
+
+Current issue:
+
+* no in-app manual
+* no guided wizard for new users
+
+Implement:
+
+* new job wizard
+* inline help tooltips
+* explanation drawer for warnings
+* sample jobs
+* operator onboarding guide
+* “why this station?” help panel
+
+---
+
+### 6. Performance + Architecture Cleanup
+
+Current issue:
+
+* large main bundle
+* inconsistent error handling
+* circular data flow
+
+Implement:
+
+* code splitting by heavy panels
+* lazy loading for export/AI modules
+* shared error boundary strategy
+* common validation utilities
+* reduce duplicated calculations
+* isolate panel-specific state from global dashboard coupling
+
+---
+
+## OUTPUT FORMAT REQUIRED
+
+## 1. Fix Plan
+
+List all weaknesses and exact fix strategy.
+
+## 2. Files To Create / Modify
+
+List exact modules.
+
+## 3. P0 Fixes
+
+Implement highest-value low-risk fixes first.
+
+## 4. P1 Fixes
+
+Implement medium complexity improvements.
+
+## 5. P2 Fixes
+
+Implement advanced engineering and enterprise upgrades.
+
+## 6. Code Changes
+
+Actually apply code changes.
+
+## 7. Validation
+
+Run tests and summarize:
+
+* what passed
+* what failed
+* what remains partial
+
+## 8. Final Status
+
+State:
+
+* fixed
+* partially fixed
+* blocked
+  for each weakness category.
+
+---
+
+## IMPORTANT FINAL RULES
+
+* Do not fake FEA.
+* Do not claim higher engineering certainty than implemented.
+* Clearly label each value as:
+
+  * Formula
+  * Rule
+  * Estimate
+  * User Override
+* Preserve current UI strengths.
+* Prefer modular low-risk improvements.
+
+# Mere hisaab se sabse sahi execution order
+
+**Week 1 type work**
+
+* tests
+* export validation
+* error handling
+* help text
+* benchmark cases
+
+**Week 2 type work**
+
+* risk engine
+* wizard
+* roles
+* audit log
+
+**Week 3+**
+
+* DWG
+* advanced deformation model
+* FEM/FEA base
+
+# Straight answer
+
+Haan, jo kamiyaan report me nikli hain unko fix karne ka clear path hai, aur sabse pehle **tests + engineering risk engine + workflow security + help/manual** par kaam karna chahiye. Yehi fastest improvement dega. Report ke mutabik top 5 upgrades jo score ko 9+ ki taraf le ja sakte hain wo bhi isi direction me hain. 
+
+Agar chaho, main ab isi ko aur strong bana kar **single ultra master remediation file** bhi likh deta hoon jise tum direct Replit me permanent rules file ki tarah rakh sako.

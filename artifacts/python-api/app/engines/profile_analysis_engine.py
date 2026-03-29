@@ -63,14 +63,53 @@ def analyze_profile(geometry_result: Dict[str, Any]) -> Dict[str, Any]:
     })
 
 
-def classify_profile(bend_count: int, width: float, height: float) -> str:
-    if bend_count <= 2:
-        return "simple_channel"
-    if bend_count <= 6:
+def classify_profile(
+    bend_count: int,
+    width: float,
+    height: float,
+    has_lips: bool = False,
+    return_bends: int = 0,
+    lip_mm: float = 0.0,
+) -> str:
+    """
+    Classify profile type from geometry and bend structure.
+
+    Hierarchy (in order of precedence):
+      shutter_profile  — 6+ bends AND relatively shallow (height/width ≤ 0.35)
+      lipped_channel   — 4-5 bends OR 4 bends with lips present
+      hat_section      — 4 bends, very wide+shallow (height/width ≤ 0.20)
+      z_section        — 2 bends, return_bends > 0 OR width/height aspect suggests Z
+      c_channel        — 2-4 bends, standard
+      simple_channel   — ≤ 2 bends, shallow
+    """
+    aspect = height / max(width, 1.0)
+
+    if bend_count >= 6:
+        if aspect <= 0.35:
+            return "shutter_profile"
         return "lipped_channel"
-    if bend_count <= 10:
-        return "shutter_profile"
-    return "complex_profile"
+
+    if bend_count == 5:
+        return "lipped_channel"
+
+    if bend_count == 4:
+        if has_lips or lip_mm > 0 or return_bends > 0:
+            return "lipped_channel"
+        if aspect <= 0.20:
+            return "hat_section"
+        return "lipped_channel"
+
+    if bend_count == 3:
+        return "lipped_channel"
+
+    if bend_count == 2:
+        if return_bends > 0:
+            return "z_section"
+        if height >= 5.0:
+            return "c_channel"
+        return "simple_channel"
+
+    return "simple_channel"
 
 
 def estimate_return_bends(bend_details: List[Dict[str, Any]]) -> int:

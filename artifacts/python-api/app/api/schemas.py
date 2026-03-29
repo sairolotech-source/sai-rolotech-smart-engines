@@ -19,3 +19,5 @@ class ManualProfileInput(BaseModel):
     profile_type: Optional[str] = Field("custom", description="Profile label override")
     return_bends_count: int = Field(0, ge=0, description="Number of return/hem bends")
     lips_present: bool = Field(False, description="Whether lips/stiffeners are present")
+    lip_mm: Optional[float] = Field(None, ge=0, description="Lip/return length mm (for lipped_channel, door_frame)")
+    n_stations: Optional[int] = Field(None, ge=2, le=40, description="Override recommended station count")

@@ -209,6 +209,13 @@ export function LicenseKeyScreen({ onUnlocked }: Props) {
           </div>
           <h1 className="text-xl font-bold text-white">SAI Rolotech Smart Engines</h1>
           <p className="text-xs text-zinc-500 mt-1">Software Activation Required</p>
+
+          {/* App PIN display */}
+          <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[11px] text-zinc-400 font-medium">App PIN:</span>
+            <span className="text-base font-bold text-amber-400 tracking-[0.3em] font-mono">1164</span>
+          </div>
         </div>
 
         {/* Tab switcher */}

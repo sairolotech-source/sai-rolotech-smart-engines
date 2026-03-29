@@ -342,15 +342,24 @@ def generate_roll_groove_svgs(
             "angle_deg":     p.get("target_angle_deg", 0),
             "stage_type":    p.get("stage_type", "forming"),
             "groove_depth_mm": p.get("groove_depth_mm", 0),
-            "upper_roll_radius_mm": p.get("upper_roll_radius_mm"),
-            "lower_roll_radius_mm": p.get("lower_roll_radius_mm"),
-            "roll_width_mm":        p.get("roll_width_mm"),
+            "upper_roll_radius_mm":     p.get("upper_roll_radius_mm"),
+            "lower_roll_radius_mm":     p.get("lower_roll_radius_mm"),
+            "roll_width_mm":            p.get("roll_width_mm"),
+            "shaft_center_upper_mm":    p.get("shaft_center_upper_mm"),
+            "shaft_center_lower_mm":    p.get("shaft_center_lower_mm"),
+            "shaft_center_distance_mm": p.get("shaft_center_distance_mm"),
+            "geometry_source":          p.get("geometry_source", "unknown"),
+            "interference":             p.get("interference", {}),
             "svg_string":    svg,
         })
 
+    intf_summary = roll_contour_result.get("interference_summary", {})
+
     logger.info(
-        "[roll_groove_svg_engine] generated %d roll SVGs for %s %.0f×%.0f t=%.2f shapely=%s",
+        "[roll_groove_svg_engine] generated %d roll SVGs for %s %.0f×%.0f t=%.2f "
+        "shapely=%s any_clash=%s",
         len(station_svgs), ptype, web_mm, flange_mm, thickness, SHAPELY_OK,
+        intf_summary.get("any_clash", "?"),
     )
 
     return {
@@ -359,4 +368,6 @@ def generate_roll_groove_svgs(
         "station_svgs": station_svgs,
         "total_stations": len(station_svgs),
         "shapely_used": SHAPELY_OK,
+        "interference_summary": intf_summary,
+        "forming_summary": roll_contour_result.get("forming_summary", {}),
     }

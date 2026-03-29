@@ -1,14 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
+import { openai, aiProvider, geminiRotator } from "@workspace/integrations-openai-ai-server";
 import { buildOfflineResponse } from "../lib/offline-knowledge-base.js";
 import { ULTRA_VALIDATION_RULES } from "../lib/validation-rules";
 
 const router: IRouter = Router();
-
-const GEMINI_BASE_URL =
-  process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"] ??
-  "https://generativelanguage.googleapis.com";
-const GEMINI_API_URL = `${GEMINI_BASE_URL}/v1beta/openai/chat/completions`;
 
 async function callGemini(
   model: "gemini-2.5-pro" | "gemini-2.5-flash",
@@ -16,29 +11,17 @@ async function callGemini(
   userMsg: string,
   maxTokens = 1024,
 ): Promise<string | null> {
-  const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
-  if (!key) return null;
   try {
-    const res = await fetch(GEMINI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMsg },
-        ],
-        max_tokens: maxTokens,
+    const text = await geminiRotator.generateContent({
+      model,
+      contents: userMsg,
+      config: {
+        systemInstruction: systemPrompt,
+        maxOutputTokens: maxTokens,
         temperature: 0.3,
-      }),
-      signal: AbortSignal.timeout(20000),
+      },
     });
-    if (!res.ok) return null;
-    const data = await res.json() as { choices: { message: { content: string } }[] };
-    return data.choices?.[0]?.message?.content ?? null;
+    return text || null;
   } catch {
     return null;
   }
@@ -162,11 +145,8 @@ G-Code lines: ${gcode ? (Array.isArray(gcode) ? gcode.length : "present") : "not
     let aiResult: string | null = null;
     let aiSource = "offline";
 
-    const geminiKey = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
-    if (geminiKey) {
-      aiResult = await callGemini("gemini-2.5-pro", systemPrompt, userMsg, 1024);
-      if (aiResult) aiSource = "gemini-pro";
-    }
+    aiResult = await callGemini("gemini-2.5-pro", systemPrompt, userMsg, 1024);
+    if (aiResult) aiSource = "gemini-pro";
 
     if (!aiResult && openai) {
       aiResult = await callOpenAI(systemPrompt, userMsg, 1024);

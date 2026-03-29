@@ -11,11 +11,12 @@ import {
 } from "../../store/useCncStore";
 import { uploadDxf, generateFlower, generateGcode, generateRollTooling, calcStripWidth } from "../../lib/api";
 import { PipelineDebugPanel } from "../PipelineDebugPanel";
+import TestCasesPanel from "../TestCasesPanel";
 import { toast } from "../../hooks/use-toast";
 import { StripWidthCalculator } from "./StripWidthCalculator";
 import { MachineSizingCalculator } from "./MachineSizingCalculator";
 import { GearboxCalculator } from "./GearboxCalculator";
-import { Upload, Settings, Play, RefreshCw, Plus, Trash2, Wrench, ChevronDown, ChevronRight, AlertTriangle, X, PenLine, Zap, ZapOff, Loader2, CheckCircle2, XCircle, Layers, ArrowUp, ArrowDown, ChevronsUpDown, RotateCcw } from "lucide-react";
+import { Upload, Settings, Play, RefreshCw, Plus, Trash2, Wrench, ChevronDown, ChevronRight, AlertTriangle, X, PenLine, Zap, ZapOff, Loader2, CheckCircle2, XCircle, Layers, ArrowUp, ArrowDown, ChevronsUpDown, RotateCcw, FlaskConical } from "lucide-react";
 import { useAccuracyScoring } from "../../hooks/useAccuracyScoring";
 import { POST_PROCESSORS, type PostProcessorPreset } from "../../lib/post-processors";
 import { useAutoAIMode } from "../../hooks/useAutoAIMode";
@@ -251,6 +252,7 @@ export function LeftPanel() {
     roll: false,
     stripCalc: false,
     pipeline: false,
+    testCases: false,
   });
 
   const toggleSection = (key: keyof typeof sections) =>
@@ -1248,6 +1250,21 @@ export function LeftPanel() {
           )}
         </div>
       )}
+
+      {/* MANDATORY TEST SUITE */}
+      <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
+        <SectionHeader
+          title="Engineering Test Suite"
+          icon={<FlaskConical className="w-4 h-4" />}
+          expanded={sections.testCases}
+          onToggle={() => toggleSection("testCases")}
+        />
+        {sections.testCases && (
+          <div className="mt-3">
+            <TestCasesPanel />
+          </div>
+        )}
+      </div>
 
       {/* STATION CONFIG */}
       <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>

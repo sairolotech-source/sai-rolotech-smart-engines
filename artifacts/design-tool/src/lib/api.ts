@@ -614,6 +614,32 @@ export async function runAutoPipeline(payload: {
   return res.json();
 }
 
+export async function runTestCases(): Promise<{
+  test_suite: string;
+  total: number;
+  passed: number;
+  failed: number;
+  overall: "ALL_PASS" | "ALL_FAIL" | "PARTIAL";
+  run_at: string;
+  results: Array<{
+    id: string;
+    name: string;
+    description: string;
+    input: { thickness: number; material: string; bendCount: number; sectionWidth: number; sectionHeight: number };
+    expectedStatus: "pass" | "fail";
+    expectedFailStage?: string;
+    actualStatus: "pass" | "fail";
+    stages: Array<{ id: string; label: string; status: string; reason?: string; data?: Record<string, unknown> }>;
+    verdict: "PASS" | "FAIL";
+    verdictReason: string;
+    enginesSummary: Record<string, unknown>;
+  }>;
+}> {
+  const res = await authFetch(getApiUrl("/test-cases"), { method: "GET" });
+  if (!res.ok) throw new Error("Test cases failed to run");
+  return res.json();
+}
+
 export async function syncOfflineQueue(): Promise<{ synced: number; failed: number }> {
   const queue = getOfflineQueue();
   if (!queue.length) return { synced: 0, failed: 0 };

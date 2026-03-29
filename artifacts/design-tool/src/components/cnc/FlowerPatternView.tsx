@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { Stage, Layer, Line, Text, Group, Rect, Circle } from "react-konva";
-import { useCncStore, type Segment, type PassZoneLabel } from "../../store/useCncStore";
+import { useCncStore, type Segment, type PassZoneLabel, type ProfileGeometry } from "../../store/useCncStore";
 import { AccuracyBadge } from "./AccuracyBadge";
 import { FlowerPatternValidator } from "./FlowerPatternValidator";
 import { AIFlowerAdvisor } from "./AIFlowerAdvisor";
+import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 
 const STATION_COLORS = [
   "#3b82f6","#ef4444","#22c55e","#f59e0b","#8b5cf6",
@@ -68,9 +69,135 @@ function getPassZoneColor(zone: PassZoneLabel | undefined): { color: string; bg:
   return PASS_ZONE_COLORS[zone];
 }
 
+// ─── Flower Empty State ────────────────────────────────────────────────────────
+
+interface FlowerEmptyStateProps {
+  geometry: ProfileGeometry | null;
+  materialThickness: number;
+}
+
+function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps) {
+  const { profileSourceType, setActiveTab } = useCncStore();
+
+  const checks = [
+    {
+      id: "profile",
+      label: "DXF profile loaded",
+      ok: !!(geometry?.segments?.length),
+      okMsg: `${(geometry?.segments ?? []).length} segments, ${(geometry?.bendPoints ?? []).length} bends`,
+      failMsg: "No profile geometry — upload a DXF or draw a profile first",
+      action: () => setActiveTab?.("setup"),
+      actionLabel: "Go to Setup",
+    },
+    {
+      id: "thickness",
+      label: "Material thickness set",
+      ok: materialThickness > 0,
+      okMsg: `${materialThickness}mm nominal`,
+      failMsg: "Thickness is 0 — set material and thickness in Setup",
+      action: () => setActiveTab?.("setup"),
+      actionLabel: "Set Thickness",
+    },
+    {
+      id: "source",
+      label: "Profile type confirmed",
+      ok: profileSourceType !== null,
+      okMsg: profileSourceType === "centerline" ? "Center line converted to sheet profile" : "Sheet profile ready",
+      failMsg: "Profile type not confirmed — re-upload DXF to configure",
+      action: null,
+      actionLabel: null,
+    },
+    {
+      id: "stations",
+      label: "Generate Power Pattern",
+      ok: false,
+      okMsg: "",
+      failMsg: "Go to Station Config section and click Generate Power Pattern",
+      action: () => setActiveTab?.("station"),
+      actionLabel: "Go to Station Config",
+    },
+  ];
+
+  const completedCount = checks.filter(c => c.ok).length;
+  const allPrereqsMet = checks.slice(0, 3).every(c => c.ok);
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 p-8">
+      <div className="w-full max-w-sm space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <div className="text-4xl mb-3">🌸</div>
+          <div className="text-base font-bold text-zinc-300 mb-1">Power Pattern — Not Yet Generated</div>
+          <div className="text-xs text-zinc-500">Complete all steps below to unlock Power Pattern generation</div>
+        </div>
+
+        {/* Progress */}
+        <div className="w-full bg-zinc-800 rounded-full h-1.5">
+          <div
+            className="bg-gradient-to-r from-orange-500 to-amber-400 h-1.5 rounded-full transition-all duration-500"
+            style={{ width: `${(completedCount / checks.length) * 100}%` }}
+          />
+        </div>
+        <div className="text-center text-[10px] text-zinc-500">{completedCount} of {checks.length} steps complete</div>
+
+        {/* Checklist */}
+        <div className="space-y-2">
+          {checks.map((c, i) => (
+            <div
+              key={c.id}
+              className={`rounded-xl border p-3 flex items-start gap-3 transition-all ${
+                c.ok
+                  ? "border-green-700/40 bg-green-950/20"
+                  : i === completedCount
+                  ? "border-orange-500/40 bg-orange-950/20"
+                  : "border-white/[0.05] bg-white/[0.02]"
+              }`}
+            >
+              <div className="flex-shrink-0 mt-0.5">
+                {c.ok
+                  ? <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  : i === completedCount
+                  ? <AlertTriangle className="w-4 h-4 text-orange-400" />
+                  : <XCircle className="w-4 h-4 text-zinc-700" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className={`text-xs font-semibold mb-0.5 ${c.ok ? "text-green-300" : i === completedCount ? "text-orange-300" : "text-zinc-500"}`}>
+                  {i + 1}. {c.label}
+                </div>
+                <div className="text-[10px] text-zinc-500 leading-relaxed">
+                  {c.ok ? c.okMsg : c.failMsg}
+                </div>
+              </div>
+              {!c.ok && c.action && i === completedCount && (
+                <button
+                  onClick={c.action}
+                  className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-[10px] font-semibold text-orange-300 transition-colors whitespace-nowrap"
+                >
+                  {c.actionLabel}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* All prereqs met banner */}
+        {allPrereqsMet && (
+          <div className="rounded-xl border border-green-500/30 bg-green-950/20 p-3 text-center">
+            <div className="text-xs font-semibold text-green-300 mb-1">✓ Profile ready</div>
+            <div className="text-[11px] text-zinc-400">
+              Open <span className="text-orange-400 font-semibold">Station Config</span> in the left panel and click <span className="text-orange-400 font-semibold">Generate Power Pattern</span>.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function FlowerPatternView() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { stations, geometry, selectedStation, setSelectedStation, accuracyLog, accuracyThreshold } = useCncStore();
+  const { stations, geometry, selectedStation, setSelectedStation, accuracyLog, accuracyThreshold, materialThickness, profileSourceType } = useCncStore();
   const latestFlowerScore = [...accuracyLog].reverse().find(e => e.taskType === "flower");
   const [dims, setDims] = React.useState({ width: 800, height: 600 });
   const [viewMode, setViewMode] = useState<ViewMode>("flower");
@@ -170,15 +297,7 @@ export function FlowerPatternView() {
   }, [stations, dims]);
 
   if (stations.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 gap-4">
-        <div className="text-5xl">🌸</div>
-        <div className="text-lg font-semibold text-zinc-400">No Power Pattern Generated</div>
-        <div className="text-sm text-center max-w-xs">
-          Upload a DXF profile and generate power pattern from <span className="text-blue-400">Station Config</span> section first.
-        </div>
-      </div>
-    );
+    return <FlowerEmptyState geometry={geometry} materialThickness={materialThickness} />;
   }
 
   const activeHighlight = highlightStation ?? selectedStation;

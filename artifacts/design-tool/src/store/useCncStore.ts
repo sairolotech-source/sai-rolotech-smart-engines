@@ -926,6 +926,9 @@ interface CncState {
   sectionModel: "open" | "closed" | null;
   setSectionModel: (m: "open" | "closed" | null) => void;
 
+  profileSourceType: "centerline" | "sheetProfile" | null;
+  setProfileSourceType: (t: "centerline" | "sheetProfile" | null) => void;
+
   dxfDimensions: DxfDimension[];
   setDxfDimensions: (dims: DxfDimension[]) => void;
   confirmedDimensions: (DxfDimension & { confirmed: boolean; override?: number })[];
@@ -1077,6 +1080,9 @@ export const useCncStore = create<CncState>()(persist((set) => ({
 
   sectionModel: null,
   setSectionModel: (m) => set({ sectionModel: m }),
+
+  profileSourceType: null,
+  setProfileSourceType: (t) => set({ profileSourceType: t }),
 
   dxfDimensions: [],
   setDxfDimensions: (dims) => set({ dxfDimensions: dims }),
@@ -1240,6 +1246,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
       error: null,
       // Reset section model so user must re-select at start of every new workflow
       sectionModel: null,
+      profileSourceType: null,
       // Reset validation and dimension confirmation state for new workflow
       validationResults: [],
       validationApproved: false,

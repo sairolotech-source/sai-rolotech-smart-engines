@@ -22,6 +22,8 @@ import { POST_PROCESSORS, type PostProcessorPreset } from "../../lib/post-proces
 import { useAutoAIMode } from "../../hooks/useAutoAIMode";
 import { validateRollFormingInputs } from "../../lib/inputValidation";
 import { EngineLogger } from "../../lib/engineLogger";
+import { CenterLineConversionModal } from "./CenterLineConversionModal";
+import { detectProfileSourceType } from "../../lib/centerLineConverter";
 
 function SectionHeader({
   title,
@@ -217,9 +219,12 @@ export function LeftPanel() {
     dxfDimensions,
     confirmedDimensions,
     sectionModel, setSectionModel,
+    profileSourceType, setProfileSourceType,
     validationResults, validationApproved,
     setValidationResults, setValidationApproved,
   } = useCncStore();
+
+  const [showConversionModal, setShowConversionModal] = useState(false);
 
   // Section model gate: section model must be selected before any generation
   const sectionModelRequired = sectionModel === null;
@@ -458,6 +463,12 @@ export function LeftPanel() {
         if (result.geometry?.segments?.length) {
           const detectedModel = detectSectionModel(result.geometry);
           setSectionModel(detectedModel);
+
+          // Detect center-line vs sheet and auto-open conversion modal
+          const srcType = detectProfileSourceType(result.geometry.segments);
+          setProfileSourceType(srcType === "unknown" ? null : srcType);
+          setShowConversionModal(true);
+
           setError(
             `✅ Profile loaded — AI auto-detected: ${detectedModel === "closed" ? "Closed Section (Model B — tube/hollow)" : "Open Section (Model A — C/Z/U/hat)"}. You may override via the Section Model selector.`
           );
@@ -636,6 +647,18 @@ export function LeftPanel() {
   const inputSmCls = "rt-input-sm";
 
   return (
+    <>
+    <CenterLineConversionModal
+      open={showConversionModal}
+      onClose={() => setShowConversionModal(false)}
+      onConverted={(bendCount, devLength) => {
+        toast({
+          title: "Sheet Profile Ready",
+          description: `${bendCount} bends detected · Developed length: ${devLength.toFixed(1)}mm. Now configure stations and generate Power Pattern.`,
+        });
+      }}
+    />
+
     <div className="w-72 flex flex-col overflow-y-auto flex-shrink-0"
       style={{ background: "rgba(9, 10, 24, 0.6)", backdropFilter: "blur(28px) saturate(1.6)", WebkitBackdropFilter: "blur(28px) saturate(1.6)", borderRight: "1px solid rgba(255,255,255,0.08)" }}>
 
@@ -1842,5 +1865,6 @@ export function LeftPanel() {
         </div>
       )}
     </div>
+    </>
   );
 }

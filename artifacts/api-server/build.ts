@@ -65,8 +65,6 @@ async function buildAll() {
     outfile: path.resolve(distDir, "index.cjs"),
     define: {
       "process.env.NODE_ENV": '"production"',
-      // Polyfill import.meta.url for CJS bundles — __filename is available in CJS at runtime
-      "import.meta.url": `require("url").pathToFileURL(__filename).href`,
     },
     minify: true,
     external: externals,

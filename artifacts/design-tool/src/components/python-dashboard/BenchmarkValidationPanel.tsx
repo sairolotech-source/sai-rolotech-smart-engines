@@ -220,7 +220,9 @@ export function BenchmarkValidationPanel() {
                     <span>Risk: <ScorePill score={r.risk_score} level={r.risk_level} /></span>
                     <span>Def: <ScorePill score={r.deform_score} level={r.deform_level} /></span>
                     {r.calibration_needed && (
-                      <AlertTriangle className="w-3 h-3 text-orange-400" title="Calibration needed" />
+                      <span title="Calibration needed">
+                        <AlertTriangle className="w-3 h-3 text-orange-400" />
+                      </span>
                     )}
                   </div>
                 )}

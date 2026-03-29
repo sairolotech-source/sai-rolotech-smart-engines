@@ -239,8 +239,8 @@ export function AuditLogPanel({ entries, onClear, backendOk = true, className = 
             </span>
           )}
           {backendOk
-            ? <Cloud size={10} className="text-green-500" title="Synced to server" />
-            : <WifiOff size={10} className="text-yellow-500" title="Local only — server unavailable" />
+            ? <span title="Synced to server"><Cloud size={10} className="text-green-500" /></span>
+            : <span title="Local only — server unavailable"><WifiOff size={10} className="text-yellow-500" /></span>
           }
         </div>
         {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -267,7 +267,7 @@ export function AuditLogPanel({ entries, onClear, backendOk = true, className = 
                         {e.station !== undefined && (
                           <span className="text-[10px] text-slate-500">St.{e.station}</span>
                         )}
-                        {e.synced && <Cloud size={9} className="text-green-600 shrink-0" title="Saved to server" />}
+                        {e.synced && <span title="Saved to server"><Cloud size={9} className="text-green-600 shrink-0" /></span>}
                       </div>
                       {e.detail && (
                         <div className="text-[10px] text-slate-400 truncate">{e.detail}</div>

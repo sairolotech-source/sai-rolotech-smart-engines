@@ -10,13 +10,17 @@
 import { Router, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 
 const router = Router();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-const LOG_FILE   = path.resolve(__dirname, "../../data/audit-log.json");
+// Path resolution — works in both ESM dev (tsx) and CJS production bundle (esbuild).
+// In dev:  pnpm sets CWD to artifacts/api-server/  → data/ is direct child.
+// In prod: node run from workspace root             → artifacts/api-server/data/ is the path.
+const DATA_DIR = process.env.NODE_ENV === "production"
+  ? path.resolve(process.cwd(), "artifacts/api-server/data")
+  : path.resolve(process.cwd(), "data");
+
+const LOG_FILE = path.join(DATA_DIR, "audit-log.json");
 const MAX_ENTRIES = 2000;
 
 // ─── Types ─────────────────────────────────────────────────────────────────

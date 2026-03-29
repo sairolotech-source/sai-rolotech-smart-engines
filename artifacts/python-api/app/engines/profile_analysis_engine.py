@@ -85,7 +85,14 @@ def classify_profile(
     aspect = height / max(width, 1.0)
 
     if bend_count >= 6:
-        if aspect <= 0.35:
+        # Explicit lips → definitely NOT a shutter: it's a lipped/ceiling channel
+        if has_lips or lip_mm > 0:
+            return "lipped_channel"
+        # Very shallow profiles (rib height ≪ width) → shutter pattern
+        if aspect <= 0.20:
+            return "shutter_profile"
+        # Moderately shallow AND small absolute height → still shutter
+        if aspect <= 0.35 and height < 15.0:
             return "shutter_profile"
         return "lipped_channel"
 

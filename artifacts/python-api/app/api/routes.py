@@ -293,12 +293,34 @@ def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
 def execute_manual_pipeline(data: ManualProfileInput) -> Dict[str, Any]:
     """Full manual-mode pipeline — returns complete pipeline dict."""
     from app.utils.engineering_rules import classify_complexity, COMPLEXITY_LABELS
+    from app.engines.profile_analysis_engine import classify_profile as _classify_profile
 
     input_result = validate_inputs(data.thickness, data.material)
     if is_fail(input_result):
         return fail_at("input_engine", input_result)
 
     complexity = classify_complexity(data.bend_count)
+
+    # Auto-classify when caller leaves profile_type as "custom" (the default).
+    # Explicit overrides (e.g. "z_section", "hat_section") are passed through unchanged.
+    explicit_type = (data.profile_type or "").strip().lower()
+    if explicit_type in ("", "custom"):
+        resolved_profile_type = _classify_profile(
+            bend_count=data.bend_count,
+            width=data.section_width_mm,
+            height=data.section_height_mm,
+            has_lips=data.lips_present or bool(data.lip_mm),
+            return_bends=data.return_bends_count,
+            lip_mm=data.lip_mm or 0.0,
+        )
+        auto_classified = True
+    else:
+        resolved_profile_type = explicit_type
+        auto_classified = False
+
+    # Resolve effective lip length: use input if given, else estimate from section_height
+    effective_lip_mm = float(data.lip_mm) if data.lip_mm else round(data.section_height_mm * 0.2, 1)
+
     profile_result = {
         "status": "pass",
         "engine": "profile_analysis_engine",
@@ -306,12 +328,15 @@ def execute_manual_pipeline(data: ManualProfileInput) -> Dict[str, Any]:
         "bends": [],
         "section_width_mm": data.section_width_mm,
         "section_height_mm": data.section_height_mm,
-        "profile_type": data.profile_type or COMPLEXITY_LABELS[complexity],
+        "profile_type": resolved_profile_type,
+        "auto_classified": auto_classified,
         "complexity_tier": complexity,
         "profile_open": True,
         "return_bends_count": data.return_bends_count,
-        "lips_present": data.lips_present,
+        "lips_present": data.lips_present or resolved_profile_type in ("lipped_channel", "shutter_profile"),
+        "lip_mm": effective_lip_mm,
         "symmetry_status": "unknown",
+        "n_stations_override": data.n_stations,
     }
 
     core = _run_core_engines(profile_result, input_result)

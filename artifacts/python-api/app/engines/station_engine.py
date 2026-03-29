@@ -96,7 +96,13 @@ def estimate(
     PRIMARY_ANGLE = 90.0
 
     ppb           = _passes_per_bend(PRIMARY_ANGLE, material, thickness)
-    forming_passes = ppb * bend_count
+
+    # For shutter/ribbed profiles all ribs form simultaneously in the same set
+    # of passes — only need ppb × ceil(bend_count/4) forming passes, not ppb × bend_count.
+    if section_type in ("shutter_profile", "shutter_slat"):
+        forming_passes = ppb * max(2, math.ceil(bend_count / 4))
+    else:
+        forming_passes = ppb * bend_count
 
     entry_stations       = 1
     calibration_stations = 2 if material in {"SS", "HSLA", "TI"} else 1

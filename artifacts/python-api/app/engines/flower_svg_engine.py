@@ -86,8 +86,9 @@ def section_centerline(
         pt_fl_l_z = (-hw - math.cos(th) * flange_mm, -math.sin(th) * flange_mm)
         return [pt_fl_l_z, pt_web_l, pt_web_r, pt_fl_r]
 
-    elif profile_type in ("lipped_channel", "complex_section") and lip_mm > 0:
-        # Lips at 90° to flanges (inward-turning)
+    elif profile_type in ("lipped_channel", "complex_section", "hat_section") and lip_mm > 0:
+        # Lips at 90° to flanges (inward-turning for lipped_channel).
+        # For hat_section the same geometry works — lips become the horizontal feet.
         lip_angle_l = th + math.pi / 2
         lip_angle_r = math.pi - th - math.pi / 2
         lp_lx = math.cos(lip_angle_l) * lip_mm
@@ -102,11 +103,64 @@ def section_centerline(
             (pt_fl_r[0] + lp_rx, pt_fl_r[1] + lp_ry),
         ]
 
-    elif profile_type == "hat_section":
-        # Hat: outer flanges go down (theta), inner web raised
-        pt_fl_l_hat = (-hw - math.cos(th) * flange_mm,  math.sin(th) * flange_mm)
-        pt_fl_r_hat = ( hw + math.cos(th) * flange_mm,  math.sin(th) * flange_mm)
-        return [pt_fl_l_hat, pt_web_l, pt_web_r, pt_fl_r_hat]
+    elif profile_type in ("lipped_channel", "hat_section"):
+        # Fallback: no lip_mm — render as plain C-channel
+        return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
+
+    elif profile_type in ("shutter_profile", "shutter_slat"):
+        # Shutter slat: symmetric multi-rib trapezoidal wave at forming angle theta.
+        #
+        # The profile is a closed repeating pattern:
+        #   base → up-arm (at angle theta from vertical) → flat top → down-arm → base
+        #
+        # Parameters derived from section dimensions:
+        #   web_mm  = total slat width (the "pitch" of the repeating pattern × n_ribs)
+        #   rib_h   = flange_mm / 2  (each arm projects this height)
+        #   n_ribs  = estimated from aspect ratio: web/(3×rib_h) capped to [2, 8]
+        #   flat_top_w = rib_pitch − 2 × arm_run   (flat portion of each rib crown)
+        #
+        # At theta=0 (flat): all points lie on y=0 (strip not yet formed).
+        # At theta=90: ribs are fully formed, rib_h = flange_mm/2.
+        rib_h = flange_mm / 2.0
+        if rib_h < 0.1:
+            # Degenerate — fall through to c_channel
+            return [pt_fl_l, pt_web_l, pt_web_r, pt_fl_r]
+        n_ribs = max(2, min(8, round(web_mm / max(rib_h * 3.5, 1.0))))
+        rib_pitch = web_mm / n_ribs
+        # Arm is at angle theta from the vertical plane → horizontal run per arm
+        arm_run = rib_h * math.sin(th)
+        arm_rise = rib_h * math.cos(th)
+        flat_top_w = max(0.0, rib_pitch - 2.0 * arm_run)
+
+        pts: List[Tuple[float, float]] = []
+        for ri in range(n_ribs):
+            x0 = -hw + ri * rib_pitch      # left base of this rib
+            # Base left
+            pts.append((x0, 0.0))
+            # Up-arm summit
+            pts.append((x0 + arm_run, arm_rise))
+            # Flat top (if geometry allows)
+            if flat_top_w > 0.01:
+                pts.append((x0 + arm_run + flat_top_w, arm_rise))
+            # Down-arm back to baseline
+            pts.append((x0 + rib_pitch, 0.0))
+        # Close right edge
+        pts.append((-hw + n_ribs * rib_pitch, 0.0))
+        return pts
+
+    elif profile_type == "door_frame":
+        # Door frame: U-channel (web + 2 flanges) with 90° inward return lips.
+        # Similar to lipped_channel but the return lip geometry is explicit.
+        lip_len = lip_mm if lip_mm > 0 else flange_mm * 0.25
+        # Flanges go straight up at angle theta
+        # Lips turn inward (toward centre) at 90° from flange direction
+        lip_dir_l_x =  math.sin(th)   # inward for left side
+        lip_dir_l_y =  math.cos(th)
+        lip_dir_r_x = -math.sin(th)   # inward for right side
+        lip_dir_r_y =  math.cos(th)
+        lip_l_end = (pt_fl_l[0] + lip_dir_l_x * lip_len, pt_fl_l[1] + lip_dir_l_y * lip_len)
+        lip_r_end = (pt_fl_r[0] + lip_dir_r_x * lip_len, pt_fl_r[1] + lip_dir_r_y * lip_len)
+        return [lip_l_end, pt_fl_l, pt_web_l, pt_web_r, pt_fl_r, lip_r_end]
 
     else:
         # Default: c_channel / simple_channel

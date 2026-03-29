@@ -196,18 +196,23 @@ def compute_groove_geometry(
 
         # Pinch zones — exact strip-roll contact vertices derived from polygon exterior
         # These are the bend-corner points where the upper roll groove radius contacts the strip
+        _sev = _pinch_severity(bend_radius_mm, thickness, material)
         pinch_zones: List[Dict[str, Any]] = [
             {"zone_type": "upper_left_pinch",  "x": round(-web_half, 3), "y": 0.0,
-             "label": f"Pinch L  r={groove_radius_mm}mm"},
+             "label": f"Pinch L  r={groove_radius_mm}mm",
+             "severity": _sev, "rt_ratio": round(bend_radius_mm / max(thickness, 0.01), 2)},
             {"zone_type": "upper_right_pinch", "x": round(+web_half, 3), "y": 0.0,
-             "label": f"Pinch R  r={groove_radius_mm}mm"},
+             "label": f"Pinch R  r={groove_radius_mm}mm",
+             "severity": _sev, "rt_ratio": round(bend_radius_mm / max(thickness, 0.01), 2)},
         ]
         if height > 0.5:  # meaningful flange
             pinch_zones += [
                 {"zone_type": "flange_left_tip",  "x": round(-web_half, 3), "y": round(-height, 3),
-                 "label": f"Flange tip  d={round(height,1)}mm"},
+                 "label": f"Flange tip  d={round(height,1)}mm",
+                 "severity": "low", "rt_ratio": round(bend_radius_mm / max(thickness, 0.01), 2)},
                 {"zone_type": "flange_right_tip", "x": round(+web_half, 3), "y": round(-height, 3),
-                 "label": f"Flange tip  d={round(height,1)}mm"},
+                 "label": f"Flange tip  d={round(height,1)}mm",
+                 "severity": "low", "rt_ratio": round(bend_radius_mm / max(thickness, 0.01), 2)},
             ]
 
         # Contact strips — rectangular zones on the roll face where strip contacts roll
@@ -545,6 +550,105 @@ def _strip_width_progression(
     return widths
 
 
+def _flat_strip_for_profile(
+    profile_type: str,
+    section_w: float,
+    section_h: float,
+    bend_count: int,
+    lip_mm: float,
+    ba_each: float,
+) -> tuple:
+    """
+    Profile-type-aware flat strip width with neutral-axis bend allowances.
+
+    Returns (flat_strip_mm: float, formula_str: str).
+
+    Rules by profile type:
+      c_channel / simple_channel:
+        flat = web + 2×flange + 2×BA         (bend_count treated as 2)
+      lipped_channel / hat_section:
+        flat = web + 2×flange + 2×lip + 4×BA (two flange bends + two lip bends)
+      z_section / simple_angle:
+        flat = web + 2×flange + 2×BA
+      shutter_profile / shutter_slat:
+        flat = web + bend_count × (section_h / 2) + bend_count × BA
+        (each rib arm ≈ section_height/2; ribs form in pairs)
+      complex_profile / fallback:
+        flat = web + bend_count × section_h + bend_count × BA  (legacy)
+    """
+    pt = (profile_type or "c_channel").lower().replace(" ", "_")
+
+    if pt in ("c_channel", "simple_channel", "simple_angle", "z_section"):
+        n_flanges = min(bend_count, 2)
+        flat = round(section_w + n_flanges * section_h + n_flanges * ba_each, 2)
+        formula = (
+            f"web({section_w})+{n_flanges}×flange({section_h})"
+            f"+{n_flanges}×BA({round(ba_each,3)})={flat}"
+        )
+
+    elif pt in ("lipped_channel", "hat_section"):
+        n_flanges = 2
+        n_lips    = max(0, bend_count - 2)   # remaining bends after flanges
+        flat = round(section_w + n_flanges * section_h + n_lips * lip_mm
+                     + bend_count * ba_each, 2)
+        formula = (
+            f"web({section_w})+{n_flanges}×flange({section_h})"
+            f"+{n_lips}×lip({lip_mm})"
+            f"+{bend_count}×BA({round(ba_each,3)})={flat}"
+        )
+
+    elif pt in ("shutter_profile", "shutter_slat"):
+        rib_arm_mm = section_h / 2.0   # each arm of a rib ≈ half the rib height
+        flat = round(section_w + bend_count * rib_arm_mm + bend_count * ba_each, 2)
+        formula = (
+            f"web({section_w})+{bend_count}×rib_arm({round(rib_arm_mm,2)})"
+            f"+{bend_count}×BA({round(ba_each,3)})={flat}"
+            f" [shutter: rib_arm=section_h/2={round(rib_arm_mm,2)}mm, HEURISTIC]"
+        )
+
+    else:
+        # Complex / fallback — legacy formula
+        flat = round(section_w + bend_count * section_h + bend_count * ba_each, 2)
+        formula = (
+            f"web({section_w})+{bend_count}×segment({section_h})"
+            f"+{bend_count}×BA({round(ba_each,3)})={flat} [fallback]"
+        )
+
+    return flat, formula
+
+
+def _pinch_severity(bend_radius_mm: float, thickness: float, material: str) -> str:
+    """
+    Rate pinch zone severity from R/t ratio and material.
+
+    Severity table (R/t):
+      < 0.5  → critical  (extreme thinning, risk of cracking)
+      < 1.0  → high      (notable thinning, inspect after first run)
+      < 2.0  → medium    (normal forming range)
+      ≥ 2.0  → low       (gentle bend, no concern)
+
+    Material adjustments:
+      SS, HSLA: +1 level  (springback causes extra contact stress)
+      AL:       -1 level  (soft, bends easily)
+    """
+    levels = ["low", "medium", "high", "critical"]
+    rt = bend_radius_mm / max(thickness, 0.01)
+    if rt < 0.5:
+        idx = 3
+    elif rt < 1.0:
+        idx = 2
+    elif rt < 2.0:
+        idx = 1
+    else:
+        idx = 0
+    mat = material.upper()
+    if mat in ("SS", "HSLA", "TI"):
+        idx = min(idx + 1, 3)
+    elif mat in ("AL",):
+        idx = max(idx - 1, 0)
+    return levels[idx]
+
+
 BASE_ROLL_OD_MM: float = 120.0   # Standard upper roll outer diameter
 
 def _upper_lower_roll_contour(
@@ -740,6 +844,11 @@ def generate_roll_contour(
     roll_gap       = round(thickness + clearance, 3)
     bend_radius_mm = round(BEND_RADIUS_FACTOR.get(material, 1.5) * thickness, 2)
 
+    # ── Optional user-requested station cap ──────────────────────────────────
+    n_stations_override = profile_result.get("n_stations_override")
+    if n_stations_override and isinstance(n_stations_override, int):
+        n_stations = max(3, min(n_stations_override, n_stations))
+
     # Number of forming passes (exclude calibration)
     forming_passes = max(2, n_stations - 1)
 
@@ -749,10 +858,22 @@ def generate_roll_contour(
 
     angles    = _angle_schedule(angle_with_springback, forming_passes)
 
-    # ── True flat strip width — neutral-axis formula: BA=(π/2)×(R+t/2) ──────
-    ba_each         = _bend_allowance(90.0, bend_radius_mm, thickness, material)
+    # ── Effective lip length — prefer explicit value from profile_result ──────
+    lip_mm = float(profile_result.get("lip_mm") or
+                   (flange_result or {}).get("lip_length_mm") or 0.0)
+
+    # ── True flat strip width — profile-type aware neutral-axis formula ───────
+    ba_each = _bend_allowance(90.0, bend_radius_mm, thickness, material)
+    flat_strip_mm, flat_strip_formula = _flat_strip_for_profile(
+        profile_type=profile_type,
+        section_w=section_w,
+        section_h=section_h,
+        bend_count=bend_count,
+        lip_mm=lip_mm,
+        ba_each=ba_each,
+    )
+    # Legacy compat
     total_flange_mm = section_h * max(bend_count, 0)
-    flat_strip_mm   = round(section_w + total_flange_mm + bend_count * ba_each, 2)
 
     strip_widths = _strip_width_progression(
         section_w, bend_count, thickness, forming_passes,
@@ -779,6 +900,7 @@ def generate_roll_contour(
             has_lips=has_lips,
             profile_type=profile_type,
             bend_radius_mm=bend_radius_mm,
+            lip_mm=lip_mm,
             springback_deg=springback,
             material=material,
         )
@@ -817,6 +939,7 @@ def generate_roll_contour(
         has_lips=has_lips,
         profile_type=profile_type,
         bend_radius_mm=bend_radius_mm,
+        lip_mm=lip_mm,
         springback_deg=springback,
         material=material,
     )
@@ -842,17 +965,56 @@ def generate_roll_contour(
     }
 
     # ── Forming summary ────────────────────────────────────────────────────────
-    # v2.7: Uses per-station K-factor (Machinery's Handbook R/t table) instead
-    # of fixed K=0.5.  BA = (π/180)×angle×(R + K×t).
+    # v2.8: Profile-aware flat strip formula + remaining_weaknesses list.
     neutral_r = round(bend_radius_mm + k_factor_station * thickness, 3)
     rt_ratio  = round(bend_radius_mm / max(thickness, 0.01), 3)
+
+    # Build honest remaining_weaknesses for this profile type
+    _pt = (profile_type or "").lower()
+    _weaknesses: List[str] = []
+    if profile_result.get("auto_classified"):
+        _weaknesses.append(
+            f"profile_type '{profile_type}' was auto-classified from bend_count/geometry; "
+            "pass profile_type explicitly for hat_section, z_section, or omega profiles"
+        )
+    if _pt in ("shutter_profile", "shutter_slat"):
+        _weaknesses.append(
+            "flat strip uses rib_arm = section_height/2 — actual rib arm depends on rib pitch "
+            "geometry not available in manual mode; use DXF import for precise flat strip"
+        )
+        _weaknesses.append(
+            "angle schedule applies same progression to all ribs simultaneously — "
+            "actual shutter machines may form outer ribs first"
+        )
+        if thickness < 0.8:
+            _weaknesses.append(
+                f"thin-sheet ({thickness}mm) shutter: contact strip width < 0.5t may cause "
+                "edge marking; verify groove entry radius ≥ 2×t"
+            )
+    if _pt == "lipped_channel" and lip_mm <= 0:
+        _weaknesses.append(
+            "lip_mm not provided; estimated as 20% of section_height — "
+            "for accurate flat strip pass lip_mm in the request"
+        )
+    if _pt in ("hat_section",):
+        _weaknesses.append(
+            "hat section centerline uses lipped_channel geometry as approximation — "
+            "outer flange direction may be inverted; review ProfileAnnotationPanel"
+        )
+    if rt_ratio < 1.0:
+        _weaknesses.append(
+            f"R/t={round(rt_ratio,2)} < 1.0: bend radius tighter than one sheet thickness — "
+            "risk of cracking in GI/MS; verify material ductility grade"
+        )
+    if thickness < 0.8:
+        _weaknesses.append(
+            f"thin sheet ({thickness}mm): springback model uses standard multiplier, "
+            "coil set and yield-point elongation are not modelled"
+        )
+
     summary = {
         "flat_strip_width_mm":         flat_strip_mm,
-        "flat_strip_formula": (
-            f"web({section_w})+flanges({total_flange_mm})"
-            f"+BA×{bend_count}((π/2)×(R{bend_radius_mm}+K{k_factor_station}×t{thickness})"
-            f"×{bend_count}={round(ba_each*bend_count,3)})={flat_strip_mm}"
-        ),
+        "flat_strip_formula":          flat_strip_formula,
         "bend_allowance_per_bend_mm":  round(ba_each, 3),
         "k_factor":                    k_factor_station,          # [TOOLING-GRADE] per R/t
         "k_factor_source":             "Machinery's Handbook 30th ed. Table 26-3",
@@ -870,6 +1032,9 @@ def generate_roll_contour(
         "roll_gap_mm":                 roll_gap,
         "bend_inner_radius_mm":        bend_radius_mm,
         "has_lips":                    has_lips,
+        "lip_mm_used":                 lip_mm,
+        "profile_type":                profile_type,
+        "remaining_weaknesses":        _weaknesses,
     }
 
     # ── Interference summary ───────────────────────────────────────────────────

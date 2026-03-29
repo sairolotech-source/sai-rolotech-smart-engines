@@ -30,12 +30,14 @@ import flowerSuggestionsRouter from "./flower-suggestions";
 import deepVerifyRouter from "./deep-verify";
 import { requireAuth } from "../middleware/auth";
 import { accuracyInterceptor } from "../middleware/accuracy-interceptor";
+import { injectRbacUser } from "../middleware/rbac";
 import systemWatchdogRouter from "./system-watchdog";
 import { startWatchdog } from "../lib/system-watchdog";
 import rollPassEngineRouter from "./roll-pass-engine";
 import geminiKeysRouter from "./gemini-keys";
 import autoPipelineRouter from "./auto-pipeline";
 import testCasesRouter from "./test-cases";
+import auditLogRouter from "./audit-log";
 
 const router: IRouter = Router();
 
@@ -57,7 +59,9 @@ router.use(installRouter);
 router.use(githubWebhookPublicRouter);
 
 router.use(requireAuth as any);
+router.use(injectRbacUser as any);
 router.use(accuracyInterceptor as any);
+router.use("/audit-log", auditLogRouter);
 router.use(dxfRouter);
 router.use(flowerRouter);
 router.use(gcodeRouter);

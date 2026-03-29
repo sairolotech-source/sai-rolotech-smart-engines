@@ -85,6 +85,16 @@ export interface DrawingModel {
   toleranceNote:       string;
   drawingNo:           string;
   exportDate:          string;
+
+  // ── ISO 7200 / Commercial tracking ────────────────────────────
+  companyName:   string;
+  customerName:  string;
+  jobNo:         string;
+  projectName:   string;
+  partNo:        string;
+  sheetNo:       number;
+  totalSheets:   number;
+  drawingScale:  string;
 }
 
 export interface ValidationResult {

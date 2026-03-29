@@ -53,6 +53,7 @@ from app.engines.simulation_engine import run_simulation as run_sim_engine
 from app.engines.ai_optimizer_engine import optimize_roll_forming_plan
 from app.engines.simulation_decision_engine import decide_simulation_status
 from app.engines.engineering_risk_engine import generate_engineering_risk_report
+from app.engines.deformation_predictor_engine import generate_deformation_prediction_report
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -1124,6 +1125,45 @@ async def simulate_roll_forming(
 
 
 # ─── Engineering Risk Analysis Endpoint ───────────────────────────────────────
+
+@router.post("/deformation-predict")
+async def run_deformation_predict(payload: dict):
+    """
+    POST /api/deformation-predict
+
+    Predict forming deformation tendencies (bow/camber, edge wave, wrinkling)
+    and generate per-station aggressiveness heatmap.
+
+    All values are empirical approximations — NOT FEA.
+    Method labels: [Formula]/[Rule]/[Estimate]/[Table].
+    """
+    try:
+        passes            = payload.get("passes", [])
+        material          = payload.get("material", "MS")
+        thickness_mm      = float(payload.get("thickness_mm", 2.0))
+        section_w         = float(payload.get("section_width_mm", 100.0))
+        section_h         = float(payload.get("section_height_mm", 50.0))
+        is_symmetric      = bool(payload.get("is_symmetric", True))
+        bend_r            = payload.get("bend_radius_mm")
+        bend_radius_mm    = float(bend_r) if bend_r else None
+        strip_speed       = float(payload.get("strip_speed_mpm", 15.0))
+
+        report = generate_deformation_prediction_report(
+            passes=passes,
+            material=material,
+            thickness_mm=thickness_mm,
+            section_width_mm=section_w,
+            section_height_mm=section_h,
+            is_symmetric=is_symmetric,
+            bend_radius_mm=bend_radius_mm,
+            strip_speed_mpm=strip_speed,
+        )
+        return {"status": "pass", "deformation_predictor": report}
+
+    except Exception as exc:
+        logger.error("deformation-predict error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
 
 @router.post("/engineering-risk")
 async def run_engineering_risk(payload: dict):

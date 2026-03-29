@@ -96,14 +96,14 @@ def _strip_width_progression(
     material: str = "GI",
 ) -> List[float]:
     """
-    Flat strip width per station using factory K-factor bend allowance formula.
+    Flat strip width per station using neutral-axis bend allowance formula.
 
     Flat strip = Web + Σ(Flange_i) + Σ(BA_i)
-    BA per bend  = (π/180) × 90° × (R + K × T)   [90° bends assumed for flanges]
+    BA per bend  = (π/180) × 90° × (R + t/2)   [neutral-axis method per task spec]
 
-    Example: web=60, flange=40×2, t=1.5, R=1.5, K=0.44 (GI)
-      BA = 1.5708 × (1.5 + 0.44×1.5) = 1.5708 × 2.16 = 3.39 mm / bend
-      Flat = 60 + 80 + 2×3.39 = 146.78 mm ✓
+    Example: web=60, flange=40×2, t=1.5, R=1.5 (GI)
+      BA = 1.5708 × (1.5 + 0.75) = 1.5708 × 2.25 = 3.534 mm / bend
+      Flat = 60 + 80 + 2×3.534 = 147.07 mm ✓
     """
     ba_each = _bend_allowance(90.0, inner_radius_mm, thickness, material)
     # Distribute flange height equally across bends (2 bends = 2 flanges for C, etc.)

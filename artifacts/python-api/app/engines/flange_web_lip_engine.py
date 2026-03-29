@@ -80,7 +80,7 @@ def _classify_segments(
 def _detect_symmetry(section_width: float, section_height: float, profile_type: str, bends: List) -> str:
     """Detect section symmetry."""
     # Heuristic: most standard profiles are symmetric
-    if profile_type in {"simple_channel", "lipped_channel", "shutter_profile"}:
+    if profile_type in {"simple_channel", "c_channel", "lipped_channel", "shutter_profile"}:
         return "symmetric"
     if profile_type == "complex_profile":
         return "asymmetric" if len(bends) % 2 != 0 else "symmetric"
@@ -157,8 +157,8 @@ def detect_flange_web_lip(
         lip_count = 2
         lip_length = section_height * 0.12
 
-    if profile_type == "simple_channel" and return_bends > 0:
-        warnings.append("simple_channel with return bends — profile may be more complex than classified")
+    if profile_type in {"simple_channel", "c_channel"} and return_bends > 0:
+        warnings.append("c_channel/simple_channel with return bends — profile may be more complex than classified")
 
     if bend_count == 0:
         warnings.append("Zero bends — no section features can be reliably detected")

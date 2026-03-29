@@ -1254,6 +1254,24 @@ export default function RollDrawingPanel({
           roll_dimension_engine · roll_contour_engine · Sai Rolotech Smart Engines v2.4.0 · Phase 2 Export Engine
         </div>
 
+        {/* ── RBAC Approval Workflow ────────────────────── */}
+        <div className="mt-4">
+          <RoleGatePanel
+            rollOD={rd.estimated_roll_od_mm}
+            bore={rd.bore_dia_mm}
+            faceWidth={rd.face_width_mm}
+            keyway={rd.keyway_width_mm}
+            revision={revision}
+            onStateChange={(state) => {
+              if (state === "approved_for_manufacturing" || state === "superseded") {
+                setReleaseState(
+                  state === "approved_for_manufacturing" ? "manufacturing_release" : "draft"
+                );
+              }
+            }}
+          />
+        </div>
+
         {/* ── Audit Log ────────────────────────────────── */}
         <AuditLogPanel
           entries={auditEntries}

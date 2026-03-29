@@ -93,6 +93,34 @@ The project is structured as a pnpm workspace monorepo comprising `api-server`, 
 - **Staged Loading Architecture:** App.tsx uses multi-stage deferred loading to prevent crash/hang on weak devices. Stage 1 (0ms): React + ErrorBoundary + AuthGate shell only. Stage 2 (1.5s): Toaster, UpdateNotification, Keyboard shortcuts, ContextualGuide. Stage 3 (3s): OfflineGuard + API sync. Stage 4 (3s): AutoBackup. Stage 5 (6s): GPU compute pipeline. Stage 6 (8s): Hardware engine + worker pool. Heavy stores (useCncStore, useRoleStore) are dynamically imported only when needed. FloatingToolbar is fully lazy. All deferred inits use `requestIdleCallback` + try/catch for crash safety. Entry chunk reduced from 350KB to 240KB.
 - **SW Recovery System:** Recovery page at `/` clears stale Service Workers and CacheStorage before redirecting to the app (`/?_app=1`). Cookie-based (`_sw_ok`) skip ensures recovery runs only once per browser. Self-destruct `sw.js` replaces any old SW (install→skipWaiting, activate→claim+clear+navigate, fetch→network-only). **IMPORTANT: Do NOT restore `manualChunks` in vite.config.ts** — it caused circular chunk dependencies (vendor-react ↔ vendor-radix) that crashed the app.
 
+## Python FastAPI Server (Port 9000)
+
+Added alongside the TypeScript/Express API server. Runs at `artifacts/python-api/`.
+
+**Architecture:** Fully modular — each engine is a separate Python file:
+- `app/utils/engineering_rules.py` — Single source of truth (mirrors `engineering-rules.ts`)
+- `app/engines/import_engine.py` — Entity list + real ezdxf DXF file parsing
+- `app/engines/geometry_engine.py` — Bbox, open/closed profile, degenerate segment cleanup
+- `app/engines/profile_analysis_engine.py` — Real bend detection (line angle changes + arcs)
+- `app/engines/input_engine.py` — Thickness + material validation (Rule Book materials)
+- `app/engines/flower_pattern_engine.py` — Forming pass distribution by complexity tier
+- `app/engines/station_engine.py` — Rule Book §4 station formula
+- `app/engines/roll_logic_engine.py` — Roll group breakdown per station
+- `app/engines/shaft_engine.py` — Rule Book §6 duty-class shaft table
+- `app/engines/bearing_engine.py` — Rule Book §7 bearing table
+- `app/engines/duty_engine.py` — Final machine duty classification
+
+**Endpoints:**
+- `GET  /` — Server info + endpoint map
+- `GET  /api/health` — Health check
+- `POST /api/auto-mode` — Full pipeline from entity list
+- `POST /api/manual-mode` — Pipeline from manual profile dimensions
+- `POST /api/dxf-upload` — Real DXF file upload → full pipeline (ezdxf)
+- `GET  /docs` — Swagger UI
+- `GET  /redoc` — ReDoc UI
+
+**Rule Book parity:** LIGHT→40mm→6208 | MEDIUM→50mm→6210 | HEAVY→60mm→6212 | INDUSTRIAL→70mm→6214
+
 ## External Dependencies
 
 - **Authentication:** Offline Token Auth

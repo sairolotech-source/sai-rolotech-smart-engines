@@ -41,6 +41,14 @@ const STATUS_CONFIG: Record<StationProfileStatus | "BLOCKED", BadgeConfig> = {
     bg: "bg-red-950/40",
     icon: "✕",
   },
+  TOOLING_NOT_GENERATED: {
+    label: "Not Generated",
+    dot: "bg-zinc-500",
+    ring: "border-zinc-700/60",
+    text: "text-zinc-400",
+    bg: "bg-zinc-900/60",
+    icon: "○",
+  },
   BLOCKED: {
     label: "Blocked",
     dot: "bg-red-600",

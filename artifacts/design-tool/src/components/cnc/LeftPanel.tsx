@@ -718,7 +718,7 @@ export function LeftPanel() {
           stationNumber: firstRoll.stationNumber,
           rollGap: result.rollGaps?.[0],
         });
-        const withProfile = result.rollTooling.filter(rt => !!rt.rollProfile).length;
+        const withProfile = result.rollTooling.filter((rt: { rollProfile?: unknown }) => !!rt.rollProfile).length;
         const total = result.rollTooling.length;
         if (withProfile < total) {
           toast({
@@ -852,7 +852,7 @@ export function LeftPanel() {
         const hasTooling = rollTooling.length > 0;
         const hasGcode = gcodeOutputs.length > 0;
         const incompleteCount = hasTooling
-          ? rollTooling.filter(rt => !rt.rollProfile || !(rt.bendAngles?.length)).length
+          ? rollTooling.filter(rt => !rt.rollProfile).length
           : 0;
 
         type Step = { icon: string; label: string; detail: string; color: string; action?: () => void; done: boolean };

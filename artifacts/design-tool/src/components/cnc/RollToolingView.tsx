@@ -500,13 +500,58 @@ function getRollPhase(stIdx: number, total: number): { label: string; color: str
 }
 
 // ─── Station pair ────────────────────────────────────────────────────────────
-function StationRollPair({ rt, totalStations, isExpanded, onToggle, springbackFactor, materialType }: {
+// ── Interference severity helper ──────────────────────────────────────────────
+function gapSeverity(info: RollGapInfo | undefined): null | "clash" | "critical" | "tight" {
+  if (!info) return null;
+  const g = info.springbackGap ?? info.nominalGap;
+  if (g <= 0) return "clash";
+  if (g < 0.05) return "critical";
+  if (g < 0.5) return "tight";
+  return null;
+}
+
+// ── G-Code badge ──────────────────────────────────────────────────────────────
+function GCodeBadge({ generated }: { generated: boolean }) {
+  return generated ? (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold text-teal-400 bg-teal-950/50 border-teal-700/60" title="G-Code generated — run GCode Safety Validator for CNC-ready stamp">
+      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 flex-shrink-0" />
+      G-Code ✓
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold text-zinc-600 bg-zinc-900 border-zinc-700" title="G-Code not generated for this station">
+      <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 flex-shrink-0" />
+      G-Code —
+    </span>
+  );
+}
+
+// ── Interference badge ─────────────────────────────────────────────────────────
+function InterferenceBadge({ info }: { info: RollGapInfo | undefined }) {
+  const sev = gapSeverity(info);
+  if (!sev) return null;
+  const cfg = sev === "clash"
+    ? { label: "CLASH", text: "text-red-300", bg: "bg-red-950/60", border: "border-red-700/70", title: `Roll clash — gap ${(info!.springbackGap ?? info!.nominalGap).toFixed(3)} mm ≤ 0` }
+    : sev === "critical"
+    ? { label: "CRITICAL", text: "text-orange-300", bg: "bg-orange-950/50", border: "border-orange-700/60", title: `Near-clash — gap ${(info!.springbackGap ?? info!.nominalGap).toFixed(3)} mm < 0.05 mm` }
+    : { label: "TIGHT", text: "text-amber-300", bg: "bg-amber-950/40", border: "border-amber-700/50", title: `Tight gap — gap ${(info!.springbackGap ?? info!.nominalGap).toFixed(3)} mm < 0.5 mm` };
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold ${cfg.text} ${cfg.bg} ${cfg.border}`} title={cfg.title}>
+      ⚠ {cfg.label}
+    </span>
+  );
+}
+
+function StationRollPair({ rt, totalStations, isExpanded, onToggle, springbackFactor, materialType, rollGapInfo, onRegenerateSingle, gcodeGenerated, regenLoading }: {
   rt: RollToolingResult;
   totalStations: number;
   isExpanded: boolean;
   onToggle: () => void;
   springbackFactor?: number;
   materialType?: string;
+  rollGapInfo?: RollGapInfo;
+  onRegenerateSingle?: () => Promise<void>;
+  gcodeGenerated?: boolean;
+  regenLoading?: boolean;
 }) {
   const rp = rt.rollProfile;
   if (!rp) {
@@ -522,28 +567,43 @@ function StationRollPair({ rt, totalStations, isExpanded, onToggle, springbackFa
 
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden">
-      <button
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-zinc-800/50 transition-colors"
-        onClick={onToggle}
-      >
-        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stColor }} />
-        <span className="font-semibold text-zinc-100 text-sm">{rt.label}</span>
-        <StationReadinessBadge rt={rt} />
-        <span
-          className="text-[10px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
-          style={{ backgroundColor: phase.color + "25", color: phase.color, border: `1px solid ${phase.color}50` }}
-        >
-          {phase.label}
-        </span>
-        <span className="text-zinc-500 text-[10px]">{phase.desc}</span>
-        <span className="text-zinc-500 text-xs ml-auto">
-          R<span className="text-blue-400 font-mono">#{rp.upperRollNumber}</span> + R<span className="text-orange-400 font-mono">#{rp.lowerRollNumber}</span>
-        </span>
-        <span className="text-zinc-600 text-xs ml-2">
-          Gap: <span className="text-green-400 font-mono">{rp.gap.toFixed(3)} mm</span>
-        </span>
-        <span className="text-zinc-500 ml-2">{isExpanded ? "▲" : "▼"}</span>
-      </button>
+      <div className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-zinc-800/50 transition-colors">
+        {/* clickable toggle area */}
+        <button className="flex-1 flex items-center gap-2 text-left min-w-0" onClick={onToggle}>
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stColor }} />
+          <span className="font-semibold text-zinc-100 text-sm truncate">{rt.label}</span>
+          <StationReadinessBadge rt={rt} />
+          <InterferenceBadge info={rollGapInfo} />
+          <GCodeBadge generated={!!gcodeGenerated} />
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
+            style={{ backgroundColor: phase.color + "25", color: phase.color, border: `1px solid ${phase.color}50` }}
+          >
+            {phase.label}
+          </span>
+          <span className="text-zinc-500 text-[10px] hidden xl:inline">{phase.desc}</span>
+        </button>
+        {/* right side info + regen */}
+        <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+          <span className="text-zinc-500 text-xs">
+            R<span className="text-blue-400 font-mono">#{rp.upperRollNumber}</span>+R<span className="text-orange-400 font-mono">#{rp.lowerRollNumber}</span>
+          </span>
+          <span className="text-zinc-600 text-xs">
+            Gap: <span className={`font-mono ${gapSeverity(rollGapInfo) === "clash" ? "text-red-400" : gapSeverity(rollGapInfo) === "critical" ? "text-orange-400" : gapSeverity(rollGapInfo) === "tight" ? "text-amber-400" : "text-green-400"}`}>{rp.gap.toFixed(3)} mm</span>
+          </span>
+          {onRegenerateSingle && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRegenerateSingle(); }}
+              disabled={regenLoading}
+              title={regenLoading ? "Regenerating station…" : `Regenerate S${rt.stationNumber} roll tooling`}
+              className="text-[10px] px-2 py-0.5 rounded border border-zinc-600 text-zinc-400 hover:border-blue-500 hover:text-blue-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-mono"
+            >
+              {regenLoading ? "…" : "⟳"}
+            </button>
+          )}
+          <button className="text-zinc-500 text-xs px-1" onClick={onToggle}>{isExpanded ? "▲" : "▼"}</button>
+        </div>
+      </div>
 
       {isExpanded && (
         <div className="border-t border-zinc-700 p-4 space-y-4">
@@ -1874,13 +1934,33 @@ function ProfileRulesEngine() {
 type RollView = "integrated" | "stations" | "gap" | "summary" | "mfg" | "cam" | "bom" | "assembly" | "rolltypes" | "rules" | "engineering";
 
 export function RollToolingView() {
-  const { rollTooling, rollGaps, accuracyLog, accuracyThreshold, materialType } = useCncStore();
+  const { rollTooling, rollGaps, accuracyLog, accuracyThreshold, materialType, gcodeOutputs } = useCncStore();
   const springbackFactor = MATERIAL_DATABASE[materialType as keyof typeof MATERIAL_DATABASE]?.springbackFactor ?? 1.0;
   const latestToolingScore = [...accuracyLog].reverse().find(e => e.taskType === "tooling");
   const [expandedStation, setExpandedStation] = useState<number | null>(1);
   const [view, setView] = useState<RollView>("integrated");
   const [showPackagePanel, setShowPackagePanel] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [regenStation, setRegenStation] = useState<number | null>(null);
+
+  // ── Per-station regeneration ──────────────────────────────────────────────────
+  const handleRegenerateSingle = React.useCallback(async (stationNumber: number) => {
+    const state = useCncStore.getState() as any;
+    const { geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType: mat, postProcessorId, openSectionType, sectionModel } = state;
+    if (!geometry) return;
+    setRegenStation(stationNumber);
+    try {
+      const resolvedSection = openSectionType === "Auto" ? autoDetectProfileType(geometry) : openSectionType;
+      const result = await apiGenerateRollTooling(geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, mat, postProcessorId, resolvedSection, sectionModel);
+      if (!result.rollTooling) return;
+      const fresh = (result.rollTooling as RollToolingResult[]).find(r => r.stationNumber === stationNumber);
+      if (!fresh) return;
+      const current = useCncStore.getState().rollTooling;
+      (useCncStore.getState() as any).setRollTooling(current.map(r => r.stationNumber === stationNumber ? fresh : r));
+    } finally {
+      setRegenStation(null);
+    }
+  }, []);
 
   const handleRegenerateIncomplete = React.useCallback(async () => {
     const state = useCncStore.getState() as any;
@@ -2082,15 +2162,23 @@ export function RollToolingView() {
         {view === "stations" && (
           <>
             <StationReadinessSummary rollTooling={rollTooling} />
-            {rollTooling.map((rt) => (
-              <StationRollPair key={rt.stationNumber} rt={rt}
-                totalStations={rollTooling.length}
-                isExpanded={expandedStation === rt.stationNumber}
-                onToggle={() => setExpandedStation(expandedStation === rt.stationNumber ? null : rt.stationNumber)}
-                springbackFactor={springbackFactor}
-                materialType={materialType}
-              />
-            ))}
+            {rollTooling.map((rt) => {
+              const gapInfo = rollGaps.find(g => g.stationNumber === rt.stationNumber);
+              const gcodeGen = gcodeOutputs.some(g => g.stationNumber === rt.stationNumber && (g.gcode?.length ?? 0) > 0);
+              return (
+                <StationRollPair key={rt.stationNumber} rt={rt}
+                  totalStations={rollTooling.length}
+                  isExpanded={expandedStation === rt.stationNumber}
+                  onToggle={() => setExpandedStation(expandedStation === rt.stationNumber ? null : rt.stationNumber)}
+                  springbackFactor={springbackFactor}
+                  materialType={materialType}
+                  rollGapInfo={gapInfo}
+                  gcodeGenerated={gcodeGen}
+                  onRegenerateSingle={() => handleRegenerateSingle(rt.stationNumber)}
+                  regenLoading={regenStation === rt.stationNumber}
+                />
+              );
+            })}
           </>
         )}
 

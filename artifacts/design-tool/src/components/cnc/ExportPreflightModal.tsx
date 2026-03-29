@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { X, AlertTriangle, CheckCircle, XCircle, RefreshCw, FileDown, Info, Shield } from "lucide-react";
 import {
+  useCncStore,
   validateStationProfiles,
   type RollToolingResult,
   type StationProfileStatus,
@@ -26,54 +27,66 @@ function getStationRootCauses(rt: RollToolingResult): RootCause[] {
     detail: rp ? "rollProfile object present" : "rollProfile is null — re-run Generate Roll Tooling",
   });
 
+  // Geometry presence: upperRoll + lowerRoll arrays with at least 2 points
+  const upperLen = rp?.upperRoll?.length ?? 0;
+  const lowerLen = rp?.lowerRoll?.length ?? 0;
   causes.push({
     key: "geometry_present",
     label: "Geometry Synthesis",
-    pass: !!rp?.upperProfile?.length || !!rp?.geometry,
-    detail: rp?.upperProfile?.length
-      ? `${rp.upperProfile.length} upper-profile points`
-      : rp?.geometry
-      ? "geometry object present"
-      : "upperProfile/geometry absent — geometry synthesis failed",
+    pass: upperLen > 1 && lowerLen > 1,
+    detail: upperLen > 1
+      ? `${upperLen} upper-roll + ${lowerLen} lower-roll profile points`
+      : "upperRoll/lowerRoll absent or empty — geometry synthesis failed; re-run Generate Roll Tooling",
   });
 
-  const bendExtracted = Array.isArray(rt.bendAngles) && rt.bendAngles.length > 0;
+  // Bend extraction: bendAngles lives on StationProfile in the stations store
+  const matchedStation = useCncStore.getState().stations.find(s => s.stationNumber === rt.stationNumber);
+  const bendAngles: number[] = matchedStation?.bendAngles ?? [];
+  const bendExtracted = bendAngles.length > 0;
   causes.push({
     key: "bend_extraction",
     label: "Bend Extraction",
     pass: bendExtracted,
     detail: bendExtracted
-      ? `${rt.bendAngles.length} bend angle(s): ${rt.bendAngles.map((a) => `${a.toFixed(1)}°`).join(", ")}`
-      : "bendAngles array empty — DXF arc detection may have failed",
+      ? `${bendAngles.length} bend angle(s): ${bendAngles.map((a) => `${a.toFixed(1)}°`).join(", ")}`
+      : "bendAngles empty — DXF arc detection may have failed or no bends in profile",
   });
 
-  const hasFlower = !!rp?.formingAngles?.length || !!rp?.passDistribution?.length;
+  // Flower pass: proxy — if geometry present and station has a totalAngle
+  const totalAngle = matchedStation?.totalAngle ?? 0;
+  const hasFlower = totalAngle > 0;
   causes.push({
     key: "flower_pass",
     label: "Flower Pass Data",
     pass: hasFlower,
     detail: hasFlower
-      ? `${rp?.formingAngles?.length ?? rp?.passDistribution?.length} passes computed`
-      : "No forming angles / pass distribution — run Flower Pattern first",
+      ? `Pass total angle: ${totalAngle.toFixed(1)}° (${matchedStation?.passZone ?? "unknown zone"})`
+      : "No pass angle data — run Flower Pattern first",
   });
 
-  const hasCalib = !!rp?.calibrationPasses || (Array.isArray(rp?.notes) && rp.notes.some((n: string) => n?.toLowerCase().includes("calibr")));
+  // Calibration: check passZone or isCalibrationPass on matched station
+  const hasCalib = !!matchedStation?.isCalibrationPass || matchedStation?.passZone === "Calibration";
   causes.push({
     key: "calibration",
-    label: "Calibration Data",
+    label: "Calibration Pass",
     pass: hasCalib,
-    detail: hasCalib ? "Calibration pass data present" : "No calibration pass — final-station accuracy may be lower",
+    detail: hasCalib ? "Station marked as calibration pass" : "Not a calibration pass — final-station accuracy note only",
   });
 
-  const gcode = rp?.gcode || rp?.gcodeOutput || rt.gcodeOutput;
-  const hasGcode = typeof gcode === "string" && gcode.trim().length > 10;
+  // G-Code: upperLatheGcode / lowerLatheGcode live on RollProfile; overall gcode in gcodeOutputs store
+  const gcodeEntry = useCncStore.getState().gcodeOutputs.find(g => g.stationNumber === rt.stationNumber);
+  const lathedGcode = (rp?.upperLatheGcode ?? "") + (rp?.lowerLatheGcode ?? "");
+  const hasGcode = (gcodeEntry && gcodeEntry.gcode.trim().length > 10) || lathedGcode.trim().length > 10;
+  const gcodeDesc = gcodeEntry
+    ? `${gcodeEntry.lineCount} G-code lines · ${gcodeEntry.toolMoves} tool moves`
+    : lathedGcode.trim().length > 10
+    ? `Lathe G-code present (${lathedGcode.split("\n").length} lines)`
+    : "G-code absent — run Generate G-Code in G-Code tab";
   causes.push({
     key: "gcode",
     label: "G-Code Output",
-    pass: hasGcode,
-    detail: hasGcode
-      ? `${gcode.split("\n").length} G-code lines`
-      : "G-code absent or empty — run Generate G-Code",
+    pass: !!hasGcode,
+    detail: hasGcode ? gcodeDesc : "G-code absent or empty — run Generate G-Code",
   });
 
   return causes;
@@ -82,10 +95,11 @@ function getStationRootCauses(rt: RollToolingResult): RootCause[] {
 // ─── Status styling ───────────────────────────────────────────────────────────
 
 const STATUS_STYLE: Record<StationProfileStatus | "BLOCKED", { text: string; bg: string; border: string; icon: React.ReactNode; label: string }> = {
-  VALID:           { text: "text-green-400",  bg: "bg-green-950/40",  border: "border-green-700/40",  icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />,  label: "Complete"   },
-  BASIC:           { text: "text-amber-400",  bg: "bg-amber-950/30",  border: "border-amber-700/40",  icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />, label: "Incomplete" },
-  MISSING_PROFILE: { text: "text-red-400",    bg: "bg-red-950/40",    border: "border-red-800/40",    icon: <XCircle className="w-3.5 h-3.5 text-red-400" />,         label: "No Profile" },
-  BLOCKED:         { text: "text-red-400",    bg: "bg-red-950/50",    border: "border-red-700/40",    icon: <XCircle className="w-3.5 h-3.5 text-red-400" />,         label: "Blocked"    },
+  VALID:                   { text: "text-green-400",  bg: "bg-green-950/40",  border: "border-green-700/40",  icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />,  label: "Complete"          },
+  BASIC:                   { text: "text-amber-400",  bg: "bg-amber-950/30",  border: "border-amber-700/40",  icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />, label: "Incomplete"        },
+  MISSING_PROFILE:         { text: "text-red-400",    bg: "bg-red-950/40",    border: "border-red-800/40",    icon: <XCircle className="w-3.5 h-3.5 text-red-400" />,         label: "No Profile"        },
+  TOOLING_NOT_GENERATED:   { text: "text-zinc-400",   bg: "bg-zinc-900/60",   border: "border-zinc-700/40",   icon: <Info className="w-3.5 h-3.5 text-zinc-400" />,           label: "Not Generated"     },
+  BLOCKED:                 { text: "text-red-400",    bg: "bg-red-950/50",    border: "border-red-700/40",    icon: <XCircle className="w-3.5 h-3.5 text-red-400" />,         label: "Blocked"           },
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -115,7 +129,7 @@ export function ExportPreflightModal({
     return c;
   }, [validations]);
 
-  const blockers = validations.filter((v) => v.status === "MISSING_PROFILE" || v.status === "BLOCKED");
+  const blockers = validations.filter((v) => v.status === "MISSING_PROFILE" || v.status === "TOOLING_NOT_GENERATED");
   const warnings = validations.filter((v) => v.status === "BASIC");
   const canExport = blockers.length === 0;
   const canExportWithWarnings = blockers.length === 0;
@@ -123,18 +137,24 @@ export function ExportPreflightModal({
   const [expandedStation, setExpandedStation] = React.useState<number | null>(null);
 
   const totalGcodeLines = useMemo(() => {
+    const gcodeOutputs = useCncStore.getState().gcodeOutputs;
     let n = 0;
     for (const rt of rollTooling) {
-      const rp = rt.rollProfile;
-      const g = rp?.gcode || rp?.gcodeOutput || rt.gcodeOutput;
-      if (typeof g === "string") n += g.split("\n").length;
+      const entry = gcodeOutputs.find(g => g.stationNumber === rt.stationNumber);
+      if (entry) { n += entry.lineCount; continue; }
+      const lathelines = ((rt.rollProfile?.upperLatheGcode ?? "") + (rt.rollProfile?.lowerLatheGcode ?? "")).split("\n").length;
+      n += lathelines;
     }
     return n;
   }, [rollTooling]);
 
   const totalBends = useMemo(() => {
+    const stationStore = useCncStore.getState().stations;
     let n = 0;
-    for (const rt of rollTooling) n += (rt.bendAngles?.length ?? 0);
+    for (const rt of rollTooling) {
+      const st = stationStore.find(s => s.stationNumber === rt.stationNumber);
+      n += st?.bendAngles?.length ?? 0;
+    }
     return n;
   }, [rollTooling]);
 

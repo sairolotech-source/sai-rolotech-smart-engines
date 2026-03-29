@@ -444,6 +444,8 @@ export interface RollToolingResult {
   camPlan?: CamPlan;
   rollType?: RollTypeInfo;
   rollMaterial?: RollMaterialRec;
+  // Runtime-populated by API response — may be present if backend fills them
+  bendAngles?: number[];
 }
 
 // ─── Station Profile Status ────────────────────────────────────────────────────

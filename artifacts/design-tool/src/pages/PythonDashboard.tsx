@@ -394,6 +394,9 @@ export default function PythonDashboard() {
               springbackDeg={
                 (rollContour?.springback_deg as number) ?? 0
               }
+              interferenceResult={
+                (pipelineResult?.roll_interference_engine ?? null) as any
+              }
             />
             <RollFormingSimulator
               data={(simulationData?.simulation_engine ?? null) as any}

@@ -14,6 +14,7 @@ import {
   AlertTriangle, ShieldCheck, User, ClipboardCheck, XCircle,
 } from "lucide-react";
 import { useAuditLog, AuditLogPanel } from "@/components/ui/AuditLog";
+import { InterferenceWarningPanel } from "@/components/python-dashboard/InterferenceWarningPanel";
 import HelpTooltip from "@/components/ui/HelpTooltip";
 import { RoleGatePanel } from "@/components/python-dashboard/RoleGatePanel";
 
@@ -77,10 +78,23 @@ interface RollContourData {
 }
 
 interface Props {
-  rollContour:    RollContourData | null;
-  rollDimensions: RollDimensions  | null;
-  profileType?:   string;
-  springbackDeg?: number;
+  rollContour:         RollContourData | null;
+  rollDimensions:      RollDimensions  | null;
+  profileType?:        string;
+  springbackDeg?:      number;
+  interferenceResult?: {
+    status?:   string;
+    blocking?: boolean;
+    issues?:   Array<{
+      station?:     number;
+      stand?:       number;
+      type?:        string;
+      description?: string;
+      severity?:    string;
+      detail?:      string;
+    }>;
+    warnings?: string[];
+  } | null;
 }
 
 // ─── Stage colours ───────────────────────────────────────────────────────────
@@ -636,6 +650,7 @@ export default function RollDrawingPanel({
   rollDimensions,
   profileType: profileTypeProp,
   springbackDeg: springbackDegProp,
+  interferenceResult,
 }: Props) {
   const [selected,      setSelected]      = useState(0);
   const [view,          setView]          = useState<"all3"|"cross"|"front"|"side">("all3");
@@ -647,7 +662,11 @@ export default function RollDrawingPanel({
   const [approvedBy,    setApprovedBy]    = useState("");
   const [showRelease,   setShowRelease]   = useState(false);
   const [validErrors,   setValidErrors]   = useState<string[]>([]);
-  const { entries: auditEntries, addEntry: addAuditEntry, clearLog: clearAuditLog } = useAuditLog();
+  // ISO 7200 / commercial fields
+  const [customerName, setCustomerName]   = useState("");
+  const [jobNo,        setJobNo]          = useState("");
+  const [projectName,  setProjectName]    = useState("");
+  const { entries: auditEntries, addEntry: addAuditEntry, clearLog: clearAuditLog, backendOk } = useAuditLog();
 
   if (!rollContour || rollContour.status !== "pass") {
     return (
@@ -695,7 +714,11 @@ export default function RollDrawingPanel({
     releaseState,
     checkedBy,
     approvedBy,
-  }), [totalPasses, material, thickness, profType, springbackDeg, revision, releaseState, checkedBy, approvedBy]);
+    // ISO 7200
+    customerName,
+    jobNo,
+    projectName,
+  }), [totalPasses, material, thickness, profType, springbackDeg, revision, releaseState, checkedBy, approvedBy, customerName, jobNo, projectName]);
 
   const currentModel: DrawingModel = useMemo(
     () => buildDrawingModel(pass, rd, modelOpts),
@@ -881,6 +904,60 @@ export default function RollDrawingPanel({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── ISO 7200 Customer / Job fields ── */}
+      <div className="px-5 py-3 border-b border-slate-700/30 bg-slate-900/30">
+        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-2">
+          ISO 7200 Drawing Info
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="block text-[9px] text-slate-600 mb-0.5">Customer</label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              placeholder="Customer name"
+              className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 placeholder-slate-600"
+            />
+          </div>
+          <div>
+            <label className="block text-[9px] text-slate-600 mb-0.5">Job No.</label>
+            <input
+              type="text"
+              value={jobNo}
+              onChange={e => setJobNo(e.target.value)}
+              placeholder="e.g. J2024-001"
+              className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 placeholder-slate-600 font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-[9px] text-slate-600 mb-0.5">Project / Part</label>
+            <input
+              type="text"
+              value={projectName}
+              onChange={e => setProjectName(e.target.value)}
+              placeholder="Project / part name"
+              className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 placeholder-slate-600"
+            />
+          </div>
+        </div>
+        {customerName && (
+          <div className="mt-1.5 text-[9px] text-slate-500 font-mono">
+            Drawing No: <span className="text-slate-300">{currentModel.drawingNo}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Roll Interference Warning ── */}
+      {interferenceResult && (
+        <div className="px-5 py-3 border-b border-slate-700/30">
+          <InterferenceWarningPanel
+            interferenceResult={interferenceResult}
+            selectedStation={pass?.pass_no}
+          />
         </div>
       )}
 
@@ -1276,6 +1353,7 @@ export default function RollDrawingPanel({
         <AuditLogPanel
           entries={auditEntries}
           onClear={clearAuditLog}
+          backendOk={backendOk}
           className="mt-4"
         />
       </div>

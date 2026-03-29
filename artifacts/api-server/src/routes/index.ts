@@ -38,6 +38,7 @@ import geminiKeysRouter from "./gemini-keys";
 import autoPipelineRouter from "./auto-pipeline";
 import testCasesRouter from "./test-cases";
 import auditLogRouter from "./audit-log";
+import rbacInfoRouter from "./rbac-info";
 
 const router: IRouter = Router();
 
@@ -62,6 +63,7 @@ router.use(requireAuth as any);
 router.use(injectRbacUser as any);
 router.use(accuracyInterceptor as any);
 router.use("/audit-log", auditLogRouter);
+router.use("/rbac", rbacInfoRouter);
 router.use(dxfRouter);
 router.use(flowerRouter);
 router.use(gcodeRouter);

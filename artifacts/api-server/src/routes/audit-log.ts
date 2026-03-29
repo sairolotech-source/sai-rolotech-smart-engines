@@ -10,10 +10,13 @@
 import { Router, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 const router = Router();
 
-const LOG_FILE = path.resolve(__dirname, "../../data/audit-log.json");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const LOG_FILE   = path.resolve(__dirname, "../../data/audit-log.json");
 const MAX_ENTRIES = 2000;
 
 // ─── Types ─────────────────────────────────────────────────────────────────

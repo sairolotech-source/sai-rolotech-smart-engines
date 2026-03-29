@@ -195,12 +195,30 @@ export function buildDrawingModel(
     approvedBy?:        string;
     manufacturingNote?: string;
     toleranceNote?:     string;
+    // ISO 7200 / commercial fields
+    customerName?:  string;
+    jobNo?:         string;
+    projectName?:   string;
+    partNo?:        string;
+    sheetNo?:       number;
+    totalSheets?:   number;
+    drawingScale?:  string;
+    customDrawNo?:  string;
   }
 ): DrawingModel {
   const rev   = opts.revision ?? "R0";
   const ptype = opts.profileType ?? "";
   const tag   = (ptype || opts.material).substring(0, 3).toUpperCase();
-  const drawNo = `SRE-${tag}-S${String(pass.pass_no).padStart(2,"0")}-${rev}`;
+
+  // ISO 7200 drawing number — format: SRT-{customerCode}-{jobNo}-{profileTag}-ST{nn}-{rev}
+  const custCode  = opts.customerName
+    ? opts.customerName.replace(/[^A-Za-z0-9]/g, "").substring(0, 4).toUpperCase()
+    : "SAI";
+  const jobCode   = opts.jobNo
+    ? opts.jobNo.replace(/[^A-Za-z0-9]/g, "").substring(0, 6).toUpperCase()
+    : "LOCAL";
+  const drawNo    = opts.customDrawNo
+    ?? `SRT-${custCode}-${jobCode}-${tag}-ST${String(pass.pass_no).padStart(2,"0")}-${rev}`;
 
   return {
     stationNo:    pass.pass_no,
@@ -238,6 +256,16 @@ export function buildDrawingModel(
     toleranceNote:     opts.toleranceNote ?? "All dimensions ±0.05 mm unless stated",
     drawingNo:         drawNo,
     exportDate:        new Date().toLocaleDateString("en-GB"),
+
+    // ISO 7200
+    companyName:   "Sai Rolotech Pvt. Ltd.",
+    customerName:  opts.customerName  ?? "",
+    jobNo:         opts.jobNo         ?? "",
+    projectName:   opts.projectName   ?? "",
+    partNo:        opts.partNo        ?? "",
+    sheetNo:       opts.sheetNo       ?? 1,
+    totalSheets:   opts.totalSheets   ?? opts.totalStations,
+    drawingScale:  opts.drawingScale  ?? "1:1 (approx)",
   };
 }
 
@@ -512,58 +540,67 @@ export function renderDrawingToSVG(m: DrawingModel): string {
   <text x="${W-197}" y="${H-221}" font-size="9" fill="${relMeta.textFill}" text-anchor="middle" font-weight="bold" letter-spacing="1.5">${relMeta.label}</text>
   <text x="${W-197}" y="${H-207}" font-size="7.5" fill="${relMeta.subFill}" text-anchor="middle">${relMeta.sublabel} · ${m.exportDate} · ${m.revision}</text>
 
-  <!-- === TITLE BLOCK === -->
-  <rect x="${W-380}" y="${H-190}" width="365" height="175" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
+  <!-- ═══ ISO 7200 TITLE BLOCK ═══ -->
+  <!-- Outer border -->
+  <rect x="${W-380}" y="${H-192}" width="365" height="177" fill="#0a1120" stroke="#1e3a8a" stroke-width="1.5"/>
 
-  <!-- Grid lines -->
-  <line x1="${W-380}" y1="${H-162}" x2="${W-15}" y2="${H-162}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W-380}" y1="${H-139}" x2="${W-15}" y2="${H-139}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W-380}" y1="${H-116}" x2="${W-15}" y2="${H-116}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W-380}" y1="${H-93}" x2="${W-15}" y2="${H-93}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W-380}" y1="${H-70}" x2="${W-15}" y2="${H-70}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W-380}" y1="${H-47}" x2="${W-15}" y2="${H-47}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W-380}" y1="${H-24}" x2="${W-15}" y2="${H-24}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W-200}" y1="${H-190}" x2="${W-200}" y2="${H-15}" stroke="#1e293b" stroke-width="0.5"/>
+  <!-- Company header strip -->
+  <rect x="${W-380}" y="${H-192}" width="365" height="22" fill="#0d2456" stroke="none"/>
+  <text x="${W-197}" y="${H-176}" font-size="9" fill="#93c5fd" text-anchor="middle" font-weight="bold" letter-spacing="2">SAI ROLOTECH PVT. LTD.</text>
+  <text x="${W-375}" y="${H-177}" font-size="6.5" fill="#3b82f6">ISO 7200</text>
+  <text x="${W-20}" y="${H-177}" font-size="6.5" fill="#3b82f6" text-anchor="end">AS 1100.301</text>
 
-  <!-- Labels left -->
-  <text x="${W-375}" y="${H-174}" font-size="7" fill="#64748b">DRAWING NO.</text>
-  <text x="${W-375}" y="${H-151}" font-size="7" fill="#64748b">PROFILE TYPE</text>
-  <text x="${W-375}" y="${H-128}" font-size="7" fill="#64748b">MATERIAL / THK.</text>
-  <text x="${W-375}" y="${H-105}" font-size="7" fill="#64748b">STAGE</text>
-  <text x="${W-375}" y="${H-82}" font-size="7" fill="#64748b">REV / DATE</text>
-  <text x="${W-375}" y="${H-59}" font-size="7" fill="#64748b">CHECKED BY</text>
-  <text x="${W-375}" y="${H-36}" font-size="7" fill="#64748b">APPROVED BY</text>
-  <text x="${W-375}" y="${H-13}" font-size="7" fill="#64748b">SCALE / UNIT</text>
+  <!-- Row dividers (8 rows × 21px below company header) -->
+  <line x1="${W-380}" y1="${H-170}" x2="${W-15}" y2="${H-170}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <line x1="${W-380}" y1="${H-149}" x2="${W-15}" y2="${H-149}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <line x1="${W-380}" y1="${H-128}" x2="${W-15}" y2="${H-128}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <line x1="${W-380}" y1="${H-107}" x2="${W-15}" y2="${H-107}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <line x1="${W-380}" y1="${H-86}" x2="${W-15}" y2="${H-86}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <line x1="${W-380}" y1="${H-65}" x2="${W-15}" y2="${H-65}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <line x1="${W-380}" y1="${H-44}" x2="${W-15}" y2="${H-44}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <line x1="${W-380}" y1="${H-22}" x2="${W-15}" y2="${H-22}" stroke="#1e3a5a" stroke-width="0.6"/>
+  <!-- Vertical divider -->
+  <line x1="${W-200}" y1="${H-170}" x2="${W-200}" y2="${H-15}" stroke="#1e3a5a" stroke-width="0.6"/>
 
-  <!-- Values left -->
-  <text x="${W-375}" y="${H-163}" font-size="8.5" fill="#e2e8f0" font-weight="bold">${m.drawingNo}</text>
-  <text x="${W-375}" y="${H-140}" font-size="8.5" fill="#a5b4fc">${m.profileType || "—"}</text>
-  <text x="${W-375}" y="${H-117}" font-size="8.5" fill="#a5b4fc">${m.material} / ${m.thickness} mm</text>
-  <text x="${W-375}" y="${H-94}" font-size="8.5" fill="${stageColor}">${m.stageType.replace(/_/g," ")}</text>
-  <text x="${W-375}" y="${H-71}" font-size="8.5" fill="#94a3b8">${m.revision} / ${m.exportDate}</text>
-  <text x="${W-375}" y="${H-48}" font-size="8.5" fill="${m.checkedBy ? "#4ade80" : "#475569"}">${tbChecked}</text>
-  <text x="${W-375}" y="${H-25}" font-size="8.5" fill="${m.approvedBy ? "#4ade80" : "#475569"}">${tbApproved}</text>
-  <text x="${W-375}" y="${H-12}" font-size="8.5" fill="#94a3b8">1:1 (approx) / mm</text>
+  <!-- ── LEFT COLUMN LABELS ── -->
+  <text x="${W-376}" y="${H-160}" font-size="6" fill="#475569" letter-spacing="0.5">DRG. NO. (ISO 7200)</text>
+  <text x="${W-376}" y="${H-139}" font-size="6" fill="#475569" letter-spacing="0.5">CUSTOMER</text>
+  <text x="${W-376}" y="${H-118}" font-size="6" fill="#475569" letter-spacing="0.5">JOB NO. / PROJECT</text>
+  <text x="${W-376}" y="${H-97}" font-size="6" fill="#475569" letter-spacing="0.5">MATERIAL / THK. / STAGE</text>
+  <text x="${W-376}" y="${H-76}" font-size="6" fill="#475569" letter-spacing="0.5">REV. / DATE</text>
+  <text x="${W-376}" y="${H-55}" font-size="6" fill="#475569" letter-spacing="0.5">CHECKED BY</text>
+  <text x="${W-376}" y="${H-34}" font-size="6" fill="#475569" letter-spacing="0.5">APPROVED BY</text>
+  <text x="${W-376}" y="${H-12}" font-size="6" fill="#475569" letter-spacing="0.5">SCALE / SHEET / UNIT</text>
 
-  <!-- Labels right -->
-  <text x="${W-195}" y="${H-174}" font-size="7" fill="#64748b">ROLL OD</text>
-  <text x="${W-195}" y="${H-151}" font-size="7" fill="#64748b">BORE DIA.</text>
-  <text x="${W-195}" y="${H-128}" font-size="7" fill="#64748b">FACE WIDTH</text>
-  <text x="${W-195}" y="${H-105}" font-size="7" fill="#64748b">SHAFT DIA.</text>
-  <text x="${W-195}" y="${H-82}" font-size="7" fill="#64748b">KEYWAY</text>
-  <text x="${W-195}" y="${H-59}" font-size="7" fill="#64748b">ROLL MATERIAL</text>
-  <text x="${W-195}" y="${H-36}" font-size="7" fill="#64748b">SURFACE FINISH</text>
-  <text x="${W-195}" y="${H-13}" font-size="7" fill="#64748b">TOLERANCE</text>
+  <!-- ── LEFT COLUMN VALUES ── -->
+  <text x="${W-376}" y="${H-151}" font-size="8" fill="#e2e8f0" font-weight="bold" letter-spacing="0.5">${m.drawingNo}</text>
+  <text x="${W-376}" y="${H-130}" font-size="8" fill="#93c5fd">${m.customerName || "—"}</text>
+  <text x="${W-376}" y="${H-109}" font-size="7.5" fill="#93c5fd">${m.jobNo || "—"} ${m.projectName ? "/ " + m.projectName : ""}</text>
+  <text x="${W-376}" y="${H-88}" font-size="7.5" fill="#a5b4fc">${m.material} / ${m.thickness} mm · <tspan fill="${stageColor}">${m.stageType.replace(/_/g," ")}</tspan></text>
+  <text x="${W-376}" y="${H-67}" font-size="8" fill="#94a3b8">${m.revision}  /  ${m.exportDate}</text>
+  <text x="${W-376}" y="${H-46}" font-size="8" fill="${m.checkedBy ? "#4ade80" : "#475569"}">${tbChecked}</text>
+  <text x="${W-376}" y="${H-25}" font-size="8" fill="${m.approvedBy ? "#4ade80" : "#475569"}">${tbApproved}</text>
+  <text x="${W-376}" y="${H-13}" font-size="7.5" fill="#94a3b8">${m.drawingScale}  ·  Sh ${m.sheetNo}/${m.totalSheets}  ·  mm</text>
 
-  <!-- Values right -->
-  <text x="${W-195}" y="${H-163}" font-size="8.5" fill="#60a5fa" font-weight="bold">⌀${m.rollOD} h6</text>
-  <text x="${W-195}" y="${H-140}" font-size="8.5" fill="#fbbf24">⌀${m.bore} H7</text>
-  <text x="${W-195}" y="${H-117}" font-size="8.5" fill="#c4b5fd">${m.faceWidth} mm</text>
-  <text x="${W-195}" y="${H-94}" font-size="8.5" fill="#34d399">⌀${m.shaft} mm</text>
-  <text x="${W-195}" y="${H-71}" font-size="8.5" fill="#f97316">${m.keyway} mm (DIN 6885)</text>
-  <text x="${W-195}" y="${H-48}" font-size="8.5" fill="#f87171">EN31 / D2 · 60–62 HRC</text>
-  <text x="${W-195}" y="${H-25}" font-size="8.5" fill="#94a3b8">Ra 0.8 μm</text>
-  <text x="${W-195}" y="${H-12}" font-size="7.5" fill="#64748b">${m.toleranceNote}</text>
+  <!-- ── RIGHT COLUMN LABELS ── -->
+  <text x="${W-196}" y="${H-160}" font-size="6" fill="#475569" letter-spacing="0.5">ROLL OD (h6)</text>
+  <text x="${W-196}" y="${H-139}" font-size="6" fill="#475569" letter-spacing="0.5">BORE DIA. (H7)</text>
+  <text x="${W-196}" y="${H-118}" font-size="6" fill="#475569" letter-spacing="0.5">FACE WIDTH</text>
+  <text x="${W-196}" y="${H-97}" font-size="6" fill="#475569" letter-spacing="0.5">SHAFT DIA.</text>
+  <text x="${W-196}" y="${H-76}" font-size="6" fill="#475569" letter-spacing="0.5">KEYWAY (DIN 6885)</text>
+  <text x="${W-196}" y="${H-55}" font-size="6" fill="#475569" letter-spacing="0.5">ROLL MATERIAL</text>
+  <text x="${W-196}" y="${H-34}" font-size="6" fill="#475569" letter-spacing="0.5">SURFACE FINISH / HRC</text>
+  <text x="${W-196}" y="${H-12}" font-size="6" fill="#475569" letter-spacing="0.5">TOLERANCE</text>
+
+  <!-- ── RIGHT COLUMN VALUES ── -->
+  <text x="${W-196}" y="${H-151}" font-size="8" fill="#60a5fa" font-weight="bold">⌀${m.rollOD} mm</text>
+  <text x="${W-196}" y="${H-130}" font-size="8" fill="#fbbf24">⌀${m.bore} mm</text>
+  <text x="${W-196}" y="${H-109}" font-size="8" fill="#c4b5fd">${m.faceWidth} mm</text>
+  <text x="${W-196}" y="${H-88}" font-size="8" fill="#34d399">⌀${m.shaft} mm</text>
+  <text x="${W-196}" y="${H-67}" font-size="8" fill="#f97316">${m.keyway} mm</text>
+  <text x="${W-196}" y="${H-46}" font-size="8" fill="#f87171">EN31 / D2 Steel</text>
+  <text x="${W-196}" y="${H-25}" font-size="8" fill="#94a3b8">Ra 0.8 μm · 60–62 HRC</text>
+  <text x="${W-196}" y="${H-13}" font-size="6.5" fill="#64748b">${m.toleranceNote.length > 30 ? m.toleranceNote.substring(0,30)+"…" : m.toleranceNote}</text>
 
   <!-- Forming data box -->
   <rect x="15" y="${H-190}" width="295" height="175" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
@@ -808,13 +845,18 @@ export function buildExportSummaryTxt(
   const sep  = "─".repeat(60);
 
   return [
-    "SAI ROLOTECH SMART ENGINES v2.3.0",
+    "SAI ROLOTECH SMART ENGINES v2.4.0",
     "ROLL TOOLING MANUFACTURING EXPORT SUMMARY",
     sep,
     "",
-    "PROJECT / PROFILE",
+    "PROJECT / PROFILE (ISO 7200)",
     line("Drawing No.",    m0.drawingNo),
     line("Profile Type",   m0.profileType || "—"),
+    line("Customer",       m0.customerName || "—"),
+    line("Job No.",        m0.jobNo || "—"),
+    line("Project",        m0.projectName || "—"),
+    line("Company",        m0.companyName),
+    line("Sheet",          `${m0.sheetNo} of ${m0.totalSheets}`),
     line("Export ID",      manifest.exportId),
     "",
     "MATERIAL & SECTION",

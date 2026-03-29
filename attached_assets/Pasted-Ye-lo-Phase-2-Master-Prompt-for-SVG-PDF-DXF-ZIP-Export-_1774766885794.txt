@@ -1,0 +1,692 @@
+Ye lo — **Phase 2 Master Prompt** for **SVG + PDF + DXF + ZIP Export Engine**.
+
+# MASTER PROMPT — PHASE 2 EXPORT ENGINE
+
+## Roll Tooling Drawing System
+
+## SVG + PDF + DXF + ZIP + Manufacturing Export Mode
+
+You are a senior CAD/CAM architect, mechanical drawing system engineer, fabrication documentation expert, DXF/SVG/PDF export specialist, and manufacturing software developer.
+
+Your task is to design and implement **Phase 2 Export Engine** for the **Roll Tooling Drawing System**.
+
+This is not a demo feature.
+This must be treated as a **production-grade export system** for real roll forming workflow.
+
+The system already exports station-wise SVG drawings.
+Now extend it into a robust export engine with:
+
+1. **Single Station SVG Export**
+2. **All Stations SVG Export**
+3. **Single Station PDF Export**
+4. **All Stations PDF Export**
+5. **ZIP package export**
+6. **DXF outline export**
+7. **Manufacturing Release Mode**
+8. **Revision / version control in title block**
+9. **Deterministic file naming**
+10. **Safe validation before export**
+
+---
+
+# PRIMARY GOAL
+
+Build an export engine that can generate professional, consistent, fabrication-ready outputs from station tooling data.
+
+The export engine must be:
+
+* accurate
+* deterministic
+* stable
+* print-ready
+* browser-safe
+* maintainable
+* modular
+* easy to extend later into CNC / CAM workflows
+
+Do not make surface-level UI changes only.
+The real goal is **reliable export architecture**.
+
+---
+
+# CORE PHASE 2 FEATURES
+
+Implement all of the following.
+
+---
+
+## FEATURE 1 — SINGLE STATION PDF EXPORT
+
+Add a button:
+
+**Download PDF — Station N**
+
+This must export the currently selected station as a **single-page PDF**.
+
+### Requirements:
+
+* A3 landscape layout
+* Same drawing composition as SVG
+* DIN border
+* title block
+* cross-section view
+* front view
+* side/section view
+* forming data box
+* watermark
+* proper vector-style layout if possible
+* text readable at print size
+* dimensions preserved
+
+### Must ensure:
+
+* PDF content is not clipped
+* layout matches SVG drawing closely
+* exported station number is correct
+* no raster blur if vector export is possible
+* fallback to high-resolution raster only if unavoidable
+
+---
+
+## FEATURE 2 — ALL STATIONS PDF EXPORT
+
+Add a button:
+
+**Download All Stations PDF**
+
+This must export either:
+
+### Option A
+
+One multi-page PDF:
+
+* page 1 = station 1
+* page 2 = station 2
+* ...
+* page N = station N
+
+### Option B
+
+Separate PDFs for each station if multi-page PDF is not stable
+
+### Preferred:
+
+**Multi-page PDF** if architecture supports it safely.
+
+### Requirements:
+
+* ordered pages
+* stable station mapping
+* correct page titles
+* no repeated page bug
+* no async station mismatch
+* no skipped stations
+* no memory crash on larger station counts
+
+---
+
+## FEATURE 3 — ZIP PACKAGE EXPORT
+
+Add a button:
+
+**Download Manufacturing Package**
+
+This must create a ZIP file containing structured exports.
+
+### ZIP content example:
+
+* `/svg/station-01.svg`
+* `/svg/station-02.svg`
+* `/pdf/roll-tooling-all-stations.pdf`
+* `/pdf/station-01.pdf`
+* `/pdf/station-02.pdf`
+* `/dxf/station-01-profile.dxf`
+* `/dxf/station-02-profile.dxf`
+* `/manifest/export-manifest.json`
+* `/readme/export-summary.txt`
+
+### ZIP requirements:
+
+* valid ZIP file
+* predictable folder structure
+* correct filenames
+* no duplicate names
+* no corrupted entries
+* downloadable in browser
+* works for larger station counts
+
+---
+
+## FEATURE 4 — DXF OUTLINE EXPORT
+
+Add support for DXF export.
+
+### Minimum DXF deliverables:
+
+For each station export:
+
+1. groove/profile outline
+2. strip/profile reference centerline if available
+3. optional roll body section outline
+4. optional dimension layer placeholders
+
+### DXF goals:
+
+* CAD-import friendly
+* simple clean geometry
+* no excessive fragmentation
+* no random splines unless necessary
+* use lines/arcs where possible
+* consistent units in mm
+* origin placement defined
+* layer naming structured
+
+### Suggested DXF layers:
+
+* `OUTLINE`
+* `CENTERLINE`
+* `ROLL_PROFILE`
+* `STRIP`
+* `ANNOTATION`
+* `CONSTRUCTION`
+
+### Must ensure:
+
+* DXF opens in common CAD tools
+* no malformed entities
+* no unit ambiguity
+* no inverted geometry
+* no exploded nonsense geometry from bad conversion
+
+### Important:
+
+If true production-grade DXF with dimensions is not yet stable, then first export **clean profile geometry DXF only**, and do not fake full drafting support.
+
+---
+
+## FEATURE 5 — MANUFACTURING RELEASE MODE
+
+Add a toggle:
+
+**Manufacturing Release Mode**
+
+When ON:
+
+* export uses locked validated values only
+* title block includes release state
+* revision number required
+* approval fields shown
+* warning banner hidden from final drawing
+* extra metadata included in title block
+
+### Add title block fields:
+
+* Revision
+* Checked By
+* Approved By
+* Release Status
+* Manufacturing Note
+* Tolerance Note
+* Scale
+* Unit = mm
+
+### Release states:
+
+* Draft
+* Internal Review
+* Shop Drawing
+* Manufacturing Release
+
+### Rules:
+
+* “Manufacturing Release” cannot export if required fields missing
+* if bore/keyway/shaft/OD critical fields are missing, block release export
+* normal draft export may still be allowed
+
+---
+
+## FEATURE 6 — REVISION CONTROL IN TITLE BLOCK
+
+Add revision/version handling.
+
+### Required:
+
+* revision text like `R0`, `R1`, `R2`
+* generated date
+* optional last modified timestamp
+* drawing number version suffix
+
+### Example:
+
+* Drawing No.: `SRT-ROLL-U-170x50-ST03-R1`
+* Revision: `R1`
+
+### Rules:
+
+* station export must reflect current revision
+* rerun with modified geometry should not silently reuse old revision text
+* exports should be deterministic for same data + same revision
+
+---
+
+## FEATURE 7 — DETERMINISTIC FILE NAMING
+
+Create strict file naming rules.
+
+### Example naming:
+
+* `srt-roll-tooling-station-01.svg`
+* `srt-roll-tooling-station-01.pdf`
+* `srt-roll-tooling-station-01-profile.dxf`
+* `srt-roll-tooling-all-stations.pdf`
+* `srt-roll-tooling-package-rev-R1.zip`
+
+### Filename rules:
+
+* lowercase preferred
+* no spaces
+* safe for Windows/macOS/Linux
+* station numbers zero-padded
+* revision optional but consistent
+* no duplicate overwrite confusion
+
+---
+
+## FEATURE 8 — EXPORT MANIFEST
+
+Generate a manifest file for ZIP package.
+
+### `export-manifest.json` should contain:
+
+* export timestamp
+* profile type
+* material
+* thickness
+* strip width
+* total stations
+* revision
+* release status
+* exported file list
+* software version
+* checksum or deterministic export id if possible
+
+This helps future traceability.
+
+---
+
+## FEATURE 9 — EXPORT SUMMARY TXT
+
+Generate a simple human-readable summary text file.
+
+### Example contents:
+
+* Project / Profile
+* Material
+* Thickness
+* Station count
+* Roll OD
+* Bore
+* Face width
+* Revision
+* Release status
+* Export date
+* Package contents
+
+This is useful for factory sharing.
+
+---
+
+## FEATURE 10 — PRE-EXPORT VALIDATION GATE
+
+Before export, validate data.
+
+### Validation categories:
+
+* pipeline result exists
+* station array exists
+* selected station valid
+* no NaN geometry
+* no missing mandatory title block values
+* dimensions consistent
+* viewBox valid
+* PDF page size valid
+* DXF entities valid
+* ZIP file structure ready
+
+### Export policy:
+
+* Draft export: allow with warnings
+* Manufacturing Release export: block on critical errors
+
+### Must show:
+
+* clear warning messages
+* exact missing field names
+* non-crashing behavior
+
+---
+
+# EXPORT ARCHITECTURE RULES
+
+You must refactor the export system into modular functions.
+
+### Preferred structure:
+
+* `buildStationDrawingModel(stationData, globalData)`
+* `validateDrawingModel(model)`
+* `renderDrawingToSvg(model)`
+* `renderDrawingToPdf(model | models)`
+* `renderDrawingToDxf(model)`
+* `buildZipPackage(files, manifest)`
+* `buildTitleBlockData(model, releaseState, revision)`
+* `generateDeterministicFileName(...)`
+
+Do not keep all logic inside UI button handlers.
+
+### Important:
+
+UI should trigger export, but actual export composition must live in reusable utility/service layer.
+
+---
+
+# DRAWING MODEL REQUIREMENT
+
+Create a normalized drawing model before rendering any export.
+
+That drawing model should include:
+
+* station number
+* total stations
+* bend angle
+* roll gap
+* form depth
+* strip width
+* profile type
+* material
+* thickness
+* roll OD
+* bore
+* face width
+* shaft
+* keyway
+* date
+* revision
+* release state
+* geometry for cross-section
+* geometry for front view
+* geometry for side view
+* annotations
+* title block fields
+
+This avoids mismatches across SVG/PDF/DXF.
+
+---
+
+# PDF ENGINE RULES
+
+Use the safest available method.
+
+### Prefer:
+
+* vector-oriented PDF generation if available
+
+### Avoid:
+
+* blurry screenshot PDF
+* clipped canvas export
+* font rendering mismatch
+* inconsistent page scaling
+
+### If raster fallback is used:
+
+* use high DPI
+* preserve A3 ratio
+* confirm legibility
+* keep text sharp enough for print
+
+---
+
+# DXF ENGINE RULES
+
+DXF export must be honest and minimal.
+
+Do not claim full CAD drafting unless truly implemented.
+
+### First stable milestone:
+
+* export clean 2D profile outlines in mm
+* use lines/arcs
+* define consistent origin
+* separate layers logically
+
+### Future-ready structure:
+
+keep design easy to extend toward:
+
+* groove centerline
+* machining profile
+* roll blank outline
+* section outlines
+* optional reference geometry
+
+---
+
+# ZIP ENGINE RULES
+
+Use browser-safe ZIP generation.
+
+### Must handle:
+
+* multiple files
+* correct MIME/download behavior
+* large package sizes gracefully
+* stable naming
+* deterministic contents
+
+### Must avoid:
+
+* blank ZIP
+* duplicate entry overwrite
+* async race conditions
+* station order mismatch
+
+---
+
+# UI REQUIREMENTS
+
+Add export controls to the Roll Tooling Drawing panel header or export toolbar.
+
+### Recommended buttons:
+
+* Download SVG — Station N
+* Download All SVG
+* Download PDF — Station N
+* Download All PDF
+* Download DXF — Station N
+* Download Package ZIP
+
+### Optional controls:
+
+* Revision selector/input
+* Release status dropdown
+* Manufacturing Release toggle
+* Include DXF checkbox
+* Include per-station PDF checkbox
+* Include all SVG checkbox
+
+### UI rules:
+
+* disable export buttons when no valid station data
+* show loading state on heavy exports
+* prevent duplicate rapid-click export storm
+* keep layout clean
+* do not break existing panel layout
+
+---
+
+# TEST CASES TO IMPLEMENT
+
+Test the export engine with these cases:
+
+### Case 1
+
+* Bend Count: 2
+* Width: 170
+* Height: 50
+* Thickness: 3
+* Material: MS
+
+### Case 2
+
+* Bend Count: 4
+* Width: 100
+* Height: 40
+* Thickness: 1.2
+* Material: GI
+
+### Case 3
+
+* Bend Count: 8
+* Width: 60
+* Height: 25
+* Thickness: 0.8
+* Material: CR
+
+### Case 4
+
+* High station count stress case
+
+### Case 5
+
+* Missing optional fields
+
+### Case 6
+
+* Missing critical manufacturing fields
+
+For each case verify:
+
+* SVG export
+* PDF export
+* DXF export
+* ZIP export
+* filename correctness
+* revision correctness
+* release status behavior
+
+---
+
+# ERROR HANDLING RULES
+
+Handle all of these safely:
+
+* no pipeline result
+* empty stations array
+* invalid selected station index
+* missing title block values
+* NaN in geometry
+* PDF generation failure
+* DXF generation failure
+* ZIP packaging failure
+* repeated fast-click on export buttons
+* stale export after rerun
+
+Never crash the panel.
+
+Show exact error message and safest fallback.
+
+---
+
+# IMPLEMENTATION PRIORITY
+
+Implement in this order:
+
+## P0
+
+1. normalized drawing model
+2. pre-export validation
+3. single station PDF
+4. all stations PDF
+5. deterministic filenames
+
+## P1
+
+6. single station DXF outline export
+7. ZIP package export
+8. revision + release fields
+
+## P2
+
+9. manufacturing release gate
+10. manifest file
+11. export summary txt
+12. advanced options UI
+
+---
+
+# OUTPUT FORMAT REQUIRED
+
+Your response must include:
+
+## 1. Architecture Plan
+
+Explain the export engine structure.
+
+## 2. Files To Create / Modify
+
+List exact files or modules to change.
+
+## 3. Data Flow
+
+Show how station data moves into drawing model into export renderers.
+
+## 4. Implementation Steps
+
+Ordered step-by-step.
+
+## 5. Risk Areas
+
+List likely bugs/regressions.
+
+## 6. Safe Minimal Version
+
+Define smallest reliable first release.
+
+## 7. Full Version
+
+Define complete Phase 2 scope.
+
+## 8. Code Changes
+
+Apply the code changes.
+
+## 9. Validation Checklist
+
+List what must be tested after implementation.
+
+## 10. Final Status
+
+State:
+
+* what is complete
+* what is partial
+* what is blocked
+
+---
+
+# IMPORTANT FINAL INSTRUCTION
+
+Do not give generic advice.
+Do not only describe the feature.
+Actually implement the export engine in code.
+
+Preserve existing working SVG export behavior.
+Do not break the current Roll Tooling Drawing panel.
+Prefer modular low-risk changes over flashy incomplete code.
+
+Iske neeche tum ye one-line instruction bhi add kar sakte ho:
+
+**“Pehle existing SVG export ko preserve karo, fir uske upar modular Phase 2 export engine build karo — rewrite mat karo jab tak zaroori na ho.”**
+
+Agar chaho, main ab iska **Phase 3 master prompt** bhi bana deta hoon:
+**DXF machining profile + CNC/CAM handoff + manufacturing approval workflow**.

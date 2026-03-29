@@ -12,9 +12,9 @@
 import { useState, useCallback } from "react";
 import JSZip from "jszip";
 import {
-  ChevronLeft, ChevronRight, Printer, Download,
-  Layers, Circle, AlignCenter, ZoomIn, Info, FileDown, Package,
-  FileText, Archive, Stamp, Edit3, CheckCircle, Lock
+  ChevronLeft, ChevronRight, Download,
+  Layers, Circle, AlignCenter, Info, FileDown,
+  FileText, Archive, Edit3, CheckCircle, Lock, AlertTriangle
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -61,6 +61,8 @@ interface RollContourData {
 interface Props {
   rollContour:    RollContourData | null;
   rollDimensions: RollDimensions  | null;
+  profileType?:   string;
+  springbackDeg?: number;
 }
 
 // ─── Stage colours ───────────────────────────────────────────────────────────
@@ -555,13 +557,14 @@ function MiniThumb({ pass, active, onClick }: { pass: PassData; active: boolean;
 // All coordinates in "SVG units" (1 unit ≈ 0.75 pt for screen, or mm for print).
 
 function buildStationSVG(
-  pass:        PassData,
-  rd:          RollDimensions,
-  thickness:   number,
-  material:    string,
-  profileType: string  = "",
-  revision:    string  = "A",
-  approved:    boolean = false,
+  pass:          PassData,
+  rd:            RollDimensions,
+  thickness:     number,
+  material:      string,
+  profileType:   string  = "",
+  revision:      string  = "A",
+  approved:      boolean = false,
+  springbackDeg: number  = 0,
 ): string {
   const W = 1189, H = 841;   // A3 landscape (mm × 3.56 px/mm ÷ 3.56 = mm)
   const stageColor = STAGE_COLOR[pass.stage_type] || "#8b5cf6";
@@ -870,12 +873,12 @@ function buildStationSVG(
   <text x="20" y="${H - 170}" font-size="8" fill="#64748b">FORMING DATA — ${pass.station_label.toUpperCase()}</text>
   <line x1="15" y1="${H - 162}" x2="310" y2="${H - 162}" stroke="#1e293b" stroke-width="0.5"/>
   ${[
-    ["Bend Angle",    `${pass.target_angle_deg}°`],
-    ["Overform",      `${pass.target_angle_deg}°`],
-    ["Roll Gap",      `${pass.roll_gap_mm} mm`],
-    ["Form Depth",    `${pass.forming_depth_mm.toFixed(1)} mm`],
-    ["Strip Width",   `${pass.strip_width_mm.toFixed(1)} mm`],
-    ["Progress",      `${pass.pass_progress_pct.toFixed(0)}%`],
+    ["Bend Angle",         `${pass.target_angle_deg}°`],
+    ["Springback Adj.",    springbackDeg > 0 ? `+${springbackDeg.toFixed(1)}° (${material})` : `0° (${material})`],
+    ["Tool Angle",         `${(pass.target_angle_deg + springbackDeg).toFixed(1)}°`],
+    ["Roll Gap",           `${pass.roll_gap_mm} mm`],
+    ["Form Depth",         `${pass.forming_depth_mm.toFixed(1)} mm`],
+    ["Progress",           `${pass.pass_progress_pct.toFixed(0)}%`],
   ].map(([label, val], i) => `
     <text x="22" y="${H - 148 + i * 22}" font-size="8" fill="#64748b">${label}:</text>
     <text x="130" y="${H - 148 + i * 22}" font-size="9" fill="#e2e8f0" font-weight="bold">${val}</text>
@@ -1045,7 +1048,7 @@ function triggerSVGDownload(svgString: string, filename: string) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function RollDrawingPanel({ rollContour, rollDimensions }: Props) {
+export default function RollDrawingPanel({ rollContour, rollDimensions, profileType: profileTypeProp, springbackDeg: springbackDegProp }: Props) {
   const [selected,    setSelected]    = useState(0);
   const [view,        setView]        = useState<"all3" | "cross" | "front" | "side">("all3");
   const [downloading, setDownloading] = useState(false);
@@ -1084,33 +1087,38 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
   const material    = rollContour.material as string;
   const thickness   = rollContour.thickness_mm as number;
 
-  const profType  = (rollContour as Record<string,unknown>).profile_type as string || "";
+  const profType     = profileTypeProp
+    || (rollContour as Record<string,unknown>).profile_type as string
+    || "";
+  const springbackDeg = springbackDegProp
+    ?? (rollContour as Record<string,unknown>).springback_deg as number
+    ?? 0;
   const partBase  = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(pass.pass_no).padStart(2,"0")}-REV${revision}`;
 
   const handleDownloadStation = useCallback(() => {
     setDownloading(true);
     try {
-      const svg  = buildStationSVG(pass, rd, thickness, material, profType, revision, approved);
+      const svg  = buildStationSVG(pass, rd, thickness, material, profType, revision, approved, springbackDeg);
       triggerSVGDownload(svg, `${partBase}.svg`);
     } finally { setTimeout(() => setDownloading(false), 600); }
-  }, [pass, rd, material, thickness, profType, revision, approved, partBase]);
+  }, [pass, rd, material, thickness, profType, revision, approved, springbackDeg, partBase]);
 
   const handleDownloadAll = useCallback(() => {
     setDownloading(true);
     allPasses.forEach((p, i) => {
       setTimeout(() => {
-        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved);
+        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved, springbackDeg);
         const base = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(p.pass_no).padStart(2,"0")}-REV${revision}`;
         triggerSVGDownload(svg, `${base}.svg`);
       }, i * 150);
     });
     setTimeout(() => setDownloading(false), allPasses.length * 150 + 500);
-  }, [allPasses, rd, material, thickness, profType, revision, approved]);
+  }, [allPasses, rd, material, thickness, profType, revision, approved, springbackDeg]);
 
   const handleDownloadPDF = useCallback(() => {
-    const svg = buildStationSVG(pass, rd, thickness, material, profType, revision, approved);
+    const svg = buildStationSVG(pass, rd, thickness, material, profType, revision, approved, springbackDeg);
     printStationPDF(svg, `${partBase}.pdf`);
-  }, [pass, rd, material, thickness, profType, revision, approved, partBase]);
+  }, [pass, rd, material, thickness, profType, revision, approved, springbackDeg, partBase]);
 
   const handleDownloadZIP = useCallback(async () => {
     setDownloading(true);
@@ -1118,7 +1126,7 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
       const zip = new JSZip();
       const folder = zip.folder(`SRE-${profType || "roll"}-REV${revision}`)!;
       allPasses.forEach(p => {
-        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved);
+        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved, springbackDeg);
         const dxf  = buildStationDXF(p, rd, thickness, material, revision);
         const base = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(p.pass_no).padStart(2,"0")}-REV${revision}`;
         folder.file(`${base}.svg`, svg);
@@ -1137,7 +1145,7 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
       const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
       triggerBlobDownload(blob, `SRE-${profType || "roll"}-REV${revision}-AllStations.zip`);
     } finally { setDownloading(false); }
-  }, [allPasses, rd, material, thickness, profType, revision, approved]);
+  }, [allPasses, rd, material, thickness, profType, revision, approved, springbackDeg]);
 
   const handleDownloadDXF = useCallback(() => {
     const dxf = buildStationDXF(pass, rd, thickness, material, revision);
@@ -1362,6 +1370,30 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
             </div>
           ))}
         </div>
+
+        {/* Thin-wall engineering warning */}
+        {(() => {
+          const wall = (rd.estimated_roll_od_mm - rd.bore_dia_mm) / 2;
+          return wall < 15 ? (
+            <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-500/8">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="text-[10px] text-amber-300">
+                <span className="font-semibold">Thin Wall Warning: </span>
+                Roll wall = {wall.toFixed(1)} mm (OD {rd.estimated_roll_od_mm} − Bore {rd.bore_dia_mm}).
+                Minimum recommended: 15 mm for rigidity. Verify roll design before machining.
+              </div>
+            </div>
+          ) : null;
+        })()}
+
+        {/* Springback info row */}
+        {springbackDeg > 0 && (
+          <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+            <span className="text-violet-400">Springback ({material}):</span>
+            <span className="text-amber-300">+{springbackDeg.toFixed(1)}°</span>
+            <span className="text-slate-600">→ Tool Angle = Bend Angle + Springback</span>
+          </div>
+        )}
 
         {/* Notes */}
         {rd.notes && rd.notes.length > 0 && (

@@ -241,7 +241,9 @@ export function LeftPanel() {
   // Only applies to file uploads — manual profiles drawn via wizard do not require confirmation.
   const dxfHasAnyDims = confirmedDimensions.length > 0;
   const dxfAllConfirmed = dxfHasAnyDims && confirmedDimensions.every(d => d.confirmed);
-  const dxfNeedsConfirmation = !!fileName && !!geometry && !dxfAllConfirmed;
+  // Only require confirmation when dims WERE actually extracted but not yet confirmed.
+  // If the server returned no dimension entities (the common case), do not block generation.
+  const dxfNeedsConfirmation = !!fileName && !!geometry && dxfHasAnyDims && !dxfAllConfirmed;
 
   const { scoreTask } = useAccuracyScoring();
   const autoAI = useAutoAIMode();
@@ -639,7 +641,40 @@ export function LeftPanel() {
       const resolvedSection = openSectionType === "Auto" ? autoDetectProfileType(geometry) : openSectionType;
       const result = await generateRollTooling(geometry, numStations, stationPrefix, materialThickness, rollDiameter, shaftDiameter, clearance, materialType, postProcessorId, resolvedSection, sectionModel);
       setStations(result.stations);
-      setRollTooling(result.rollTooling);
+
+      // Build normalized rollTooling: add rollProfile object from flat server fields
+      // so RollToolingView/DigitalTwinView never access undefined `rt.rollProfile`.
+      const normalizedRollTooling = (result.rollTooling ?? []).map((rt: any) => {
+        if (rt.rollProfile) return rt; // already shaped correctly
+        const upperOD: number = rt.upperRollOD ?? rt.rollDiameter ?? 100;
+        const lowerOD: number = rt.lowerRollOD ?? upperOD;
+        const gap: number    = rt.rollGap ?? rt.gap ?? 1;
+        const passLineY      = rt.passLineHeight ?? (lowerOD / 2 + gap / 2);
+        return {
+          ...rt,
+          stationNumber: rt.stationNumber ?? rt.stationIndex ?? 0,
+          label: rt.label ?? rt.stationId ?? `S${rt.stationIndex ?? 0}`,
+          rollProfile: {
+            upperRoll:         [],
+            lowerRoll:         [],
+            rollDiameter:      upperOD,
+            shaftDiameter:     rt.shaftCalc?.selectedDiaMm ?? (rt.upperRollID ? rt.upperRollID - 2 : 40),
+            rollWidth:         rt.upperRollWidth ?? rt.rollWidth ?? 50,
+            gap,
+            passLineY,
+            upperRollCenterY:  passLineY + gap / 2 + upperOD / 2,
+            lowerRollCenterY:  passLineY - gap / 2 - lowerOD / 2,
+            grooveDepth:       rt.profileDepthMm ?? 0,
+            upperRollNumber:   (rt.stationIndex ?? 1) * 2 - 1,
+            lowerRollNumber:   (rt.stationIndex ?? 1) * 2,
+            kFactor:           rt.kFactor ?? 0.44,
+            neutralAxisOffset: rt.neutralAxis ?? 0,
+            upperLatheGcode:   "",
+            lowerLatheGcode:   "",
+          },
+        };
+      });
+      setRollTooling(normalizedRollTooling);
       if (result.rollGaps) setRollGaps(result.rollGaps);
       if (result.machineData) setMachineData(result.machineData);
       if (result.motorCalc) setMotorCalc(result.motorCalc);

@@ -82,6 +82,58 @@ function segmentLength(seg: { startX: number; startY: number; endX: number; endY
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+/**
+ * Re-traces the original profile segments applying `fraction` (0=flat → 1=fully formed)
+ * of the bend angle at each joint. Used to synthesize per-station geometry when the
+ * server returns FlowerStation objects that carry no segment data.
+ */
+function generateProgressiveProfile(
+  segments: { startX: number; startY: number; endX: number; endY: number; type?: string }[],
+  fraction: number,
+): { type: string; startX: number; startY: number; endX: number; endY: number }[] {
+  if (segments.length === 0) return [];
+  if (fraction >= 0.999) {
+    return segments.map(s => ({
+      type: s.type ?? "line",
+      startX: s.startX ?? 0, startY: s.startY ?? 0,
+      endX:   s.endX   ?? 0, endY:   s.endY   ?? 0,
+    }));
+  }
+
+  const result: { type: string; startX: number; startY: number; endX: number; endY: number }[] = [];
+  const first = segments[0];
+  const fDx = (first.endX ?? 0) - (first.startX ?? 0);
+  const fDy = (first.endY ?? 0) - (first.startY ?? 0);
+  let curDir = Math.atan2(fDy, fDx);
+  let curX = first.startX ?? 0;
+  let curY = first.startY ?? 0;
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const dx = (seg.endX ?? 0) - (seg.startX ?? 0);
+    const dy = (seg.endY ?? 0) - (seg.startY ?? 0);
+    const len = Math.hypot(dx, dy);
+
+    const endX = curX + len * Math.cos(curDir);
+    const endY = curY + len * Math.sin(curDir);
+    result.push({ type: "line", startX: curX, startY: curY, endX, endY });
+    curX = endX;
+    curY = endY;
+
+    if (i < segments.length - 1) {
+      const next = segments[i + 1];
+      const nDx = (next.endX ?? 0) - (next.startX ?? 0);
+      const nDy = (next.endY ?? 0) - (next.startY ?? 0);
+      const origDir = Math.atan2(dy, dx);
+      let turn = Math.atan2(nDy, nDx) - origDir;
+      while (turn >  Math.PI) turn -= 2 * Math.PI;
+      while (turn < -Math.PI) turn += 2 * Math.PI;
+      curDir += turn * fraction;
+    }
+  }
+  return result;
+}
+
 function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps) {
   const { profileSourceType, setActiveTab, requestFlowerGeneration, setLeftPanelScrollTarget } = useCncStore();
   const [generating, setGenerating] = React.useState(false);
@@ -325,12 +377,29 @@ export function FlowerPatternView() {
     return () => obs.disconnect();
   }, []);
 
+  // Ensure every station always has segments for rendering.
+  // When the server returns FlowerStation objects without geometry (common from /flower
+  // and /roll-tooling routes), synthesize progressive profile geometry from the original
+  // profile segments so the canvas never crashes on `for…of st.segments`.
+  const displayStations = useMemo(() => {
+    if (stations.length === 0) return stations;
+    const srcSegs = geometry?.segments ?? [];
+    const total = stations.length;
+    return stations.map((st, i) => {
+      const existingSegs: any[] = Array.isArray((st as any).segments) ? (st as any).segments : [];
+      if (existingSegs.length > 0) return st;
+      const fraction = total > 1 ? (i + 1) / total : 1;
+      const generated = generateProgressiveProfile(srcSegs, fraction);
+      return { ...st, segments: generated };
+    });
+  }, [stations, geometry]);
+
   // For flower view: all stations are centered at same point and overlaid
   const flowerTransform = useMemo(() => {
-    if (stations.length === 0) return null;
+    if (displayStations.length === 0) return null;
     let gMinX = Infinity, gMaxX = -Infinity, gMinY = Infinity, gMaxY = -Infinity;
-    for (const st of stations) {
-      for (const seg of st.segments) {
+    for (const st of displayStations) {
+      for (const seg of (st as any).segments ?? []) {
         const pts = segToPoints(seg);
         for (let i = 0; i < pts.length; i += 2) {
           gMinX = Math.min(gMinX, pts[i]); gMaxX = Math.max(gMaxX, pts[i]);
@@ -350,18 +419,18 @@ export function FlowerPatternView() {
     const geoCx = (gMinX + gMaxX) / 2;
     const geoCy = (gMinY + gMaxY) / 2;
     return { scale, offsetX: centerX - geoCx * scale, offsetY: centerY - geoCy * scale, geoCx, geoCy };
-  }, [stations, dims]);
+  }, [displayStations, dims]);
 
   // Progression view: side by side with offset (same as current canvas)
   const progressionTransform = useMemo(() => {
-    if (stations.length === 0) return null;
+    if (displayStations.length === 0) return null;
     const spacing = 15;
     let currentXOffset = 0;
     let gMinX = Infinity, gMaxX = -Infinity, gMinY = Infinity, gMaxY = -Infinity;
     const offsets: number[] = [];
-    for (const st of stations) {
+    for (const st of displayStations) {
       let stMinX = Infinity, stMaxX = -Infinity, stMinY = Infinity, stMaxY = -Infinity;
-      for (const seg of st.segments) {
+      for (const seg of (st as any).segments ?? []) {
         const pts = segToPoints(seg);
         for (let i = 0; i < pts.length; i += 2) {
           stMinX = Math.min(stMinX, pts[i]); stMaxX = Math.max(stMaxX, pts[i]);
@@ -371,7 +440,7 @@ export function FlowerPatternView() {
       offsets.push(currentXOffset);
       gMinX = Math.min(gMinX, stMinX + currentXOffset); gMaxX = Math.max(gMaxX, stMaxX + currentXOffset);
       gMinY = Math.min(gMinY, stMinY); gMaxY = Math.max(gMaxY, stMaxY);
-      currentXOffset += (stMaxX - stMinX) + spacing;
+      currentXOffset += (isFinite(stMaxX - stMinX) ? stMaxX - stMinX : 0) + spacing;
     }
     if (!isFinite(gMinX)) return null;
     const geoW = gMaxX - gMinX || 1, geoH = gMaxY - gMinY || 1;
@@ -381,7 +450,7 @@ export function FlowerPatternView() {
     const offsetX = padding + (availW - geoW * scale) / 2 - gMinX * scale;
     const offsetY = padding + (availH - geoH * scale) / 2 - gMinY * scale;
     return { scale, offsetX, offsetY, stationOffsets: offsets };
-  }, [stations, dims]);
+  }, [displayStations, dims]);
 
   if (stations.length === 0) {
     return <FlowerEmptyState geometry={geometry} materialThickness={materialThickness} />;
@@ -462,16 +531,16 @@ export function FlowerPatternView() {
                     />
                     <Text x={4} y={tr.offsetY + tr.geoCy * tr.scale - 14} text="PASS LINE" fill="#22c55e" fontSize={9} opacity={0.6} />
 
-                    {stations.map((st, si) => {
+                    {displayStations.map((st, si) => {
                       const color = STATION_COLORS[si % STATION_COLORS.length];
                       const isActive = activeHighlight === st.stationNumber;
-                      const opacity = activeHighlight === null ? (si === stations.length - 1 ? 1 : 0.55) : isActive ? 1 : 0.1;
-                      const sw = isActive ? 3 : si === stations.length - 1 ? 2.5 : 1.2;
+                      const opacity = activeHighlight === null ? (si === displayStations.length - 1 ? 1 : 0.55) : isActive ? 1 : 0.1;
+                      const sw = isActive ? 3 : si === displayStations.length - 1 ? 2.5 : 1.2;
 
                       return (
                         <Group key={st.stationNumber} opacity={opacity}
                           onClick={() => setHighlightStation(isActive ? null : st.stationNumber)}>
-                          {st.segments.map((seg, i) => {
+                          {((st as any).segments ?? []).map((seg: any, i: number) => {
                             const pts = segToPoints(seg);
                             return (
                               <Line key={i}
@@ -507,26 +576,27 @@ export function FlowerPatternView() {
 
               {viewMode === "progression" && progressionTransform && (() => {
                 const tr = progressionTransform;
-                return stations.map((st, si) => {
+                return displayStations.map((st, si) => {
                   const color = STATION_COLORS[si % STATION_COLORS.length];
                   const xOff = tr.stationOffsets[si] || 0;
                   const isActive = activeHighlight === st.stationNumber;
                   const opacity = activeHighlight === null || isActive ? 1 : 0.25;
                   const sw = isActive ? 3 : 1.5;
+                  const stSegs: any[] = (st as any).segments ?? [];
 
                   // Label position
                   let labelX = dims.width / 2, labelY = 20;
-                  if (st.segments.length > 0) {
-                    const midSeg = st.segments[Math.floor(st.segments.length / 2)];
+                  if (stSegs.length > 0) {
+                    const midSeg = stSegs[Math.floor(stSegs.length / 2)];
                     labelX = ((midSeg.startX + midSeg.endX) / 2 + xOff) * tr.scale + tr.offsetX;
-                    const minY = Math.min(...st.segments.map(s => Math.min(s.startY, s.endY)));
+                    const minY = Math.min(...stSegs.map((s: any) => Math.min(s.startY ?? 0, s.endY ?? 0)));
                     labelY = minY * tr.scale + tr.offsetY - 16;
                   }
 
                   return (
                     <Group key={st.stationNumber} opacity={opacity}
                       onClick={() => setHighlightStation(isActive ? null : st.stationNumber)}>
-                      {st.segments.map((seg, i) => {
+                      {stSegs.map((seg: any, i: number) => {
                         const pts = segToPoints(seg);
                         return (
                           <Line key={i}
@@ -539,10 +609,10 @@ export function FlowerPatternView() {
                       })}
                       <Text x={labelX - 8} y={labelY} text={st.label} fontSize={11} fill={color} fontStyle="bold" />
                       {/* Arrow between stations */}
-                      {si < stations.length - 1 && (() => {
-                        const next = st.segments[st.segments.length - 1];
-                        const ax = (next.endX + xOff) * tr.scale + tr.offsetX + 4;
-                        const ay = next.endY * tr.scale + tr.offsetY;
+                      {si < displayStations.length - 1 && stSegs.length > 0 && (() => {
+                        const last = stSegs[stSegs.length - 1];
+                        const ax = ((last.endX ?? 0) + xOff) * tr.scale + tr.offsetX + 4;
+                        const ay = (last.endY ?? 0) * tr.scale + tr.offsetY;
                         return <Text x={ax} y={ay - 5} text="→" fill="#52525b" fontSize={12} />;
                       })()}
                     </Group>

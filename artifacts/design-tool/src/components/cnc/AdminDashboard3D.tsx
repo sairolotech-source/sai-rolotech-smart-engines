@@ -122,7 +122,7 @@ function buildPipelineNodes(store: ReturnType<typeof useCncStore.getState>): Pip
   nodes.push({
     id: "design",
     label: "Profile Design",
-    subLabel: geometry ? `${geometry.segments.length} segments` : "No profile",
+    subLabel: geometry ? `${(geometry.segments ?? []).length} segments` : "No profile",
     status: geometry ? "approved" : "pending",
     cadNote: geometry ? `Bounding box: ${(geometry.boundingBox.maxX - geometry.boundingBox.minX).toFixed(1)}×${(geometry.boundingBox.maxY - geometry.boundingBox.minY).toFixed(1)}mm` : undefined,
   });

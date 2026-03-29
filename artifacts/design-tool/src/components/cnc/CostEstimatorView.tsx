@@ -38,8 +38,8 @@ export function CostEstimatorView() {
   const mat = MATERIAL_PRICES[materialType] ?? MATERIAL_PRICES.GI;
 
   const costs = useMemo(() => {
-    const flatLengths = geometry.segments.map(seg =>
-      Math.hypot(seg.endX - seg.startX, seg.endY - seg.startY)
+    const flatLengths = (geometry.segments ?? []).map(seg =>
+      Math.hypot((seg.endX ?? 0) - (seg.startX ?? 0), (seg.endY ?? 0) - (seg.startY ?? 0))
     );
     const stripWidth = flatLengths.reduce((s, l) => s + l, 0) || 100;
     const stripWidthM = stripWidth / 1000;

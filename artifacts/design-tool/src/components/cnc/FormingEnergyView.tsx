@@ -55,7 +55,7 @@ export function FormingEnergyView() {
 
   const mat = MAT_PROPS[materialType] ?? MAT_PROPS.GI;
   const safeThickness = Math.max(thickness, 0.1);
-  const allX = geometry.segments.flatMap(s => [s.startX, s.endX]);
+  const allX = (geometry.segments ?? []).flatMap(s => [s.startX ?? 0, s.endX ?? 0]);
   const profileWidth = allX.length > 1 ? Math.max(...allX) - Math.min(...allX) : 100;
 
   const energyData: EnergyStation[] = useMemo(() => {

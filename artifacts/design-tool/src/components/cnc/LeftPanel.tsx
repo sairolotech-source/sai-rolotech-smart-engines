@@ -20,6 +20,8 @@ import { Upload, Settings, Play, RefreshCw, Plus, Trash2, Wrench, ChevronDown, C
 import { useAccuracyScoring } from "../../hooks/useAccuracyScoring";
 import { POST_PROCESSORS, type PostProcessorPreset } from "../../lib/post-processors";
 import { useAutoAIMode } from "../../hooks/useAutoAIMode";
+import { validateRollFormingInputs } from "../../lib/inputValidation";
+import { EngineLogger } from "../../lib/engineLogger";
 
 function SectionHeader({
   title,
@@ -494,6 +496,22 @@ export function LeftPanel() {
 
   const handleGenerateFlower = useCallback(async () => {
     if (!geometry) return;
+    const validation = validateRollFormingInputs({
+      thickness: materialThickness,
+      materialType,
+      numStations,
+      geometryLoaded: !!(geometry.segments?.length),
+    });
+    if (!validation.valid) {
+      const msg = validation.errors[0] ?? "Invalid inputs — check material and thickness.";
+      EngineLogger.warn("Flower", "Validation blocked calculation", validation);
+      setError(msg);
+      toast({ title: "Input Validation Failed", description: msg, variant: "destructive" });
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      EngineLogger.warn("Flower", "Validation warnings", validation.warnings);
+    }
     setLoading(true);
     setError(null);
     try {
@@ -566,6 +584,23 @@ export function LeftPanel() {
 
   const handleGenerateRollTooling = useCallback(async () => {
     if (!geometry) return;
+    const validation = validateRollFormingInputs({
+      thickness: materialThickness,
+      materialType,
+      numStations,
+      rollDiameter,
+      geometryLoaded: !!(geometry.segments?.length),
+    });
+    if (!validation.valid) {
+      const msg = validation.errors[0] ?? "Invalid inputs — check roll diameter and thickness.";
+      EngineLogger.warn("RollTooling", "Validation blocked calculation", validation);
+      setError(msg);
+      toast({ title: "Input Validation Failed", description: msg, variant: "destructive" });
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      EngineLogger.warn("RollTooling", "Validation warnings", validation.warnings);
+    }
     setLoading(true);
     setError(null);
     try {

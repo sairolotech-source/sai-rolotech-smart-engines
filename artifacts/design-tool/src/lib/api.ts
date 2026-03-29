@@ -1,4 +1,5 @@
 import type { ProfileGeometry, GcodeConfig, MachineProfile, MaterialType, OpenSectionType } from "../store/useCncStore";
+import { EngineLogger } from "./engineLogger";
 
 function normalizeServerGeometry(raw: any): ProfileGeometry {
   if (!raw || typeof raw !== "object") {
@@ -199,6 +200,7 @@ async function safeFetchWithCache<T>(
 }
 
 export async function uploadDxf(file: File): Promise<{ geometry: ProfileGeometry; fileName: string }> {
+  EngineLogger.logInput("DXF", { fileName: file.name, fileSize: file.size });
   const formData = new FormData();
   formData.append("file", file);
   const res = await authFetch(getApiUrl("/upload-dxf"), {
@@ -207,13 +209,13 @@ export async function uploadDxf(file: File): Promise<{ geometry: ProfileGeometry
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Upload failed" }));
+    EngineLogger.error("DXF", `Upload failed: ${err.error}`);
     throw new Error(err.error || "Upload failed");
   }
   const data = await res.json();
-  return {
-    ...data,
-    geometry: normalizeServerGeometry(data.geometry),
-  };
+  const geometry = normalizeServerGeometry(data.geometry);
+  EngineLogger.logResult("DXF", { segments: geometry.segments.length, bendPoints: geometry.bendPoints.length });
+  return { ...data, geometry };
 }
 
 export async function analyzeProfile(
@@ -241,17 +243,20 @@ export async function generateFlower(
   openSectionType: OpenSectionType = "C-Section",
   sectionModel?: "open" | "closed" | null
 ) {
+  EngineLogger.logInput("Flower", { numStations, materialType, materialThickness, openSectionType, segments: geometry?.segments?.length ?? 0 });
   const cacheKey = `flower-${numStations}-${materialType}-${materialThickness}-${openSectionType}`;
   return safeFetchWithCache(cacheKey, async () => {
     const res = await authFetchJson(getApiUrl("/generate-flower"), { geometry, numStations, stationPrefix, materialType, materialThickness, openSectionType, sectionModel: sectionModel ?? undefined });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Generation failed" }));
+      EngineLogger.error("Flower", `Generation failed: ${err.error}`);
       throw new Error(err.error || "Generation failed");
     }
     const data = await res.json();
     if (data && Array.isArray(data.stations)) {
       data.stations = data.stations.map(normalizeStation);
     }
+    EngineLogger.logResult("Flower", { stationsGenerated: data?.stations?.length ?? 0, totalBends: data?.totalBends ?? 0, kFactor: data?.kFactor });
     return data;
   });
 }
@@ -263,14 +268,18 @@ export async function generateGcode(
   config: GcodeConfig,
   machineProfile: MachineProfile | null
 ) {
+  EngineLogger.logInput("GCode", { numStations, format: config.coordinateFormat, spindleSpeed: config.spindleSpeed, feedRate: config.feedRate });
   const cacheKey = `gcode-${numStations}-${config.coordinateFormat}-${config.spindleSpeed}`;
   return safeFetchWithCache(cacheKey, async () => {
     const res = await authFetchJson(getApiUrl("/generate-gcode"), { geometry, numStations, stationPrefix, config, machineProfile });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Generation failed" }));
+      EngineLogger.error("GCode", `Generation failed: ${err.error}`);
       throw new Error(err.error || "Generation failed");
     }
-    return res.json();
+    const data = await res.json();
+    EngineLogger.logResult("GCode", { outputs: data?.gcodeOutputs?.length ?? 0 });
+    return data;
   });
 }
 
@@ -287,6 +296,7 @@ export async function generateRollTooling(
   openSectionType: OpenSectionType = "C-Section",
   sectionModel?: "open" | "closed" | null
 ) {
+  EngineLogger.logInput("RollTooling", { numStations, rollDiameter, shaftDiameter, materialThickness, materialType, clearance, openSectionType });
   const cacheKey = `tooling-${numStations}-${rollDiameter}-${shaftDiameter}-${materialType}`;
   return safeFetchWithCache(cacheKey, async () => {
     const res = await authFetchJson(getApiUrl("/generate-roll-tooling"), {
@@ -296,9 +306,12 @@ export async function generateRollTooling(
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Generation failed" }));
+      EngineLogger.error("RollTooling", `Generation failed: ${err.error}`);
       throw new Error(err.error || "Generation failed");
     }
-    return res.json();
+    const data = await res.json();
+    EngineLogger.logResult("RollTooling", { stations: data?.stations?.length ?? 0 });
+    return data;
   });
 }
 

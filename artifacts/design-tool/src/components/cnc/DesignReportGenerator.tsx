@@ -244,13 +244,13 @@ export function DesignReportGenerator({ onClose }: { onClose: () => void }) {
         sectionTitle("Profile Geometry Summary");
 
         keyValue("Source File", fileName || "—"); y += 5;
-        keyValue("Segments", `${geometry.segments.length}`); y += 5;
-        keyValue("Bend Points", `${geometry.bendPoints.length}`); y += 5;
+        keyValue("Segments", `${(geometry.segments ?? []).length}`); y += 5;
+        keyValue("Bend Points", `${(geometry.bendPoints ?? []).length}`); y += 5;
 
         const bb = geometry.boundingBox;
         keyValue("Bounding Box", `${(bb.maxX - bb.minX).toFixed(2)} × ${(bb.maxY - bb.minY).toFixed(2)} mm`); y += 5;
 
-        if (geometry.bendPoints.length > 0) {
+        if ((geometry.bendPoints ?? []).length > 0) {
           y += 3;
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8);
@@ -258,7 +258,7 @@ export function DesignReportGenerator({ onClose }: { onClose: () => void }) {
           doc.text("Bend Points Detail:", margin, y);
           y += 5;
 
-          ensureSpace(geometry.bendPoints.length * 5 + 8);
+          ensureSpace((geometry.bendPoints ?? []).length * 5 + 8);
           doc.setFillColor(30, 64, 175);
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(7);
@@ -272,7 +272,7 @@ export function DesignReportGenerator({ onClose }: { onClose: () => void }) {
 
           doc.setTextColor(30, 30, 50);
           doc.setFont("helvetica", "normal");
-          geometry.bendPoints.forEach((bp, i) => {
+          (geometry.bendPoints ?? []).forEach((bp, i) => {
             ensureSpace(5);
             if (i % 2 === 0) {
               doc.setFillColor(248, 250, 252);
@@ -608,7 +608,7 @@ export function DesignReportGenerator({ onClose }: { onClose: () => void }) {
         doc.text(`Forming Verdict: ${verdict}`, margin + 5, y + 7);
         y += 14;
 
-        if (geometry && geometry.bendPoints.length > 0) {
+        if (geometry && (geometry.bendPoints ?? []).length > 0) {
           y += 3;
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8);

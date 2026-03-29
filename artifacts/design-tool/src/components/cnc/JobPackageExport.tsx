@@ -24,17 +24,18 @@ function runQualityChecks(store: ReturnType<typeof useCncStore.getState>): Quali
       label: "Profile geometry loaded",
       passed: geometry !== null,
       severity: "critical",
-      detail: geometry ? `${geometry.segments.length} segments, ${geometry.bendPoints.length} bend points` : "No profile loaded — upload DXF first",
+      detail: geometry ? `${(geometry.segments ?? []).length} segments, ${(geometry.bendPoints ?? []).length} bend points` : "No profile loaded — upload DXF first",
     },
     {
       id: 2, category: "Profile",
       label: "Profile is symmetric (bow check)",
       passed: geometry !== null ? (() => {
-        if (!geometry.segments.length) return false;
-        const xs = geometry.segments.flatMap(s => [s.startX, s.endX]);
+        const safeSegs = geometry.segments ?? [];
+        if (!safeSegs.length) return false;
+        const xs = safeSegs.flatMap(s => [s.startX ?? 0, s.endX ?? 0]);
         const xMid = (Math.min(...xs) + Math.max(...xs)) / 2;
-        const leftSegs = geometry.segments.filter(s => (s.startX + s.endX) / 2 < xMid).length;
-        const rightSegs = geometry.segments.filter(s => (s.startX + s.endX) / 2 >= xMid).length;
+        const leftSegs = safeSegs.filter(s => ((s.startX ?? 0) + (s.endX ?? 0)) / 2 < xMid).length;
+        const rightSegs = safeSegs.filter(s => ((s.startX ?? 0) + (s.endX ?? 0)) / 2 >= xMid).length;
         return Math.abs(leftSegs - rightSegs) <= 2;
       })() : null,
       severity: "warning",

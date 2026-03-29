@@ -374,8 +374,8 @@ export function TestingEngineView() {
               <div className="space-y-1 text-[9px]">
                 <div className="flex justify-between"><span className="text-zinc-500">Material</span><span className="text-zinc-300">{materialType}</span></div>
                 <div className="flex justify-between"><span className="text-zinc-500">Thickness</span><span className="text-zinc-300">{thickness}mm</span></div>
-                <div className="flex justify-between"><span className="text-zinc-500">Segments</span><span className="text-zinc-300">{geometry.segments.length}</span></div>
-                <div className="flex justify-between"><span className="text-zinc-500">Bends</span><span className="text-zinc-300">{geometry.bendPoints.length}</span></div>
+                <div className="flex justify-between"><span className="text-zinc-500">Segments</span><span className="text-zinc-300">{(geometry.segments ?? []).length}</span></div>
+                <div className="flex justify-between"><span className="text-zinc-500">Bends</span><span className="text-zinc-300">{(geometry.bendPoints ?? []).length}</span></div>
                 <div className="flex justify-between"><span className="text-zinc-500">Stations</span><span className="text-zinc-300">{stations.length}</span></div>
               </div>
             </div>

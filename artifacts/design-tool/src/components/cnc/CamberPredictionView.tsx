@@ -40,7 +40,7 @@ export function CamberPredictionView() {
   }, []);
 
   const safeThickness = Math.max(thickness, 0.1);
-  const allX = geometry.segments.flatMap(s => [s.startX, s.endX]);
+  const allX = (geometry.segments ?? []).flatMap(s => [s.startX ?? 0, s.endX ?? 0]);
   const profileWidth = allX.length > 1 ? Math.max(...allX) - Math.min(...allX) : 100;
   const profileCenter = allX.length > 1 ? (Math.max(...allX) + Math.min(...allX)) / 2 : 50;
   const halfWidth = Math.max(profileWidth / 2, 1);
@@ -60,7 +60,7 @@ export function CamberPredictionView() {
     const sampleDx = profileWidth / nSamples;
     const strainArr = new Array(nSamples + 1).fill(0);
 
-    geometry.bendPoints.forEach((bp, bpi) => {
+    (geometry.bendPoints ?? []).forEach((bp, bpi) => {
       const stationBendAngle = Math.abs(stBendAngles[bpi] ?? bp.angle);
       const angleRad = (stationBendAngle * Math.PI) / 180;
       const radius = Math.max(bp.radius || safeThickness * 2, safeThickness);

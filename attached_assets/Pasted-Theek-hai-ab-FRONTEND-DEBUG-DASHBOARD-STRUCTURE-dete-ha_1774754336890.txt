@@ -1,0 +1,613 @@
+Theek hai — ab **FRONTEND DEBUG DASHBOARD STRUCTURE** dete hain.
+
+Iska kaam hoga UI me clearly dikhana:
+
+* kaunsa engine pass hua
+* kaunsa fail hua
+* first failed stage
+* summary values
+* warnings
+* report preview
+* PDF export button
+
+Ye bahut zaroori hai, warna backend sahi hone par bhi user ko lagega app kaam nahi kar rahi.
+
+# Dashboard layout
+
+UI ko 6 main panels me tod do:
+
+## 1. Upload / Input Panel
+
+* drawing upload
+* thickness input
+* material dropdown
+* Auto Mode button
+* Manual Mode button
+
+## 2. Pipeline Status Panel
+
+Har engine ka status:
+
+* file_import_engine
+* geometry_engine
+* profile_analysis_engine
+* input_engine
+* advanced_flower_engine
+* station_engine
+* shaft_engine
+* bearing_engine
+* duty_engine
+* roll_design_calc_engine
+* machine_layout_engine
+* report_engine
+* pdf_export_engine
+
+## 3. Engineering Summary Panel
+
+* profile type
+* width
+* height
+* bend count
+* material
+* thickness
+* forming passes
+* stations
+* shaft
+* bearing
+* roll OD
+* line length
+
+## 4. Detailed Engine Output Panel
+
+Accordion ya tabs:
+
+* geometry
+* profile
+* flower
+* station
+* shaft
+* bearing
+* roll design
+* machine layout
+* report JSON
+
+## 5. Warnings + Assumptions Panel
+
+Alag red/yellow section me
+
+## 6. Report Actions Panel
+
+* View readable report
+* Download PDF
+* Export JSON
+
+---
+
+# React frontend structure
+
+```text
+src/
+├─ components/
+│  ├─ UploadForm.jsx
+│  ├─ PipelineStatus.jsx
+│  ├─ SummaryCards.jsx
+│  ├─ EngineDetails.jsx
+│  ├─ WarningPanel.jsx
+│  ├─ ReportPreview.jsx
+│  └─ ActionButtons.jsx
+├─ pages/
+│  └─ Dashboard.jsx
+└─ services/
+   └─ api.js
+```
+
+---
+
+# `services/api.js`
+
+```javascript
+export async function runManualMode(payload) {
+  const res = await fetch("/api/manual-mode", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
+
+export async function runManualModeDebug(payload) {
+  const res = await fetch("/api/manual-mode-debug", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
+
+export async function runManualTests() {
+  const res = await fetch("/api/run-manual-tests");
+  return res.json();
+}
+
+export async function exportManualPdf(payload) {
+  const res = await fetch("/api/manual-mode-export-pdf", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
+```
+
+---
+
+# `components/UploadForm.jsx`
+
+```javascript
+import { useState } from "react";
+
+export default function UploadForm({ onRun }) {
+  const [form, setForm] = useState({
+    bend_count: 6,
+    section_width_mm: 100,
+    section_height_mm: 50,
+    thickness: 0.8,
+    material: "GI",
+    profile_type: "lipped_channel",
+  });
+
+  function updateField(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function submit(e) {
+    e.preventDefault();
+    onRun(form);
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-3 rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="text-lg font-semibold">Input Panel</div>
+
+      <input
+        className="border rounded-xl p-2"
+        type="number"
+        value={form.bend_count}
+        onChange={(e) => updateField("bend_count", Number(e.target.value))}
+        placeholder="Bend Count"
+      />
+
+      <input
+        className="border rounded-xl p-2"
+        type="number"
+        value={form.section_width_mm}
+        onChange={(e) => updateField("section_width_mm", Number(e.target.value))}
+        placeholder="Section Width"
+      />
+
+      <input
+        className="border rounded-xl p-2"
+        type="number"
+        value={form.section_height_mm}
+        onChange={(e) => updateField("section_height_mm", Number(e.target.value))}
+        placeholder="Section Height"
+      />
+
+      <input
+        className="border rounded-xl p-2"
+        type="number"
+        step="0.01"
+        value={form.thickness}
+        onChange={(e) => updateField("thickness", Number(e.target.value))}
+        placeholder="Thickness"
+      />
+
+      <select
+        className="border rounded-xl p-2"
+        value={form.material}
+        onChange={(e) => updateField("material", e.target.value)}
+      >
+        <option value="GI">GI</option>
+        <option value="GP">GP</option>
+        <option value="CR">CR</option>
+        <option value="HR">HR</option>
+        <option value="MS">MS</option>
+        <option value="SS">SS</option>
+        <option value="ALUMINIUM">ALUMINIUM</option>
+      </select>
+
+      <select
+        className="border rounded-xl p-2"
+        value={form.profile_type}
+        onChange={(e) => updateField("profile_type", e.target.value)}
+      >
+        <option value="simple_channel">simple_channel</option>
+        <option value="lipped_channel">lipped_channel</option>
+        <option value="shutter_profile">shutter_profile</option>
+        <option value="complex_profile">complex_profile</option>
+      </select>
+
+      <button className="rounded-2xl border px-4 py-2 font-medium">
+        Run Manual Mode
+      </button>
+    </form>
+  );
+}
+```
+
+---
+
+# `components/PipelineStatus.jsx`
+
+```javascript
+function badgeColor(status) {
+  if (status === "pass") return "bg-green-100 text-green-700";
+  if (status === "fail") return "bg-red-100 text-red-700";
+  if (status === "not_run") return "bg-gray-100 text-gray-700";
+  return "bg-yellow-100 text-yellow-700";
+}
+
+export default function PipelineStatus({ debugResult }) {
+  const stages = debugResult?.stage_debug || [];
+
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="text-lg font-semibold mb-3">Pipeline Status</div>
+
+      {debugResult?.first_failed_stage && (
+        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-red-700">
+          First failed stage: {debugResult.first_failed_stage}
+        </div>
+      )}
+
+      <div className="grid gap-2">
+        {stages.map((stage) => (
+          <div
+            key={stage.stage}
+            className="flex items-center justify-between rounded-xl border p-3"
+          >
+            <div>
+              <div className="font-medium">{stage.stage}</div>
+              {stage.reason && (
+                <div className="text-sm text-gray-600">{stage.reason}</div>
+              )}
+            </div>
+            <span className={`px-3 py-1 rounded-full text-sm ${badgeColor(stage.status)}`}>
+              {stage.status}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# `components/SummaryCards.jsx`
+
+```javascript
+const items = [
+  ["Profile Type", "profile_type"],
+  ["Width", "section_width_mm"],
+  ["Height", "section_height_mm"],
+  ["Bend Count", "bend_count"],
+  ["Material", "material"],
+  ["Thickness", "sheet_thickness_mm"],
+  ["Complexity", "forming_complexity_class"],
+  ["Passes", "estimated_forming_passes"],
+  ["Stations", "recommended_station_count"],
+  ["Shaft", "shaft_diameter_mm"],
+  ["Bearing", "bearing_type"],
+  ["Roll OD", "estimated_roll_od_mm"],
+  ["Line Length", "estimated_line_length_mm"],
+];
+
+export default function SummaryCards({ summary }) {
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="text-lg font-semibold mb-3">Engineering Summary</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {items.map(([label, key]) => (
+          <div key={key} className="rounded-2xl border p-3">
+            <div className="text-sm text-gray-500">{label}</div>
+            <div className="text-base font-semibold">{summary?.[key] ?? "-"}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# `components/EngineDetails.jsx`
+
+```javascript
+export default function EngineDetails({ result }) {
+  const entries = Object.entries(result || {}).filter(
+    ([key]) => key !== "report_engine" && key !== "status"
+  );
+
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="text-lg font-semibold mb-3">Engine Details</div>
+      <div className="grid gap-3">
+        {entries.map(([key, value]) => (
+          <details key={key} className="rounded-xl border p-3">
+            <summary className="cursor-pointer font-medium">{key}</summary>
+            <pre className="mt-3 text-sm overflow-auto whitespace-pre-wrap">
+              {JSON.stringify(value, null, 2)}
+            </pre>
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# `components/WarningPanel.jsx`
+
+```javascript
+export default function WarningPanel({ warnings = [], assumptions = [] }) {
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+        <div className="text-lg font-semibold mb-2">Warnings</div>
+        {warnings.length === 0 ? (
+          <div className="text-sm text-gray-600">No warnings</div>
+        ) : (
+          <ul className="grid gap-2 text-sm">
+            {warnings.map((w, i) => (
+              <li key={i}>• {w}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+        <div className="text-lg font-semibold mb-2">Assumptions</div>
+        {assumptions.length === 0 ? (
+          <div className="text-sm text-gray-600">No assumptions</div>
+        ) : (
+          <ul className="grid gap-2 text-sm">
+            {assumptions.map((a, i) => (
+              <li key={i}>• {a}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# `components/ReportPreview.jsx`
+
+```javascript
+export default function ReportPreview({ reportText }) {
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="text-lg font-semibold mb-3">Readable Report</div>
+      <pre className="whitespace-pre-wrap text-sm overflow-auto max-h-[500px]">
+        {reportText || "No report available"}
+      </pre>
+    </div>
+  );
+}
+```
+
+---
+
+# `components/ActionButtons.jsx`
+
+```javascript
+export default function ActionButtons({ onRunTests, onExportPdf, loading }) {
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm bg-white">
+      <div className="text-lg font-semibold mb-3">Actions</div>
+      <div className="flex flex-wrap gap-3">
+        <button
+          className="rounded-2xl border px-4 py-2"
+          onClick={onRunTests}
+          disabled={loading}
+        >
+          Run Test Suite
+        </button>
+
+        <button
+          className="rounded-2xl border px-4 py-2"
+          onClick={onExportPdf}
+          disabled={loading}
+        >
+          Export PDF
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# `pages/Dashboard.jsx`
+
+```javascript
+import { useState } from "react";
+import UploadForm from "../components/UploadForm";
+import PipelineStatus from "../components/PipelineStatus";
+import SummaryCards from "../components/SummaryCards";
+import EngineDetails from "../components/EngineDetails";
+import WarningPanel from "../components/WarningPanel";
+import ReportPreview from "../components/ReportPreview";
+import ActionButtons from "../components/ActionButtons";
+import { runManualModeDebug, runManualTests, exportManualPdf } from "../services/api";
+
+export default function Dashboard() {
+  const [loading, setLoading] = useState(false);
+  const [payload, setPayload] = useState(null);
+  const [pipelineResult, setPipelineResult] = useState(null);
+  const [debugResult, setDebugResult] = useState(null);
+  const [testResult, setTestResult] = useState(null);
+  const [pdfResult, setPdfResult] = useState(null);
+
+  async function handleRun(form) {
+    setLoading(true);
+    setPayload(form);
+    setPdfResult(null);
+
+    try {
+      const data = await runManualModeDebug(form);
+      setPipelineResult(data.pipeline_result || null);
+      setDebugResult(data.debug_result || null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRunTests() {
+    setLoading(true);
+    try {
+      const data = await runManualTests();
+      setTestResult(data);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!payload) return;
+
+    setLoading(true);
+    try {
+      const data = await exportManualPdf(payload);
+      setPdfResult(data);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const reportEngine = pipelineResult?.report_engine || {};
+  const summary = reportEngine?.engineering_summary || {};
+  const warnings = reportEngine?.export_json?.warnings || [];
+  const assumptions = reportEngine?.export_json?.assumptions || [];
+  const readableReport = reportEngine?.readable_report || "";
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      <div className="mx-auto max-w-7xl grid gap-4">
+        <div className="text-2xl font-bold">Roll Forming Debug Dashboard</div>
+
+        <UploadForm onRun={handleRun} />
+
+        <ActionButtons
+          onRunTests={handleRunTests}
+          onExportPdf={handleExportPdf}
+          loading={loading}
+        />
+
+        <PipelineStatus debugResult={debugResult} />
+
+        <SummaryCards summary={summary} />
+
+        <WarningPanel warnings={warnings} assumptions={assumptions} />
+
+        <ReportPreview reportText={readableReport} />
+
+        <EngineDetails result={pipelineResult} />
+
+        {testResult && (
+          <div className="rounded-2xl border p-4 shadow-sm bg-white">
+            <div className="text-lg font-semibold mb-3">Test Suite Result</div>
+            <pre className="whitespace-pre-wrap text-sm overflow-auto">
+              {JSON.stringify(testResult, null, 2)}
+            </pre>
+          </div>
+        )}
+
+        {pdfResult && (
+          <div className="rounded-2xl border p-4 shadow-sm bg-white">
+            <div className="text-lg font-semibold mb-3">PDF Export Result</div>
+            <pre className="whitespace-pre-wrap text-sm overflow-auto">
+              {JSON.stringify(pdfResult, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# Replit ko exact command
+
+```text
+Create a frontend debug dashboard for the engineering app.
+Use separate React components for:
+1. input panel
+2. pipeline status
+3. engineering summary
+4. engine details
+5. warnings and assumptions
+6. readable report preview
+7. action buttons
+
+Connect the dashboard to:
+- POST /api/manual-mode-debug
+- GET /api/run-manual-tests
+- POST /api/manual-mode-export-pdf
+
+The dashboard must clearly show:
+- pass/fail per engine
+- first failed stage
+- engineering summary cards
+- readable report
+- raw engine JSON
+- test results
+- PDF export result
+
+Do not hide backend failures.
+Show exact reasons when a stage fails.
+```
+
+---
+
+# Sabse important UI rule
+
+Replit ko ye bhi bolo:
+
+```text
+Never show generic success messages.
+If backend returns fail, display failed_stage and reason prominently at the top.
+```
+
+---
+
+# Ab next strongest step
+
+Ab aapke paas backend + debug + report + dashboard ka kaafi strong framework ho gaya hai.
+
+Ab do useful next options hain:
+
+**1. Full DXF upload frontend**
+drag-drop drawing upload ke saath
+
+**2. Real database save system**
+taaki har report save ho jaye aur baad me open ho sake
+
+Agar chaho to next me main **DXF upload frontend + auto mode UI** bana deta hoon.

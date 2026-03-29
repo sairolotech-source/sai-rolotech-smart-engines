@@ -1,21 +1,36 @@
 /**
  * RollDrawingPanel.tsx
- * Engineering-grade roll tooling drawing viewer for the Python Dashboard.
+ * Phase 2 Engineering Roll Tooling Drawing Panel — Sai Rolotech Smart Engines v2.3.0
  *
- * Shows:
- *  - Station selector with mini previews
- *  - Cross-section nip view (upper + lower roll + strip)
- *  - Circular front view of the roll (OD, bore, keyway, profile)
- *  - DIN-style dimension annotations
- *  - Roll specification table
+ * Views: Cross-section nip · Front roll face · Side Section A-A
+ * Export: SVG · DXF · PDF (single + all stations) · ZIP manufacturing package
+ * Release: Draft · Internal Review · Shop Drawing · Manufacturing Release
  */
-import { useState, useCallback } from "react";
-import JSZip from "jszip";
+import { useState, useCallback, useMemo } from "react";
 import {
   ChevronLeft, ChevronRight, Download,
   Layers, Circle, AlignCenter, Info, FileDown,
-  FileText, Archive, Edit3, CheckCircle, Lock, AlertTriangle
+  FileText, Archive, Edit3, CheckCircle, Lock,
+  AlertTriangle, ShieldCheck, User, ClipboardCheck, XCircle,
 } from "lucide-react";
+
+import {
+  buildDrawingModel,
+  validateDrawingModel,
+  renderDrawingToSVG,
+  renderDrawingToDXF,
+  printSinglePDF,
+  printAllStationsPDF,
+  buildZipPackage,
+  triggerBlobDownload,
+  triggerSVGDownload,
+  generateFileName,
+  generatePackageZipName,
+  generateAllPdfName,
+  RELEASE_META,
+  type ReleaseState,
+  type DrawingModel,
+} from "@/lib/rollDrawingExport";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -552,508 +567,33 @@ function MiniThumb({ pass, active, onClick }: { pass: PassData; active: boolean;
   );
 }
 
-// ─── SVG EXPORT GENERATOR ────────────────────────────────────────────────────
-// Generates a complete A3-landscape engineering drawing as an SVG string.
-// All coordinates in "SVG units" (1 unit ≈ 0.75 pt for screen, or mm for print).
-
-function buildStationSVG(
-  pass:          PassData,
-  rd:            RollDimensions,
-  thickness:     number,
-  material:      string,
-  profileType:   string  = "",
-  revision:      string  = "A",
-  approved:      boolean = false,
-  springbackDeg: number  = 0,
-): string {
-  const W = 1189, H = 841;   // A3 landscape (mm × 3.56 px/mm ÷ 3.56 = mm)
-  const stageColor = STAGE_COLOR[pass.stage_type] || "#8b5cf6";
-  const date = new Date().toLocaleDateString("en-GB");
-
-  const upper = pass.upper_roll_profile;
-  const lower = pass.lower_roll_profile;
-
-  /* ── Cross-section nip view (left third) ── */
-  const cW = 380, cH = 380, cX = 40, cY = 80, cPad = 40;
-  const allPts = [...upper, ...lower];
-  const xs = allPts.map(p => p.x), ys = allPts.map(p => p.y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const sx = (v: number) => cX + cPad + ((v - minX) / (maxX - minX || 1)) * (cW - cPad * 2);
-  const sy = (v: number) => cY + cPad + ((v - minY) / (maxY - minY || 1)) * (cH - cPad * 2);
-  const uPath = upper.map((p, i) => `${i === 0 ? "M" : "L"} ${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(" ");
-  const lPath = lower.map((p, i) => `${i === 0 ? "M" : "L"} ${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(" ");
-
-  // Upper fill polygon
-  const uFillPts = [
-    `${cX + cPad},${cY + cPad}`, `${cX + cW - cPad},${cY + cPad}`,
-    ...upper.slice().reverse().map(p => `${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`),
-  ].join(" ");
-  const lFillPts = [
-    `${cX + cPad},${cY + cH - cPad}`, `${cX + cW - cPad},${cY + cH - cPad}`,
-    ...lower.slice().reverse().map(p => `${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`),
-  ].join(" ");
-
-  const uMidX = sx((upper[0].x + upper[upper.length - 1].x) / 2);
-  const uMidY = sy(upper[Math.floor(upper.length / 2)].y);
-  const lMidY = sy(lower[Math.floor(lower.length / 2)].y);
-  const stripW = sx(upper[upper.length - 1].x) - sx(upper[0].x);
-
-  /* ── Front view (circle, centre third) ── */
-  const fCx = 660, fCy = 300, fR = 140;
-  const scale = fR / (rd.estimated_roll_od_mm / 2);
-  const fBoreR = (rd.bore_dia_mm / 2) * scale;
-  const fGrooveD = (pass.forming_depth_mm / (rd.estimated_roll_od_mm / 2)) * fR;
-  const fGrooveW = pass.strip_width_mm * scale * 0.55;
-  const fKwW = (rd.keyway_width_mm / 2) * scale;
-  const fKwH = fKwW * 0.8;
-
-  /* ── Side view (right area) ── */
-  const sX = 880, sW = 260, sH = 360, sCy = 300;
-  const scaleS = (sH * 0.45) / (rd.estimated_roll_od_mm / 2);
-  const sOuterR = (rd.estimated_roll_od_mm / 2) * scaleS;
-  const sBoreR  = (rd.bore_dia_mm / 2) * scaleS;
-  const sFW     = (rd.face_width_mm / 2) * scaleS;
-  const sDepth  = pass.forming_depth_mm * scaleS;
-  const sSW     = (pass.strip_width_mm / 2) * scaleS * 0.45;
-  const sCx     = sX + sW / 2;
-
-  const sUpperPts = [
-    `${sCx - sFW},${sCy - sOuterR}`,
-    `${sCx - sSW},${sCy - sOuterR}`,
-    `${sCx - sSW},${sCy - sOuterR + sDepth}`,
-    `${sCx + sSW},${sCy - sOuterR + sDepth}`,
-    `${sCx + sSW},${sCy - sOuterR}`,
-    `${sCx + sFW},${sCy - sOuterR}`,
-    `${sCx + sFW},${sCy - sBoreR}`,
-    `${sCx - sFW},${sCy - sBoreR}`,
-  ].join(" ");
-
-  const sLowerPts = [
-    `${sCx - sFW},${sCy + sOuterR}`,
-    `${sCx - sSW},${sCy + sOuterR}`,
-    `${sCx - sSW},${sCy + sOuterR - sDepth}`,
-    `${sCx + sSW},${sCy + sOuterR - sDepth}`,
-    `${sCx + sSW},${sCy + sOuterR}`,
-    `${sCx + sFW},${sCy + sOuterR}`,
-    `${sCx + sFW},${sCy + sBoreR}`,
-    `${sCx - sFW},${sCy + sBoreR}`,
-  ].join(" ");
-
-  /* ── Build SVG ── */
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-  <defs>
-    <style>
-      text { font-family: 'Courier New', monospace; }
-    </style>
-  </defs>
-
-  <!-- Background -->
-  <rect width="${W}" height="${H}" fill="#0c1220"/>
-
-  <!-- DIN border -->
-  <rect x="10" y="10" width="${W - 20}" height="${H - 20}"
-    fill="none" stroke="#334155" stroke-width="2"/>
-  <rect x="15" y="15" width="${W - 30}" height="${H - 30}"
-    fill="none" stroke="#1e40af" stroke-width="0.8"/>
-
-  <!-- Title bar -->
-  <rect x="15" y="15" width="${W - 30}" height="52" fill="#1e1b4b" stroke="#312e81" stroke-width="0.6"/>
-  <text x="30" y="38" font-size="16" font-weight="bold" fill="#a5b4fc">SAI ROLOTECH SMART ENGINES v2.3.0</text>
-  <text x="30" y="56" font-size="10" fill="#64748b">ROLL TOOLING DRAWING — ENGINEERING APPROXIMATION ONLY — NOT FEM</text>
-  <text x="${W - 30}" y="38" font-size="12" fill="#60a5fa" text-anchor="end">${pass.station_label.toUpperCase()}</text>
-  <text x="${W - 30}" y="56" font-size="10" fill="#475569" text-anchor="end">${material} · ${thickness}mm · ${pass.stage_type.replace(/_/g," ").toUpperCase()}</text>
-
-  <!-- View labels -->
-  <text x="${cX + cW / 2}" y="${cY - 10}" font-size="9" fill="#475569" text-anchor="middle" font-style="italic">CROSS-SECTION — NIP VIEW</text>
-  <text x="${fCx}" y="75" font-size="9" fill="#475569" text-anchor="middle" font-style="italic">FRONT VIEW — ROLL FACE</text>
-  <text x="${sCx}" y="75" font-size="9" fill="#475569" text-anchor="middle" font-style="italic">SECTION A-A — SIDE VIEW</text>
-
-  <!-- ═══ CROSS-SECTION VIEW ═══ -->
-
-  <!-- Upper roll body fill -->
-  <polygon points="${uFillPts}" fill="#1e293b"/>
-  <!-- Lower roll body fill -->
-  <polygon points="${lFillPts}" fill="#064e3b"/>
-
-  <!-- Upper roll profile -->
-  <path d="${uPath}" fill="none" stroke="#60a5fa" stroke-width="2.5"/>
-  <!-- Lower roll profile -->
-  <path d="${lPath}" fill="none" stroke="#34d399" stroke-width="2.5"/>
-
-  <!-- Strip -->
-  <rect x="${sx(upper[0].x).toFixed(1)}" y="${uMidY.toFixed(1)}"
-    width="${stripW.toFixed(1)}" height="${(lMidY - uMidY).toFixed(1)}"
-    fill="#fbbf24" opacity="0.35" stroke="#fbbf24" stroke-width="1"/>
-
-  <!-- Strip flow arrows -->
-  <line x1="${(sx(upper[0].x) + stripW * 0.3).toFixed(1)}" y1="${((uMidY + lMidY) / 2).toFixed(1)}"
-        x2="${(sx(upper[0].x) + stripW * 0.45).toFixed(1)}" y2="${((uMidY + lMidY) / 2).toFixed(1)}"
-        stroke="#fbbf24" stroke-width="1.5"/>
-  <polygon points="${(sx(upper[0].x) + stripW * 0.45).toFixed(1)},${((uMidY + lMidY) / 2).toFixed(1)} ${(sx(upper[0].x) + stripW * 0.42).toFixed(1)},${((uMidY + lMidY) / 2 - 3).toFixed(1)} ${(sx(upper[0].x) + stripW * 0.42).toFixed(1)},${((uMidY + lMidY) / 2 + 3).toFixed(1)}" fill="#fbbf24"/>
-
-  <!-- Centre line -->
-  <line x1="${uMidX.toFixed(1)}" y1="${cY}" x2="${uMidX.toFixed(1)}" y2="${cY + cH}"
-    stroke="#334155" stroke-width="0.8" stroke-dasharray="6,4"/>
-
-  <!-- DIM: strip width -->
-  <line x1="${sx(upper[0].x).toFixed(1)}" y1="${(cY + cH - 15).toFixed(1)}"
-        x2="${sx(upper[upper.length-1].x).toFixed(1)}" y2="${(cY + cH - 15).toFixed(1)}"
-        stroke="#fbbf24" stroke-width="0.8"/>
-  <polygon points="${sx(upper[0].x).toFixed(1)},${(cY + cH - 15).toFixed(1)} ${(sx(upper[0].x) + 6).toFixed(1)},${(cY + cH - 18).toFixed(1)} ${(sx(upper[0].x) + 6).toFixed(1)},${(cY + cH - 12).toFixed(1)}" fill="#fbbf24"/>
-  <polygon points="${sx(upper[upper.length-1].x).toFixed(1)},${(cY + cH - 15).toFixed(1)} ${(sx(upper[upper.length-1].x) - 6).toFixed(1)},${(cY + cH - 18).toFixed(1)} ${(sx(upper[upper.length-1].x) - 6).toFixed(1)},${(cY + cH - 12).toFixed(1)}" fill="#fbbf24"/>
-  <text x="${uMidX.toFixed(1)}" y="${(cY + cH - 18).toFixed(1)}" font-size="9" fill="#fbbf24" text-anchor="middle">Strip W: ${pass.strip_width_mm.toFixed(1)} mm</text>
-
-  <!-- DIM: form depth -->
-  ${pass.forming_depth_mm > 0 ? `
-  <line x1="${(cX + cW - 20).toFixed(1)}" y1="${uMidY.toFixed(1)}"
-        x2="${(cX + cW - 20).toFixed(1)}" y2="${lMidY.toFixed(1)}"
-        stroke="#a78bfa" stroke-width="0.8"/>
-  <text x="${(cX + cW - 10).toFixed(1)}" y="${((uMidY + lMidY) / 2).toFixed(1)}" font-size="8" fill="#a78bfa">Depth</text>
-  <text x="${(cX + cW - 10).toFixed(1)}" y="${((uMidY + lMidY) / 2 + 10).toFixed(1)}" font-size="8" fill="#a78bfa">${pass.forming_depth_mm.toFixed(1)}mm</text>
-  ` : ""}
-
-  <!-- DIM: roll gap -->
-  <text x="${(cX + 8).toFixed(1)}" y="${((uMidY + lMidY) / 2).toFixed(1)}" font-size="8" fill="#34d399">Gap</text>
-  <text x="${(cX + 8).toFixed(1)}" y="${((uMidY + lMidY) / 2 + 10).toFixed(1)}" font-size="8" fill="#34d399">${pass.roll_gap_mm}mm</text>
-
-  <!-- Angle annotation -->
-  <text x="${(uMidX + 10).toFixed(1)}" y="${(uMidY - 12).toFixed(1)}" font-size="10" fill="${stageColor}" font-weight="bold">θ = ${pass.target_angle_deg.toFixed(1)}°</text>
-
-  <!-- Legend -->
-  <rect x="${cX}" y="${cY + cH + 5}" width="200" height="32" fill="#0f172a" stroke="#1e293b" stroke-width="0.5" rx="2"/>
-  <line x1="${cX + 8}" y1="${cY + cH + 16}" x2="${cX + 28}" y2="${cY + cH + 16}" stroke="#60a5fa" stroke-width="2"/>
-  <text x="${cX + 32}" y="${cY + cH + 19}" font-size="8" fill="#94a3b8">Upper Roll</text>
-  <line x1="${cX + 8}" y1="${cY + cH + 28}" x2="${cX + 28}" y2="${cY + cH + 28}" stroke="#34d399" stroke-width="2"/>
-  <text x="${cX + 32}" y="${cY + cH + 31}" font-size="8" fill="#94a3b8">Lower Roll</text>
-
-  <!-- ═══ FRONT VIEW ═══ -->
-
-  <!-- Roll OD circle -->
-  <circle cx="${fCx}" cy="${fCy}" r="${fR}" fill="#1e293b" stroke="#60a5fa" stroke-width="2"/>
-
-  <!-- Groove on OD -->
-  ${pass.forming_depth_mm > 0 ? `
-  <path d="M ${fCx - fR},${fCy}
-    L ${fCx - fR + fGrooveD * 0.5},${fCy}
-    L ${fCx - fGrooveW * 0.6},${fCy + fGrooveD * 1.2}
-    L ${fCx + fGrooveW * 0.6},${fCy + fGrooveD * 1.2}
-    L ${fCx + fR - fGrooveD * 0.5},${fCy}
-    L ${fCx + fR},${fCy}"
-    fill="none" stroke="${stageColor}" stroke-width="2"/>
-  ` : ""}
-
-  <!-- Bore circle -->
-  <circle cx="${fCx}" cy="${fCy}" r="${fBoreR}" fill="#0f172a" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4"/>
-
-  <!-- Keyway -->
-  <rect x="${fCx - fKwW}" y="${fCy - fBoreR - fKwH}" width="${fKwW * 2}" height="${fKwH}"
-    fill="#0f172a" stroke="#f59e0b" stroke-width="1.2"/>
-
-  <!-- Centre cross -->
-  <line x1="${fCx - fBoreR - 8}" y1="${fCy}" x2="${fCx + fBoreR + 8}" y2="${fCy}" stroke="#334155" stroke-width="0.8" stroke-dasharray="5,3"/>
-  <line x1="${fCx}" y1="${fCy - fBoreR - 8}" x2="${fCx}" y2="${fCy + fBoreR + 8}" stroke="#334155" stroke-width="0.8" stroke-dasharray="5,3"/>
-
-  <!-- OD dim -->
-  <line x1="${fCx}" y1="${fCy}" x2="${fCx + fR}" y2="${fCy}" stroke="#60a5fa" stroke-width="1"/>
-  <text x="${fCx + fR * 0.55}" y="${fCy - 6}" font-size="10" fill="#60a5fa" text-anchor="middle" font-weight="bold">⌀${rd.estimated_roll_od_mm} h6</text>
-
-  <!-- Bore dim -->
-  <text x="${fCx - fBoreR - 20}" y="${fCy - fBoreR * 0.5}" font-size="9" fill="#e2e8f0">⌀${rd.bore_dia_mm} H7</text>
-
-  <!-- Keyway dim -->
-  <text x="${fCx}" y="${fCy - fBoreR - fKwH - 8}" font-size="9" fill="#f59e0b" text-anchor="middle">KW ${rd.keyway_width_mm}mm (DIN 6885)</text>
-
-  <!-- Depth label -->
-  ${pass.forming_depth_mm > 0 ? `
-  <text x="${fCx}" y="${fCy + fR + 20}" font-size="10" fill="${stageColor}" text-anchor="middle" font-weight="bold">Groove Depth: ${pass.forming_depth_mm.toFixed(1)} mm</text>
-  ` : ""}
-
-  <!-- Stage label -->
-  <text x="${fCx}" y="${fCy - fR - 12}" font-size="9" fill="${stageColor}" text-anchor="middle">[ ${pass.stage_type.replace(/_/g," ").toUpperCase()} ]</text>
-
-  <!-- ═══ SIDE VIEW ═══ -->
-
-  <!-- Upper roll -->
-  <polygon points="${sUpperPts}" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5"/>
-  <polyline points="${sCx - sFW},${sCy - sOuterR} ${sCx - sSW},${sCy - sOuterR} ${sCx - sSW},${sCy - sOuterR + sDepth} ${sCx + sSW},${sCy - sOuterR + sDepth} ${sCx + sSW},${sCy - sOuterR} ${sCx + sFW},${sCy - sOuterR}"
-    fill="none" stroke="${stageColor}" stroke-width="2.5"/>
-
-  <!-- Lower roll -->
-  <polygon points="${sLowerPts}" fill="#064e3b" stroke="#34d399" stroke-width="1.5"/>
-  <polyline points="${sCx - sFW},${sCy + sOuterR} ${sCx - sSW},${sCy + sOuterR} ${sCx - sSW},${sCy + sOuterR - sDepth} ${sCx + sSW},${sCy + sOuterR - sDepth} ${sCx + sSW},${sCy + sOuterR} ${sCx + sFW},${sCy + sOuterR}"
-    fill="none" stroke="${stageColor}" stroke-width="2.5"/>
-
-  <!-- Strip -->
-  <rect x="${sCx - sSW}" y="${sCy - thickness * scaleS / 2}" width="${sSW * 2}" height="${thickness * scaleS}"
-    fill="#fbbf24" opacity="0.4" stroke="#fbbf24" stroke-width="1"/>
-
-  <!-- Shaft centre line -->
-  <line x1="${sX}" y1="${sCy}" x2="${sX + sW}" y2="${sCy}" stroke="#334155" stroke-width="0.8" stroke-dasharray="6,4"/>
-
-  <!-- Bore zone -->
-  <rect x="${sCx - sFW}" y="${sCy - sBoreR}" width="${sFW * 2}" height="${sBoreR * 2}"
-    fill="none" stroke="#475569" stroke-width="0.8" stroke-dasharray="4,3"/>
-
-  <!-- DIM: face width -->
-  <line x1="${sCx - sFW}" y1="${sCy + sOuterR + 18}" x2="${sCx + sFW}" y2="${sCy + sOuterR + 18}" stroke="#60a5fa" stroke-width="0.8"/>
-  <text x="${sCx}" y="${sCy + sOuterR + 32}" font-size="9" fill="#60a5fa" text-anchor="middle">Face: ${rd.face_width_mm} mm</text>
-
-  <!-- DIM: OD -->
-  <line x1="${sCx + sFW + 10}" y1="${sCy - sOuterR}" x2="${sCx + sFW + 10}" y2="${sCy + sOuterR}" stroke="#94a3b8" stroke-width="0.8"/>
-  <text x="${sCx + sFW + 14}" y="${sCy - 4}" font-size="8" fill="#94a3b8">⌀${rd.estimated_roll_od_mm}</text>
-
-  <!-- DIM: bore -->
-  <line x1="${sCx - sFW - 10}" y1="${sCy - sBoreR}" x2="${sCx - sFW - 10}" y2="${sCy + sBoreR}" stroke="#f59e0b" stroke-width="0.8"/>
-  <text x="${sCx - sFW - 14}" y="${sCy - 4}" font-size="8" fill="#f59e0b" text-anchor="end">⌀${rd.bore_dia_mm}</text>
-
-  <!-- ═══ TITLE BLOCK (bottom right) ═══ -->
-  <rect x="${W - 380}" y="${H - 185}" width="365" height="170" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
-
-  <!-- Title block grid lines -->
-  <line x1="${W - 380}" y1="${H - 155}" x2="${W - 15}" y2="${H - 155}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W - 380}" y1="${H - 130}" x2="${W - 15}" y2="${H - 130}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W - 380}" y1="${H - 105}" x2="${W - 15}" y2="${H - 105}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W - 380}" y1="${H - 80}" x2="${W - 15}" y2="${H - 80}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W - 380}" y1="${H - 55}" x2="${W - 15}" y2="${H - 55}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W - 380}" y1="${H - 30}" x2="${W - 15}" y2="${H - 30}" stroke="#1e293b" stroke-width="0.5"/>
-  <line x1="${W - 200}" y1="${H - 185}" x2="${W - 200}" y2="${H - 15}" stroke="#1e293b" stroke-width="0.5"/>
-
-  <!-- Labels (left col) -->
-  <text x="${W - 375}" y="${H - 167}" font-size="7.5" fill="#64748b">PART NO.</text>
-  <text x="${W - 375}" y="${H - 142}" font-size="7.5" fill="#64748b">PROFILE TYPE</text>
-  <text x="${W - 375}" y="${H - 117}" font-size="7.5" fill="#64748b">MATERIAL</text>
-  <text x="${W - 375}" y="${H - 92}" font-size="7.5" fill="#64748b">THICKNESS</text>
-  <text x="${W - 375}" y="${H - 67}" font-size="7.5" fill="#64748b">STAGE</text>
-  <text x="${W - 375}" y="${H - 42}" font-size="7.5" fill="#64748b">DATE / REV</text>
-  <text x="${W - 375}" y="${H - 17}" font-size="7.5" fill="#64748b">SCALE</text>
-
-  <!-- Labels (right col) -->
-  <text x="${W - 195}" y="${H - 167}" font-size="7.5" fill="#64748b">ROLL OD</text>
-  <text x="${W - 195}" y="${H - 142}" font-size="7.5" fill="#64748b">BORE DIA.</text>
-  <text x="${W - 195}" y="${H - 117}" font-size="7.5" fill="#64748b">FACE WIDTH</text>
-  <text x="${W - 195}" y="${H - 92}" font-size="7.5" fill="#64748b">SHAFT DIA.</text>
-  <text x="${W - 195}" y="${H - 67}" font-size="7.5" fill="#64748b">KEYWAY</text>
-  <text x="${W - 195}" y="${H - 42}" font-size="7.5" fill="#64748b">ROLL MATERIAL</text>
-  <text x="${W - 195}" y="${H - 17}" font-size="7.5" fill="#64748b">SURFACE FINISH</text>
-
-  <!-- Values (left col) -->
-  <text x="${W - 375}" y="${H - 157}" font-size="9" fill="#e2e8f0" font-weight="bold">SRE-${(profileType||"UCH").substring(0,3).toUpperCase()}-S${pass.pass_no.toString().padStart(2,"0")}-${revision}</text>
-  <text x="${W - 375}" y="${H - 132}" font-size="9" fill="#a5b4fc">${profileType || "u_channel"}</text>
-  <text x="${W - 375}" y="${H - 107}" font-size="9" fill="#a5b4fc">${material}</text>
-  <text x="${W - 375}" y="${H - 82}" font-size="9" fill="#a5b4fc">${thickness} mm</text>
-  <text x="${W - 375}" y="${H - 57}" font-size="9" fill="${stageColor}">${pass.stage_type.replace(/_/g," ")}</text>
-  <text x="${W - 375}" y="${H - 32}" font-size="9" fill="#94a3b8">${date} / REV ${revision}</text>
-  <text x="${W - 375}" y="${H - 17}" font-size="9" fill="#94a3b8">1:1 (approx)</text>
-
-  <!-- Values (right col) -->
-  <text x="${W - 195}" y="${H - 157}" font-size="9" fill="#60a5fa" font-weight="bold">⌀${rd.estimated_roll_od_mm} h6</text>
-  <text x="${W - 195}" y="${H - 132}" font-size="9" fill="#fbbf24">⌀${rd.bore_dia_mm} H7</text>
-  <text x="${W - 195}" y="${H - 107}" font-size="9" fill="#c4b5fd">${rd.face_width_mm} mm</text>
-  <text x="${W - 195}" y="${H - 82}" font-size="9" fill="#34d399">⌀${rd.shaft_dia_mm} mm</text>
-  <text x="${W - 195}" y="${H - 57}" font-size="9" fill="#f97316">${rd.keyway_width_mm} mm (DIN 6885)</text>
-  <text x="${W - 195}" y="${H - 32}" font-size="9" fill="#f87171">EN31 / D2 · 60-62 HRC</text>
-  <text x="${W - 195}" y="${H - 17}" font-size="9" fill="#94a3b8">Ra 0.8 μm</text>
-
-  ${approved ? `
-  <!-- APPROVED FOR MANUFACTURING stamp -->
-  <rect x="${W - 380}" y="${H - 230}" width="365" height="38" fill="#052e16" stroke="#16a34a" stroke-width="1.5" rx="3"/>
-  <text x="${W - 197}" y="${H - 218}" font-size="9" fill="#4ade80" text-anchor="middle" font-weight="bold" letter-spacing="2">✔ APPROVED FOR MANUFACTURING</text>
-  <text x="${W - 197}" y="${H - 205}" font-size="7.5" fill="#16a34a" text-anchor="middle">Sai Rolotech Smart Engines · ${date} · REV ${revision}</text>
-  ` : `
-  <!-- DRAFT stamp -->
-  <rect x="${W - 380}" y="${H - 230}" width="365" height="38" fill="#1c1917" stroke="#57534e" stroke-width="0.8" rx="3"/>
-  <text x="${W - 197}" y="${H - 218}" font-size="9" fill="#78716c" text-anchor="middle" font-weight="bold" letter-spacing="2">⚠ ENGINEERING DRAFT — NOT FOR MANUFACTURE</text>
-  <text x="${W - 197}" y="${H - 205}" font-size="7.5" fill="#57534e" text-anchor="middle">Verify all dimensions before production use · REV ${revision}</text>
-  `}
-
-  <!-- Forming data box -->
-  <rect x="15" y="${H - 185}" width="295" height="170" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
-  <text x="20" y="${H - 170}" font-size="8" fill="#64748b">FORMING DATA — ${pass.station_label.toUpperCase()}</text>
-  <line x1="15" y1="${H - 162}" x2="310" y2="${H - 162}" stroke="#1e293b" stroke-width="0.5"/>
-  ${[
-    ["Bend Angle",         `${pass.target_angle_deg}°`],
-    ["Springback Adj.",    springbackDeg > 0 ? `+${springbackDeg.toFixed(1)}° (${material})` : `0° (${material})`],
-    ["Tool Angle",         `${(pass.target_angle_deg + springbackDeg).toFixed(1)}°`],
-    ["Roll Gap",           `${pass.roll_gap_mm} mm`],
-    ["Form Depth",         `${pass.forming_depth_mm.toFixed(1)} mm`],
-    ["Progress",           `${pass.pass_progress_pct.toFixed(0)}%`],
-  ].map(([label, val], i) => `
-    <text x="22" y="${H - 148 + i * 22}" font-size="8" fill="#64748b">${label}:</text>
-    <text x="130" y="${H - 148 + i * 22}" font-size="9" fill="#e2e8f0" font-weight="bold">${val}</text>
-  `).join("")}
-
-  <!-- Watermark -->
-  <text x="${W / 2}" y="${H / 2}" font-size="80" fill="#1e293b" text-anchor="middle"
-    dominant-baseline="middle" opacity="0.15" transform="rotate(-30 ${W / 2} ${H / 2})">SAI ROLOTECH</text>
-
-</svg>`;
-}
-
-// ─── DXF EXPORT GENERATOR ─────────────────────────────────────────────────────
-// Generates a minimal ASCII DXF R12 file for the upper/lower roll profiles.
-
-function buildStationDXF(
-  pass:      PassData,
-  rd:        RollDimensions,
-  thickness: number,
-  material:  string,
-  revision:  string = "A",
-): string {
-  const upper = pass.upper_roll_profile;
-  const lower = pass.lower_roll_profile;
-  const date  = new Date().toLocaleDateString("en-GB");
-
-  const lines: string[] = [];
-
-  const push = (...args: (string | number)[]) =>
-    args.forEach(a => lines.push(String(a)));
-
-  // Header
-  push("0","SECTION","2","HEADER");
-  push("9","$ACADVER","1","AC1006");
-  push("9","$INSBASE","10","0.0","20","0.0","30","0.0");
-  push("9","$EXTMIN","10","0.0","20","0.0","30","0.0");
-  push("9","$EXTMAX","10","500.0","20","500.0","30","0.0");
-  push("0","ENDSEC");
-
-  // Tables
-  push("0","SECTION","2","TABLES");
-  push("0","TABLE","2","LAYER","70","3");
-  push("0","LAYER","2","UPPER_ROLL","70","0","62","5","6","CONTINUOUS");
-  push("0","LAYER","2","LOWER_ROLL","70","0","62","3","6","CONTINUOUS");
-  push("0","LAYER","2","STRIP","70","0","62","2","6","CONTINUOUS");
-  push("0","LAYER","2","DIMS","70","0","62","1","6","CONTINUOUS");
-  push("0","LAYER","2","CENTRE","70","0","62","8","6","CENTER");
-  push("0","ENDTAB");
-  push("0","ENDSEC");
-
-  // Entities
-  push("0","SECTION","2","ENTITIES");
-
-  // Drawing comment text
-  push("0","TEXT");
-  push("8","DIMS","10","0.0","20","420.0","30","0.0","40","6","1",
-    `SAI ROLOTECH · ${pass.station_label} · ${material} · ${thickness}mm · REV ${revision} · ${date}`);
-
-  push("0","TEXT");
-  push("8","DIMS","10","0.0","20","410.0","30","0.0","40","4","1",
-    `PART: SRE-${(material).substring(0,3).toUpperCase()}-S${String(pass.pass_no).padStart(2,"0")}-${revision}  OD:${rd.estimated_roll_od_mm}  BORE:${rd.bore_dia_mm}H7  FACE:${rd.face_width_mm}  GAP:${pass.roll_gap_mm}mm`);
-
-  // Scale upper profile so it's readable
-  const scaleX = 2.5, scaleY = 2.5;
-  const offsetX = 50, offsetY = 200;
-
-  // Upper roll profile as polyline
-  push("0","POLYLINE","8","UPPER_ROLL","66","1","70","0","62","5");
-  upper.forEach(pt => {
-    push("0","VERTEX","8","UPPER_ROLL",
-      "10", (pt.x * scaleX + offsetX).toFixed(4),
-      "20", (pt.y * scaleY + offsetY).toFixed(4),
-      "30","0.0");
-  });
-  push("0","SEQEND");
-
-  // Lower roll profile as polyline
-  push("0","POLYLINE","8","LOWER_ROLL","66","1","70","0","62","3");
-  lower.forEach(pt => {
-    push("0","VERTEX","8","LOWER_ROLL",
-      "10", (pt.x * scaleX + offsetX).toFixed(4),
-      "20", (pt.y * scaleY + offsetY).toFixed(4),
-      "30","0.0");
-  });
-  push("0","SEQEND");
-
-  // Strip boundary (rectangle)
-  const stripLeft   = (upper[0].x  * scaleX + offsetX).toFixed(4);
-  const stripRight  = (upper[upper.length-1].x * scaleX + offsetX).toFixed(4);
-  const uMidY       = ((upper[0].y + upper[upper.length-1].y) / 2 * scaleY + offsetY).toFixed(4);
-  const lMidY       = ((lower[0].y + lower[lower.length-1].y) / 2 * scaleY + offsetY).toFixed(4);
-  push("0","LINE","8","STRIP","62","2","10",stripLeft,"20",uMidY,"30","0.0","11",stripRight,"21",uMidY,"31","0.0");
-  push("0","LINE","8","STRIP","62","2","10",stripLeft,"20",lMidY,"30","0.0","11",stripRight,"21",lMidY,"31","0.0");
-  push("0","LINE","8","STRIP","62","2","10",stripLeft,"20",uMidY,"30","0.0","11",stripLeft,"21",lMidY,"31","0.0");
-  push("0","LINE","8","STRIP","62","2","10",stripRight,"20",uMidY,"30","0.0","11",stripRight,"21",lMidY,"31","0.0");
-
-  // Centre line
-  const cX = ((upper[0].x + upper[upper.length-1].x) / 2 * scaleX + offsetX).toFixed(4);
-  push("0","LINE","8","CENTRE","62","8","10",cX,"20","0.0","30","0.0","11",cX,"21","500.0","31","0.0");
-
-  // Dimension: strip width
-  const sw = upper[upper.length-1].x - upper[0].x;
-  push("0","TEXT","8","DIMS","10",(upper[0].x * scaleX + offsetX + sw * scaleX / 2).toFixed(4),
-    "20",(parseFloat(lMidY) + 15).toFixed(4),"30","0.0","40","5","1",
-    `Strip W: ${pass.strip_width_mm.toFixed(1)} mm  Angle: ${pass.target_angle_deg}°  Gap: ${pass.roll_gap_mm} mm`);
-
-  // Front view: bore and OD circles
-  const fcx = 350, fcy = 200;
-  const fod = rd.estimated_roll_od_mm / 2 * 0.6;
-  const fbr = rd.bore_dia_mm / 2 * 0.6;
-  push("0","CIRCLE","8","UPPER_ROLL","62","5","10",fcx,"20",fcy,"30","0.0","40",fod.toFixed(4));
-  push("0","CIRCLE","8","DIMS","62","8","10",fcx,"20",fcy,"30","0.0","40",fbr.toFixed(4));
-
-  push("0","ENDSEC");
-  push("0","EOF");
-
-  return lines.join("\r\n");
-}
-
-// ─── PDF PRINT HELPER ─────────────────────────────────────────────────────────
-// Opens the SVG in a new print window; user chooses PDF printer or prints.
-
-function printStationPDF(svgString: string, title: string) {
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<title>${title}</title>
-<style>
-  @page { size: A3 landscape; margin: 0; }
-  body  { margin: 0; padding: 0; background: #000; }
-  svg   { width: 100vw; height: 100vh; display: block; }
-  @media print {
-    body { background: #0c1220; }
-    svg  { width: 297mm; height: 420mm; }
-  }
-</style>
-</head>
-<body>${svgString}
-<script>window.onload = () => { setTimeout(() => window.print(), 400); };<\/script>
-</body>
-</html>`;
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url  = URL.createObjectURL(blob);
-  window.open(url, "_blank");
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
-
-// ─── Download helpers ─────────────────────────────────────────────────────────
-
-function triggerBlobDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a   = document.createElement("a");
-  a.href     = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function triggerSVGDownload(svgString: string, filename: string) {
-  triggerBlobDownload(
-    new Blob([svgString], { type: "image/svg+xml;charset=utf-8" }),
-    filename,
-  );
-}
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function RollDrawingPanel({ rollContour, rollDimensions, profileType: profileTypeProp, springbackDeg: springbackDegProp }: Props) {
-  const [selected,    setSelected]    = useState(0);
-  const [view,        setView]        = useState<"all3" | "cross" | "front" | "side">("all3");
-  const [downloading, setDownloading] = useState(false);
-  const [revision,    setRevision]    = useState("A");
-  const [approved,    setApproved]    = useState(false);
+const REVISION_OPTIONS = ["R0","R1","R2","R3","R4","R5"];
+
+const RELEASE_STATE_OPTIONS: { value: ReleaseState; label: string; color: string }[] = [
+  { value: "draft",                label: "Draft",                color: "text-slate-400" },
+  { value: "internal_review",      label: "Internal Review",      color: "text-blue-400"  },
+  { value: "shop_drawing",         label: "Shop Drawing",         color: "text-orange-400"},
+  { value: "manufacturing_release",label: "Manufacturing Release",color: "text-green-400" },
+];
+
+export default function RollDrawingPanel({
+  rollContour,
+  rollDimensions,
+  profileType: profileTypeProp,
+  springbackDeg: springbackDegProp,
+}: Props) {
+  const [selected,      setSelected]      = useState(0);
+  const [view,          setView]          = useState<"all3"|"cross"|"front"|"side">("all3");
+  const [downloading,   setDownloading]   = useState(false);
+  const [revision,      setRevision]      = useState("R0");
+  const [releaseState,  setReleaseState]  = useState<ReleaseState>("draft");
+  const [checkedBy,     setCheckedBy]     = useState("");
+  const [approvedBy,    setApprovedBy]    = useState("");
+  const [showRelease,   setShowRelease]   = useState(false);
+  const [validErrors,   setValidErrors]   = useState<string[]>([]);
 
   if (!rollContour || rollContour.status !== "pass") {
     return (
@@ -1082,233 +622,293 @@ export default function RollDrawingPanel({ rollContour, rollDimensions, profileT
     shaft_dia_mm:         70,
   };
 
-  const stageColor = STAGE_COLOR[pass.stage_type] || "#8b5cf6";
-  const totalPasses = allPasses.length;
-  const material    = rollContour.material as string;
-  const thickness   = rollContour.thickness_mm as number;
+  const stageColor   = STAGE_COLOR[pass.stage_type] || "#8b5cf6";
+  const totalPasses  = allPasses.length;
+  const material     = rollContour.material as string;
+  const thickness    = rollContour.thickness_mm as number;
+  const rc = rollContour as unknown as Record<string,unknown>;
+  const profType     = profileTypeProp || (rc.profile_type as string) || "";
+  const springbackDeg = springbackDegProp ?? (rc.springback_deg as number) ?? 0;
 
-  const profType     = profileTypeProp
-    || (rollContour as Record<string,unknown>).profile_type as string
-    || "";
-  const springbackDeg = springbackDegProp
-    ?? (rollContour as Record<string,unknown>).springback_deg as number
-    ?? 0;
-  const partBase  = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(pass.pass_no).padStart(2,"0")}-REV${revision}`;
+  // ── Build all DrawingModels (memoized) ──────────────────────────────────────
+  const modelOpts = useMemo(() => ({
+    totalStations: totalPasses,
+    material,
+    thickness,
+    profileType:  profType,
+    springbackDeg,
+    revision,
+    releaseState,
+    checkedBy,
+    approvedBy,
+  }), [totalPasses, material, thickness, profType, springbackDeg, revision, releaseState, checkedBy, approvedBy]);
+
+  const currentModel: DrawingModel = useMemo(
+    () => buildDrawingModel(pass, rd, modelOpts),
+    [pass, rd, modelOpts],
+  );
+
+  const allModels: DrawingModel[] = useMemo(
+    () => allPasses.map(p => buildDrawingModel(p, rd, modelOpts)),
+    [allPasses, rd, modelOpts],
+  );
+
+  // ── Pre-export validation ───────────────────────────────────────────────────
+  const runValidation = (forRelease?: ReleaseState): boolean => {
+    const result = validateDrawingModel(allModels, forRelease ?? releaseState);
+    setValidErrors(result.errors);
+    return result.valid;
+  };
+
+  const wallMm = (rd.estimated_roll_od_mm - rd.bore_dia_mm) / 2;
+
+  // ── File naming ─────────────────────────────────────────────────────────────
+  const partBase   = currentModel.drawingNo;
+  const fSVG       = generateFileName(currentModel, "svg");
+  const fDXF       = generateFileName(currentModel, "dxf");
+  const fZIP       = generatePackageZipName(currentModel);
+  const fAllPDF    = generateAllPdfName(currentModel);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleDownloadStation = useCallback(() => {
+    if (!runValidation()) return;
     setDownloading(true);
     try {
-      const svg  = buildStationSVG(pass, rd, thickness, material, profType, revision, approved, springbackDeg);
-      triggerSVGDownload(svg, `${partBase}.svg`);
+      triggerSVGDownload(renderDrawingToSVG(currentModel), fSVG);
     } finally { setTimeout(() => setDownloading(false), 600); }
-  }, [pass, rd, material, thickness, profType, revision, approved, springbackDeg, partBase]);
+  }, [currentModel, fSVG]);
 
   const handleDownloadAll = useCallback(() => {
+    if (!runValidation()) return;
     setDownloading(true);
-    allPasses.forEach((p, i) => {
+    allModels.forEach((m, i) => {
       setTimeout(() => {
-        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved, springbackDeg);
-        const base = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(p.pass_no).padStart(2,"0")}-REV${revision}`;
-        triggerSVGDownload(svg, `${base}.svg`);
+        triggerSVGDownload(renderDrawingToSVG(m), generateFileName(m, "svg"));
       }, i * 150);
     });
-    setTimeout(() => setDownloading(false), allPasses.length * 150 + 500);
-  }, [allPasses, rd, material, thickness, profType, revision, approved, springbackDeg]);
+    setTimeout(() => setDownloading(false), allModels.length * 150 + 500);
+  }, [allModels]);
 
   const handleDownloadPDF = useCallback(() => {
-    const svg = buildStationSVG(pass, rd, thickness, material, profType, revision, approved, springbackDeg);
-    printStationPDF(svg, `${partBase}.pdf`);
-  }, [pass, rd, material, thickness, profType, revision, approved, springbackDeg, partBase]);
+    if (!runValidation()) return;
+    printSinglePDF(currentModel, `${partBase}.pdf`);
+  }, [currentModel, partBase]);
 
-  const handleDownloadZIP = useCallback(async () => {
-    setDownloading(true);
-    try {
-      const zip = new JSZip();
-      const folder = zip.folder(`SRE-${profType || "roll"}-REV${revision}`)!;
-      allPasses.forEach(p => {
-        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved, springbackDeg);
-        const dxf  = buildStationDXF(p, rd, thickness, material, revision);
-        const base = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(p.pass_no).padStart(2,"0")}-REV${revision}`;
-        folder.file(`${base}.svg`, svg);
-        folder.file(`${base}.dxf`, dxf);
-      });
-      // README
-      folder.file("README.txt",
-        `SAI ROLOTECH SMART ENGINES — Roll Tooling Drawing Pack\n` +
-        `Profile: ${profType || "custom"}  Material: ${material}  Thickness: ${thickness}mm\n` +
-        `Revision: ${revision}  Stations: ${allPasses.length}\n` +
-        `Generated: ${new Date().toLocaleString("en-GB")}\n` +
-        `\nFiles: Each station has .svg (engineering drawing) + .dxf (CAD profile)\n` +
-        `DXF Layers: UPPER_ROLL (blue), LOWER_ROLL (green), STRIP (yellow), DIMS, CENTRE\n` +
-        `\n${approved ? "STATUS: APPROVED FOR MANUFACTURING" : "STATUS: ENGINEERING DRAFT — NOT FOR MANUFACTURE"}\n`
-      );
-      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
-      triggerBlobDownload(blob, `SRE-${profType || "roll"}-REV${revision}-AllStations.zip`);
-    } finally { setDownloading(false); }
-  }, [allPasses, rd, material, thickness, profType, revision, approved, springbackDeg]);
+  const handleDownloadAllPDF = useCallback(() => {
+    if (!runValidation()) return;
+    printAllStationsPDF(allModels, fAllPDF);
+  }, [allModels, fAllPDF]);
 
   const handleDownloadDXF = useCallback(() => {
-    const dxf = buildStationDXF(pass, rd, thickness, material, revision);
+    if (!runValidation()) return;
+    const dxf = renderDrawingToDXF(currentModel);
     triggerBlobDownload(
       new Blob([dxf], { type: "application/dxf;charset=utf-8" }),
-      `${partBase}.dxf`,
+      fDXF,
     );
-  }, [pass, rd, material, thickness, revision, partBase]);
+  }, [currentModel, fDXF]);
+
+  const handleDownloadZIP = useCallback(async () => {
+    if (!runValidation()) return;
+    setDownloading(true);
+    try {
+      const blob = await buildZipPackage(allModels);
+      triggerBlobDownload(blob, fZIP);
+    } finally { setDownloading(false); }
+  }, [allModels, fZIP]);
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-[#0c1220] rounded-2xl border border-slate-700/60 overflow-hidden">
+    <div className="bg-slate-800/60 rounded-2xl border border-slate-700/70 overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="px-5 py-3 border-b border-slate-700/60 flex items-center gap-3 flex-wrap">
-        <Circle className="w-4 h-4 text-violet-400" />
-        <div>
-          <span className="text-sm font-bold text-violet-300 uppercase tracking-wider">
-            Roll Tooling Drawing
-          </span>
-          <span className="ml-3 text-xs text-slate-500 font-mono">
-            {material} · {thickness}mm · ⌀{rd.estimated_roll_od_mm}OD · ⌀{rd.bore_dia_mm}bore
+      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/40 bg-slate-900/40">
+        <div className="flex items-center gap-2">
+          <Circle className="w-4 h-4 text-violet-400" />
+          <span className="text-sm font-semibold text-violet-300 uppercase tracking-wider">Roll Tooling Drawing</span>
+          <span className="ml-2 text-[10px] font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
+            Phase 2 Export Engine
           </span>
         </div>
-
-        {/* Revision + Approved controls */}
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-lg px-2.5 py-1">
-            <Edit3 className="w-3 h-3 text-slate-400" />
-            <span className="text-[10px] text-slate-400">REV</span>
-            <input
-              type="text"
-              value={revision}
-              onChange={e => setRevision(e.target.value.toUpperCase().slice(0,4))}
-              className="w-8 bg-transparent text-xs font-bold text-amber-300 text-center outline-none"
-              maxLength={4}
-            />
-          </div>
+        {/* Revision + Release selector */}
+        <div className="flex items-center gap-2">
+          <select
+            value={revision}
+            onChange={e => setRevision(e.target.value)}
+            className="text-xs bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-300 font-mono"
+          >
+            {REVISION_OPTIONS.map(r => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
           <button
-            onClick={() => setApproved(v => !v)}
-            className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg border font-semibold transition-all ${
-              approved
-                ? "bg-green-500/15 border-green-500/50 text-green-400"
-                : "bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-300"
+            onClick={() => setShowRelease(v => !v)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
+              releaseState === "manufacturing_release"
+                ? "bg-green-500/10 border-green-500/40 text-green-400"
+                : releaseState === "shop_drawing"
+                ? "bg-orange-500/10 border-orange-500/40 text-orange-400"
+                : releaseState === "internal_review"
+                ? "bg-blue-500/10 border-blue-500/40 text-blue-400"
+                : "bg-slate-800 border-slate-700 text-slate-400"
             }`}
           >
-            {approved ? <Lock className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
-            {approved ? "APPROVED" : "Draft"}
+            <ShieldCheck className="w-3 h-3" />
+            {RELEASE_STATE_OPTIONS.find(o => o.value === releaseState)?.label ?? "Draft"}
           </button>
         </div>
-
-        {/* View toggle */}
-        <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-0.5">
-          {([
-            ["all3",  "3-View"],
-            ["cross", "Cross"],
-            ["front", "Front"],
-            ["side",  "Side"],
-          ] as const).map(([v, l]) => (
-            <button key={v} onClick={() => setView(v)}
-              className={`text-[10px] px-2 py-1 rounded transition-colors ${
-                view === v ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >{l}</button>
-          ))}
-        </div>
       </div>
 
-      {/* ── Station selector ── */}
-      <div className="px-4 py-3 border-b border-slate-700/40 flex items-center gap-2 flex-wrap">
-        <button onClick={() => setSelected(s => Math.max(0, s - 1))}
+      {/* ── Release mode panel ── */}
+      {showRelease && (
+        <div className="px-5 py-4 border-b border-slate-700/40 bg-slate-900/60">
+          <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-3 flex items-center gap-1.5">
+            <Lock className="w-3 h-3" /> Manufacturing Release Settings
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+            {RELEASE_STATE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setReleaseState(opt.value)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs transition-all ${
+                  releaseState === opt.value
+                    ? `${opt.color} border-current bg-current/10 ring-1 ring-current/30`
+                    : "text-slate-500 border-slate-700 bg-slate-800/60 hover:border-slate-500"
+                }`}
+              >
+                {releaseState === opt.value
+                  ? <CheckCircle className="w-3 h-3" />
+                  : <div className="w-3 h-3 rounded-full border border-current opacity-40" />
+                }
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {/* Checked/Approved fields — only shown for non-draft states */}
+          {releaseState !== "draft" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[9px] text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-1">
+                  <User className="w-2.5 h-2.5" /> Checked By
+                </label>
+                <input
+                  value={checkedBy}
+                  onChange={e => setCheckedBy(e.target.value)}
+                  placeholder={releaseState === "manufacturing_release" ? "Required" : "Optional"}
+                  className={`w-full text-xs bg-slate-900 border rounded-lg px-3 py-1.5 text-slate-200 font-mono placeholder-slate-600 ${
+                    releaseState === "manufacturing_release" && !checkedBy
+                      ? "border-amber-500/50"
+                      : "border-slate-700"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-1">
+                  <ClipboardCheck className="w-2.5 h-2.5" /> Approved By
+                </label>
+                <input
+                  value={approvedBy}
+                  onChange={e => setApprovedBy(e.target.value)}
+                  placeholder={releaseState === "manufacturing_release" ? "Required" : "Optional"}
+                  className={`w-full text-xs bg-slate-900 border rounded-lg px-3 py-1.5 text-slate-200 font-mono placeholder-slate-600 ${
+                    releaseState === "manufacturing_release" && !approvedBy
+                      ? "border-amber-500/50"
+                      : "border-slate-700"
+                  }`}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Validation errors ── */}
+      {validErrors.length > 0 && (
+        <div className="mx-5 mt-3 px-3 py-2 rounded-xl border border-red-500/30 bg-red-500/8">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <XCircle className="w-3.5 h-3.5 text-red-400" />
+            <span className="text-[10px] text-red-400 font-semibold uppercase tracking-wider">Export blocked — fix before proceeding</span>
+          </div>
+          {validErrors.map((e, i) => (
+            <div key={i} className="text-[10px] text-red-300">• {e}</div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Station thumbnails ── */}
+      <div className="flex items-center gap-2 px-5 py-3 overflow-x-auto border-b border-slate-700/30">
+        <button
+          onClick={() => setSelected(s => Math.max(0, s - 1))}
           disabled={selected === 0}
-          className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-30">
+          className="p-1 rounded-lg text-slate-500 hover:text-slate-300 disabled:opacity-30"
+        >
           <ChevronLeft className="w-4 h-4" />
         </button>
-
-        <div className="flex items-center gap-1.5 flex-wrap flex-1">
-          {allPasses.map((p, i) => (
-            <MiniThumb key={i} pass={p} active={i === selected} onClick={() => setSelected(i)} />
-          ))}
-        </div>
-
-        <button onClick={() => setSelected(s => Math.min(totalPasses - 1, s + 1))}
-          disabled={selected === totalPasses - 1}
-          className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-30">
+        {allPasses.map((p, i) => (
+          <MiniThumb key={p.pass_no} pass={p} active={i === selected} onClick={() => setSelected(i)} />
+        ))}
+        <button
+          onClick={() => setSelected(s => Math.min(allPasses.length - 1, s + 1))}
+          disabled={selected === allPasses.length - 1}
+          className="p-1 rounded-lg text-slate-500 hover:text-slate-300 disabled:opacity-30"
+        >
           <ChevronRight className="w-4 h-4" />
         </button>
-      </div>
-
-      {/* ── Export toolbar ── */}
-      <div className="px-4 py-2 border-b border-slate-700/40 bg-slate-900/40 flex items-center gap-2 flex-wrap">
-        <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mr-1">Export</span>
-
-        {/* SVG - current station */}
-        <button onClick={handleDownloadStation} disabled={downloading}
-          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-all disabled:opacity-50">
-          <FileDown className="w-3 h-3" /> SVG · S{pass.pass_no}
-        </button>
-
-        {/* PDF - current station */}
-        <button onClick={handleDownloadPDF} disabled={downloading}
-          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all disabled:opacity-50">
-          <FileText className="w-3 h-3" /> PDF · S{pass.pass_no}
-        </button>
-
-        {/* DXF - current station */}
-        <button onClick={handleDownloadDXF} disabled={downloading}
-          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all disabled:opacity-50">
-          <Download className="w-3 h-3" /> DXF · S{pass.pass_no}
-        </button>
-
-        <span className="w-px h-4 bg-slate-700 mx-0.5" />
-
-        {/* SVG All */}
-        <button onClick={handleDownloadAll} disabled={downloading}
-          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-all disabled:opacity-50">
-          <Layers className="w-3 h-3" /> SVG · All {totalPasses}
-        </button>
-
-        {/* ZIP All (SVG + DXF) */}
-        <button onClick={handleDownloadZIP} disabled={downloading}
-          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-all disabled:opacity-50">
-          <Archive className="w-3 h-3" />
-          {downloading ? "Building…" : `ZIP Pack · All ${totalPasses}`}
-        </button>
-
-        {/* Part number display */}
-        <span className="ml-auto text-[9px] font-mono text-slate-500">{partBase}</span>
-      </div>
-
-      {/* ── Active station info strip ── */}
-      <div className="px-5 py-2.5 border-b border-slate-700/40 flex items-center gap-4 flex-wrap"
-        style={{ borderLeftColor: stageColor, borderLeftWidth: 3 }}>
-        <div>
-          <span className="text-xs font-bold text-white">{pass.station_label}</span>
-          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium"
-            style={{ background: stageColor + "22", color: stageColor }}>
-            {pass.stage_type.replace(/_/g, " ")}
-          </span>
+        <div className="ml-auto flex-shrink-0 text-[10px] font-mono text-slate-500">
+          {selected + 1} / {totalPasses} · {pass.station_label}
         </div>
-        {[
-          { label: "Angle",    value: `${pass.target_angle_deg}°`,       color: "#60a5fa" },
-          { label: "Gap",      value: `${pass.roll_gap_mm}mm`,            color: "#34d399" },
-          { label: "Depth",    value: `${pass.forming_depth_mm.toFixed(1)}mm`, color: "#a78bfa" },
-          { label: "Strip W",  value: `${pass.strip_width_mm.toFixed(1)}mm`,   color: "#fbbf24" },
-          { label: "Progress", value: `${pass.pass_progress_pct.toFixed(0)}%`, color: "#f97316" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <span className="text-[9px] text-slate-500 uppercase tracking-wider">{label}</span>
-            <span className="text-xs font-bold font-mono" style={{ color }}>{value}</span>
-          </div>
+      </div>
+
+      {/* ── View toggle ── */}
+      <div className="flex gap-1.5 px-5 py-2 border-b border-slate-700/30">
+        {([
+          ["all3",  "All 3 Views",   Layers      ],
+          ["cross", "Cross-Section", Circle      ],
+          ["front", "Front View",    Circle      ],
+          ["side",  "Side View",     AlignCenter ],
+        ] as const).map(([v, label, Icon]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`flex items-center gap-1 text-[10px] px-3 py-1.5 rounded-lg border transition-all ${
+              view === v
+                ? "bg-violet-500/15 border-violet-500/40 text-violet-300"
+                : "border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600"
+            }`}
+          >
+            <Icon className="w-3 h-3" />{label}
+          </button>
         ))}
       </div>
 
-      {/* ── Drawing area ── */}
-      <div className={`p-4 ${view === "all3" ? "grid grid-cols-3 gap-3" : ""}`}>
+      {/* ── Stage badge ── */}
+      <div className="px-5 pt-3 pb-1 flex items-center gap-2">
+        <div
+          className="text-[10px] font-mono px-2 py-0.5 rounded-full border"
+          style={{ color: stageColor, borderColor: stageColor + "50", backgroundColor: stageColor + "15" }}
+        >
+          {pass.stage_type.replace(/_/g," ").toUpperCase()}
+        </div>
+        <span className="text-[10px] text-slate-600 font-mono">
+          θ = {pass.target_angle_deg}°
+          {springbackDeg > 0 && ` · Tool ${(pass.target_angle_deg + springbackDeg).toFixed(1)}°`}
+          · Gap {pass.roll_gap_mm} mm
+          · Depth {pass.forming_depth_mm.toFixed(1)} mm
+        </span>
+      </div>
+
+      {/* ── Drawing views ── */}
+      <div className={`grid gap-4 px-5 py-3 ${view === "all3" ? "grid-cols-3" : "grid-cols-1"}`}>
         {(view === "all3" || view === "cross") && (
-          <div className={`rounded-xl overflow-hidden border border-slate-700/60 ${view === "all3" ? "aspect-[4/3]" : "aspect-[16/9] max-h-[380px]"}`}>
+          <div className={`rounded-xl overflow-hidden border border-slate-700/60 ${view === "all3" ? "aspect-[4/3]" : "aspect-[4/3] max-h-[420px]"}`}>
             <div className="text-[9px] text-slate-500 px-2 py-1 border-b border-slate-700/40 font-mono uppercase tracking-wider flex items-center gap-1">
-              <Layers className="w-3 h-3" /> Cross-Section (Nip View)
+              <Layers className="w-3 h-3" /> Cross-Section — Nip View
             </div>
             <CrossSectionView
               pass={pass}
-              thickness={rollContour.thickness_mm}
+              thickness={thickness}
               rollOD={rd.estimated_roll_od_mm}
               boreD={rd.bore_dia_mm}
             />
@@ -1316,9 +916,9 @@ export default function RollDrawingPanel({ rollContour, rollDimensions, profileT
         )}
 
         {(view === "all3" || view === "front") && (
-          <div className={`rounded-xl overflow-hidden border border-slate-700/60 ${view === "all3" ? "aspect-[4/3]" : "aspect-square max-h-[380px] mx-auto"}`}>
+          <div className={`rounded-xl overflow-hidden border border-slate-700/60 ${view === "all3" ? "aspect-[4/3]" : "aspect-[4/3] max-h-[420px]"}`}>
             <div className="text-[9px] text-slate-500 px-2 py-1 border-b border-slate-700/40 font-mono uppercase tracking-wider flex items-center gap-1">
-              <Circle className="w-3 h-3" /> Front View (Roll Face)
+              <Circle className="w-3 h-3" /> Front View — Roll Face
             </div>
             <CircularFrontView
               pass={pass}
@@ -1326,7 +926,7 @@ export default function RollDrawingPanel({ rollContour, rollDimensions, profileT
               boreD={rd.bore_dia_mm}
               keyway={rd.keyway_width_mm}
               faceW={rd.face_width_mm}
-              thickness={rollContour.thickness_mm}
+              thickness={thickness}
             />
           </div>
         )}
@@ -1347,21 +947,95 @@ export default function RollDrawingPanel({ rollContour, rollDimensions, profileT
         )}
       </div>
 
+      {/* ── Export toolbar ── */}
+      <div className="border-t border-slate-700/40 px-5 py-3 bg-slate-900/30">
+        <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2.5 flex items-center gap-1.5">
+          <Download className="w-3 h-3" /> Export — {partBase}
+        </div>
+
+        {/* Row 1: SVG */}
+        <div className="flex flex-wrap gap-2 mb-2">
+          <button
+            onClick={handleDownloadStation}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-600/15 border border-blue-500/30 text-blue-300 hover:bg-blue-600/25 disabled:opacity-50 transition-all"
+          >
+            <FileDown className="w-3 h-3" />
+            SVG — Station {pass.pass_no}
+          </button>
+          <button
+            onClick={handleDownloadAll}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-600/10 border border-blue-500/20 text-blue-400 hover:bg-blue-600/20 disabled:opacity-50 transition-all"
+          >
+            <Layers className="w-3 h-3" />
+            SVG — All {totalPasses} Stations
+          </button>
+        </div>
+
+        {/* Row 2: PDF */}
+        <div className="flex flex-wrap gap-2 mb-2">
+          <button
+            onClick={handleDownloadPDF}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-600/15 border border-red-500/30 text-red-300 hover:bg-red-600/25 disabled:opacity-50 transition-all"
+          >
+            <FileText className="w-3 h-3" />
+            PDF — Station {pass.pass_no}
+          </button>
+          <button
+            onClick={handleDownloadAllPDF}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600/20 disabled:opacity-50 transition-all"
+          >
+            <FileText className="w-3 h-3" />
+            PDF — All {totalPasses} Stations (Multi-page)
+          </button>
+        </div>
+
+        {/* Row 3: DXF + ZIP */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleDownloadDXF}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-amber-600/15 border border-amber-500/30 text-amber-300 hover:bg-amber-600/25 disabled:opacity-50 transition-all"
+          >
+            <Edit3 className="w-3 h-3" />
+            DXF — Station {pass.pass_no}
+          </button>
+          <button
+            onClick={handleDownloadZIP}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-violet-600/15 border border-violet-500/30 text-violet-300 hover:bg-violet-600/25 disabled:opacity-50 transition-all"
+          >
+            <Archive className="w-3 h-3" />
+            {downloading ? "Building ZIP…" : `Manufacturing Package (SVG+DXF+Manifest) — ${totalPasses} stations`}
+          </button>
+        </div>
+
+        {/* File name preview */}
+        <div className="mt-2 text-[9px] text-slate-600 font-mono flex flex-wrap gap-x-4 gap-y-0.5">
+          <span>SVG: {fSVG}</span>
+          <span>DXF: {fDXF}</span>
+          <span>ZIP: {fZIP}</span>
+        </div>
+      </div>
+
       {/* ── Roll specification table ── */}
       <div className="border-t border-slate-700/40 px-5 py-4">
         <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-3 flex items-center gap-1.5">
-          <Info className="w-3 h-3" /> Roll Specification — DIN Standards
+          <Info className="w-3 h-3" /> Roll Specification — DIN Standards · {revision}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Roll OD",    value: `${rd.estimated_roll_od_mm} mm`,  sub: "Tolerance h6",   color: "text-blue-300" },
-            { label: "Bore",       value: `⌀${rd.bore_dia_mm} mm`,          sub: "Tolerance H7",   color: "text-yellow-300" },
-            { label: "Face Width", value: `${rd.face_width_mm} mm`,          sub: "Incl. clearance",color: "text-purple-300" },
-            { label: "Shaft",      value: `⌀${rd.shaft_dia_mm} mm`,          sub: "EN31 / C45 shaft", color: "text-green-300" },
-            { label: "Keyway",     value: `${rd.keyway_width_mm} mm wide`,   sub: "DIN 6885 A",     color: "text-orange-300" },
-            { label: "Spacer",     value: `${rd.spacer_width_mm} mm`,        sub: "Between rolls",  color: "text-slate-300" },
-            { label: "Material",   value: "EN31 / D2",                       sub: "60–62 HRC",      color: "text-red-300" },
-            { label: "Finish",     value: "Ra 0.8 μm",                       sub: "Ground & hardened", color: "text-teal-300" },
+            { label: "Roll OD",    value: `${rd.estimated_roll_od_mm} mm`,  sub: "Tolerance h6",       color: "text-blue-300"   },
+            { label: "Bore",       value: `⌀${rd.bore_dia_mm} mm`,          sub: "Tolerance H7",       color: "text-yellow-300" },
+            { label: "Face Width", value: `${rd.face_width_mm} mm`,          sub: "Incl. clearance",    color: "text-purple-300" },
+            { label: "Shaft",      value: `⌀${rd.shaft_dia_mm} mm`,          sub: "EN31 / C45 shaft",   color: "text-green-300"  },
+            { label: "Keyway",     value: `${rd.keyway_width_mm} mm wide`,   sub: "DIN 6885 A",         color: "text-orange-300" },
+            { label: "Spacer",     value: `${rd.spacer_width_mm} mm`,        sub: "Between rolls",      color: "text-slate-300"  },
+            { label: "Material",   value: "EN31 / D2",                       sub: "60–62 HRC",          color: "text-red-300"    },
+            { label: "Finish",     value: "Ra 0.8 μm",                       sub: "Ground & hardened",  color: "text-teal-300"   },
           ].map(({ label, value, sub, color }) => (
             <div key={label} className="bg-slate-800/60 rounded-xl border border-slate-700/40 px-3 py-2">
               <div className="text-[9px] text-slate-500 uppercase tracking-wider">{label}</div>
@@ -1372,19 +1046,16 @@ export default function RollDrawingPanel({ rollContour, rollDimensions, profileT
         </div>
 
         {/* Thin-wall engineering warning */}
-        {(() => {
-          const wall = (rd.estimated_roll_od_mm - rd.bore_dia_mm) / 2;
-          return wall < 15 ? (
-            <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-500/8">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
-              <div className="text-[10px] text-amber-300">
-                <span className="font-semibold">Thin Wall Warning: </span>
-                Roll wall = {wall.toFixed(1)} mm (OD {rd.estimated_roll_od_mm} − Bore {rd.bore_dia_mm}).
-                Minimum recommended: 15 mm for rigidity. Verify roll design before machining.
-              </div>
+        {wallMm < 15 && (
+          <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-500/8">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="text-[10px] text-amber-300">
+              <span className="font-semibold">Thin Wall Warning: </span>
+              Roll wall = {wallMm.toFixed(1)} mm (OD {rd.estimated_roll_od_mm} − Bore {rd.bore_dia_mm}).
+              Minimum recommended: 15 mm for rigidity. Verify roll design before machining.
             </div>
-          ) : null;
-        })()}
+          </div>
+        )}
 
         {/* Springback info row */}
         {springbackDeg > 0 && (
@@ -1394,6 +1065,16 @@ export default function RollDrawingPanel({ rollContour, rollDimensions, profileT
             <span className="text-slate-600">→ Tool Angle = Bend Angle + Springback</span>
           </div>
         )}
+
+        {/* Release status row */}
+        <div className="mt-2 flex items-center gap-2 text-[10px] font-mono">
+          <span className="text-slate-500">Release:</span>
+          <span className={RELEASE_STATE_OPTIONS.find(o=>o.value===releaseState)?.color ?? "text-slate-400"}>
+            {RELEASE_STATE_OPTIONS.find(o=>o.value===releaseState)?.label ?? releaseState}
+          </span>
+          {checkedBy && <span className="text-slate-600">· Chk: {checkedBy}</span>}
+          {approvedBy && <span className="text-slate-600">· Appvd: {approvedBy}</span>}
+        </div>
 
         {/* Notes */}
         {rd.notes && rd.notes.length > 0 && (
@@ -1405,7 +1086,7 @@ export default function RollDrawingPanel({ rollContour, rollDimensions, profileT
         )}
 
         <div className="mt-3 text-[9px] text-slate-600 font-mono">
-          roll_dimension_engine · roll_contour_engine · Sai Rolotech Smart Engines v2.3.0
+          roll_dimension_engine · roll_contour_engine · Sai Rolotech Smart Engines v2.3.0 · Phase 2 Export Engine
         </div>
       </div>
     </div>

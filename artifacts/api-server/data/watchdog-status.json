@@ -1,8 +1,8 @@
 {
-  "startedAt": "2026-03-29T04:43:29.103Z",
+  "startedAt": "2026-03-29T04:43:27.017Z",
   "lastHealthCheck": null,
   "lastGitPush": null,
-  "lastGitPushResult": null,
+  "lastGitPushResult": "failed: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote",
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
@@ -10,14 +10,29 @@
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
-  "gitPushErrors": 0,
+  "gitPushErrors": 1,
   "apiPort": 8080,
   "isElectron": false,
   "logs": [
     {
-      "time": "04:43:29 am",
+      "time": "04:43:27 am",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
+    },
+    {
+      "time": "04:43:37 am",
+      "type": "info",
+      "message": "Startup auto-push check kar raha hai..."
+    },
+    {
+      "time": "04:43:37 am",
+      "type": "info",
+      "message": "[startup] 24 commit(s) push ho rahe hain GitHub pe..."
+    },
+    {
+      "time": "04:43:37 am",
+      "type": "error",
+      "message": "GitHub push FAIL: To https://github.com/adminsairolotech-bit/sai-rolotech-smart-engines\n ! [remote rejected] main -> main (cannot lock ref 'refs/heads/main': is at fcf6"
     }
   ]
 }

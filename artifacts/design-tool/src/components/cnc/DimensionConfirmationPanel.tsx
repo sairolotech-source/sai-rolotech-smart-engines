@@ -27,73 +27,86 @@ const DIM_UNIT: Record<DxfDimension["type"], string> = {
 function buildFromGeometry(geometry: ReturnType<typeof useCncStore.getState>["geometry"]): DxfDimension[] {
   if (!geometry) return [];
   const dims = geometry.dimensions;
-  if (dims && dims.length > 0) return dims;
+  if (Array.isArray(dims) && dims.length > 0) return dims;
 
   // Synthesize dimension entries from geometry bounding box + bend points
   const synthetic: DxfDimension[] = [];
   const bb = geometry.boundingBox;
 
-  synthetic.push({
-    type: "linear",
-    value: Math.abs(bb.maxX - bb.minX),
-    text: `W=${Math.abs(bb.maxX - bb.minX).toFixed(2)}`,
-    defPoint1: { x: bb.minX, y: bb.minY },
-    defPoint2: { x: bb.maxX, y: bb.minY },
-    textPosition: { x: (bb.minX + bb.maxX) / 2, y: bb.minY - 5 },
-    layer: "0",
-    rotation: 0,
-  });
+  if (bb) {
+    synthetic.push({
+      type: "linear",
+      value: Math.abs((bb.maxX ?? 0) - (bb.minX ?? 0)),
+      text: `W=${Math.abs((bb.maxX ?? 0) - (bb.minX ?? 0)).toFixed(2)}`,
+      defPoint1: { x: bb.minX ?? 0, y: bb.minY ?? 0 },
+      defPoint2: { x: bb.maxX ?? 0, y: bb.minY ?? 0 },
+      textPosition: { x: ((bb.minX ?? 0) + (bb.maxX ?? 0)) / 2, y: (bb.minY ?? 0) - 5 },
+      layer: "0",
+      rotation: 0,
+    });
 
-  synthetic.push({
-    type: "linear",
-    value: Math.abs(bb.maxY - bb.minY),
-    text: `H=${Math.abs(bb.maxY - bb.minY).toFixed(2)}`,
-    defPoint1: { x: bb.minX, y: bb.minY },
-    defPoint2: { x: bb.minX, y: bb.maxY },
-    textPosition: { x: bb.minX - 8, y: (bb.minY + bb.maxY) / 2 },
-    layer: "0",
-    rotation: 90,
-  });
+    synthetic.push({
+      type: "linear",
+      value: Math.abs((bb.maxY ?? 0) - (bb.minY ?? 0)),
+      text: `H=${Math.abs((bb.maxY ?? 0) - (bb.minY ?? 0)).toFixed(2)}`,
+      defPoint1: { x: bb.minX ?? 0, y: bb.minY ?? 0 },
+      defPoint2: { x: bb.minX ?? 0, y: bb.maxY ?? 0 },
+      textPosition: { x: (bb.minX ?? 0) - 8, y: ((bb.minY ?? 0) + (bb.maxY ?? 0)) / 2 },
+      layer: "0",
+      rotation: 90,
+    });
+  }
 
-  geometry.bendPoints.forEach((bp, i) => {
-    if (bp.radius > 0) {
+  (geometry.bendPoints ?? []).forEach((bp) => {
+    if (!bp) return;
+    if ((bp.radius ?? 0) > 0) {
       synthetic.push({
         type: "radial",
         value: bp.radius,
         text: `R${bp.radius.toFixed(2)}`,
-        defPoint1: { x: bp.x, y: bp.y },
-        defPoint2: { x: bp.x + bp.radius, y: bp.y },
-        textPosition: { x: bp.x, y: bp.y + bp.radius + 3 },
+        defPoint1: { x: bp.x ?? 0, y: bp.y ?? 0 },
+        defPoint2: { x: (bp.x ?? 0) + bp.radius, y: bp.y ?? 0 },
+        textPosition: { x: bp.x ?? 0, y: (bp.y ?? 0) + bp.radius + 3 },
         layer: "0",
         rotation: 0,
       });
     }
-    if (bp.angle !== 0) {
+    if ((bp.angle ?? 0) !== 0) {
       synthetic.push({
         type: "angular",
         value: Math.abs(bp.angle * 180 / Math.PI),
         text: `∠${Math.abs(bp.angle * 180 / Math.PI).toFixed(1)}°`,
-        defPoint1: { x: bp.x, y: bp.y },
-        defPoint2: { x: bp.x + 10, y: bp.y },
-        textPosition: { x: bp.x + 5, y: bp.y + 5 },
+        defPoint1: { x: bp.x ?? 0, y: bp.y ?? 0 },
+        defPoint2: { x: (bp.x ?? 0) + 10, y: bp.y ?? 0 },
+        textPosition: { x: (bp.x ?? 0) + 5, y: (bp.y ?? 0) + 5 },
         layer: "0",
         rotation: bp.angle,
       });
     }
   });
 
-  geometry.segments.forEach((seg) => {
-    const len = Math.hypot(seg.endX - seg.startX, seg.endY - seg.startY);
+  (geometry.segments ?? []).forEach((seg) => {
+    if (!seg) return;
+    const len = Math.hypot(
+      (seg.endX ?? 0) - (seg.startX ?? 0),
+      (seg.endY ?? 0) - (seg.startY ?? 0)
+    );
     if (seg.type === "line" && len > 0.01) {
       synthetic.push({
         type: "linear",
         value: len,
         text: `L=${len.toFixed(2)}`,
-        defPoint1: { x: seg.startX, y: seg.startY },
-        defPoint2: { x: seg.endX, y: seg.endY },
-        textPosition: { x: (seg.startX + seg.endX) / 2, y: (seg.startY + seg.endY) / 2 + 4 },
+        defPoint1: { x: seg.startX ?? 0, y: seg.startY ?? 0 },
+        defPoint2: { x: seg.endX ?? 0, y: seg.endY ?? 0 },
+        textPosition: {
+          x: ((seg.startX ?? 0) + (seg.endX ?? 0)) / 2,
+          y: ((seg.startY ?? 0) + (seg.endY ?? 0)) / 2 + 4,
+        },
         layer: "0",
-        rotation: Math.atan2(seg.endY - seg.startY, seg.endX - seg.startX) * 180 / Math.PI,
+        rotation: Math.atan2(
+          (seg.endY ?? 0) - (seg.startY ?? 0),
+          (seg.endX ?? 0) - (seg.startX ?? 0)
+        ) * 180 / Math.PI,
       });
     }
   });
@@ -143,13 +156,21 @@ export function DimensionConfirmationPanel() {
   }, [manualLabel, manualValue, manualType, setConfirmedDimensions]);
 
   useEffect(() => {
-    const source = (dxfDimensions.length > 0 ? dxfDimensions : buildFromGeometry(geometry));
-    const built: ConfirmedDim[] = source.map((d, i) => ({
-      ...d,
-      confirmed: false,
-      id: `dim-${i}-${d.type}-${d.value.toFixed(3)}`,
-    }));
-    setDims(built);
+    try {
+      const safeDxf = Array.isArray(dxfDimensions) ? dxfDimensions : [];
+      const source = safeDxf.length > 0 ? safeDxf : buildFromGeometry(geometry);
+      const built: ConfirmedDim[] = (Array.isArray(source) ? source : [])
+        .filter(d => d != null && typeof d.value === "number" && isFinite(d.value))
+        .map((d, i) => ({
+          ...d,
+          confirmed: false,
+          id: `dim-${i}-${d.type ?? "linear"}-${d.value.toFixed(3)}`,
+        }));
+      setDims(built);
+    } catch (e) {
+      console.error("[DimensionConfirmationPanel] useEffect build error:", e);
+      setDims([]);
+    }
   }, [geometry, dxfDimensions]);
 
   const effectiveDims = filter === "all" ? dims : dims.filter(d => d.type === filter);

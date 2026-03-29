@@ -386,6 +386,14 @@ export default function PythonDashboard() {
             <RollDrawingPanel
               rollContour={rollContour as any}
               rollDimensions={rollDimension as any}
+              profileType={
+                (detectedValues.profile_type as string)
+                ?? payload?.profile_type
+                ?? ""
+              }
+              springbackDeg={
+                (rollContour?.springback_deg as number) ?? 0
+              }
             />
             <RollFormingSimulator
               data={(simulationData?.simulation_engine ?? null) as any}

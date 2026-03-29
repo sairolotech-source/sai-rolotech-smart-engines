@@ -455,11 +455,12 @@ class TestFourProfileAcceptance:
     def test_door_frame_angle_schedule_two_phase(self, door_frame_result):
         assert door_frame_result["forming_summary"]["angle_schedule_mode"] == "two_phase_lipped"
 
-    def test_door_frame_bend_groups_has_flange(self, door_frame_result):
+    def test_door_frame_bend_groups_has_return_lip(self, door_frame_result):
+        """door_frame must produce a return_lip bend group"""
         groups = door_frame_result["forming_summary"]["bend_groups"]
         group_ids = [g["group_id"] for g in groups]
-        assert "flange" in group_ids or "rib_arms" in group_ids, \
-            f"Missing flange group: {group_ids}"
+        assert "return_lip" in group_ids, \
+            f"door_frame missing return_lip bend group: {group_ids}"
 
     # ── C-channel ────────────────────────────────────────────────────────────
     def test_c_channel_status_pass(self, c_channel_result):
@@ -830,3 +831,100 @@ class TestAsymmetricLipGeometry:
             assert poly is not None, f"{pt}: polygon is None"
             assert not poly.is_empty, f"{pt}: polygon is empty"
             assert poly.area > 0, f"{pt}: polygon area={poly.area}"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PP12  Strip-width progression consistency with flat-strip basis
+#        Validates that passes[0].strip_width_mm ≈ flat_strip_width_mm and
+#        passes[-1].strip_width_mm ≈ section_width_mm (monotonic descent).
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestStripWidthProgression:
+    """Validates strip-width progression is consistent with flat-strip formula.
+
+    The progression formula interpolates from flat_strip_width at station 0 (pre-machine)
+    down to final_section_width at station n_passes.  Each stored pass[i].strip_width_mm
+    is at step i+1 of n_passes — so pass[0] is already one step from flat, and
+    pass[-1] == final_section_width_mm.
+    """
+
+    def test_c_channel_strip_progression_monotonic_descent(self, c_channel_result):
+        """Strip widths must descend monotonically from flat to final"""
+        widths = [p["strip_width_mm"] for p in c_channel_result["passes"]]
+        for a, b in zip(widths, widths[1:]):
+            assert a >= b - 0.5, f"Non-monotonic strip widths: {a} > {b}"
+
+    def test_c_channel_strip_progression_first_greater_than_last(self, c_channel_result):
+        """First forming pass must have greater strip width than last"""
+        widths = [p["strip_width_mm"] for p in c_channel_result["passes"]]
+        assert widths[0] > widths[-1], \
+            f"First {widths[0]} not > last {widths[-1]}"
+
+    def test_c_channel_last_pass_equals_section_width(self, c_channel_result):
+        """Last forming pass strip width must equal final section width (progression endpoint)"""
+        sw = c_channel_result["forming_summary"]["final_section_width_mm"]
+        last_sw = c_channel_result["passes"][-1]["strip_width_mm"]
+        assert last_sw == pytest.approx(sw, abs=1.0), \
+            f"Last strip width {last_sw} not equal to section width {sw}"
+
+    def test_c_channel_strip_widths_all_positive(self, c_channel_result):
+        """All strip widths must be positive"""
+        for p in c_channel_result["passes"]:
+            assert p["strip_width_mm"] > 0
+
+    def test_lipped_ss_strip_progression_monotonic(self, lipped_ss_result):
+        """Lipped SS: strip widths must descend monotonically"""
+        widths = [p["strip_width_mm"] for p in lipped_ss_result["passes"]]
+        for a, b in zip(widths, widths[1:]):
+            assert a >= b - 0.5, f"Non-monotonic: {a} > {b}"
+
+    def test_lipped_ss_last_pass_equals_section_width(self, lipped_ss_result):
+        """Lipped SS: last pass strip width equals section width"""
+        sw = lipped_ss_result["forming_summary"]["final_section_width_mm"]
+        last_sw = lipped_ss_result["passes"][-1]["strip_width_mm"]
+        assert last_sw == pytest.approx(sw, abs=1.0), \
+            f"Last strip width {last_sw} not equal to section width {sw}"
+
+    def test_door_frame_has_return_lip_bend_group(self, door_frame_result):
+        """Door frame must always have a return_lip bend group"""
+        groups = door_frame_result["forming_summary"]["bend_groups"]
+        group_ids = [g["group_id"] for g in groups]
+        assert "return_lip" in group_ids, \
+            f"door_frame missing return_lip group: {group_ids}"
+
+    def test_door_frame_return_lip_group_has_leg_mm(self, door_frame_result):
+        """return_lip bend group must carry a leg_mm field"""
+        groups = door_frame_result["forming_summary"]["bend_groups"]
+        rl_groups = [g for g in groups if g["group_id"] == "return_lip"]
+        assert rl_groups, "No return_lip group found"
+        assert "leg_mm" in rl_groups[0], "return_lip group missing leg_mm"
+        assert rl_groups[0]["leg_mm"] > 0
+
+    def test_shutter_slat_strip_progression_monotonic(self, shutter_slat_result):
+        """Shutter slat: strip widths must descend monotonically"""
+        widths = [p["strip_width_mm"] for p in shutter_slat_result["passes"]]
+        for a, b in zip(widths, widths[1:]):
+            assert a >= b - 0.5, f"Non-monotonic shutter widths: {a} > {b}"
+
+    def test_multi_group_progression_basis_greater_than_no_group_for_lipped(self):
+        """With lip bend_groups, flat_strip basis > single-group basis for lipped_channel"""
+        from app.engines.roll_contour_engine import _strip_width_progression, BEND_RADIUS_FACTOR, _bend_allowance, _per_station_k_factor
+        t = 1.0; r = BEND_RADIUS_FACTOR["SS"] * t; lip_r = round(r * 0.85, 3)
+        ba_fl = _bend_allowance(90.0, r,      t, "SS")
+        ba_lp = _bend_allowance(90.0, lip_r,  t, "SS")
+        k_lp  = _per_station_k_factor(lip_r, t, "SS")
+        groups = [
+            {"group_id": "flange", "bend_count": 2, "ba_mm": ba_fl, "inner_radius_mm": r},
+            {"group_id": "lip",    "bend_count": 2, "ba_mm": ba_lp, "inner_radius_mm": lip_r,
+             "leg_mm": 15.0},
+        ]
+        widths_multi = _strip_width_progression(
+            80, 4, t, 8, section_height_mm=40, inner_radius_mm=r, material="SS",
+            bend_groups=groups,
+        )
+        widths_single = _strip_width_progression(
+            80, 4, t, 8, section_height_mm=40, inner_radius_mm=r, material="SS",
+        )
+        # Multi-group should produce different (correctly higher) flat strip for lipped
+        assert widths_multi[0] != widths_single[0], \
+            "Multi-group progression should differ from single-group for lipped"

@@ -722,15 +722,38 @@ def _strip_width_progression(
       Flat = 60 + 80 + 2×3.534 = 147.07 mm ✓
     """
     if bend_groups:
-        # Multi-group: compute flat strip as sum of per-group contributions
-        total_ba = sum(
-            g["ba_mm"] * g["bend_count"]
-            for g in bend_groups
-        )
-        # Segment height per group: use section_height_mm / total bends per segment type
-        # (lips counted separately via ba_mm already)
-        total_segment_h = section_height_mm * min(bend_count, 2)  # primary flange legs only
-        flat_strip_width = final_width_mm + total_segment_h + total_ba
+        # Multi-group: compute flat strip by summing each group's BA contribution.
+        # Leg length (formed segment height) is contributed per group:
+        #   - "flange" group: section_height_mm per bend
+        #   - "lip" / "rib_inner" / "return_lip" groups: use inner_radius_mm * bend_count
+        #     as a proxy if section_height_mm not available per group; the primary
+        #     flat_strip_for_profile() already has the exact leg lengths — here we just
+        #     need a consistent progression basis.
+        # We derive the flat strip width from flat_strip_for_profile output (passed in
+        # via final_width_mm context is not enough), so instead we compute it properly:
+        # Flat = web + Σ_group(leg_mm_g × bend_count_g) + Σ_group(BA_g × bend_count_g)
+        # Where leg_mm for primary flanges = section_height_mm,
+        #       leg_mm for lips/ribs = section_height_mm for flange groups, else 0
+        #       (BA already encodes bend radius, which differs per group)
+        total_ba = 0.0
+        total_leg_h = 0.0
+        for g in bend_groups:
+            gid = g.get("group_id", "")
+            bc  = g["bend_count"]
+            ba  = g["ba_mm"]
+            total_ba += ba * bc
+            if gid in ("flange", "rib_arms"):
+                # Primary forming segments: full section_height contribution per bend
+                total_leg_h += section_height_mm * bc
+            elif gid in ("lip", "return_lip"):
+                # Lip segment height stored per group or falls back to nothing
+                # (already encoded in the ba_mm via tighter radius)
+                total_leg_h += g.get("leg_mm", section_height_mm * 0.25) * bc
+            elif gid == "rib_inner":
+                # Inner rib arms: same height as outer arms
+                total_leg_h += section_height_mm * bc
+            # else: unknown groups contribute only BA, no leg height
+        flat_strip_width = final_width_mm + total_leg_h + total_ba
     else:
         ba_each = _bend_allowance(90.0, inner_radius_mm, thickness, material)
         total_flange = section_height_mm * max(bend_count, 0)
@@ -1062,8 +1085,18 @@ def generate_roll_contour(
     section_w  = profile_result.get("section_width_mm", 100)
     section_h  = profile_result.get("section_height_mm", 40)
     bend_count = profile_result.get("bend_count", 2)
-    has_lips   = (flange_result or {}).get("has_lips", False) or (flange_result or {}).get("lip_count", 0) > 0
     profile_type = profile_result.get("profile_type", "simple_channel")
+    _pt_raw = profile_type.lower()
+    # has_lips: fire for any explicit lip signal OR for profiles that structurally
+    # require lips (door_frame return lips, lipped_channel, hat_section).
+    # This ensures door_frame always gets lip bend-group sequencing even when
+    # flange_result does not carry has_lips=True.
+    has_lips = (
+        bool((flange_result or {}).get("has_lips", False))
+        or ((flange_result or {}).get("lip_count", 0) > 0)
+        or float(profile_result.get("lip_mm", 0.0)) > 0
+        or _pt_raw in ("door_frame", "lipped_channel", "hat_section")
+    )
 
     springback     = SPRINGBACK_DEG.get(material, 2.0)
     clearance      = _gap_clearance(thickness)
@@ -1128,13 +1161,24 @@ def generate_roll_contour(
         _lip_k_e          = _per_station_k_factor(_lip_radius_e, thickness, material)
         _ba_lip_e         = _bend_allowance(90.0, _lip_radius_e, thickness, material)
         _lip_start_e      = max(1, round(forming_passes * 0.35))
+        # lip_mm may not be computed yet (comes later in the function); use profile_result
+        _lip_mm_early     = float(profile_result.get("lip_mm", 0.0))
+        if _lip_mm_early <= 0:
+            _lip_mm_early = round(section_h * 0.20, 2)   # fallback: 20% of flange height
+        _lip_group_id     = "return_lip" if _pt_lower_early == "door_frame" else "lip"
+        _lip_desc         = (
+            "Return lip bends (door frame inward lips, form after flanges)"
+            if _pt_lower_early == "door_frame"
+            else "Inward lip bends (form after flanges)"
+        )
         _bg_early.append({
-            "group_id":        "lip",
-            "description":     "Inward lip bends (form after flanges)",
+            "group_id":        _lip_group_id,
+            "description":     _lip_desc,
             "bend_count":      _lip_bend_count_e,
             "inner_radius_mm": _lip_radius_e,
             "k_factor":        _lip_k_e,
             "ba_mm":           round(_ba_lip_e, 4),
+            "leg_mm":          _lip_mm_early,
             "forming_start_pass": _lip_start_e,
             "forming_end_pass":   forming_passes,
         })

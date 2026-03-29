@@ -40,6 +40,7 @@ import testCasesRouter from "./test-cases";
 import auditLogRouter from "./audit-log";
 import rbacInfoRouter from "./rbac-info";
 import engineeringEnginesRouter from "./engineering-engines";
+import codexEngineerRouter from "./codex-engineer";
 
 const router: IRouter = Router();
 
@@ -94,6 +95,7 @@ router.use("/gemini-keys", geminiKeysRouter);
 router.use(autoPipelineRouter);
 router.use(testCasesRouter);
 router.use(engineeringEnginesRouter);
+router.use(codexEngineerRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

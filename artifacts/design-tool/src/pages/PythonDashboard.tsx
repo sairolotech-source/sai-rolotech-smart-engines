@@ -20,6 +20,7 @@ import CadExportPanel from "@/components/python-dashboard/CadExportPanel";
 import RollFormingSimulator from "@/components/python-dashboard/RollFormingSimulator";
 import RollDrawingPanel from "@/components/python-dashboard/RollDrawingPanel";
 import RollForming3DPanel from "@/components/python-dashboard/RollForming3DPanel";
+import CodexEngineerPanel from "@/components/python-dashboard/CodexEngineerPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -412,6 +413,12 @@ export default function PythonDashboard() {
               flangeMm={(payload?.section_width_mm as number) ?? (detectedValues.section_width_mm as number) ?? 40}
               thicknessMm={(payload?.thickness as number) ?? 1.5}
               material={(payload?.material as string) ?? "GI"}
+            />
+
+            {/* ── Codex Engineer AI ─────────────────────────────────────── */}
+            <CodexEngineerPanel
+              pipelineResult={pipelineResult ?? undefined}
+              payload={payload as Record<string, unknown> | undefined}
             />
 
             {/* ── SVG Engineering Tabs ──────────────────────────────────── */}

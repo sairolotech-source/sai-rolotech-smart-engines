@@ -54,8 +54,8 @@ function buildCopraCSV(rollTooling: ReturnType<typeof useCncStore.getState>["rol
     "",
     "Station,Roll,Profile_Type,Diameter_mm,Bore_mm,Width_mm,Groove_Depth_mm,Gap_mm,Upper_OD_mm,Lower_OD_mm,K_Factor,Pass_Line_Y",
   ];
-  rollTooling.forEach(rt => {
-    const rp = rt.rollProfile;
+  rollTooling.filter(rt => !!rt.rollProfile).forEach(rt => {
+    const rp = rt.rollProfile!;
     lines.push([
       rt.stationNumber, "UPPER", "forming",
       rp.rollDiameter.toFixed(3), rp.shaftDiameter.toFixed(3), rp.rollWidth.toFixed(3),
@@ -95,8 +95,8 @@ function buildSolidWorksXML(rollTooling: ReturnType<typeof useCncStore.getState>
     `  <ProjectInfo material="${materialType}" thickness="${thickness}mm" stations="${rollTooling.length}" generated="${new Date().toISOString()}"/>`,
     '  <Stations>',
   ];
-  rollTooling.forEach(rt => {
-    const rp = rt.rollProfile;
+  rollTooling.filter(rt => !!rt.rollProfile).forEach(rt => {
+    const rp = rt.rollProfile!;
     lines.push(`    <Station number="${rt.stationNumber}" label="${rt.label}">`);
     lines.push(`      <UpperRoll>`);
     lines.push(`        <OuterDiameter unit="mm">${rp.rollDiameter.toFixed(3)}</OuterDiameter>`);

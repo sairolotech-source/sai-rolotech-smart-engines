@@ -876,10 +876,10 @@ function StepRollDesign({ onDone, onBack }: { onDone: () => void; onBack: () => 
             {rollTooling.slice(0, 8).map((rt, i) => (
               <div key={rt.stationNumber} className="grid grid-cols-5 gap-2 text-xs font-mono bg-zinc-900/40 border border-zinc-800/40 rounded px-3 py-1.5">
                 <span className="text-zinc-400">{rt.label}</span>
-                <span className="text-blue-300">Ø{rt.rollProfile.rollDiameter.toFixed(1)}</span>
-                <span className="text-zinc-400">bore Ø{rt.rollProfile.shaftDiameter.toFixed(1)}</span>
-                <span className="text-orange-300">w {rt.rollProfile.rollWidth.toFixed(1)} mm</span>
-                <span className="text-zinc-500">gap {rt.rollProfile.gap.toFixed(3)}</span>
+                <span className="text-blue-300">Ø{rt.rollProfile?.rollDiameter?.toFixed(1) ?? "—"}</span>
+                <span className="text-zinc-400">bore Ø{rt.rollProfile?.shaftDiameter?.toFixed(1) ?? "—"}</span>
+                <span className="text-orange-300">w {rt.rollProfile?.rollWidth?.toFixed(1) ?? "—"} mm</span>
+                <span className="text-zinc-500">gap {rt.rollProfile?.gap?.toFixed(3) ?? "—"}</span>
               </div>
             ))}
             {rollTooling.length > 8 && <div className="text-xs text-zinc-600 text-center py-1">+{rollTooling.length - 8} more stations…</div>}
@@ -1071,7 +1071,7 @@ function StepExport({ onBack }: { onBack: () => void }) {
     if (rollTooling.length > 0) {
       lines.push("--- ROLL DIMENSIONS ---");
       rollTooling.forEach((rt) => {
-        lines.push(`${rt.label}: OD Ø${rt.rollProfile.rollDiameter.toFixed(3)} | Bore Ø${rt.rollProfile.shaftDiameter.toFixed(3)} | Width ${rt.rollProfile.rollWidth.toFixed(3)} mm`);
+        if (rt.rollProfile) lines.push(`${rt.label}: OD Ø${rt.rollProfile.rollDiameter.toFixed(3)} | Bore Ø${rt.rollProfile.shaftDiameter.toFixed(3)} | Width ${rt.rollProfile.rollWidth.toFixed(3)} mm`);
         if (rt.camPlan) {
           lines.push(`  Cycle time: ${rt.camPlan.cycleTimeEstimate}`);
           lines.push(`  Insert: ${rt.camPlan.insertGrade}`);

@@ -87,6 +87,7 @@ function buildBomFromStore(rollTooling: RollToolingResult[], shaftDia: number): 
 
   for (const rt of rollTooling) {
     const rp = rt.rollProfile;
+    if (!rp) continue;
     const spec = rt.mfgSpec;
 
     for (const [side, rollNum] of [["Upper", rp.upperRollNumber], ["Lower", rp.lowerRollNumber]] as [string, number][]) {
@@ -185,7 +186,7 @@ function buildBomFromStore(rollTooling: RollToolingResult[], shaftDia: number): 
   }
 
   const nSt = rollTooling.length;
-  const shaftD = rollTooling[0]?.rollProfile.shaftDiameter ?? shaftDia;
+  const shaftD = rollTooling[0]?.rollProfile?.shaftDiameter ?? shaftDia;
   const brgCode = shaftD <= 40 ? "6208" : shaftD <= 50 ? "6210" : "6212";
   items.push({
     itemNo: itemNo++, description: `Deep Groove Bearing SKF ${brgCode} (2RS)`,
@@ -227,7 +228,7 @@ function buildBomFromStore(rollTooling: RollToolingResult[], shaftDia: number): 
 }
 
 export function BomView({ rollTooling }: { rollTooling: RollToolingResult[] }) {
-  const shaftDia = rollTooling[0]?.rollProfile.shaftDiameter ?? 40;
+  const shaftDia = rollTooling[0]?.rollProfile?.shaftDiameter ?? 40;
   const [filterCat, setFilterCat] = useState<BomCategory | "all">("all");
   const [showNotes, setShowNotes] = useState(false);
 

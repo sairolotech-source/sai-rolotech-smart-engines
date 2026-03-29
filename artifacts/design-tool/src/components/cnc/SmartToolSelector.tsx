@@ -489,7 +489,7 @@ export function SmartToolSelector() {
                       >
                         {rollTooling.map((rt, idx) => (
                           <option key={idx} value={idx}>
-                            Stn {rt.stationNumber} — {rt.label} (Ø{rt.rollProfile.rollDiameter.toFixed(1)}mm)
+                            Stn {rt.stationNumber} — {rt.label} (Ø{rt.rollProfile?.rollDiameter?.toFixed(1) ?? "—"}mm)
                           </option>
                         ))}
                       </select>

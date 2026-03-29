@@ -68,6 +68,15 @@ function RollsTab({ rollTooling }: { rollTooling: RollToolingResult[] }) {
           <tbody>
             {rollTooling.map((rt, idx) => {
               const rp = rt.rollProfile;
+              if (!rp) {
+                return (
+                  <tr key={rt.stationNumber}>
+                    <td colSpan={10} className="px-4 py-1.5 text-[10px] text-zinc-600 italic">
+                      Station {rt.stationNumber} — roll profile not yet generated (click Generate Roll Tooling)
+                    </td>
+                  </tr>
+                );
+              }
               const total = rollTooling.length;
               const pct = total === 1 ? 1 : idx / (total - 1);
               const phase: "ENTRY" | "MAIN" | "FINAL" = pct >= 0.80 ? "FINAL" : pct <= 0.35 ? "ENTRY" : "MAIN";
@@ -462,8 +471,8 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
       hr,
       `  ${"Stn".padEnd(5)} ${"Label".padEnd(10)} ${"Upper Roll".padEnd(12)} ${"Lower Roll".padEnd(12)} ${"OD(mm)".padEnd(12)} ${"Width".padEnd(10)} ${"Gap"}`,
       hr,
-      ...rollTooling.map(rt =>
-        `  ${String(rt.stationNumber).padEnd(5)} ${rt.label.padEnd(10)} R${String(rt.rollProfile.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rt.rollProfile.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rt.rollProfile.rollDiameter.toFixed(3).padEnd(11)} ${rt.rollProfile.rollWidth.toFixed(3).padEnd(10)} ${rt.rollProfile.gap.toFixed(3)} mm`
+      ...rollTooling.filter(rt => !!rt.rollProfile).map(rt =>
+        `  ${String(rt.stationNumber).padEnd(5)} ${rt.label.padEnd(10)} R${String(rt.rollProfile!.upperRollNumber).padStart(3,"0").padEnd(11)} R${String(rt.rollProfile!.lowerRollNumber).padStart(3,"0").padEnd(11)} Ø${rt.rollProfile!.rollDiameter.toFixed(3).padEnd(11)} ${rt.rollProfile!.rollWidth.toFixed(3).padEnd(10)} ${rt.rollProfile!.gap.toFixed(3)} mm`
       ),
       "",
       ...(machineData?.overallWarnings.length ? [hr, "  CRITICAL WARNINGS", hr, ...machineData.overallWarnings.map(w => `  ⚠ ${w}`), ""] : []),
@@ -603,7 +612,9 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
 
   const totalRolls = rollTooling.length * 2;
   const totalGcodeLines = rollTooling.reduce((sum, rt) => {
-    return sum + rt.rollProfile.upperLatheGcode.split("\n").length + rt.rollProfile.lowerLatheGcode.split("\n").length;
+    const rp = rt.rollProfile;
+    if (!rp) return sum;
+    return sum + (rp.upperLatheGcode?.split("\n").length ?? 0) + (rp.lowerLatheGcode?.split("\n").length ?? 0);
   }, 0);
 
   return (
@@ -707,6 +718,7 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
             onClick={() => {
               rollTooling.forEach((rt, si) => {
                 const rp = rt.rollProfile;
+                if (!rp) return;
                 setTimeout(() => downloadBlob(rp.upperLatheGcode, `ROLL_${String(rp.upperRollNumber).padStart(3,"0")}_UPPER_${rt.label}.nc`), si * 100);
                 setTimeout(() => downloadBlob(rp.lowerLatheGcode, `ROLL_${String(rp.lowerRollNumber).padStart(3,"0")}_LOWER_${rt.label}.nc`), si * 100 + 50);
               });
@@ -719,6 +731,7 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
             onClick={() => {
               rollTooling.forEach((rt, si) => {
                 const rp = rt.rollProfile;
+                if (!rp) return;
                 for (const [gcode, num, side] of [
                   [rp.upperLatheGcode, rp.upperRollNumber, "UPPER"],
                   [rp.lowerLatheGcode, rp.lowerRollNumber, "LOWER"],
@@ -738,6 +751,7 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
             onClick={() => {
               rollTooling.forEach((rt, si) => {
                 const rp = rt.rollProfile;
+                if (!rp) return;
                 for (const [side, num] of [["upper", rp.upperRollNumber], ["lower", rp.lowerRollNumber]] as ["upper"|"lower", number][]) {
                   setTimeout(() => downloadRollDxf({ rollNumber: num, side, stationLabel: rt.label, rollDiameter: rp.rollDiameter, boreDiameter: rp.shaftDiameter, rollWidth: rp.rollWidth, grooveDepth: rp.grooveDepth, gap: rp.gap, materialType: machineData?.materialType ?? materialType }), si * 200 + (side === "lower" ? 100 : 0));
                 }

@@ -183,7 +183,7 @@ export function DigitalTwinView() {
         <div>
           <div className="text-sm font-bold text-zinc-100">🏭 Digital Twin — Machine Side View</div>
           <div className="text-xs text-zinc-400">
-            {stCount} Stations · {stCount * 2} Rolls · Pass Line: {formatMM(rollTooling[0]?.rollProfile.passLineY ?? 0)} mm · 1 unit = 1mm
+            {stCount} Stations · {stCount * 2} Rolls · Pass Line: {formatMM(rollTooling[0]?.rollProfile?.passLineY ?? 0)} mm · 1 unit = 1mm
           </div>
         </div>
 
@@ -236,7 +236,7 @@ export function DigitalTwinView() {
           <text x={8} y={bedY + 14} fill="#4b5563" fontSize={9} fontFamily="monospace">MACHINE BED</text>
 
           <line x1={0} y1={passY} x2={svgW} y2={passY} stroke={PASS_LINE_COLOR} strokeWidth={1.5} strokeDasharray="10 5" />
-          <text x={4} y={passY - 5} fill={PASS_LINE_COLOR} fontSize={9} fontFamily="monospace">PASS LINE ({formatMM(rollTooling[0]?.rollProfile.passLineY ?? 0)}mm)</text>
+          <text x={4} y={passY - 5} fill={PASS_LINE_COLOR} fontSize={9} fontFamily="monospace">PASS LINE ({formatMM(rollTooling[0]?.rollProfile?.passLineY ?? 0)}mm)</text>
 
           <rect x={marginLeft - 40} y={passY - 15} width={20} height={30} fill="#1e293b" stroke="#475569" strokeWidth={1.5} rx={2} />
           <text x={marginLeft - 45} y={passY + 25} fill="#475569" fontSize={8} fontFamily="monospace">ENTRY</text>
@@ -267,6 +267,15 @@ export function DigitalTwinView() {
           {rollTooling.map((rt, idx) => {
             const stX = marginLeft + idx * stationSpacing + stationSpacing / 2;
             const rp = rt.rollProfile;
+            if (!rp) {
+              return (
+                <g key={rt.stationNumber} opacity={0.3}>
+                  <line x1={stX} y1={passY - 60} x2={stX} y2={bedY} stroke="#475569" strokeWidth={1} strokeDasharray="4 3" />
+                  <text x={stX} y={bedY + 16} textAnchor="middle" fill="#6b7280" fontSize={8} fontFamily="monospace">{rt.label}</text>
+                  <text x={stX} y={bedY + 26} textAnchor="middle" fill="#dc2626" fontSize={7} fontFamily="monospace">NO PROFILE</text>
+                </g>
+              );
+            }
             const isSelected = selectedSt === rt.stationNumber;
             const alpha = selectedSt === null || isSelected ? 1 : 0.3;
             const gap = rollGaps[idx];
@@ -412,6 +421,13 @@ function StationDetail({ rt, station, gap, materialThickness }: {
   materialThickness: number;
 }) {
   const rp = rt.rollProfile;
+  if (!rp) {
+    return (
+      <div className="px-5 py-3 text-[11px] text-zinc-500 italic">
+        {rt.label} — roll profile not yet generated. Click <span className="text-blue-400 font-semibold">Generate Roll Tooling</span> to populate station data.
+      </div>
+    );
+  }
   const gapSeverity: GapSeverity | null = gap ? getGapSeverity(gap.springbackGap, materialThickness) : null;
   const gapCol = gapSeverity ? getGapColor(gapSeverity) : "#22c55e";
 

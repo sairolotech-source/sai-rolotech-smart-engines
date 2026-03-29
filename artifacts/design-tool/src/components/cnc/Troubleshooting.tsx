@@ -469,7 +469,7 @@ export function Troubleshooting() {
   const smartCorrections = useMemo(() => {
     if (!selectedDefect || rollTooling.length === 0) return null;
     const n = rollTooling.length;
-    const gapAt = (i: number) => rollGaps[i]?.springbackGap ?? rollTooling[i]?.rollProfile.gap ?? 0;
+    const gapAt = (i: number) => rollGaps[i]?.springbackGap ?? rollTooling[i]?.rollProfile?.gap ?? 0;
     const stationLabel = (i: number) => rollTooling[i]?.label ?? `Station ${i + 1}`;
 
     if (selectedDefect === "twist") {
@@ -512,13 +512,13 @@ export function Troubleshooting() {
         title: "Camber — Numeric Correction",
         color: "orange",
         steps: [
-          { station: stationLabel(wornIdx), action: "Left roll OD", value: `Measure vs nominal ${rollTooling[wornIdx]?.rollProfile.rollDiameter.toFixed(3)} mm — max wear 0.15 mm`, priority: "HIGH" },
-          { station: stationLabel(wornIdx), action: "Right roll OD", value: `Measure vs nominal ${rollTooling[wornIdx]?.rollProfile.rollDiameter.toFixed(3)} mm — left/right must match`, priority: "HIGH" },
+          { station: stationLabel(wornIdx), action: "Left roll OD", value: `Measure vs nominal ${rollTooling[wornIdx]?.rollProfile?.rollDiameter?.toFixed(3) ?? "—"} mm — max wear 0.15 mm`, priority: "HIGH" },
+          { station: stationLabel(wornIdx), action: "Right roll OD", value: `Measure vs nominal ${rollTooling[wornIdx]?.rollProfile?.rollDiameter?.toFixed(3) ?? "—"} mm — left/right must match`, priority: "HIGH" },
           { station: "Entry", action: "Strip width check", value: `Verify strip width = design width ±0.3 mm`, priority: "HIGH" },
           { station: "All stands", action: "Lubrication", value: "Apply uniform lube across full strip width", priority: "MEDIUM" },
           { station: stationLabel(n - 1), action: "Straightener", value: "Add differential roll pressure 0.2 mm opposite to camber", priority: "MEDIUM" },
         ],
-        summary: `Camber check: measure roll diameter at ${stationLabel(wornIdx)} — most active forming station. If wear > 0.15 mm, regrind. Current nominal OD: ${rollTooling[wornIdx]?.rollProfile.rollDiameter.toFixed(3) ?? "—"} mm.`,
+        summary: `Camber check: measure roll diameter at ${stationLabel(wornIdx)} — most active forming station. If wear > 0.15 mm, regrind. Current nominal OD: ${rollTooling[wornIdx]?.rollProfile?.rollDiameter?.toFixed(3) ?? "—"} mm.`,
       };
     }
     if (selectedDefect === "size_mismatch") {

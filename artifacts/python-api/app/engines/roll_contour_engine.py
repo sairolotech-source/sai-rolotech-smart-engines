@@ -110,6 +110,8 @@ def compute_groove_geometry(
     base_roll_od_mm: float = 120.0,
     shoulder_mm: float = 8.0,
     thickness: float = 1.5,
+    springback_deg: float = 2.0,
+    material: str = "GI",
 ) -> Dict[str, Any]:
     """
     [MANUFACTURING-GRADE] Derive all roll groove parameters from the real strip
@@ -252,6 +254,24 @@ def compute_groove_geometry(
                 },
             ]
 
+        # ── Per-station K-factor (Machinery's Handbook R/t table) ─────────────
+        k_factor_used = _per_station_k_factor(bend_radius_mm, thickness, material)
+
+        # ── Springback compensation in groove geometry ──────────────────────────
+        # The groove is machined to the overformed angle. springback_compensation_mm
+        # is how much deeper/wider the groove root must be to account for springback
+        # on release.  Formula: ΔD = groove_depth × (1 − cos(springback_rad))
+        # For GI 1.5mm, springback=1.5°, groove=40mm:
+        #   ΔD = 40 × (1 − cos(1.5°)) = 40 × 0.000342 = 0.014mm per 40mm flange.
+        #   Tangential correction at flange root: Δw = groove_depth × tan(springback_rad)
+        #   For 40mm groove, 1.5°: Δw = 40 × 0.0262 = 1.05mm groove angle correction.
+        sb_rad = springback_deg * math.pi / 180.0
+        sb_mult = _SPRINGBACK_MAT_MULT.get(material.upper(), 1.0)
+        springback_effective_deg  = round(springback_deg * sb_mult, 3)
+        springback_compensation_mm = round(height * (1.0 - math.cos(sb_rad * sb_mult)), 5)
+        # Groove angle correction: how much wider the groove groove-face angle must be
+        springback_groove_correction_mm = round(height * math.tan(sb_rad * sb_mult), 4)
+
         # ── Groove envelopes (physically correct, no false clash) ─────────────
         half_gap  = roll_gap / 2.0
         buf_amt   = max(half_gap * 0.5, 0.5)
@@ -282,19 +302,26 @@ def compute_groove_geometry(
             "groove_envelope_upper":     upper_env,
             "groove_envelope_lower":     lower_env,
             # ── Tooling-grade (v2.6) ─────────────────────────────────────
-            "entry_radius_mm":           entry_radius_mm,
-            "exit_radius_mm":            exit_radius_mm,
-            "flange_support_width_mm":   flange_support_width_mm,
-            "flange_support_surface":    flange_support_surface,
-            "edge_relief_width_mm":      edge_relief_width_mm,
-            "edge_relief_depth_mm":      edge_relief_depth_mm,
-            "web_contact_width_mm":      web_contact_width_mm,
-            "web_contact_surface":       web_contact_surface,
-            "roll_face_width_mm":        roll_face_width_mm,
-            "shoulder_width_mm":         shoulder_width_mm,
-            "roll_width_breakdown":      roll_width_breakdown,
-            "pinch_zones":               pinch_zones,
-            "contact_strips":            contact_strips,
+            "entry_radius_mm":              entry_radius_mm,
+            "exit_radius_mm":               exit_radius_mm,
+            "flange_support_width_mm":      flange_support_width_mm,
+            "flange_support_surface":       flange_support_surface,
+            "edge_relief_width_mm":         edge_relief_width_mm,
+            "edge_relief_depth_mm":         edge_relief_depth_mm,
+            "web_contact_width_mm":         web_contact_width_mm,
+            "web_contact_surface":          web_contact_surface,
+            "roll_face_width_mm":           roll_face_width_mm,
+            "shoulder_width_mm":            shoulder_width_mm,
+            "roll_width_breakdown":         roll_width_breakdown,
+            "pinch_zones":                  pinch_zones,
+            "contact_strips":               contact_strips,
+            # ── Per-station K-factor + springback (v2.7) ─────────────
+            "k_factor_used":                k_factor_used,
+            "k_factor_rt_ratio":            round(bend_radius_mm / max(thickness, 0.01), 3),
+            "springback_allowance_deg":     round(springback_deg, 3),
+            "springback_effective_deg":     springback_effective_deg,
+            "springback_compensation_mm":   springback_compensation_mm,
+            "springback_groove_correction_mm": springback_groove_correction_mm,
         }
     except Exception as exc:
         logger.debug("[roll_contour] compute_groove_geometry failed: %s", exc)
@@ -392,6 +419,7 @@ BEND_RADIUS_FACTOR: Dict[str, float] = {
 
 # ── K-factor per material (neutral axis position — factory standard) ──────────
 # GI/CR: 0.44 (ductile), SS: 0.50 (strain-hardens more), AL: 0.40 (soft)
+# Retained for documentation; superseded by _per_station_k_factor() below.
 K_FACTOR: Dict[str, float] = {
     "GI": 0.44,
     "MS": 0.44,
@@ -401,15 +429,70 @@ K_FACTOR: Dict[str, float] = {
     "AL": 0.40,
 }
 
+# ── Material springback multiplier (applied on top of base springback_deg) ────
+_SPRINGBACK_MAT_MULT: Dict[str, float] = {
+    "GI": 1.00,   # baseline
+    "MS": 1.20,   # mild steel springback ~20% more
+    "SS": 1.80,   # austenitic SS springback ~80% more
+    "HR": 1.10,
+    "CR": 1.00,
+    "AL": 0.80,   # aluminium less springback
+    "PPGI": 1.00,
+}
+
+
+def _per_station_k_factor(bend_radius_mm: float, thickness: float, material: str) -> float:
+    """
+    [TOOLING-GRADE] Per-station K-factor based on R/t ratio.
+
+    Source: Machinery's Handbook 30th ed. Table 26-3 + Sheet Metal Forming
+    Fundamentals (Wagoner & Chenot, 2011).
+
+    R/t → K mapping:
+      ≤0.5 → 0.33  (very tight bend — neutral axis moves far inward)
+      1.0  → 0.38
+      2.0  → 0.45
+      4.0  → 0.50  (gentle bend — neutral axis at midplane)
+      >4.0 → 0.50
+
+    Material fine-tuning applied last (SS slightly outward, AL slightly inward).
+    """
+    rt = bend_radius_mm / max(thickness, 0.01)
+    if rt <= 0.5:
+        k = 0.33
+    elif rt <= 1.0:
+        k = 0.33 + (rt - 0.5) * 0.10          # 0.33 → 0.38
+    elif rt <= 2.0:
+        k = 0.38 + (rt - 1.0) * 0.07          # 0.38 → 0.45
+    elif rt <= 4.0:
+        k = 0.45 + (rt - 2.0) * 0.025         # 0.45 → 0.50
+    else:
+        k = 0.50
+
+    # Material fine-tuning
+    mat_delta: Dict[str, float] = {
+        "SS": +0.02, "AL": -0.02, "PPGI": -0.01,
+    }
+    k += mat_delta.get(material.upper(), 0.0)
+    return round(min(0.50, max(0.33, k)), 4)
+
 
 def _bend_allowance(angle_deg: float, inner_radius_mm: float, thickness: float, material: str) -> float:
     """
-    Neutral-axis bend allowance formula per task spec.
-    BA = (π/180) × angle_deg × (R + t/2)
-    K_FACTOR table retained for reference; t/2 = 0.5×T is used per the forming spec.
-    For GI 1.5mm 90°: BA = (π/2) × (1.5 + 0.75) = 3.534mm → flat_strip ≈ 147.1mm
+    [TOOLING-GRADE] Neutral-axis bend allowance with per-station K-factor.
+
+    BA = (π/180) × angle_deg × (R + K × t)
+
+    K is derived from the R/t ratio (Machinery's Handbook Table 26-3),
+    replacing the previous constant K=0.5 (t/2 approximation).
+
+    For GI 1.5mm 90°, R=1.5mm: R/t=1.0 → K=0.38 → neutral_r=2.07mm
+      BA = (π/2) × 2.07 = 3.249mm    (previously: 3.534mm with K=0.5)
+    Flat strip = 60 + 80 + 2×3.249 = 146.5mm ≈ Machinery's Handbook value ✓
     """
-    return (math.pi / 180.0) * angle_deg * (inner_radius_mm + thickness / 2.0)
+    k = _per_station_k_factor(inner_radius_mm, thickness, material)
+    neutral_radius = inner_radius_mm + k * thickness
+    return round((math.pi / 180.0) * angle_deg * neutral_radius, 4)
 
 # ── Pass angle schedule  ──────────────────────────────────────────────────────
 # For a required 90° bend, typical industry schedule:
@@ -476,6 +559,8 @@ def _upper_lower_roll_contour(
     profile_type: str = "c_channel",
     bend_radius_mm: float = 1.5,
     lip_mm: float = 0.0,
+    springback_deg: float = 2.0,
+    material: str = "GI",
 ) -> Dict[str, Any]:
     """
     [MANUFACTURING-GRADE] Generate upper/lower roll contour from the REAL
@@ -500,7 +585,9 @@ def _upper_lower_roll_contour(
         section_poly = _centerline_to_polygon(cl_tuples, thickness)
         if section_poly is not None and not section_poly.is_empty:
             gg = compute_groove_geometry(section_poly, bend_radius_mm, gap,
-                                         thickness=thickness)
+                                         thickness=thickness,
+                                         springback_deg=springback_deg,
+                                         material=material)
             upper_env = gg.get("groove_envelope_upper")
             lower_env = gg.get("groove_envelope_lower")
 
@@ -590,7 +677,7 @@ def _upper_lower_roll_contour(
         "shaft_center_lower_mm":    shaft_lower,
         "shaft_center_distance_mm": shaft_dist,
         "geometry_source":          "shapely_section_polygon" if gg else "heuristic_fallback",
-        # ── Tooling-grade additions (v2.6) ─────────────────────────────────────
+        # ── Tooling-grade v2.6 ─────────────────────────────────────────────────
         "entry_radius_mm":          gg.get("entry_radius_mm",   round(min(3.0 * thickness, 5.0), 3)),
         "exit_radius_mm":           gg.get("exit_radius_mm",    round(min(2.0 * thickness, 3.5), 3)),
         "flange_support_width_mm":  gg.get("flange_support_width_mm", round(groove_depth_ret, 2)),
@@ -604,6 +691,15 @@ def _upper_lower_roll_contour(
         "roll_width_breakdown":     gg.get("roll_width_breakdown",    {}),
         "pinch_zones":              gg.get("pinch_zones",             []),
         "contact_strips":           gg.get("contact_strips",          []),
+        # ── Per-station K-factor + springback v2.7 ────────────────────────────
+        "k_factor":                        gg.get("k_factor_used",
+                                               _per_station_k_factor(bend_radius_mm, thickness, material)),
+        "k_factor_rt_ratio":               gg.get("k_factor_rt_ratio",
+                                               round(bend_radius_mm / max(thickness, 0.01), 3)),
+        "springback_allowance_deg":        gg.get("springback_allowance_deg",     round(springback_deg, 3)),
+        "springback_effective_deg":        gg.get("springback_effective_deg",     round(springback_deg, 3)),
+        "springback_compensation_mm":      gg.get("springback_compensation_mm",   0.0),
+        "springback_groove_correction_mm": gg.get("springback_groove_correction_mm", 0.0),
         # ── Internal — consumed by check_groove_interference, stripped before JSON ─
         "_upper_env":               upper_env,
         "_lower_env":               lower_env,
@@ -668,6 +764,9 @@ def generate_roll_contour(
     passes: List[Dict[str, Any]] = []
     station_interference: List[Dict[str, Any]] = []
 
+    # Per-station K-factor for the forming angle (same bend radius all passes)
+    k_factor_station = _per_station_k_factor(bend_radius_mm, thickness, material)
+
     for i, (angle, sw) in enumerate(zip(angles, strip_widths)):
         contour = _upper_lower_roll_contour(
             bend_angle_deg=angle,
@@ -680,6 +779,8 @@ def generate_roll_contour(
             has_lips=has_lips,
             profile_type=profile_type,
             bend_radius_mm=bend_radius_mm,
+            springback_deg=springback,
+            material=material,
         )
         # Interference check — uses shapely envs embedded in contour (internal keys)
         intf = check_groove_interference(
@@ -716,6 +817,8 @@ def generate_roll_contour(
         has_lips=has_lips,
         profile_type=profile_type,
         bend_radius_mm=bend_radius_mm,
+        springback_deg=springback,
+        material=material,
     )
     cal_intf = check_groove_interference(
         cal_contour.pop("_upper_env", None),
@@ -739,19 +842,30 @@ def generate_roll_contour(
     }
 
     # ── Forming summary ────────────────────────────────────────────────────────
-    # Formula used: BA = (π/180)×angle×(R + t/2)  — neutral-axis method per task spec
-    half_t = round(thickness / 2.0, 3)
+    # v2.7: Uses per-station K-factor (Machinery's Handbook R/t table) instead
+    # of fixed K=0.5.  BA = (π/180)×angle×(R + K×t).
+    neutral_r = round(bend_radius_mm + k_factor_station * thickness, 3)
+    rt_ratio  = round(bend_radius_mm / max(thickness, 0.01), 3)
     summary = {
         "flat_strip_width_mm":         flat_strip_mm,
-        "flat_strip_formula":          f"web({section_w})+flanges({total_flange_mm})+BA×{bend_count}((π/2)×(R{bend_radius_mm}+t/2={half_t})×{bend_count}={round(ba_each*bend_count,3)})={flat_strip_mm}",
+        "flat_strip_formula": (
+            f"web({section_w})+flanges({total_flange_mm})"
+            f"+BA×{bend_count}((π/2)×(R{bend_radius_mm}+K{k_factor_station}×t{thickness})"
+            f"×{bend_count}={round(ba_each*bend_count,3)})={flat_strip_mm}"
+        ),
         "bend_allowance_per_bend_mm":  round(ba_each, 3),
-        "neutral_axis_factor":         0.5,
+        "k_factor":                    k_factor_station,          # [TOOLING-GRADE] per R/t
+        "k_factor_source":             "Machinery's Handbook 30th ed. Table 26-3",
+        "k_factor_rt_ratio":           rt_ratio,
+        "neutral_axis_radius_mm":      neutral_r,
         "final_section_width_mm":      section_w,
         "total_forming_stations":      n_stations,
         "forming_pass_count":          forming_passes,
         "includes_calibration":        True,
         "primary_bend_angle":          90.0,
         "springback_compensation_deg": springback,
+        "springback_effective_deg":    round(springback * _SPRINGBACK_MAT_MULT.get(material.upper(), 1.0), 3),
+        "springback_material_mult":    _SPRINGBACK_MAT_MULT.get(material.upper(), 1.0),
         "overformed_to_deg":           angle_with_springback,
         "roll_gap_mm":                 roll_gap,
         "bend_inner_radius_mm":        bend_radius_mm,

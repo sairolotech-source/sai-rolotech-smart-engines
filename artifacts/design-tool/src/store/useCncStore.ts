@@ -1077,6 +1077,8 @@ interface CncState {
 
   rollTooling: RollToolingResult[];
   rollGaps: RollGapInfo[];
+  pythonPipelineSyncedAt: string | null;
+  setPythonPipelineSyncedAt: (ts: string | null) => void;
   machineData: MachineData | null;
   motorCalc: MotorCalcResult | null;
   bomResult: BomResult | null;
@@ -1248,6 +1250,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
   gcodeConfig: { ...defaultConfig },
   rollTooling: [],
   rollGaps: [],
+  pythonPipelineSyncedAt: null,
   machineData: null,
   motorCalc: null,
   bomResult: null,
@@ -1392,6 +1395,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
     return { rollTooling: repaired };
   }),
   setRollGaps: (g) => set({ rollGaps: g }),
+  setPythonPipelineSyncedAt: (ts) => set({ pythonPipelineSyncedAt: ts }),
   setMachineData: (m) => set({ machineData: m }),
   setMotorCalc: (m) => set({ motorCalc: m }),
   setBomResult: (b) => set({ bomResult: b }),

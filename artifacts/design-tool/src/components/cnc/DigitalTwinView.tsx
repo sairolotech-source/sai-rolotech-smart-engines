@@ -181,7 +181,7 @@ function InterferenceWarningPanel({ rollGaps, rollTooling, materialThickness }: 
 
 export function DigitalTwinView() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { rollTooling, stations, rollGaps, materialThickness, materialType, lineSpeed } = useCncStore();
+  const { rollTooling, stations, rollGaps, materialThickness, materialType, lineSpeed, pythonPipelineSyncedAt } = useCncStore();
   const [containerW, setContainerW] = useState(900);
   const [animFrame, setAnimFrame] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -288,11 +288,25 @@ export function DigitalTwinView() {
           </div>
         </div>
 
-        <div className="flex items-center gap-5 ml-auto text-xs text-zinc-500">
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-500" /><span>Upper Roll</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-orange-500" /><span>Lower Roll</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-green-500" /><span>Pass Line</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-amber-400" /><span>Strip</span></div>
+        <div className="flex items-center gap-3 ml-auto">
+          {pythonPipelineSyncedAt && (
+            <div
+              className="flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-900/60 border border-emerald-600/40 text-emerald-300"
+              title={`Python pipeline last synced: ${new Date(pythonPipelineSyncedAt).toLocaleTimeString()}`}
+            >
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-semibold tracking-wide">PYTHON SYNCED</span>
+              <span className="text-[9px] text-emerald-500 font-mono ml-1">
+                {new Date(pythonPipelineSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-4 text-xs text-zinc-500">
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-500" /><span>Upper Roll</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-orange-500" /><span>Lower Roll</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-green-500" /><span>Pass Line</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-amber-400" /><span>Strip</span></div>
+          </div>
         </div>
       </div>
 

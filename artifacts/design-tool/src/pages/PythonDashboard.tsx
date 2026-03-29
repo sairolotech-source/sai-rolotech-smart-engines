@@ -29,12 +29,16 @@ import {
   runTests,
   type ManualModePayload,
 } from "@/services/pythonApi";
+import { buildStationRollProfile } from "@/lib/toolingEngine";
+import type { RollGapInfo } from "@/store/useCncStore";
 
 export default function PythonDashboard() {
   const setNumStations       = useCncStore(s => s.setNumStations);
   const setMaterialType      = useCncStore(s => s.setMaterialType);
   const setMaterialThickness = useCncStore(s => s.setMaterialThickness);
   const setRollTooling       = useCncStore(s => s.setRollTooling);
+  const setRollGaps               = useCncStore(s => s.setRollGaps);
+  const setPythonPipelineSyncedAt = useCncStore(s => s.setPythonPipelineSyncedAt);
 
   const [loading, setLoading] = useState(false);
   const [semiAutoLoading, setSemiAutoLoading] = useState(false);
@@ -59,52 +63,137 @@ export default function PythonDashboard() {
 
   useEffect(() => {
     if (!pipelineResult) return;
-    const stEng  = pipelineResult.station_engine  as Record<string, unknown> | undefined;
-    const inEng  = pipelineResult.input_engine    as Record<string, unknown> | undefined;
-    const rollCt = pipelineResult.roll_contour_engine as Record<string, unknown> | undefined;
+    const stEng   = pipelineResult.station_engine      as Record<string, unknown> | undefined;
+    const inEng   = pipelineResult.input_engine        as Record<string, unknown> | undefined;
+    const rollCt  = pipelineResult.roll_contour_engine as Record<string, unknown> | undefined;
+    const intfEng = pipelineResult.roll_contour_interference as Record<string, unknown> | undefined;
 
-    // ── Basic field sync ──────────────────────────────────────────────────────
+    // ── Basic field sync ─────────────────────────────────────────────────────
     const rec   = stEng?.recommended_station_count;
     const mat   = inEng?.material as string | undefined;
-    const thick = inEng?.sheet_thickness_mm as number | undefined;
+    const thick = (inEng?.sheet_thickness_mm as number | undefined) ?? 1.5;
     if (typeof rec === "number" && rec > 0) setNumStations(rec);
     if (mat)   setMaterialType(mat as Parameters<typeof setMaterialType>[0]);
     if (thick) setMaterialThickness(thick);
 
-    // ── Bridge roll_contour passes → CNC store RollToolingResult[] ────────────
-    // Maps shapely-derived pass geometry into the store so RollToolingView and
-    // DigitalTwinView stay consistent with the Python pipeline station count.
+    // ── Assemble all passes (forming + calibration) ──────────────────────────
     const allPasses = [
       ...((rollCt?.passes as unknown[]) ?? []),
       rollCt?.calibration_pass,
     ].filter(Boolean) as Record<string, unknown>[];
+    if (allPasses.length === 0) return;
 
-    if (allPasses.length > 0) {
-      const mapped = allPasses.map((p, i) => ({
-        stationId:              `python-s${p.pass_no ?? i + 1}`,
+    // ── Per-station interference lookup (shapely-grade results) ──────────────
+    const intfStations = ((intfEng?.stations as unknown[]) ?? []) as Record<string, unknown>[];
+
+    // ── Build RollToolingResult[] with real rollProfile geometry ─────────────
+    // P0: Python pipeline → single source of truth for LeftPanel, RollToolingView,
+    //     DigitalTwinView. Each pass gets a proper rollProfile built from the
+    //     Python-computed dimensions via buildStationRollProfile().
+    const mapped = allPasses.map((p, i) => {
+      const rollWidth     = (p.roll_width_mm      as number) ?? 76;
+      const grooveDepth   = (p.groove_depth_mm    as number) ?? 0;
+      const bendAngleDeg  = (p.target_angle_deg   as number) ?? 0;
+      const upperRollOD   = ((p.upper_roll_radius_mm as number) ?? 60) * 2;
+      const lowerRollOD   = ((p.lower_roll_radius_mm as number) ?? 40) * 2;
+      const nominalGap    = (p.roll_gap_mm         as number) ?? 1.6;
+      const kFactor       = (p.k_factor            as number) ?? 0.44;
+
+      // Build real Segment[] geometry from Python dimensions
+      const { upperRoll, lowerRoll } = buildStationRollProfile({
+        rollWidth,
+        grooveDepth,
+        bendAngleDeg,
+        thickness: thick,
+        upperRollOD,
+        lowerRollOD,
+      });
+
+      // Compute pass-line Y and roll center Y from Python shaft-centre data
+      const upperCenterY  = (p.shaft_center_upper_mm as number) ?? (upperRollOD / 2 + nominalGap / 2);
+      const lowerCenterY  = -((p.shaft_center_lower_mm as number) ?? (lowerRollOD / 2 + nominalGap / 2));
+      const isCalibration = (p.stage_type as string) === "calibration";
+
+      return {
+        stationId:              `python-s${(p.pass_no as number) ?? i + 1}`,
         stationIndex:           i,
-        stationNumber:          (p.pass_no as number) ?? i + 1,
+        stationNumber:          (p.pass_no    as number) ?? i + 1,
         label:                  (p.station_label as string) ?? `Station ${i + 1}`,
-        upperRollOD:            ((p.upper_roll_radius_mm as number) ?? 60) * 2,
+        upperRollOD,
         upperRollID:            40,
-        upperRollWidth:         (p.roll_width_mm as number) ?? 76,
-        lowerRollOD:            ((p.lower_roll_radius_mm as number) ?? 40) * 2,
+        upperRollWidth:         rollWidth,
+        lowerRollOD,
         lowerRollID:            40,
-        lowerRollWidth:         (p.roll_width_mm as number) ?? 76,
-        rollGap:                (p.roll_gap_mm as number) ?? 1.6,
+        lowerRollWidth:         rollWidth,
+        rollGap:                nominalGap,
         passLineHeight:         0,
-        kFactor:                0.5,
-        neutralAxis:            0.5,
+        kFactor,
+        neutralAxis:            kFactor,
         deflection:             0,
         concentricityTolerance: 0.05,
         description:            (p.stage_type as string) ?? "forming",
-        profileDepthMm:         (p.groove_depth_mm as number) ?? undefined,
-        bendAngles:             [(p.target_angle_deg as number) ?? 0],
+        profileDepthMm:         grooveDepth,
+        bendAngles:             [bendAngleDeg],
         material:               mat,
-      }));
-      setRollTooling(mapped);
-    }
-  }, [pipelineResult, setNumStations, setMaterialType, setMaterialThickness, setRollTooling]);
+        rollProfile: {
+          upperRoll,
+          lowerRoll,
+          rollDiameter:      upperRollOD,
+          shaftDiameter:     40,
+          rollWidth,
+          gap:               nominalGap,
+          passLineY:         0,
+          upperRollCenterY:  upperCenterY,
+          lowerRollCenterY:  lowerCenterY,
+          grooveDepth,
+          upperRollNumber:   (p.pass_no as number) ?? i + 1,
+          lowerRollNumber:   (p.pass_no as number) ?? i + 1,
+          kFactor,
+          neutralAxisOffset: kFactor,
+          upperLatheGcode:   "",
+          lowerLatheGcode:   "",
+        },
+      };
+    });
+    setRollTooling(mapped);
+
+    // ── Map interference results → RollGapInfo[] (drives DigitalTwinView) ───
+    // springbackGap uses the shapely-computed gap_mm when available, otherwise
+    // estimates springback effect as nominal × (1 − springback_ratio).
+    const summarySpringbackDeg = (rollCt?.forming_summary as Record<string, unknown> | undefined)
+      ?.springback_effective_deg as number | undefined ?? 2.0;
+    const springbackRatio = Math.sin(summarySpringbackDeg * Math.PI / 180);
+
+    const rollGaps: RollGapInfo[] = allPasses.map((p, i) => {
+      const passNo     = (p.pass_no as number) ?? i + 1;
+      const nominalGap = (p.roll_gap_mm as number) ?? 1.6;
+      const grooveDep  = (p.groove_depth_mm as number) ?? 1;
+
+      // Try to find a shapely interference result for this pass
+      const intfSt    = intfStations.find(s => (s.pass_no as number) === passNo);
+      const intfGapMm = (intfSt as Record<string, unknown> | undefined)
+        ?.interference as Record<string, unknown> | undefined;
+      const shapely_gap = intfGapMm?.gap_mm as number | undefined;
+
+      // springbackGap: how much gap remains after springback-induced roll closure
+      const springbackGap = typeof shapely_gap === "number"
+        ? shapely_gap
+        : Math.max(0, nominalGap - springbackRatio * grooveDep * 0.05);
+
+      return {
+        stationNumber:  passNo,
+        label:          (p.station_label as string) ?? `Station ${passNo}`,
+        nominalGap,
+        springbackGap:  Math.round(springbackGap * 10000) / 10000,
+        upperRollZ:     0,
+        lowerRollZ:     0,
+        bendAllowances: [(p.target_angle_deg as number) ?? 0],
+      };
+    });
+    setRollGaps(rollGaps);
+    setPythonPipelineSyncedAt(new Date().toISOString());
+
+  }, [pipelineResult, setNumStations, setMaterialType, setMaterialThickness, setRollTooling, setRollGaps, setPythonPipelineSyncedAt]);
 
   const runDebug = useCallback(async (form: ManualModePayload, isSemiConfirm = false) => {
     if (isSemiConfirm) setSemiAutoLoading(true);
@@ -311,6 +400,67 @@ export default function PythonDashboard() {
   const selectedMode = (finalDecision?.selected_mode as string) ?? "auto_mode";
   const showSemiAutoPanel = pipelineResult && (selectedMode === "semi_auto" || selectedMode === "manual_review");
 
+  // ── T004: Honest grade report — what's real vs idealized ─────────────────
+  const gradeReport = pipelineResult ? (() => {
+    const rc   = (pipelineResult.roll_contour_engine ?? {}) as Record<string, unknown>;
+    const fs   = (rc.forming_summary ?? {}) as Record<string, unknown>;
+    const geoSrc = ((rc.passes as Record<string, unknown>[] | undefined)?.[0]?.geometry_source as string) ?? "heuristic_fallback";
+    const kFactor = (fs.k_factor as number) ?? 0.5;
+    const kSrc   = (fs.k_factor_source as string) ?? "fixed_K=0.5";
+    const sbMult = (fs.springback_material_mult as number) ?? 1.0;
+    const shapelySources = (pipelineResult.shapely_sources as string[]) ?? [];
+
+    const items: { label: string; grade: "A" | "B" | "C" | "D"; note: string }[] = [
+      {
+        label: "Groove geometry",
+        grade: geoSrc === "shapely_section_polygon" ? "A" : "C",
+        note: geoSrc === "shapely_section_polygon"
+          ? "Real Shapely polygon — pinch zones, contact strips, entry/exit radii computed"
+          : "Heuristic fallback — Shapely not available or polygon failed",
+      },
+      {
+        label: "K-factor / neutral axis",
+        grade: kFactor !== 0.5 ? "A" : "C",
+        note: kFactor !== 0.5
+          ? `Per-station K=${kFactor.toFixed(4)} from ${kSrc}`
+          : "Fixed K=0.5 (R/t table not applied — check bend_radius_mm input)",
+      },
+      {
+        label: "Springback compensation",
+        grade: sbMult !== 1.0 ? "A" : "B",
+        note: sbMult !== 1.0
+          ? `Material multiplier ×${sbMult} applied — groove over-formed correctly`
+          : "Base springback applied; material-specific multiplier = 1.0 (GI/PPGI/default)",
+      },
+      {
+        label: "Interference check",
+        grade: shapelySources.length > 0 ? "A" : "B",
+        note: shapelySources.length > 0
+          ? "Shapely envelope intersection — exact clash/warning detection"
+          : "Heuristic gap estimate — install Shapely for exact interference",
+      },
+      {
+        label: "Flat strip width",
+        grade: kFactor !== 0.5 ? "A" : "B",
+        note: kFactor !== 0.5
+          ? `BA = (π/180)×θ×(R + K×t) — Machinery's Handbook neutral-axis formula`
+          : "BA = (π/180)×θ×(R + 0.5t) — mid-plane approximation",
+      },
+      {
+        label: "Roll profile geometry",
+        grade: "B",
+        note: "Groove cross-section from synthesizeGroove() — CNC lathe G-code ready; shaft/bearing dims from Python",
+      },
+    ];
+
+    const gradeScore: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
+    const avg = items.reduce((s, it) => s + gradeScore[it.grade], 0) / items.length;
+    const overallGrade = avg >= 3.8 ? "A" : avg >= 3.0 ? "B" : avg >= 2.0 ? "C" : "D";
+    const scoreLabel = `${(avg * 2.5).toFixed(1)}/10`;  // rescale 1–4 → 1–10
+
+    return { items, overallGrade, scoreLabel };
+  })() : null;
+
   const detectedValues = {
     bend_count: profEng?.bend_count as number | undefined,
     section_width_mm: profEng?.section_width_mm as number | undefined,
@@ -469,6 +619,47 @@ export default function PythonDashboard() {
               pipelineResult={pipelineResult ?? undefined}
               payload={payload as unknown as Record<string, unknown> | undefined}
             />
+
+            {/* ── T004: Honest Grade Report ─────────────────────────────── */}
+            {gradeReport && (
+              <div className="rounded-xl border border-gray-700/40 bg-[#0d1117] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-100 tracking-wide uppercase">Engineering Grade Report</span>
+                    <span className="text-[10px] text-gray-500">— Tooling Codex Score v2.7</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400">Overall:</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${
+                      gradeReport.overallGrade === "A" ? "bg-emerald-700/50 text-emerald-300" :
+                      gradeReport.overallGrade === "B" ? "bg-blue-700/50 text-blue-300" :
+                      gradeReport.overallGrade === "C" ? "bg-amber-700/50 text-amber-300" :
+                      "bg-red-700/50 text-red-300"
+                    }`}>{gradeReport.overallGrade}</span>
+                    <span className="text-xs font-mono text-gray-400">{gradeReport.scoreLabel}</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {gradeReport.items.map((item) => (
+                    <div key={item.label} className="flex items-start gap-3 py-1.5 px-2 rounded bg-gray-800/30 border border-gray-700/20">
+                      <span className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center ${
+                        item.grade === "A" ? "bg-emerald-700/60 text-emerald-300" :
+                        item.grade === "B" ? "bg-blue-700/60 text-blue-300" :
+                        item.grade === "C" ? "bg-amber-700/60 text-amber-300" :
+                        "bg-red-700/60 text-red-300"
+                      }`}>{item.grade}</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-gray-200">{item.label}</div>
+                        <div className="text-[10px] text-gray-500 leading-snug mt-0.5">{item.note}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[9px] text-gray-600 border-t border-gray-700/30 pt-2">
+                  Grade A = manufacturing-grade (Shapely + Machinery's Handbook) · B = validated approximation · C = heuristic fallback · D = placeholder
+                </div>
+              </div>
+            )}
 
             {/* ── SVG Engineering Tabs ──────────────────────────────────── */}
             <div className="rounded-xl border border-gray-700/40 bg-[#0d1117] overflow-hidden">

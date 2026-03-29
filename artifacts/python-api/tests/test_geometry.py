@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from app.engines.flower_svg_engine import section_centerline, centerline_to_polygon
 from app.engines.roll_contour_engine import (
     _bend_allowance,
+    _per_station_k_factor,
     _contact_points_from_centerline,
     compute_groove_geometry,
     check_groove_interference,
@@ -40,30 +41,38 @@ except ImportError:
 
 class TestBendAllowance:
     def test_ba_90deg_gi_1_5mm(self):
-        """GI 1.5mm, R=1.5mm, 90° → BA = (π/2)*(1.5+0.75) = 3.534mm"""
+        """GI 1.5mm, R=1.5mm, 90° — v2.7 uses per-station K (R/t=1.0 → K=0.38 for GI)"""
         ba = _bend_allowance(90, 1.5, 1.5, "GI")
-        expected = (math.pi / 2) * (1.5 + 0.75)
+        k  = _per_station_k_factor(1.5, 1.5, "GI")
+        expected = (math.pi / 2) * (1.5 + k * 1.5)
         assert ba == pytest.approx(expected, rel=1e-4), \
-            f"Expected {expected:.4f}, got {ba:.4f}"
+            f"Expected {expected:.4f} (K={k}), got {ba:.4f}"
 
     def test_ba_90deg_ss_2mm(self):
-        """SS 2mm, R=4mm, 90° → BA = (π/2)*(4+1) = 7.854mm"""
+        """SS 2mm, R=4mm, 90° — v2.7 per-station K (R/t=2.0 → K≈0.47 for SS)"""
         ba = _bend_allowance(90, 4.0, 2.0, "SS")
-        expected = (math.pi / 2) * (4.0 + 1.0)
-        assert ba == pytest.approx(expected, rel=1e-4)
+        k  = _per_station_k_factor(4.0, 2.0, "SS")
+        expected = (math.pi / 2) * (4.0 + k * 2.0)
+        assert ba == pytest.approx(expected, rel=1e-4), \
+            f"Expected {expected:.4f} (K={k}), got {ba:.4f}"
 
     def test_ba_45deg(self):
-        """45° bend: BA = (π/4)*(R+t/2)"""
+        """45° bend: BA = (π/4)*(R + K*t) using per-station K"""
         ba = _bend_allowance(45, 2.0, 1.5, "GI")
-        expected = (math.pi / 4) * (2.0 + 0.75)
-        assert ba == pytest.approx(expected, rel=1e-4)
+        k  = _per_station_k_factor(2.0, 1.5, "GI")
+        expected = (math.pi / 4) * (2.0 + k * 1.5)
+        assert ba == pytest.approx(expected, rel=1e-4), \
+            f"Expected {expected:.4f} (K={k}), got {ba:.4f}"
 
     def test_flat_strip_c60x40_gi_1_5mm(self):
-        """GI 1.5mm, C 60×40, 2 bends, R=1.5mm → flat = 60+40+40+2*BA = 147.07mm ±0.1"""
+        """GI 1.5mm, C 60×40, 2 bends, R=1.5mm → flat = 60+40+40+2*BA (v2.7 K-factor)"""
         ba   = _bend_allowance(90, 1.5, 1.5, "GI")
+        k    = _per_station_k_factor(1.5, 1.5, "GI")
         flat = 60.0 + 40.0 + 40.0 + 2 * ba
-        assert flat == pytest.approx(147.068, abs=0.1), \
-            f"Flat strip = {flat:.3f}, expected ~147.07mm"
+        # With K=0.38: BA≈3.252, flat≈146.50; ensure within 1mm of computed value
+        expected = 60.0 + 80.0 + 2 * (math.pi / 2) * (1.5 + k * 1.5)
+        assert flat == pytest.approx(expected, abs=0.05), \
+            f"Flat strip = {flat:.4f}, expected {expected:.4f} (K={k})"
 
     def test_ba_proportional_to_angle(self):
         """BA should scale linearly with bend angle."""

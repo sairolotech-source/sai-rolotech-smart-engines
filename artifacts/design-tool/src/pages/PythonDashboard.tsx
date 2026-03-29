@@ -247,8 +247,8 @@ export default function PythonDashboard() {
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-violet-400" />
             <div>
-              <div className="text-lg font-bold text-gray-100">Python API Debug Dashboard</div>
-              <div className="text-[10px] text-gray-500">Sai Rolotech Smart Engines v2.3.0 — 22 Engines — FastAPI on port 9000</div>
+              <div className="text-lg font-bold text-gray-100">Sai Rolotech Smart Engines</div>
+              <div className="text-[10px] text-gray-500">v2.3.0 — 29 Engines — Roll Forming Automation Suite</div>
             </div>
           </div>
           <a href="/" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">

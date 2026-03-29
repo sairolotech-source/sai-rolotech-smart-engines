@@ -671,12 +671,14 @@ async def preview_dxf(
 
     profile_result = analyze_profile(geometry_result)
 
-    geometry = import_result.get("geometry", {})
+    raw_geo = import_result.get("geometry") or []
+    if isinstance(raw_geo, dict):
+        raw_geo = raw_geo.get("entities", [])
     entity_counts = {
-        "total_entities": len(geometry.get("entities", [])),
-        "lines": sum(1 for e in geometry.get("entities", []) if e.get("type") == "LINE"),
-        "arcs": sum(1 for e in geometry.get("entities", []) if e.get("type") == "ARC"),
-        "polylines": sum(1 for e in geometry.get("entities", []) if e.get("type") in {"LWPOLYLINE", "POLYLINE"}),
+        "total_entities": len(raw_geo),
+        "lines":     sum(1 for e in raw_geo if e.get("type","").upper() in {"LINE"}),
+        "arcs":      sum(1 for e in raw_geo if e.get("type","").upper() in {"ARC"}),
+        "polylines": sum(1 for e in raw_geo if e.get("type","").upper() in {"LWPOLYLINE", "POLYLINE"}),
     }
 
     return {
@@ -687,7 +689,7 @@ async def preview_dxf(
         "entity_summary": entity_counts,
         "geometry_engine": {
             "status": geometry_result.get("status"),
-            "entity_count": geometry_result.get("entity_count"),
+            "entity_count": geometry_result.get("cleaned_entity_count", geometry_result.get("entity_count")),
             "bounding_box": geometry_result.get("bounding_box"),
             "warnings": geometry_result.get("warnings", []),
         },

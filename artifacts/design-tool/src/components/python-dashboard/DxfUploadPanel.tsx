@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, FileText, Eye, Play, AlertCircle, CheckCircle, Loader2, Layers } from "lucide-react";
+import { Upload, FileText, Eye, Play, AlertCircle, CheckCircle, Loader2, Layers, Zap } from "lucide-react";
 
 const PAPI = "/papi";
 
@@ -130,6 +130,22 @@ export default function DxfUploadPanel({ onPipelineResult, onCenterlinePreview }
     }
   };
 
+  const loadDemoFile = useCallback(async () => {
+    try {
+      const res = await fetch("/demo_lipped_channel.dxf");
+      const blob = await res.blob();
+      const f = new File([blob], "demo_lipped_channel.dxf", { type: "application/octet-stream" });
+      setFile(f);
+      setThickness("1.5");
+      setMaterial("GI");
+      setIsCenterline(true);
+      setPreviewResult(null);
+      setError(null);
+    } catch {
+      setError("Failed to load demo file");
+    }
+  }, []);
+
   const bbox = previewResult?.geometry_engine?.bounding_box;
   const profile = previewResult?.profile_preview;
   const entities = previewResult?.entity_summary;
@@ -137,10 +153,20 @@ export default function DxfUploadPanel({ onPipelineResult, onCenterlinePreview }
   return (
     <div className="rounded-xl border border-neutral-700 bg-neutral-900 p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Upload className="w-4 h-4 text-blue-400" />
-        <span className="text-sm font-semibold text-white">DXF Upload</span>
-        <span className="text-[10px] text-neutral-500 uppercase tracking-wide ml-1">Auto Mode from DXF File</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Upload className="w-4 h-4 text-blue-400" />
+          <span className="text-sm font-semibold text-white">DXF Upload</span>
+          <span className="text-[10px] text-neutral-500 uppercase tracking-wide ml-1">Auto Mode from DXF File</span>
+        </div>
+        <button
+          onClick={loadDemoFile}
+          className="flex items-center gap-1.5 text-[10px] text-yellow-400 border border-yellow-500/30 bg-yellow-500/10 hover:bg-yellow-500/20 rounded-lg px-2.5 py-1 transition-colors font-medium"
+          title="Load lipped channel demo — Thickness 1.5mm, GI"
+        >
+          <Zap className="w-3 h-3" />
+          Load Demo
+        </button>
       </div>
 
       {/* Drop zone */}

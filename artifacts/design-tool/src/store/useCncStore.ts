@@ -436,12 +436,68 @@ export interface RollToolingResult {
   bearing?: BearingSpec;
   rollODCalc?: RollODCalcResult;
   standPitch?: StandPitchResult;
-  rollProfile: RollProfile;
+  rollProfile?: RollProfile; // optional — present after tooling generation, absent on stale localStorage
   behavior?: RollBehavior;
   mfgSpec?: ManufacturingSpec;
   camPlan?: CamPlan;
   rollType?: RollTypeInfo;
   rollMaterial?: RollMaterialRec;
+}
+
+// ─── Station Profile Status ────────────────────────────────────────────────────
+// Describes how complete a station's data is at any point in the pipeline.
+export type StationProfileStatus =
+  | "VALID"                  // rollProfile present, has geometry points and G-code
+  | "BASIC"                  // rollProfile present but synthesised from flat fields (no geometry/gcode)
+  | "MISSING_PROFILE"        // rollProfile field absent — stale localStorage not yet migrated
+  | "TOOLING_NOT_GENERATED"; // rollTooling array is empty (user hasn't clicked Generate yet)
+
+export interface StationValidation {
+  stationNumber: number;
+  label: string;
+  status: StationProfileStatus;
+  reason: string;        // human-readable diagnostic
+  migratedFromFlat: boolean;
+}
+
+/** Classify each station in the rollTooling array and return a validation report. */
+export function validateStationProfiles(rollTooling: RollToolingResult[]): StationValidation[] {
+  if (rollTooling.length === 0) {
+    return []; // caller should check length and show TOOLING_NOT_GENERATED
+  }
+  return rollTooling.map((rt) => {
+    const rp = rt.rollProfile as (RollProfile & { _migratedFromFlat?: boolean }) | undefined;
+    const migratedFromFlat = !!(rp as Record<string, unknown>)?._migratedFromFlat;
+
+    if (!rp) {
+      return {
+        stationNumber: rt.stationNumber,
+        label: rt.label,
+        status: "MISSING_PROFILE" as StationProfileStatus,
+        reason: "rollProfile field absent — station loaded from stale localStorage before v5 migration",
+        migratedFromFlat: false,
+      };
+    }
+    const hasGeometry = Array.isArray(rp.upperRoll) && rp.upperRoll.length > 0;
+    const hasGcode    = typeof rp.upperLatheGcode === "string" && rp.upperLatheGcode.trim().length > 10;
+
+    if (hasGeometry && hasGcode) {
+      return {
+        stationNumber: rt.stationNumber,
+        label: rt.label,
+        status: "VALID" as StationProfileStatus,
+        reason: "rollProfile present with geometry points and G-code",
+        migratedFromFlat,
+      };
+    }
+    return {
+      stationNumber: rt.stationNumber,
+      label: rt.label,
+      status: "BASIC" as StationProfileStatus,
+      reason: `rollProfile synthesised from flat API fields — upperRoll.length=${rp.upperRoll?.length ?? 0}, gcode=${hasGcode ? "yes" : "empty"}. API server does not yet return roll groove geometry or CNC G-code.`,
+      migratedFromFlat,
+    };
+  });
 }
 
 // ─── Machine Data (forming parameters summary) ────────────────────────────────
@@ -1280,7 +1336,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
 }), {
   name: "sai-rolotech-smart-enginesai-cnc-v3",
   storage: createJSONStorage(() => localStorage),
-  version: 4,
+  version: 5,
   migrate: (persistedState: unknown, fromVersion: number) => {
     const s = (persistedState ?? {}) as Record<string, unknown>;
     if (fromVersion < 4) {
@@ -1320,6 +1376,47 @@ export const useCncStore = create<CncState>()(persist((set) => ({
       });
       s.accuracyLog = Array.isArray(s.accuracyLog) ? s.accuracyLog : [];
     }
+
+    // v5 migration: repair rollTooling items that are missing the rollProfile sub-object.
+    // Root cause: the API server (roll-tooling.ts) returns flat fields only (no rollProfile).
+    // LeftPanel.tsx synthesises rollProfile on every fresh generation, but stale localStorage
+    // data (saved before the synthesis was added, or from an older schema) loads without it.
+    // This migration applies the same synthesis so every page load is safe regardless of age.
+    if (fromVersion < 5) {
+      const rawRt: unknown[] = Array.isArray(s.rollTooling) ? s.rollTooling : [];
+      s.rollTooling = rawRt.map((item: unknown, idx: number) => {
+        const rt = item as Record<string, unknown>;
+        if (rt.rollProfile && typeof rt.rollProfile === "object") return rt; // already normalised
+        // Synthesise rollProfile from flat server fields (same logic as LeftPanel.tsx lines 649-674)
+        const upperOD: number = (rt.upperRollOD as number) ?? (rt.rollDiameter as number) ?? 100;
+        const lowerOD: number = (rt.lowerRollOD as number) ?? upperOD;
+        const gap: number    = (rt.rollGap as number) ?? (rt.gap as number) ?? 1;
+        const passLineY: number = (rt.passLineHeight as number) ?? (lowerOD / 2 + gap / 2);
+        const stIdx: number  = (rt.stationIndex as number) ?? idx;
+        const shaftCalc = rt.shaftCalc as Record<string, unknown> | undefined;
+        rt.rollProfile = {
+          upperRoll:         [],
+          lowerRoll:         [],
+          rollDiameter:      upperOD,
+          shaftDiameter:     (shaftCalc?.selectedDiaMm as number) ?? ((rt.upperRollID as number) ? (rt.upperRollID as number) - 2 : 40),
+          rollWidth:         (rt.upperRollWidth as number) ?? (rt.rollWidth as number) ?? 50,
+          gap,
+          passLineY,
+          upperRollCenterY:  passLineY + gap / 2 + upperOD / 2,
+          lowerRollCenterY:  passLineY - gap / 2 - lowerOD / 2,
+          grooveDepth:       (rt.profileDepthMm as number) ?? 0,
+          upperRollNumber:   stIdx * 2 - 1,
+          lowerRollNumber:   stIdx * 2,
+          kFactor:           (rt.kFactor as number) ?? 0.44,
+          neutralAxisOffset: (rt.neutralAxis as number) ?? 0,
+          upperLatheGcode:   "",
+          lowerLatheGcode:   "",
+          _migratedFromFlat: true, // diagnostic flag — visible in JSON export
+        };
+        return rt;
+      });
+    }
+
     return s;
   },
   partialize: (state) => ({

@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import JSZip from "jszip";
-import { useCncStore } from "../../store/useCncStore";
-import { Download, FileText, Code2, Box, Loader2, CheckCircle2, Package } from "lucide-react";
+import { useCncStore, validateStationProfiles } from "../../store/useCncStore";
+import { Download, FileText, Code2, Box, Loader2, CheckCircle2, Package, AlertTriangle, Info } from "lucide-react";
 
 interface ExportSection {
   id: string;
@@ -125,10 +125,23 @@ function buildSolidWorksXML(rollTooling: ReturnType<typeof useCncStore.getState>
   return lines.join("\n");
 }
 
+const STATUS_COLOR: Record<string, string> = {
+  VALID:                 "text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
+  BASIC:                 "text-amber-300  bg-amber-500/10  border-amber-500/25",
+  MISSING_PROFILE:       "text-red-400    bg-red-500/10    border-red-500/25",
+  TOOLING_NOT_GENERATED: "text-zinc-500   bg-zinc-800/40   border-zinc-700",
+};
+
 export function RollToolingExportPanel() {
   const { rollTooling, gcodeOutputs, materialType, materialThickness } = useCncStore();
   const [exporting, setExporting] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
+  const [showValidation, setShowValidation] = useState(false);
+
+  const validation = useMemo(() => validateStationProfiles(rollTooling), [rollTooling]);
+  const missingCount  = validation.filter(v => v.status === "MISSING_PROFILE").length;
+  const basicCount    = validation.filter(v => v.status === "BASIC").length;
+  const validCount    = validation.filter(v => v.status === "VALID").length;
 
   const triggerDownload = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -140,6 +153,24 @@ export function RollToolingExportPanel() {
   const doExport = useCallback(async (id: string) => {
     setExporting(id);
     await new Promise(r => setTimeout(r, 600));
+
+    // Warn user if any stations will be skipped in this export
+    const skippedMissing = validation.filter(v => v.status === "MISSING_PROFILE");
+    const skippedBasic   = validation.filter(v => v.status === "BASIC");
+    if (skippedMissing.length > 0 && (id === "copra" || id === "solidworks" || id === "all")) {
+      console.warn(
+        `[Export Warning] ${skippedMissing.length} station(s) have MISSING_PROFILE and will be EXCLUDED from export: ` +
+        skippedMissing.map(v => `${v.label}(Stn${v.stationNumber})`).join(", ")
+      );
+      // Note: we don't block export — user should see this in console and in the status panel
+    }
+    if (skippedBasic.length > 0 && id === "copra") {
+      console.info(
+        `[Export Info] ${skippedBasic.length} station(s) have BASIC profile only (no groove geometry). ` +
+        `Copra CSV will contain dimensional data only, not profile coordinates. ` +
+        `Stations: ${skippedBasic.map(v => v.label).join(", ")}`
+      );
+    }
 
     try {
       if (id === "all") {
@@ -200,7 +231,7 @@ export function RollToolingExportPanel() {
     } finally {
       setExporting(null);
     }
-  }, [rollTooling, gcodeOutputs, materialType, materialThickness]);
+  }, [rollTooling, gcodeOutputs, materialType, materialThickness, validation]);
 
   const hasTooling = rollTooling.length > 0;
   const hasGcode = gcodeOutputs.length > 0;
@@ -243,6 +274,51 @@ export function RollToolingExportPanel() {
               <div className="text-xs font-semibold text-amber-300 mb-1">No Roll Tooling Generated</div>
               <div className="text-[10px] text-zinc-500">Generate roll tooling in the Roll Tooling tab first. The exports will contain all per-station profiles and dimensions.</div>
             </div>
+          </div>
+        )}
+
+        {/* Station Validation Report */}
+        {hasTooling && (
+          <div className={`rounded-xl border p-3 ${missingCount > 0 ? "border-red-500/30 bg-red-500/5" : basicCount > 0 ? "border-amber-500/25 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
+            <button
+              className="w-full flex items-center justify-between gap-2 text-left"
+              onClick={() => setShowValidation(v => !v)}
+            >
+              <div className="flex items-center gap-2">
+                {missingCount > 0 ? <AlertTriangle className="w-3.5 h-3.5 text-red-400" /> : <Info className="w-3.5 h-3.5 text-emerald-400" />}
+                <span className="text-xs font-semibold text-zinc-200">Station Profile Status</span>
+                <span className="text-[10px] text-zinc-500">
+                  {validCount > 0 && <span className="text-emerald-400">{validCount} VALID </span>}
+                  {basicCount > 0 && <span className="text-amber-300">{basicCount} BASIC </span>}
+                  {missingCount > 0 && <span className="text-red-400">{missingCount} MISSING </span>}
+                </span>
+              </div>
+              <span className="text-[10px] text-zinc-600">{showValidation ? "▲ hide" : "▼ show all"}</span>
+            </button>
+
+            {missingCount > 0 && !showValidation && (
+              <div className="mt-2 text-[10px] text-red-300 leading-relaxed">
+                ⚠ {missingCount} station(s) missing rollProfile — likely stale localStorage. Reload app or re-generate tooling to repair. These stations will be excluded from CSV/XML exports.
+              </div>
+            )}
+
+            {basicCount > 0 && missingCount === 0 && !showValidation && (
+              <div className="mt-2 text-[10px] text-amber-300 leading-relaxed">
+                ℹ {basicCount} station(s) have BASIC dimensional data only (no groove geometry or G-code). This is because the API returns flat fields — the roll groove profile and CNC lathe G-code must be generated separately.
+              </div>
+            )}
+
+            {showValidation && (
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                {validation.map(v => (
+                  <div key={v.stationNumber} className={`flex items-start gap-2 rounded px-2 py-1.5 border text-[10px] font-mono ${STATUS_COLOR[v.status]}`}>
+                    <span className="font-bold w-20 flex-shrink-0">{v.label}</span>
+                    <span className="font-semibold w-28 flex-shrink-0">{v.status}</span>
+                    <span className="text-zinc-400 leading-tight">{v.reason}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

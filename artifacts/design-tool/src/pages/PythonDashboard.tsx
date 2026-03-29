@@ -14,6 +14,8 @@ import DxfUploadPanel from "@/components/python-dashboard/DxfUploadPanel";
 import CenterlineConversionPreview from "@/components/python-dashboard/CenterlineConversionPreview";
 import MachineLayoutPanel from "@/components/python-dashboard/MachineLayoutPanel";
 import RollContourPanel from "@/components/python-dashboard/RollContourPanel";
+import FlowerSvgPanel from "@/components/python-dashboard/FlowerSvgPanel";
+import RollGrooveSvgPanel from "@/components/python-dashboard/RollGrooveSvgPanel";
 import CadExportPanel from "@/components/python-dashboard/CadExportPanel";
 import RollFormingSimulator from "@/components/python-dashboard/RollFormingSimulator";
 import RollDrawingPanel from "@/components/python-dashboard/RollDrawingPanel";
@@ -256,9 +258,9 @@ export default function PythonDashboard() {
   const cadExportData   = (cadExportResult?.cad_export ?? null) as Record<string, unknown> | null;
   const cadCamPrep      = (cadExportResult?.cam_prep ?? camPrep) as Record<string, unknown> | null;
 
-  const profEng   = (pipelineResult?.profile_analysis_engine ?? {}) as Record<string, unknown>;
-  const inputEng  = (pipelineResult?.input_engine ?? {}) as Record<string, unknown>;
-  const stEng     = (pipelineResult?.station_engine ?? {}) as Record<string, unknown>;
+  const profEng   = (pipelineResult?.profile_analysis_engine ?? (pipelineResult ? {} : null)) as Record<string, unknown> | null;
+  const inputEng  = (pipelineResult?.input_engine ?? (pipelineResult ? {} : null)) as Record<string, unknown> | null;
+  const stEng     = (pipelineResult?.station_engine ?? (pipelineResult ? {} : null)) as Record<string, unknown> | null;
   const shEng     = (pipelineResult?.shaft_engine ?? {}) as Record<string, unknown>;
   const brEng     = (pipelineResult?.bearing_engine ?? {}) as Record<string, unknown>;
 
@@ -400,6 +402,17 @@ export default function PythonDashboard() {
             <SummaryCards summary={summary} />
             {machineLayout && <MachineLayoutPanel data={machineLayout as any} />}
             <RollContourPanel data={rollContour as any} />
+            <FlowerSvgPanel
+              profileResult={profEng as Record<string, unknown> | null}
+              inputResult={inputEng as Record<string, unknown> | null}
+              rollContourResult={rollContour as Record<string, unknown> | null}
+              stationResult={stEng as Record<string, unknown> | null}
+            />
+            <RollGrooveSvgPanel
+              profileResult={profEng as Record<string, unknown> | null}
+              inputResult={inputEng as Record<string, unknown> | null}
+              rollContourResult={rollContour as Record<string, unknown> | null}
+            />
             <RollDrawingPanel
               rollContour={rollContour as any}
               rollDimensions={rollDimension as any}

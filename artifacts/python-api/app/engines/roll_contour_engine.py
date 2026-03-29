@@ -70,15 +70,18 @@ def _strip_width_progression(
     bend_count: int,
     thickness: float,
     n_passes: int,
+    section_height_mm: float = 0.0,
+    inner_radius_mm: float = 0.0,
 ) -> List[float]:
     """
     Approximate strip width at each station (strip narrows as bends are formed).
-    Flat strip = final_width + (bend_arc_lengths).
+    Flat strip = web + 2×flange + 2×bend_allowance  (correct formula).
+    bend_allowance = (pi/2) × (inner_radius + t/2)  per 90° bend.
     """
-    bend_angle_rad = math.pi / 2  # assume 90° bends
-    r = thickness * 1.25  # mid-plane radius approx
-    arc_per_bend = r * bend_angle_rad
-    flat_strip_width = final_width_mm + bend_count * arc_per_bend
+    r_mid = inner_radius_mm + thickness / 2.0
+    bend_allowance = (math.pi / 2.0) * r_mid  # per 90° bend
+    total_flange = section_height_mm * max(bend_count, 0)
+    flat_strip_width = final_width_mm + total_flange + bend_count * bend_allowance
 
     widths = []
     for i in range(1, n_passes + 1):
@@ -87,6 +90,8 @@ def _strip_width_progression(
         widths.append(round(w, 2))
     return widths
 
+
+BASE_ROLL_OD_MM: float = 120.0   # Standard upper roll outer diameter
 
 def _upper_lower_roll_contour(
     bend_angle_deg: float,
@@ -99,15 +104,16 @@ def _upper_lower_roll_contour(
     has_lips: bool,
 ) -> Dict[str, Any]:
     """
-    Generate simplified upper/lower roll contour point sets.
-    Returns 2D profile points (x, y) in mm — cross-section of the roll.
-    For a lipped/flanged channel: web → flange → lip transition per pass.
+    Generate upper/lower roll contour point sets with real groove geometry.
+    Returns 2D profile points (x, y) in mm — cross-section of the roll groove.
+    Also returns upper_roll_radius_mm, lower_roll_radius_mm, roll_width_mm.
     """
     progress = pass_idx / total_passes
     current_flange = round(section_height_mm * progress, 2)
     web_half       = section_width_mm / 2
+    groove_radius  = round(max(thickness * 1.2, 1.0), 2)   # groove corner radius
 
-    # Upper roll: pushes from above — profile inverted
+    # Upper roll: pushes from above — groove cut into bottom of upper roll
     upper: List[Tuple[float, float]] = [
         (-web_half - 5,   0),
         (-web_half,       0),
@@ -117,7 +123,7 @@ def _upper_lower_roll_contour(
         (web_half + 5,    0),
     ]
 
-    # Lower roll: supports from below — includes gap
+    # Lower roll: supports from below — groove cut into top of lower roll
     lower: List[Tuple[float, float]] = [
         (-web_half - 5,   gap),
         (-web_half,       gap),
@@ -138,11 +144,22 @@ def _upper_lower_roll_contour(
     def pts(lst: List[Tuple[float, float]]) -> List[Dict[str, float]]:
         return [{"x": p[0], "y": round(p[1], 3)} for p in lst]
 
+    # Roll geometry calculations
+    groove_depth      = current_flange
+    roll_width        = round(section_width_mm + 2 * current_flange + 20, 2)   # groove width + flanges
+    upper_roll_radius = round(BASE_ROLL_OD_MM / 2.0, 2)                        # flat web region OD/2
+    lower_roll_radius = round(BASE_ROLL_OD_MM / 2.0 - groove_depth, 2)         # grooved section radius
+
     return {
-        "upper_roll_profile": pts(upper),
-        "lower_roll_profile": pts(lower),
-        "forming_depth_mm":   round(current_flange, 2),
-        "pass_progress_pct":  round(progress * 100, 1),
+        "upper_roll_profile":    pts(upper),
+        "lower_roll_profile":    pts(lower),
+        "forming_depth_mm":      round(current_flange, 2),
+        "pass_progress_pct":     round(progress * 100, 1),
+        "upper_roll_radius_mm":  upper_roll_radius,
+        "lower_roll_radius_mm":  lower_roll_radius,
+        "roll_width_mm":         roll_width,
+        "groove_depth_mm":       round(groove_depth, 2),
+        "groove_corner_radius_mm": groove_radius,
     }
 
 
@@ -188,7 +205,11 @@ def generate_roll_contour(
     angle_with_springback = round(primary_angle + springback, 1)
 
     angles    = _angle_schedule(angle_with_springback, forming_passes)
-    strip_widths = _strip_width_progression(section_w, bend_count, thickness, forming_passes)
+    strip_widths = _strip_width_progression(
+        section_w, bend_count, thickness, forming_passes,
+        section_height_mm=section_h,
+        inner_radius_mm=bend_radius_mm,
+    )
 
     passes: List[Dict[str, Any]] = []
     for i, (angle, sw) in enumerate(zip(angles, strip_widths)):

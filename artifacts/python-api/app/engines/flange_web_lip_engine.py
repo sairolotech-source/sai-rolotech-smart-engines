@@ -24,18 +24,30 @@ def _seg_length(p1: Tuple, p2: Tuple) -> float:
     return math.hypot(p2[0] - p1[0], p2[1] - p1[1])
 
 
-def _classify_segments(bends: List[Dict[str, Any]], section_width: float, section_height: float) -> Dict[str, Any]:
+def _classify_segments(
+    bends: List[Dict[str, Any]],
+    section_width: float,
+    section_height: float,
+    bend_count_hint: int = 0,
+) -> Dict[str, Any]:
     """
     Classify section anatomy from bend list.
     Each bend contains angle_deg, position or similar info.
-    When no bends are available, fall back to heuristic from profile type.
+    When no bends are available (manual mode: bends=[]), fall back to
+    bend_count_hint so a C-section with bend_count=2 is correctly classified.
     """
-    n_bends = len(bends)
+    # Use geometry bends list length when DXF data is available;
+    # fall back to the input bend_count when bends=[] (manual mode).
+    manual_mode = not bends
+    n_bends = len(bends) if bends else bend_count_hint
 
-    # Heuristic classification based on bend count and section aspect ratio
-    aspect = section_height / max(section_width, 1)
+    # Web length: use section_width directly in manual mode (exact), heuristic for DXF
+    if manual_mode:
+        web_length_mm = section_width
+    else:
+        aspect = section_height / max(section_width, 1)
+        web_length_mm = section_width * 0.45 if aspect < 0.8 else section_width * 0.35
 
-    web_length_mm     = section_width * 0.45 if aspect < 0.8 else section_width * 0.35
     flange_count      = 0
     flange_lengths_mm: List[float] = []
     lip_count         = 0
@@ -43,7 +55,9 @@ def _classify_segments(bends: List[Dict[str, Any]], section_width: float, sectio
 
     if n_bends >= 2:
         flange_count = 2
-        flange_lengths_mm = [section_height * 0.9, section_height * 0.9]
+        # Exact flange lengths in manual mode, heuristic for DXF
+        fl = section_height if manual_mode else section_height * 0.9
+        flange_lengths_mm = [fl, fl]
 
     if n_bends >= 4:
         lip_count = 2
@@ -120,7 +134,7 @@ def detect_flange_web_lip(
     assumptions: List[str] = []
 
     # ── Segment classification ──────────────────────────────────────────────
-    anatomy = _classify_segments(bends, section_width, section_height)
+    anatomy = _classify_segments(bends, section_width, section_height, bend_count_hint=bend_count)
 
     web_len          = anatomy["web_length_mm"]
     flange_count     = anatomy["flange_count"]

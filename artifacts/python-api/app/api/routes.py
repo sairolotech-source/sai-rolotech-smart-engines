@@ -54,6 +54,8 @@ from app.engines.ai_optimizer_engine import optimize_roll_forming_plan
 from app.engines.simulation_decision_engine import decide_simulation_status
 from app.engines.engineering_risk_engine import generate_engineering_risk_report
 from app.engines.deformation_predictor_engine import generate_deformation_prediction_report
+from app.engines.flower_svg_engine import generate_flower_svg
+from app.engines.roll_groove_svg_engine import generate_roll_groove_svgs
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -1202,4 +1204,64 @@ async def run_engineering_risk(payload: dict):
 
     except Exception as exc:
         logger.error("engineering-risk error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/flower-svg ───────────────────────────────────────────────────────
+
+@router.post("/flower-svg")
+async def endpoint_flower_svg(payload: Dict[str, Any]):
+    """
+    Generate real shapely-computed flower pattern SVG.
+
+    Expects full pipeline results in body:
+      { profile_result, input_result, roll_contour_result, station_result }
+    Returns:
+      { status, svg_string, station_count, flat_strip_mm, ... }
+    """
+    try:
+        profile_result      = payload.get("profile_result") or {}
+        input_result        = payload.get("input_result") or {}
+        roll_contour_result = payload.get("roll_contour_result") or {}
+        station_result      = payload.get("station_result") or {}
+
+        result = generate_flower_svg(
+            profile_result=profile_result,
+            input_result=input_result,
+            roll_contour_result=roll_contour_result,
+            station_result=station_result,
+        )
+        return result
+
+    except Exception as exc:
+        logger.error("flower-svg error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/roll-svg ─────────────────────────────────────────────────────────
+
+@router.post("/roll-svg")
+async def endpoint_roll_svg(payload: Dict[str, Any]):
+    """
+    Generate per-station shapely-computed roll groove SVG strings.
+
+    Expects:
+      { profile_result, input_result, roll_contour_result }
+    Returns:
+      { status, station_svgs: [...], total_stations, shapely_used }
+    """
+    try:
+        profile_result      = payload.get("profile_result") or {}
+        input_result        = payload.get("input_result") or {}
+        roll_contour_result = payload.get("roll_contour_result") or {}
+
+        result = generate_roll_groove_svgs(
+            profile_result=profile_result,
+            input_result=input_result,
+            roll_contour_result=roll_contour_result,
+        )
+        return result
+
+    except Exception as exc:
+        logger.error("roll-svg error: %s", exc, exc_info=True)
         return {"status": "fail", "reason": str(exc)}

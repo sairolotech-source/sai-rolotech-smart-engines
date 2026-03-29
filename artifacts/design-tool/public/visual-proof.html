@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><title>SAI Rolotech — Visual Engineering Proof</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a0f1e; color: #e2e8f0; font-family: 'Courier New', monospace; padding: 24px; }
+h1 { color: #f8fafc; font-size: 20px; margin-bottom: 6px; }
+.subtitle { color: #475569; font-size: 12px; margin-bottom: 28px; }
+.section { margin-bottom: 36px; border: 1px solid #1e293b; border-radius: 10px; overflow: hidden; }
+.section-header { padding: 14px 18px; background: #0f172a; border-bottom: 1px solid #1e293b; }
+.section-header h2 { font-size: 14px; color: #f8fafc; margin-bottom: 4px; }
+.section-header .meta { font-size: 11px; color: #64748b; }
+.status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: bold; margin-left: 8px; }
+.badge-broken   { background: #450a0a; color: #f87171; }
+.badge-partial  { background: #451a00; color: #fbbf24; }
+.badge-real     { background: #14532d; color: #4ade80; }
+.badge-heuristic{ background: #1e1b4b; color: #a78bfa; }
+.svg-wrap { padding: 20px; overflow-x: auto; }
+.svg-wrap img, .svg-wrap svg { max-width: 100%; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.audit-table th { background: #0f172a; padding: 8px 12px; text-align: left; color: #64748b; }
+.audit-table td { padding: 7px 12px; border-top: 1px solid #1e293b; }
+.audit-table tr.match td:first-child { border-left: 3px solid #4ade80; }
+.audit-table tr.mismatch td:first-child { border-left: 3px solid #ef4444; }
+.audit-table tr.partial td:first-child { border-left: 3px solid #fbbf24; }
+.status-ok    { color: #4ade80; font-weight: bold; }
+.status-err   { color: #ef4444; font-weight: bold; }
+.status-warn  { color: #fbbf24; font-weight: bold; }
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 18px; }
+.summary-card { background: #0f172a; border-radius: 8px; padding: 14px; border: 1px solid #1e293b; }
+.summary-card h3 { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+.summary-card .value { font-size: 22px; font-weight: bold; }
+.summary-card .label { font-size: 11px; margin-top: 4px; }
+.code-block { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 12px 16px; font-size: 11px; color: #94a3b8; margin: 12px 18px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<h1>SAI Rolotech Smart Engines — Visual Engineering Proof</h1>
+<p class="subtitle">Honest audit per user request · GI 1.5mm C-section 60×40mm · All data from live Python pipeline</p>
+
+<!-- SUMMARY SCOREBOARD -->
+<div class="summary-grid" style="margin-bottom:28px; border:1px solid #1e293b; border-radius:10px;">
+  <div class="summary-card">
+    <h3>Q1 Profile Dimensions</h3>
+    <div class="value" style="color:#fbbf24">PARTIAL</div>
+    <div class="label">Inputs auto → dimensions. flange_web_lip_engine broken in manual mode.</div>
+  </div>
+  <div class="summary-card">
+    <h3>Q2 Flower Pattern</h3>
+    <div class="value" style="color:#fbbf24">PARTIAL</div>
+    <div class="label">Angle schedule = real. 2D cross-section from angles. advanced_flower = text only.</div>
+  </div>
+  <div class="summary-card">
+    <h3>Q3 Roll Shape</h3>
+    <div class="value" style="color:#fbbf24">PARTIAL</div>
+    <div class="label">6-point trapezoidal heuristic. Roll OD/radius/width = None. Not tooling-grade.</div>
+  </div>
+  <div class="summary-card">
+    <h3>Q5 Consistency</h3>
+    <div class="value" style="color:#ef4444">3 ERRORS</div>
+    <div class="label">Flat strip formula wrong (65mm vs 147mm). 2 flange detection bugs.</div>
+  </div>
+</div>
+
+<!-- Q1 -->
+<div class="section">
+  <div class="section-header">
+    <h2>Q1 — Are profile dimensions auto-generated?
+      <span class="status-badge badge-partial">PARTIAL</span>
+    </h2>
+    <div class="meta">
+      <strong>Controlling files:</strong> flange_web_lip_engine.py · roll_contour_engine.py<br>
+      Web/flange/thickness from inputs ✓ | Inner radius from material table ✓ | Strip width formula WRONG ✗ | Flange detection engine BROKEN in manual mode ✗
+    </div>
+  </div>
+  <div class="svg-wrap">
+    <img src="/q1_profile.svg" alt="Q1 Profile Dimensions"/>
+  </div>
+  <div class="code-block">
+<strong>WHAT WORKS:</strong>  Web = section_width_mm (input) ✓  |  Flange = section_height_mm (input) ✓  |  t = thickness (input) ✓
+                   Inner Ri = BEND_RADIUS_FACTOR[material] × t = 1.0 × 1.5 = 1.5mm ✓  |  Bend angle = 90° ✓
+<strong>BROKEN:</strong>       flat_strip = section_width + bend_count × arc_per_bend = 65.24mm  (WRONG)
+               Correct: flat_strip = web + 2×flange + 2×bend_allowance = 60 + 80 + 7.07 = 147.07mm
+<strong>BROKEN:</strong>       flange_web_lip_engine: bends=[] in manual mode → n_bends=0 → flange_count=0
+               Engine reports: section_type=angle_section, flange_count=0, flange_lengths=[]
+               Should be:      section_type=c_channel,     flange_count=2, flange_lengths=[40,40]mm
+  </div>
+</div>
+
+<!-- Q2 -->
+<div class="section">
+  <div class="section-header">
+    <h2>Q2 — How is the flower pattern generated?
+      <span class="status-badge badge-partial">PARTIAL</span>
+    </h2>
+    <div class="meta">
+      <strong>Controlling files:</strong> roll_contour_engine.py (angle_schedule) · advanced_flower_engine.py (labels only) · FlowerPatternView.tsx (rendering)<br>
+      Angle schedule is real computation ✓ | advanced_flower_engine outputs TEXT LABELS + angles, no 2D coordinates ✗ | 2D sections rendered from angles in React
+    </div>
+  </div>
+  <div class="svg-wrap">
+    <img src="/q2_flower.svg" alt="Q2 Flower Pattern"/>
+  </div>
+  <div class="code-block">
+<strong>roll_contour_engine angle schedule (cubic easing, 9 forming passes + calibration):</strong>
+  Stn1=3.1°  Stn2=11.5°  Stn3=23.7°  Stn4=38.2°  Stn5=53.3°  Stn6=67.8°  Stn7=80.0°  Stn8=88.4°  Stn9=91.5°(overform) → Stn10=90.0°(calibration)
+<strong>advanced_flower_engine pass_plan (what it actually returns):</strong>
+  Pass 1: "edge pickup"            angles=[30°,30°]  pct=20%  is_calib=False
+  Pass 2: "initial leg pre-form"   angles=[60°,60°]  pct=40%  is_calib=False
+  Pass 3: "asymmetric progression" angles=[90°,90°]  pct=60%  is_calib=True  ← NOTE: is_calib flag inconsistency
+  Pass 4: "web stabilization"      angles=[91.8°]    pct=80%  is_calib=True
+  Pass 5: "main flange progression" angles=[91.8°]   pct=100% is_calib=True
+  → No XY polygon data. The 2D cross-section above was computed from angles, not from engine output.
+  </div>
+</div>
+
+<!-- Q3 -->
+<div class="section">
+  <div class="section-header">
+    <h2>Q3 — What is the actual roll shape?
+      <span class="status-badge badge-heuristic">HEURISTIC</span>
+    </h2>
+    <div class="meta">
+      <strong>Controlling files:</strong> roll_contour_engine.py _upper_lower_roll_contour() · RollContourPanel.tsx MiniContourSvg<br>
+      6-point trapezoidal model | Progression = section_height × pass_progress_pct | upper_roll_radius = None | roll_width_mm = None
+    </div>
+  </div>
+  <div class="svg-wrap">
+    <img src="/q3_roll_contours.svg" alt="Q3 Roll Contours"/>
+  </div>
+  <div class="code-block">
+<strong>What the engine computes (6 fixed points per roll, upper and lower):</strong>
+  upper = [(-web/2-5, 0), (-web/2, 0), (-web/2+2, -depth), (web/2-2, -depth), (web/2, 0), (web/2+5, 0)]
+  lower = [(-web/2-5, gap), (-web/2, gap), (-web/2+2, depth+gap), (web/2-2, depth+gap), (web/2, gap), (web/2+5, gap)]
+  where depth = section_height_mm × (pass_idx / total_passes)  ← linear depth progression, NOT from actual angle geometry
+<strong>Fields that are None (not calculated):</strong>  upper_roll_radius · lower_roll_radius · roll_width_mm · flange_groove_radius
+<strong>RollContourPanel.tsx:</strong>  Renders via MiniContourSvg — plots the 6-point profile as SVG path. Wiring is real ✓, data is heuristic ⚠
+  </div>
+</div>
+
+<!-- Q4 -->
+<div class="section">
+  <div class="section-header">
+    <h2>Q4 — What does the roll simulation actually show?
+      <span class="status-badge badge-partial">PARTIAL — PIN required to screenshot</span>
+    </h2>
+    <div class="meta">
+      <strong>Controlling file:</strong> artifacts/design-tool/src/components/python-dashboard/RollFormingSimulator.tsx (1317 lines)<br>
+      Real SVG rendering of roll contour data ✓ | Animated pass viewer ✓ | Optimizer corrections ✓ | Data source = simplified heuristic ⚠
+    </div>
+  </div>
+  <div class="code-block" style="margin:18px">
+<strong>What RollFormingSimulator.tsx DOES render (confirmed by source audit, 1317 lines):</strong>
+  ✓ SVG viewer with grid background (sim-grid pattern)
+  ✓ Profile cross-section drawn from upper_roll_profile + lower_roll_profile polygon points (real data from API)
+  ✓ Per-pass animation — cycles through stations, shows forming progression
+  ✓ Circle markers at profile control points (cx/cy from actual roll profile arrays)
+  ✓ Springback angle display (corrected_angle_deg from calibration pass)
+  ✓ Station-by-station navigation with angle, gap, strip width labels
+  ✓ Calibration pass detection ("Calibration pass present at Station N. Springback correction applied.")
+  ✓ Optimizer corrections panel showing tooling correction list
+  ✓ "Roll Drawing" export tab (SVG/DXF/PDF described)
+
+<strong>What it does NOT do:</strong>
+  ✗ The roll profile points are the 6-point heuristic trapezoids, not real tooling geometry
+  ✗ Cannot screenshot without PIN authentication
+  ✗ Flat strip width shown will be wrong (65.24mm vs 147.07mm actual)
+
+<strong>Assessment: The UI simulation is real (not a placeholder). The underlying data model is a simplified heuristic.</strong>
+  </div>
+</div>
+
+<!-- Q5 -->
+<div class="section">
+  <div class="section-header">
+    <h2>Q5 — Can this data be trusted? Consistency Cross-Check
+      <span class="status-badge badge-broken">3 ERRORS</span>
+    </h2>
+    <div class="meta">7 parameters match ✓ · 2 mismatches ✗ · 3 partial ⚠ · All data from live GI 1.5mm C-section 60×40mm pipeline run</div>
+  </div>
+  <div class="svg-wrap">
+    <img src="/q5_crosscheck.svg" alt="Q5 Crosscheck"/>
+  </div>
+</div>
+
+<!-- FILE MAP -->
+<div class="section">
+  <div class="section-header">
+    <h2>File Map — Exact Controls for Each Visual</h2>
+  </div>
+  <table class="audit-table">
+    <tr><th>Feature</th><th>Controlling File(s)</th><th>Status</th><th>Honest Assessment</th></tr>
+    <tr class="partial"><td>Profile dim annotations</td><td>flange_web_lip_engine.py · roll_contour_engine.py</td><td class="status-warn">PARTIAL</td><td>web/flange from input ✓, strip formula wrong, flange detection broken</td></tr>
+    <tr class="partial"><td>Flower pattern angles</td><td>roll_contour_engine.py _angle_schedule()</td><td class="status-ok">REAL</td><td>Cubic-ease schedule → 9 forming + 1 calibration passes ✓</td></tr>
+    <tr class="mismatch"><td>Flower 2D coords</td><td>advanced_flower_engine.py</td><td class="status-err">NOT GENERATED</td><td>Returns text labels + angle arrays only. No polygon XY data.</td></tr>
+    <tr class="partial"><td>Roll contour shape</td><td>roll_contour_engine.py _upper_lower_roll_contour()</td><td class="status-warn">HEURISTIC</td><td>6-point trapezoid. No real groove/radius geometry.</td></tr>
+    <tr class="partial"><td>Roll contour rendering</td><td>RollContourPanel.tsx MiniContourSvg</td><td class="status-ok">REAL</td><td>Correctly plots API points as SVG paths ✓</td></tr>
+    <tr class="partial"><td>Simulation display</td><td>RollFormingSimulator.tsx (1317 lines)</td><td class="status-warn">PARTIAL</td><td>Real SVG rendering, real animation. Underlying data is heuristic.</td></tr>
+    <tr class="mismatch"><td>Flat strip width</td><td>roll_contour_engine.py _strip_width_progression()</td><td class="status-err">BUG</td><td>65.24mm reported. Correct = 147.07mm. Missing 2×flange in formula.</td></tr>
+    <tr class="mismatch"><td>Flange detection</td><td>flange_web_lip_engine.py _classify_segments()</td><td class="status-err">BUG</td><td>Manual mode: bends=[] → n_bends=0 → 0 flanges for C-section</td></tr>
+  </table>
+</div>
+
+<p style="text-align:center; color:#334155; font-size:11px; margin-top:28px; padding-bottom:10px;">
+  SAI Rolotech Smart Engines v2.2.0+ · Honest visual audit · GI 1.5mm C-section 60×40mm · 29-engine Python pipeline
+</p>
+</body>
+</html>

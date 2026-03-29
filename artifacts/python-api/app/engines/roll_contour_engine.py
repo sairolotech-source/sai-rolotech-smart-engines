@@ -518,6 +518,94 @@ def _angle_schedule(target_deg: float, n_passes: int) -> List[float]:
     return angles
 
 
+# ── Profile category lookup ────────────────────────────────────────────────────
+PROFILE_CATEGORY: Dict[str, str] = {
+    "c_channel":        "channel",
+    "simple_channel":   "channel",
+    "lipped_channel":   "structural",
+    "hat_section":      "structural",
+    "z_section":        "structural",
+    "simple_angle":     "flat_open",
+    "shutter_profile":  "panel",
+    "shutter_slat":     "panel",
+    "door_frame":       "structural",
+    "complex_profile":  "structural",
+    "complex_section":  "structural",
+    "omega_profile":    "structural",
+    "custom":           "unknown",
+}
+
+
+def _angle_schedule_for_profile(
+    target_deg: float,
+    n_passes: int,
+    profile_type: str,
+    has_lips: bool,
+) -> List[float]:
+    """
+    Profile-aware per-pass angle schedule.
+
+    Lipped channel / hat section / door frame with lips:
+      Two-phase forming — flanges lead the schedule, lips lag by ~35% of passes.
+      In practice the angle ramp is the same target for flanges; lip rolls
+      engage later (≥ 35% progress) so the early passes let flanges develop
+      before lip rolls contact the strip.
+
+    Shutter profile / panel:
+      Standard cubic ease — all ribs form simultaneously (in-line tooling).
+      A slight delay at the start (linear 0→15% over the first 10% of passes)
+      prevents edge marking on thin-gauge slats.
+
+    Z-section:
+      Asymmetric ease: left flange (upward) forms 10% ahead of right (downward).
+      Modelled here as a slightly steeper early ramp.
+
+    All others:
+      Standard cubic ease.
+    """
+    pt = (profile_type or "c_channel").lower().replace(" ", "_")
+
+    if pt in ("lipped_channel", "hat_section", "door_frame") and has_lips:
+        angles: List[float] = []
+        for i in range(1, n_passes + 1):
+            t = i / n_passes
+            if t < 0.35:
+                # Early passes: only flanges engage — gentle cubic progression
+                t_norm = t / 0.35
+                eased = t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.55
+            else:
+                # Mid-to-final: lips begin forming; full cubic ease to target
+                t_norm = (t - 0.35) / 0.65
+                eased = 0.55 * target_deg + t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.45
+            angles.append(round(eased, 1))
+        return angles
+
+    if pt in ("shutter_profile", "shutter_slat"):
+        angles = []
+        for i in range(1, n_passes + 1):
+            t = i / n_passes
+            if t < 0.10:
+                # Very first pass: linear 0→15% to prevent edge marking
+                eased = t / 0.10 * target_deg * 0.12
+            else:
+                t_norm = (t - 0.10) / 0.90
+                eased = target_deg * 0.12 + t_norm ** 2 * (3 - 2 * t_norm) * target_deg * 0.88
+            angles.append(round(eased, 1))
+        return angles
+
+    if pt == "z_section":
+        # Slightly steeper early ramp (left flange leads)
+        angles = []
+        for i in range(1, n_passes + 1):
+            t = i / n_passes
+            eased = (t ** 1.8) * (3 - 2 * t) * target_deg
+            angles.append(round(eased, 1))
+        return angles
+
+    # Default: standard cubic ease
+    return _angle_schedule(target_deg, n_passes)
+
+
 def _strip_width_progression(
     final_width_mm: float,
     bend_count: int,
@@ -856,7 +944,9 @@ def generate_roll_contour(
     primary_angle = 90.0
     angle_with_springback = round(primary_angle + springback, 1)
 
-    angles    = _angle_schedule(angle_with_springback, forming_passes)
+    angles    = _angle_schedule_for_profile(
+        angle_with_springback, forming_passes, profile_type, has_lips
+    )
 
     # ── Effective lip length — prefer explicit value from profile_result ──────
     lip_mm = float(profile_result.get("lip_mm") or
@@ -914,6 +1004,41 @@ def generate_roll_contour(
         station_interference.append(intf)
 
         cl = _profile_centerline_for_pass(profile_type, section_w, section_h, angle)
+
+        # ── Per-station tooling sub-dict (manufacturing-grade) ────────────────
+        geometry_source_pass = contour.get("geometry_source", "heuristic_fallback")
+        geom_grade_pass = (
+            "manufacturing_grade" if geometry_source_pass == "shapely_section_polygon"
+            else "heuristic_fallback"
+        )
+        clash_markers = [
+            pz for pz in contour.get("pinch_zones", [])
+            if pz.get("severity") in ("high", "critical")
+        ]
+        support_surfaces: List[Dict[str, Any]] = []
+        fss = contour.get("flange_support_surface", {})
+        wcs = contour.get("web_contact_surface", {})
+        if fss:
+            support_surfaces.append({"type": "flange", **fss})
+        if wcs:
+            support_surfaces.append({"type": "web", **wcs})
+
+        tooling = {
+            "top_roll_contour":    contour.get("upper_roll_profile", []),
+            "bottom_roll_contour": contour.get("lower_roll_profile", []),
+            "face_width_mm":       contour.get("roll_face_width_mm",     contour.get("roll_width_mm", 0)),
+            "groove_width_mm":     contour.get("web_contact_width_mm",   section_w),
+            "groove_depth_mm":     contour.get("groove_depth_mm",        0),
+            "relief_width_mm":     contour.get("edge_relief_width_mm",   5.0),
+            "relief_depth_mm":     contour.get("edge_relief_depth_mm",   round(thickness * 0.08, 4)),
+            "shoulder_left_mm":    contour.get("shoulder_width_mm",      8.0),
+            "shoulder_right_mm":   contour.get("shoulder_width_mm",      8.0),
+            "support_surfaces":    support_surfaces,
+            "roll_width_breakdown": contour.get("roll_width_breakdown",  {}),
+            "clash_risk_markers":  clash_markers,
+            "geometry_grade":      geom_grade_pass,
+        }
+
         passes.append({
             "pass_no":            i + 1,
             "station_label":      f"Station {i + 1}",
@@ -921,9 +1046,11 @@ def generate_roll_contour(
             "roll_gap_mm":        roll_gap,
             "strip_width_mm":     sw,
             "stage_type":         _stage_label(i, forming_passes, has_lips, profile_type),
+            "geometry_grade":     geom_grade_pass,
             "profile_centerline": cl,
             "contact_points":     _contact_points_from_centerline(cl),
             "interference":       intf,
+            "tooling":            tooling,
             **contour,
         })
 
@@ -1034,6 +1161,13 @@ def generate_roll_contour(
         "has_lips":                    has_lips,
         "lip_mm_used":                 lip_mm,
         "profile_type":                profile_type,
+        "profile_category":            PROFILE_CATEGORY.get(profile_type.lower(), "unknown"),
+        "angle_schedule_mode":         (
+            "two_phase_lipped" if has_lips and profile_type.lower() in ("lipped_channel", "hat_section", "door_frame")
+            else "shutter_delayed" if profile_type.lower() in ("shutter_profile", "shutter_slat")
+            else "z_asymmetric" if profile_type.lower() == "z_section"
+            else "cubic_ease"
+        ),
         "remaining_weaknesses":        _weaknesses,
     }
 

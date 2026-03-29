@@ -9,6 +9,7 @@ from typing import Dict, Any, List
 from app.utils.response import pass_response, fail_response
 from app.engines.bend_detection_engine import detect_bends
 from app.utils.engineering_rules import classify_complexity, COMPLEXITY_LABELS
+from app.engines.roll_contour_engine import PROFILE_CATEGORY
 
 logger = logging.getLogger("profile_analysis_engine")
 
@@ -53,6 +54,7 @@ def analyze_profile(geometry_result: Dict[str, Any]) -> Dict[str, Any]:
         "section_width_mm": round(width, 2),
         "section_height_mm": round(height, 2),
         "profile_type": profile_type,
+        "profile_category": PROFILE_CATEGORY.get(profile_type, "unknown"),
         "complexity_tier": complexity,
         "complexity_label": COMPLEXITY_LABELS[complexity],
         "profile_open": geometry_result.get("profile_open", True),

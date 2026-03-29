@@ -106,8 +106,19 @@ const QUICK_ACTIONS = [
 ];
 
 export function Dashboard({ onOpenWorkspace }: Props) {
-  const { geometry, stations, gcodeOutputs, rollTooling } = useCncStore();
+  const { geometry, stations, gcodeOutputs, rollTooling, reset } = useCncStore();
   const hasProject = !!geometry;
+
+  const handleNewProject = () => {
+    if (hasProject) {
+      const ok = window.confirm(
+        "Current project data will be cleared.\nStart a fresh New Project?"
+      );
+      if (!ok) return;
+    }
+    reset();
+    onOpenWorkspace("setup");
+  };
 
   const [showRobot, setShowRobot] = useState(() => {
     return !sessionStorage.getItem(ROBOT_SHOWN_KEY);
@@ -146,7 +157,7 @@ export function Dashboard({ onOpenWorkspace }: Props) {
             <p className="text-sm mt-1" style={{ color: "#71717a" }}>Your roll forming design workspace</p>
           </div>
           <button
-            onClick={() => onOpenWorkspace("setup")}
+            onClick={handleNewProject}
             className="rt-cta-amber"
           >
             <Plus className="w-4 h-4" />

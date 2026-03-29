@@ -13,6 +13,8 @@ import {
   FileText, Archive, Edit3, CheckCircle, Lock,
   AlertTriangle, ShieldCheck, User, ClipboardCheck, XCircle,
 } from "lucide-react";
+import { useAuditLog, AuditLogPanel } from "@/components/ui/AuditLog";
+import HelpTooltip from "@/components/ui/HelpTooltip";
 
 import {
   buildDrawingModel,
@@ -644,6 +646,7 @@ export default function RollDrawingPanel({
   const [approvedBy,    setApprovedBy]    = useState("");
   const [showRelease,   setShowRelease]   = useState(false);
   const [validErrors,   setValidErrors]   = useState<string[]>([]);
+  const { entries: auditEntries, addEntry: addAuditEntry, clearLog: clearAuditLog } = useAuditLog();
 
   if (!rollContour || rollContour.status !== "pass") {
     return (
@@ -726,8 +729,9 @@ export default function RollDrawingPanel({
     setDownloading(true);
     try {
       triggerSVGDownload(renderDrawingToSVG(currentModel), fSVG);
+      addAuditEntry("export_svg", `SVG — St.${pass?.pass_no ?? selected + 1}`, fSVG, pass?.pass_no);
     } finally { setTimeout(() => setDownloading(false), 600); }
-  }, [currentModel, fSVG]);
+  }, [currentModel, fSVG, pass, selected]);
 
   const handleDownloadAll = useCallback(() => {
     if (!runValidation()) return;
@@ -738,16 +742,19 @@ export default function RollDrawingPanel({
       }, i * 150);
     });
     setTimeout(() => setDownloading(false), allModels.length * 150 + 500);
+    addAuditEntry("export_svg", `SVG All Stations (${allModels.length})`, `${allModels.length} files`);
   }, [allModels]);
 
   const handleDownloadPDF = useCallback(() => {
     if (!runValidation()) return;
     printSinglePDF(currentModel, `${partBase}.pdf`);
-  }, [currentModel, partBase]);
+    addAuditEntry("export_pdf", `PDF — St.${pass?.pass_no ?? selected + 1}`, `${partBase}.pdf`, pass?.pass_no);
+  }, [currentModel, partBase, pass, selected]);
 
   const handleDownloadAllPDF = useCallback(() => {
     if (!runValidation()) return;
     printAllStationsPDF(allModels, fAllPDF);
+    addAuditEntry("export_pdf_all", `PDF All Stations (${allModels.length})`, fAllPDF);
   }, [allModels, fAllPDF]);
 
   const handleDownloadDXF = useCallback(() => {
@@ -757,7 +764,8 @@ export default function RollDrawingPanel({
       new Blob([dxf], { type: "application/dxf;charset=utf-8" }),
       fDXF,
     );
-  }, [currentModel, fDXF]);
+    addAuditEntry("export_dxf", `DXF R12 — St.${pass?.pass_no ?? selected + 1}`, fDXF, pass?.pass_no);
+  }, [currentModel, fDXF, pass, selected]);
 
   const handleDownloadZIP = useCallback(async () => {
     if (!runValidation()) return;
@@ -765,8 +773,9 @@ export default function RollDrawingPanel({
     try {
       const blob = await buildZipPackage(allModels);
       triggerBlobDownload(blob, fZIP);
+      addAuditEntry("export_zip", `ZIP Package (${allModels.length} stations, ${releaseState})`, fZIP);
     } finally { setDownloading(false); }
-  }, [allModels, fZIP]);
+  }, [allModels, fZIP, releaseState]);
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -1241,8 +1250,15 @@ export default function RollDrawingPanel({
         )}
 
         <div className="mt-3 text-[9px] text-slate-600 font-mono">
-          roll_dimension_engine · roll_contour_engine · Sai Rolotech Smart Engines v2.3.0 · Phase 2 Export Engine
+          roll_dimension_engine · roll_contour_engine · Sai Rolotech Smart Engines v2.4.0 · Phase 2 Export Engine
         </div>
+
+        {/* ── Audit Log ────────────────────────────────── */}
+        <AuditLogPanel
+          entries={auditEntries}
+          onClear={clearAuditLog}
+          className="mt-4"
+        />
       </div>
     </div>
   );

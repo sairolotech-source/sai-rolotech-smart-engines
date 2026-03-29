@@ -6,6 +6,7 @@ import {
   GitBranch, Link2, Cpu, Settings2,
 } from "lucide-react";
 import { getStationExplanation, getManufacturabilityWarnings } from "@/lib/stationLogicEngine";
+import { EngineeringRiskPanel } from "@/components/python-dashboard/EngineeringRiskPanel";
 
 interface ProfilePoint { x: number; y: number; }
 interface RollProfile   { x: number; y: number; }
@@ -699,6 +700,27 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
         thickness={data.thickness_mm}
         optimizer={optimizerData}
       />
+
+      {/* ── Engineering Risk Analysis ────────────────────────── */}
+      {passes.length > 0 && (
+        <EngineeringRiskPanel
+          passes={passes.map(p => ({
+            pass_no:          p.pass_no,
+            stage_type:       p.stage_type,
+            target_angle_deg: p.target_angle_deg,
+            roll_gap_mm:      p.roll_gap_mm,
+            strip_width_mm:   p.strip_width_mm,
+            forming_depth_mm: p.forming_depth_mm,
+          }))}
+          material={data.material}
+          thickness={data.thickness_mm}
+          sectionHeight={Math.max(...passes.map(p => p.forming_depth_mm), 30)}
+          sectionWidth={passes[0]?.strip_width_mm ?? 100}
+          isSymmetric={true}
+          hasCalibrationPass={passes.some(p => p.stage_type === "calibration")}
+          className="mx-5 mb-3"
+        />
+      )}
 
       {/* ── AI Optimizer Panel ──────────────────────────────── */}
       {optimizerData && (

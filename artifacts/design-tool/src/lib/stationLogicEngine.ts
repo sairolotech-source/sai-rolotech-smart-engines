@@ -4,6 +4,11 @@
  * for Roll Forming Simulator — Sai Rolotech Smart Engines v2.3.0
  */
 
+export interface CalculationSource {
+  label:  "Formula" | "Rule" | "Estimate" | "Table" | "User Override";
+  detail: string;
+}
+
 export interface StationExplanation {
   purpose:     string;
   forming:     string;
@@ -11,6 +16,7 @@ export interface StationExplanation {
   incremental: string;
   riskLevel:   "ok" | "caution" | "warning";
   riskNote:    string;
+  sources:     CalculationSource[];
 }
 
 export interface ManufacturabilityWarning {
@@ -129,7 +135,26 @@ export function getStationExplanation(
     : `Roll gap = ${cur.roll_gap_mm.toFixed(2)} mm (sheet ${thickness} mm + clearance ${(cur.roll_gap_mm - thickness).toFixed(2)} mm). ` +
       `Springback at this pass: ${cur.springback_deg.toFixed(2)}°.`;
 
-  return { purpose, forming, noteText, incremental, riskLevel, riskNote };
+  const sources: CalculationSource[] = [
+    {
+      label:  "Formula",
+      detail: `Outer fibre strain ε = t/(2r+t) = ${(cur.strain * 100).toFixed(2)}% [BS EN ISO 10127]`,
+    },
+    {
+      label:  "Table",
+      detail: `Springback = ${cur.springback_deg.toFixed(2)}° — material factor for ${material} from empirical springback table`,
+    },
+    {
+      label:  "Rule",
+      detail: `Roll gap = ${cur.roll_gap_mm.toFixed(2)} mm (target: thickness × 0.90–1.10 per industry practice)`,
+    },
+    {
+      label:  "Estimate",
+      detail: `Forming force and motor power are approximations (F ≈ 0.8t²w·Fy/r). Validate with machine load cell.`,
+    },
+  ];
+
+  return { purpose, forming, noteText, incremental, riskLevel, riskNote, sources };
 }
 
 // ─── getManufacturabilityWarnings ─────────────────────────────────────────────

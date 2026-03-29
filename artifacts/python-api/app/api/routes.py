@@ -52,6 +52,7 @@ from app.engines.centerline_sheet_converter_arc_engine import (
 from app.engines.simulation_engine import run_simulation as run_sim_engine
 from app.engines.ai_optimizer_engine import optimize_roll_forming_plan
 from app.engines.simulation_decision_engine import decide_simulation_status
+from app.engines.engineering_risk_engine import generate_engineering_risk_report
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -1120,3 +1121,44 @@ async def simulate_roll_forming(
         "ai_optimizer_engine":        optimizer_result,
         "simulation_decision_engine": decision_result,
     }
+
+
+# ─── Engineering Risk Analysis Endpoint ───────────────────────────────────────
+
+@router.post("/engineering-risk")
+async def run_engineering_risk(payload: dict):
+    """
+    POST /api/engineering-risk
+
+    Run full engineering risk analysis on a forming sequence.
+    Returns per-pass severity, edge buckling, twist risk, calibration need,
+    deformation confidence, and aggregated recommendations.
+
+    All values are empirical approximations — not FEA. Labels indicate method.
+    """
+    try:
+        passes           = payload.get("passes", [])
+        material         = payload.get("material", "MS")
+        thickness_mm     = float(payload.get("thickness_mm", 2.0))
+        section_h        = float(payload.get("section_height_mm", 50.0))
+        section_w        = float(payload.get("section_width_mm", 100.0))
+        is_symmetric     = bool(payload.get("is_symmetric", True))
+        has_cal          = bool(payload.get("has_calibration_pass", True))
+        bend_r           = payload.get("bend_radius_mm")
+        bend_radius_mm   = float(bend_r) if bend_r else None
+
+        report = generate_engineering_risk_report(
+            passes=passes,
+            material=material,
+            thickness_mm=thickness_mm,
+            section_height_mm=section_h,
+            section_width_mm=section_w,
+            is_symmetric=is_symmetric,
+            has_calibration_pass=has_cal,
+            bend_radius_mm=bend_radius_mm,
+        )
+        return {"status": "pass", "engineering_risk_engine": report}
+
+    except Exception as exc:
+        logger.error("engineering-risk error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}

@@ -597,6 +597,23 @@ export async function saveJobPackage(payload: {
   }
 }
 
+export async function runAutoPipeline(payload: {
+  geometry: ProfileGeometry;
+  thickness: number;
+  material: string;
+  sectionModel?: "open" | "closed";
+  motorKw?: number;
+  rpm?: number;
+  shaftDiameter?: number;
+}) {
+  const res = await authFetchJson(getApiUrl("/auto-pipeline"), payload);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Auto-pipeline failed" }));
+    throw new Error(err.error || "Auto-pipeline failed");
+  }
+  return res.json();
+}
+
 export async function syncOfflineQueue(): Promise<{ synced: number; failed: number }> {
   const queue = getOfflineQueue();
   if (!queue.length) return { synced: 0, failed: 0 };

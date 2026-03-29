@@ -110,6 +110,54 @@ export function parseDxfContent(content: string): ProfileGeometry {
         type: "arc", x1, y1, x2, y2, cx, cy, radius, startAngle, endAngle,
         length: arcLength(radius, startAngle, endAngle),
       });
+    } else if (entity.type === "LWPOLYLINE" || entity.type === "POLYLINE") {
+      // Group 10/20 codes into sequential vertex pairs
+      const xs = (d["10"] ?? []).map(parseNumber);
+      const ys = (d["20"] ?? []).map(parseNumber);
+      // Group 42 codes are bulge values (arc segments); index-aligned with vertices
+      const bulges = (d["42"] ?? []).map(parseNumber);
+      const closed = parseInt(d["70"]?.[0] ?? "0") & 1;
+      const nPts = Math.min(xs.length, ys.length);
+      for (let pi = 0; pi < nPts - 1; pi++) {
+        const ax = xs[pi]!, ay = ys[pi]!;
+        const bx = xs[pi + 1]!, by = ys[pi + 1]!;
+        const bulge = bulges[pi] ?? 0;
+        if (Math.abs(bulge) < 1e-6) {
+          segments.push({ type: "line", x1: ax, y1: ay, x2: bx, y2: by, length: distanceBetween(ax, ay, bx, by) });
+        } else {
+          // Convert bulge to arc: bulge = tan(Δ/4), where Δ is the included angle
+          const chord = distanceBetween(ax, ay, bx, by);
+          const radius = Math.abs((chord * (1 + bulge * bulge)) / (4 * bulge));
+          const sagitta = bulge * chord / 2;
+          const midX = (ax + bx) / 2;
+          const midY = (ay + by) / 2;
+          const perpAngle = Math.atan2(by - ay, bx - ax) + Math.PI / 2;
+          const cx = midX - sagitta * Math.cos(perpAngle);
+          const cy = midY - sagitta * Math.sin(perpAngle);
+          const startAngle = (Math.atan2(ay - cy, ax - cx) * 180) / Math.PI;
+          const endAngle = (Math.atan2(by - cy, bx - cx) * 180) / Math.PI;
+          segments.push({
+            type: "arc", x1: ax, y1: ay, x2: bx, y2: by, cx, cy, radius, startAngle, endAngle,
+            length: arcLength(radius, startAngle, endAngle < startAngle ? endAngle + 360 : endAngle),
+          });
+        }
+      }
+      // Close the polyline if flag is set
+      if (closed && nPts >= 2) {
+        const ax = xs[nPts - 1]!, ay = ys[nPts - 1]!;
+        const bx = xs[0]!, by = ys[0]!;
+        segments.push({ type: "line", x1: ax, y1: ay, x2: bx, y2: by, length: distanceBetween(ax, ay, bx, by) });
+      }
+    } else if (entity.type === "CIRCLE") {
+      const cx = parseNumber(d["10"]?.[0] ?? "0");
+      const cy = parseNumber(d["20"]?.[0] ?? "0");
+      const radius = parseNumber(d["40"]?.[0] ?? "1");
+      const x1 = cx + radius;
+      const y1 = cy;
+      segments.push({
+        type: "arc", x1, y1, x2: x1, y2: y1, cx, cy, radius, startAngle: 0, endAngle: 360,
+        length: 2 * Math.PI * radius,
+      });
     }
   }
 

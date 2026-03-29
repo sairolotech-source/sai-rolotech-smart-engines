@@ -1,0 +1,364 @@
+Haan, solve ho sakta hai — lekin **Replit ko “fix it” bolne se nahi**, app ko **modules me todkar** diagnose karna padega.
+Aapke app me pipeline ye lag rahi hai:
+
+1. Drawing import
+2. Auto dimension read
+3. Sheet thickness input
+4. Raw material input
+5. Flower pattern generation
+6. Roll design generation
+7. Station count calculation
+8. Bearing selection
+9. Shaft diameter/thickness calculation
+10. Auto mode final output
+
+Agar auto mode me kuch kaam nahi kar raha, to mostly problem in 5 jagah hoti hai:
+
+**1. Input parsing fail**
+DXF/DWG/PDF ya drawing data sahi parse nahi ho raha.
+
+**2. Geometry engine fail**
+Lines/arcs/profile closed shape me convert nahi ho rahe.
+
+**3. Calculation engine disconnected**
+Thickness/material aane ke baad formula engine trigger hi nahi ho raha.
+
+**4. Workflow chaining broken**
+Step 1 ke baad Step 2 auto call nahi ho rahi.
+
+**5. Prompt-based fake logic**
+Replit ne UI bana di, par backend me actual engineering logic adhura hai.
+
+## Replit me ise solve karne ka sahi tarika
+
+### Step 1: Pehle app ko 4 engines me divide karo
+
+Developer ko bolo app ko ye modules me tod de:
+
+**A. Import Engine**
+
+* DXF/DWG/SVG/JSON import
+* Entity read: line, arc, polyline
+* Units detect
+* Scale detect
+* Closed profile verify
+
+**B. Geometry Engine**
+
+* Centerline/profile extraction
+* Thickness offset logic
+* Bend points detect
+* Leg lengths
+* Radius detection
+* Symmetry check
+
+**C. Roll Forming Logic Engine**
+
+* Flower pattern generation
+* No. of bends
+* Per pass bend angle distribution
+* Station estimation
+* Overbend / springback compensation
+
+**D. Mechanical Selection Engine**
+
+* Roll shaft load
+* Bearing load
+* Shaft dia
+* Spacer logic
+* Stand count
+* Roll OD range
+* Material-based correction
+
+Jab tak app in engines me separate nahi hota, auto mode reliable nahi hoga.
+
+## Step 2: Replit me debug mode banao
+
+Developer ko bolo normal auto mode band karke pehle **Debug Mode** banaye.
+
+Har step ke baad screen par ye print hona chahiye:
+
+* file imported or not
+* profile closed or open
+* dimensions extracted or not
+* thickness received or not
+* material received or not
+* bends detected count
+* flower pattern generated or not
+* stations estimated or not
+* shaft calculation started or not
+* bearing selection started or not
+
+Example:
+
+```text
+STEP 1 IMPORT: PASS
+STEP 2 PROFILE CLEAN: FAIL
+Reason: open polyline detected
+```
+
+Ya
+
+```text
+STEP 3 THICKNESS INPUT: PASS
+STEP 4 MATERIAL INPUT: PASS
+STEP 5 FLOWER PATTERN: FAIL
+Reason: bend sequence undefined
+```
+
+Isse turant pata chalega auto mode kis step par toot raha hai.
+
+## Step 3: Engineering formulas hardcode karo, AI par depend mat karo
+
+Is type ke software me AI sirf helper ho sakta hai. Final engineering logic deterministic honi chahiye.
+
+### Minimum rule tables chahiye:
+
+**Material table**
+
+* CR
+* HR
+* SS
+* GI
+* GP
+* Aluminium
+
+**Thickness ranges**
+
+* 0.3–0.8 mm
+* 0.8–1.2 mm
+* 1.2–2.0 mm
+* 2.0 mm+
+
+**Bend difficulty**
+
+* light profile
+* medium
+* complex
+* deep section
+* narrow flange
+* multiple return bends
+
+**Station estimate rules**
+Example:
+
+* simple channel = 6–8 stations
+* lipped channel = 8–12
+* shutter section = 10–14
+* complex multi-bend section = 12–20+
+
+**Shaft selection rules**
+Example rough logic:
+
+* light duty = 40 mm
+* medium = 50 mm
+* heavy = 60 mm+
+* final by load + span + roll width
+
+**Bearing rules**
+
+* 6208 / 6210 / taper bearing etc based on shaft dia + radial load + speed
+
+Ye sab database/config file me hona chahiye, prompt me nahi.
+
+## Step 4: Replit developer ko ye exact bug-fix instruction do
+
+Is text ko seedha Replit me paste karo:
+
+```text
+You are fixing an engineering automation app for roll forming design.
+
+Goal:
+Make the app work in deterministic debug-first mode, not fake AI mode.
+
+Required pipeline:
+1. Import drawing file
+2. Extract geometry and dimensions
+3. Ask for sheet thickness
+4. Ask for raw material
+5. Generate flower pattern
+6. Estimate number of forming stations
+7. Generate preliminary roll design logic
+8. Estimate shaft diameter
+9. Suggest bearing type
+10. Show full engineering report
+
+Rules:
+- Break system into 4 modules: Import Engine, Geometry Engine, Roll Logic Engine, Mechanical Selection Engine
+- Add step-by-step debug logs after each stage
+- If any stage fails, show exact reason and stop next stage
+- Do not pretend success if data is missing
+- Do not use LLM reasoning for final engineering calculations
+- Use hardcoded rule tables + formulas + config-driven logic
+- Add validation for open profile, scale mismatch, missing dimensions, unsupported entities, invalid thickness, missing material
+- Create sample test cases for channel, lipped channel, shutter profile
+- Add manual mode and auto mode
+- Auto mode must internally execute each stage in sequence and return structured JSON result
+- Every function must log input, output, and validation status
+
+Deliverables:
+- fixed backend workflow
+- debug panel
+- test dataset
+- failure report
+- final engineering summary panel
+```
+
+## Step 5: JSON output enforce karo
+
+Auto mode ka output loose text me nahi hona chahiye. Structured JSON chahiye.
+
+Example:
+
+```json
+{
+  "import_status": "pass",
+  "profile_status": "pass",
+  "section_width": 100,
+  "section_height": 50,
+  "sheet_thickness": 0.8,
+  "material": "GI",
+  "bend_count": 6,
+  "flower_pattern_generated": true,
+  "estimated_stations": 8,
+  "shaft_diameter_mm": 50,
+  "bearing_type": "6210",
+  "notes": [
+    "Profile is symmetric",
+    "Medium forming difficulty",
+    "Suitable for 8-station line"
+  ]
+}
+```
+
+Jab JSON sahi aayega tab UI sahi chalne lagegi.
+
+## Step 6: Replit me test cases lagao
+
+App tab tak complete mat mano jab tak ye 3 test pass na ho:
+
+**Test 1: Simple U channel**
+
+* width
+* height
+* thickness
+* GI
+
+**Test 2: Lipped channel**
+
+* lip bends
+* extra station count
+
+**Test 3: Shutter profile**
+
+* multiple bends
+* narrow section
+* more complex forming
+
+Agar ye 3 profiles auto mode me pass nahi ho rahi, to app production-ready nahi hai.
+
+## Step 7: Sabse common asli problems
+
+Aapke case me likely इनमें से koi issue hai:
+
+### A. Drawing import ke baad dimensions read nahi ho rahi
+
+Solution:
+
+* DXF parser improve karo
+* unsupported entity mapping add karo
+* unit scaling fix karo
+
+### B. Thickness/material lene ke baad next step trigger nahi ho raha
+
+Solution:
+
+* event chain fix karo
+* async function await missing ho sakta hai
+* state management broken ho sakta hai
+
+### C. Flower pattern random ya blank aa raha hai
+
+Solution:
+
+* bend detection algorithm missing
+* geometry not normalized
+* profile segmentation not done
+
+### D. Roll design false result de raha hai
+
+Solution:
+
+* roll design actual formula engine se jodo
+* placeholder AI text hatao
+
+### E. Bearing/shaft random aa raha hai
+
+Solution:
+
+* mechanical load calculation module banao
+* rule-based recommendation lagao
+
+## Step 8: Replit se “solve” ka practical path
+
+Aap developer ya Replit AI ko ye order me kaam karvao:
+
+**Phase 1**
+
+* current code scan
+* all modules identify
+* missing functions list banao
+
+**Phase 2**
+
+* debug logs add
+* broken pipeline locate
+
+**Phase 3**
+
+* geometry engine fix
+* thickness/material input connect
+
+**Phase 4**
+
+* flower pattern logic stable karo
+
+**Phase 5**
+
+* station estimation rules add
+
+**Phase 6**
+
+* shaft/bearing calculation table add
+
+**Phase 7**
+
+* engineering report + export
+
+## Step 9: UI me 2 mode rakho
+
+**Manual Mode**
+
+* engineer khud values enter kare
+
+**Auto Mode**
+
+* drawing se auto extract
+* user only thickness/material confirm kare
+
+Isse agar auto fail ho to user ka kaam rukega nahi.
+
+## Step 10: Aapko ab kya karna chahiye
+
+Replit wale ko bolo:
+
+**“Mere app me UI nahi, backend engineering pipeline fix karo. Har step ka debug result dikhna chahiye. Auto mode me fake success nahi chahiye. DXF import se flower pattern aur station calculation tak deterministic engine chahiye.”**
+
+Aur unse ye 4 cheezein mango:
+
+1. current code audit
+2. failed step report
+3. fixed workflow diagram
+4. 3 sample profiles par test result
+
+Agar aap chaho, main abhi aapke liye ek **ULTRA PRO Replit master prompt** likh deta hoon jo specifically isi roll-forming auto-design app ko fix karne ke liye hoga.

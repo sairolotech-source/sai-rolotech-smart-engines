@@ -10,6 +10,7 @@ import {
   autoDetectProfileType,
 } from "../../store/useCncStore";
 import { uploadDxf, generateFlower, generateGcode, generateRollTooling, calcStripWidth } from "../../lib/api";
+import { PipelineDebugPanel } from "../PipelineDebugPanel";
 import { toast } from "../../hooks/use-toast";
 import { StripWidthCalculator } from "./StripWidthCalculator";
 import { MachineSizingCalculator } from "./MachineSizingCalculator";
@@ -249,6 +250,7 @@ export function LeftPanel() {
     gcode: false,
     roll: false,
     stripCalc: false,
+    pipeline: false,
   });
 
   const toggleSection = (key: keyof typeof sections) =>
@@ -1220,6 +1222,32 @@ export function LeftPanel() {
           </div>
         );
       })()}
+
+      {/* PIPELINE DEBUG */}
+      {geometry && (
+        <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>
+          <SectionHeader
+            title="Auto Pipeline Debug"
+            icon={<Play className="w-4 h-4" />}
+            expanded={sections.pipeline}
+            onToggle={() => toggleSection("pipeline")}
+          />
+          {sections.pipeline && (
+            <div className="mt-3">
+              <PipelineDebugPanel
+                geometry={geometry}
+                thickness={materialThickness}
+                material={materialType}
+                sectionModel={sectionModel ?? "open"}
+                onFlowerStationsReady={(stations) => {
+                  setStations(stations as Parameters<typeof setStations>[0]);
+                  toast({ title: "Pipeline Complete", description: `${stations.length} flower stations generated from full pipeline.` });
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* STATION CONFIG */}
       <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.045)" }}>

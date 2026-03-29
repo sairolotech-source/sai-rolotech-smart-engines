@@ -34,6 +34,7 @@ import systemWatchdogRouter from "./system-watchdog";
 import { startWatchdog } from "../lib/system-watchdog";
 import rollPassEngineRouter from "./roll-pass-engine";
 import geminiKeysRouter from "./gemini-keys";
+import autoPipelineRouter from "./auto-pipeline";
 
 const router: IRouter = Router();
 
@@ -82,6 +83,7 @@ router.use(flowerSuggestionsRouter);
 router.use(rollPassEngineRouter);
 router.use(deepVerifyRouter);
 router.use("/gemini-keys", geminiKeysRouter);
+router.use(autoPipelineRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

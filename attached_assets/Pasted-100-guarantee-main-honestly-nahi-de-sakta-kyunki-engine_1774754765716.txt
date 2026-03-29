@@ -1,0 +1,349 @@
+100% guarantee main honestly nahi de sakta, kyunki engineering auto-design me **wrong DXF, missing geometry, unsupported entity, material variation, springback, tooling assumptions** ki wajah se absolute 100% possible nahi hota.
+Lekin **near-zero-error system** banaya ja sakta hai jisme **Auto Mode sirf tab chale jab sab checks pass hon**, aur warna system **Semi Auto Mode me safely fallback** ho.
+
+Aapke liye best solution ye hai:
+
+# ACCURACY CONTROL SYSTEM
+
+App me 3 mode rakho:
+
+## 1. Auto Mode
+
+Sirf tab run ho jab:
+
+* DXF parse pass
+* geometry clean pass
+* bend detection confidence high
+* web/flange/lip detection pass
+* material selected
+* thickness valid
+* station logic confidence acceptable
+* no critical warning
+
+Agar inme se ek bhi fail ho → Auto Mode band, Semi Auto Mode par bhejo.
+
+## 2. Semi Auto Mode
+
+System ye auto kare:
+
+* DXF import
+* width/height detect
+* probable bends detect
+* probable profile type suggest
+* flower pattern suggest
+* station range suggest
+
+User confirm kare:
+
+* bend count
+* flange/web/lip
+* profile type
+* material
+* thickness
+* return bends
+* selected station count
+
+Is mode me risk bahut kam ho jayega.
+
+## 3. Manual Verified Mode
+
+Critical projects ke liye:
+
+* user ya engineer har stage verify kare
+* final roll/design report tabhi generate ho
+
+---
+
+# GOLDEN RULE
+
+**Jahan confidence low ho, wahan output mat do.**
+App ko bolna hai:
+
+* “I am not confident”
+* “Manual confirmation required”
+* “Semi-auto correction needed”
+
+Fake result kabhi nahi dena.
+
+---
+
+# ACCURACY GATE SYSTEM
+
+Har engine ke saath 3 cheezein return honi chahiye:
+
+* `status`: pass / fail / review_required
+* `confidence`: high / medium / low
+* `blocking`: true / false
+
+Example:
+
+```json
+{
+  "engine": "bend_detection_engine",
+  "status": "review_required",
+  "confidence": "low",
+  "blocking": true,
+  "reason": "Disconnected geometry caused uncertain bend detection"
+}
+```
+
+Agar `blocking: true` ho to:
+
+* Auto Mode stop
+* Semi Auto open
+
+---
+
+# CRITICAL VALIDATION RULES
+
+## Auto Mode tabhi allow karo jab:
+
+* imported geometry supported ho
+* entity count reasonable ho
+* open contour usable ho
+* duplicate lines clean ho
+* bbox valid ho
+* bend count confidence high ho
+* section feature detection stable ho
+* section type contradiction na ho
+* thickness/material valid ho
+* station count rule-based ho
+* shaft/bearing result explainable ho
+
+## Auto Mode turant reject karo agar:
+
+* bend count 0 aaye
+* width/height 0 aaye
+* unsupported entities zyada ho
+* geometry disconnected ho
+* section type uncertain ho
+* 2 engines contradictory result dein
+* same profile ko alag logic alag output de raha ho
+
+---
+
+# CROSS-CHECK ENGINE
+
+Ek naya engine banao:
+
+## `consistency_engine`
+
+Ye verify kare:
+
+* bend count vs section type match?
+* lipped_channel but lips = 0? fail
+* simple channel but return bends > 0? review
+* shutter profile but stations too low? fail
+* heavy duty but shaft too small? fail
+* roll OD too small vs shaft? fail
+
+Example:
+
+```json
+{
+  "engine": "consistency_engine",
+  "status": "fail",
+  "blocking": true,
+  "reason": "Profile classified as lipped_channel but no lips detected"
+}
+```
+
+Ye engine accuracy bahut badhata hai.
+
+---
+
+# CONFIDENCE SCORING SYSTEM
+
+Har result ko score do:
+
+* Import confidence: /20
+* Geometry confidence: /20
+* Bend confidence: /20
+* Section feature confidence: /15
+* Flower logic confidence: /10
+* Station logic confidence: /10
+* Mechanical confidence: /5
+
+Total = 100
+
+Rule:
+
+* 85+ → Auto Mode allowed
+* 65–84 → Semi Auto only
+* below 65 → Manual review only
+
+---
+
+# SEMI AUTO MODE UI ME KYA HONA CHAHIYE
+
+System user ko ye confirm karne de:
+
+* detected width
+* detected height
+* bend count
+* profile type
+* flange lengths
+* lip present or not
+* return bend present or not
+* suggested stations
+* shaft suggestion
+* bearing suggestion
+
+Aur har field ke saamne:
+
+* detected value
+* editable confirmed value
+
+Example:
+
+```text
+Detected bend count: 6
+Confirm bend count: [ 6 ]
+```
+
+Isse real accuracy bahut improve hogi.
+
+---
+
+# 100% KE SABSE KARIB JAANE KE LIYE YE NON-NEGOTIABLE RULES LAGAO
+
+## Rule 1
+
+**No result without validation**
+
+## Rule 2
+
+**No final result if confidence low**
+
+## Rule 3
+
+**No hidden assumptions**
+
+## Rule 4
+
+**Every critical output must show reason**
+
+## Rule 5
+
+**Every auto result must be reproducible from rules**
+
+## Rule 6
+
+**Every DXF must pass preview + bbox + chain validation first**
+
+## Rule 7
+
+**If geometry dirty, force semi-auto**
+
+## Rule 8
+
+**If section is complex, do not allow full auto final tooling**
+
+---
+
+# REPLIT KO YE EXACT MASTER COMMAND DO
+
+```text
+Build an Accuracy Control System for the roll forming app.
+
+Goal:
+Do not maximize automation blindly.
+Maximize reliability and safe engineering output.
+
+Create 3 modes:
+1. Auto Mode
+2. Semi Auto Mode
+3. Manual Verified Mode
+
+Rules:
+- Auto Mode runs only if all critical engines pass with high confidence
+- If any critical engine is low confidence or contradictory, block Auto Mode
+- In blocked cases, automatically switch to Semi Auto Mode
+- Semi Auto Mode must show detected values and ask the user to confirm or correct them
+- Never generate fake final engineering output
+- Never claim certainty if geometry or logic is unclear
+
+Add to every engine:
+- status
+- confidence
+- blocking
+- reason
+- assumptions
+- warnings
+
+Create a new consistency_engine that cross-checks:
+- bend count vs profile type
+- lip detection vs lipped channel
+- return bends vs profile classification
+- station count vs complexity
+- shaft size vs duty
+- roll OD vs shaft size
+
+Create a confidence scoring system out of 100:
+- import confidence /20
+- geometry confidence /20
+- bend detection confidence /20
+- section feature confidence /15
+- flower logic confidence /10
+- station confidence /10
+- mechanical confidence /5
+
+Mode rules:
+- 85+ => Auto Mode allowed
+- 65 to 84 => Semi Auto only
+- below 65 => Manual review required
+
+Semi Auto Mode UI must allow confirmation of:
+- width
+- height
+- bend count
+- profile type
+- flanges
+- lips
+- return bends
+- station count
+- shaft suggestion
+- bearing suggestion
+
+Add a top-level final_decision_engine that returns:
+- selected_mode
+- overall_confidence
+- blocking_reasons
+- recommended_next_action
+
+Do not optimize for speed first.
+Optimize for reliability, transparency, and engineering safety.
+```
+
+---
+
+# FINAL DECISION ENGINE ka output aisa hona chahiye
+
+```json
+{
+  "selected_mode": "semi_auto",
+  "overall_confidence": 78,
+  "blocking_reasons": [
+    "Bend detection confidence medium",
+    "Lip detection uncertain"
+  ],
+  "recommended_next_action": "User confirmation required before final station and roll recommendations"
+}
+```
+
+---
+
+# Sabse important baat
+
+Aapko **100% auto** nahi banana chahiye.
+Aapko **100% safe decision flow** banana chahiye.
+
+Matlab:
+
+* clear profile → Auto
+* thoda uncertain → Semi Auto
+* risky profile → Manual review
+
+Yehi real professional system hota hai.
+
+Agar chaho, main abhi next message me aapke liye **final_decision_engine + consistency_engine ka actual code** likh deta hoon.

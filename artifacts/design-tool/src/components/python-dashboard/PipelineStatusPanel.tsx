@@ -4,6 +4,12 @@ interface StageItem {
   stage: string;
   status: string;
   reason?: string | null;
+  selected_mode?: string;
+  overall_confidence?: number;
+  blocking_reasons?: string[];
+  consistency_status?: string;
+  blocking?: boolean;
+  issues_found?: number;
 }
 
 interface Props {
@@ -22,8 +28,16 @@ const LABEL: Record<string, string> = {
   bearing_engine: "Bearing Selection",
   duty_engine: "Duty Classification",
   roll_design_calc_engine: "Roll Design Calc",
+  consistency_engine: "Consistency Check",
+  final_decision_engine: "Final Decision",
   report_engine: "Report Generation",
   pdf_export_engine: "PDF Export",
+};
+
+const MODE_COLOR: Record<string, string> = {
+  auto_mode: "text-emerald-400",
+  semi_auto: "text-yellow-400",
+  manual_review: "text-red-400",
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -82,10 +96,24 @@ export function PipelineStatusPanel({ stageDebug, firstFailedStage, overallStatu
                   : "border-gray-700/30 bg-gray-800/30"
               }`}
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="font-medium text-gray-300">{LABEL[s.stage] ?? s.stage}</div>
                 <div className="text-[10px] text-gray-600 font-mono">{s.stage}</div>
                 {s.reason && <div className="text-[10px] text-red-400 mt-0.5">{s.reason}</div>}
+                {s.stage === "final_decision_engine" && s.selected_mode && (
+                  <div className={`text-[10px] font-semibold mt-0.5 ${MODE_COLOR[s.selected_mode] ?? "text-gray-400"}`}>
+                    {s.selected_mode.replace("_", " ").toUpperCase()} — {s.overall_confidence}/100
+                  </div>
+                )}
+                {s.stage === "consistency_engine" && s.consistency_status && (
+                  <div className={`text-[10px] font-semibold mt-0.5 ${
+                    s.consistency_status === "pass" ? "text-emerald-400"
+                    : s.consistency_status === "fail" ? "text-red-400"
+                    : "text-yellow-400"
+                  }`}>
+                    {s.consistency_status.replace("_", " ").toUpperCase()} — {s.issues_found ?? 0} issue{s.issues_found !== 1 ? "s" : ""}
+                  </div>
+                )}
               </div>
               <StatusBadge status={s.status} />
             </div>

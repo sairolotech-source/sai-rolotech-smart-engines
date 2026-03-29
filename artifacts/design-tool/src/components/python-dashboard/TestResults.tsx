@@ -8,8 +8,17 @@ interface TestCase {
   bearing?: string;
   roll_od_mm?: number;
   complexity?: string;
+  selected_mode?: string;
+  overall_confidence?: number;
+  consistency_status?: string;
   reason?: string;
 }
+
+const MODE_COLOR: Record<string, string> = {
+  auto_mode: "#22c55e",
+  semi_auto: "#eab308",
+  manual_review: "#ef4444",
+};
 
 interface TestData {
   status: string;
@@ -51,12 +60,23 @@ export function TestResults({ data }: Props) {
                 : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
             </div>
             {tc.status === "pass" ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-0.5 text-[10px] text-gray-500">
-                <span>Stations: <span className="text-gray-300">{tc.stations}</span></span>
-                <span>Shaft: <span className="text-gray-300">{tc.shaft_mm}mm</span></span>
-                <span>Bearing: <span className="text-gray-300">{tc.bearing}</span></span>
-                <span>Roll OD: <span className="text-gray-300">{tc.roll_od_mm}mm</span></span>
-                <span className="col-span-2">Complexity: <span className="text-gray-300">{tc.complexity}</span></span>
+              <div className="space-y-1">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-0.5 text-[10px] text-gray-500">
+                  <span>Stations: <span className="text-gray-300">{tc.stations}</span></span>
+                  <span>Shaft: <span className="text-gray-300">{tc.shaft_mm}mm</span></span>
+                  <span>Bearing: <span className="text-gray-300">{tc.bearing}</span></span>
+                  <span>Roll OD: <span className="text-gray-300">{tc.roll_od_mm}mm</span></span>
+                  <span>Complexity: <span className="text-gray-300">{tc.complexity}</span></span>
+                  <span>Consistency: <span className={tc.consistency_status === "pass" ? "text-emerald-400" : "text-yellow-400"}>{tc.consistency_status ?? "—"}</span></span>
+                  {tc.selected_mode && (
+                    <span className="col-span-2">
+                      Mode: <span style={{ color: MODE_COLOR[tc.selected_mode] ?? "#9ca3af", fontWeight: 600 }}>
+                        {tc.selected_mode.replace("_", " ").toUpperCase()}
+                      </span>
+                      <span className="text-gray-500 ml-2">({tc.overall_confidence}/100)</span>
+                    </span>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-[10px] text-red-400">{tc.reason ?? "Pipeline failed"}</div>

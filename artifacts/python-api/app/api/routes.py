@@ -30,6 +30,8 @@ from app.engines.duty_engine import classify as classify_duty
 from app.engines.roll_design_calc_engine import generate_roll_design_calc
 from app.engines.report_engine import generate_report
 from app.engines.pdf_export_engine import export_report_pdf
+from app.engines.consistency_engine import validate_consistency
+from app.engines.final_decision_engine import make_final_decision
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -82,6 +84,45 @@ def _run_core_engines(
     }
 
 
+def _run_accuracy_engines(
+    import_result: Dict[str, Any],
+    geometry_result: Dict[str, Any],
+    profile_result: Dict[str, Any],
+    input_result: Dict[str, Any],
+    flower_result: Dict[str, Any],
+    station_result: Dict[str, Any],
+    shaft_result: Dict[str, Any],
+    bearing_result: Dict[str, Any],
+    roll_calc_result: Dict[str, Any],
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Run consistency_engine + final_decision_engine and return both results."""
+    consistency_result = validate_consistency(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+        bearing_result=bearing_result,
+        roll_calc_result=roll_calc_result,
+    )
+    decision_result = make_final_decision(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+        bearing_result=bearing_result,
+        roll_calc_result=roll_calc_result,
+        consistency_result=consistency_result,
+    )
+    return consistency_result, decision_result
+
+
+_EMPTY = {"status": "pass", "engine": "not_applicable"}
+
+
 def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
     """Full auto-mode pipeline — returns complete pipeline dict."""
     import_result = parse_entities(data.entities or [])
@@ -104,6 +145,18 @@ def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
     if is_fail(core):
         return core
 
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
     pipeline = {
         "status": "pass",
         "file_import_engine": import_result,
@@ -111,6 +164,8 @@ def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
         "profile_analysis_engine": profile_result,
         "input_engine": input_result,
         **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine": consistency_result,
+        "final_decision_engine": decision_result,
     }
 
     report_result = generate_report(pipeline)
@@ -145,11 +200,25 @@ def execute_manual_pipeline(data: ManualProfileInput) -> Dict[str, Any]:
     if is_fail(core):
         return core
 
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=_EMPTY,
+        geometry_result=_EMPTY,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
     pipeline = {
         "status": "pass",
         "profile_analysis_engine": profile_result,
         "input_engine": input_result,
         **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine": consistency_result,
+        "final_decision_engine": decision_result,
     }
 
     report_result = generate_report(pipeline)
@@ -168,8 +237,11 @@ def health():
         "engines": [
             "file_import", "geometry", "profile_analysis", "input",
             "advanced_flower", "station", "roll_logic", "shaft",
-            "bearing", "duty", "roll_design_calc", "report", "pdf_export",
+            "bearing", "duty", "roll_design_calc",
+            "consistency", "final_decision",
+            "report", "pdf_export",
         ],
+        "total_engines": 15,
     }
 
 
@@ -219,6 +291,18 @@ async def dxf_upload(
     if is_fail(core):
         return core
 
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
     pipeline = {
         "status": "pass",
         "source_file": file.filename,
@@ -227,6 +311,8 @@ async def dxf_upload(
         "profile_analysis_engine": profile_result,
         "input_engine": input_result,
         **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine": consistency_result,
+        "final_decision_engine": decision_result,
     }
 
     pipeline["report_engine"] = generate_report(pipeline)
@@ -272,6 +358,8 @@ def run_tests():
             if status == "fail":
                 all_pass = False
             summary = result.get("report_engine", {}).get("engineering_summary", {})
+            decision = result.get("final_decision_engine", {})
+            consistency = result.get("consistency_engine", {})
             results.append({
                 "name": name,
                 "status": status,
@@ -280,6 +368,9 @@ def run_tests():
                 "bearing": summary.get("bearing_type"),
                 "roll_od_mm": summary.get("estimated_roll_od_mm"),
                 "complexity": summary.get("forming_complexity_class"),
+                "selected_mode": decision.get("selected_mode"),
+                "overall_confidence": decision.get("overall_confidence"),
+                "consistency_status": consistency.get("consistency_status"),
                 "failed_stage": result.get("failed_stage"),
             })
         except Exception as e:
@@ -313,6 +404,8 @@ def run_manual_mode_debug(data: ManualProfileInput):
         "bearing_engine",
         "duty_engine",
         "roll_design_calc_engine",
+        "consistency_engine",
+        "final_decision_engine",
         "report_engine",
     ]
 
@@ -325,11 +418,16 @@ def run_manual_mode_debug(data: ManualProfileInput):
         reason = eng.get("reason") if st == "fail" else None
         if st == "fail" and not first_failed:
             first_failed = engine_key
-        stage_debug.append({
-            "stage": engine_key,
-            "status": st,
-            "reason": reason,
-        })
+        entry: Dict[str, Any] = {"stage": engine_key, "status": st, "reason": reason}
+        if engine_key == "consistency_engine":
+            entry["consistency_status"] = eng.get("consistency_status")
+            entry["blocking"] = eng.get("blocking")
+            entry["issues_found"] = eng.get("issues_found", 0)
+        if engine_key == "final_decision_engine":
+            entry["selected_mode"] = eng.get("selected_mode")
+            entry["overall_confidence"] = eng.get("overall_confidence")
+            entry["blocking_reasons"] = eng.get("blocking_reasons", [])
+        stage_debug.append(entry)
 
     if pipeline.get("status") == "fail" and not first_failed:
         first_failed = pipeline.get("failed_stage")

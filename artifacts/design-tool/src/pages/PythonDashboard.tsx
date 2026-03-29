@@ -7,6 +7,7 @@ import { EngineDetails } from "@/components/python-dashboard/EngineDetails";
 import { WarningPanel } from "@/components/python-dashboard/WarningPanel";
 import { ReportPreview } from "@/components/python-dashboard/ReportPreview";
 import { TestResults } from "@/components/python-dashboard/TestResults";
+import FinalDecisionPanel from "@/components/python-dashboard/FinalDecisionPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -93,6 +94,8 @@ export default function PythonDashboard() {
   const rollCalc = (pipelineResult?.roll_design_calc_engine ?? {}) as Record<string, unknown>;
   const warnings = (rollCalc?.warnings as string[]) ?? [];
   const assumptions = (rollCalc?.assumptions as string[]) ?? [];
+  const finalDecision = (pipelineResult?.final_decision_engine ?? null) as Record<string, unknown> | null;
+  const consistency = (pipelineResult?.consistency_engine ?? null) as Record<string, unknown> | null;
 
   return (
     <div className="min-h-screen bg-[#08090f] text-gray-200 p-4 md:p-6">
@@ -171,6 +174,7 @@ export default function PythonDashboard() {
           </div>
 
           <div className="lg:col-span-2 space-y-4">
+            <FinalDecisionPanel finalDecision={finalDecision as any} consistency={consistency as any} />
             <SummaryCards summary={summary} />
             <WarningPanel warnings={warnings} assumptions={assumptions} />
 

@@ -73,13 +73,13 @@ function buildProjectContext(store: ReturnType<typeof useCncStore.getState>): st
       hasTooling: store.rollTooling.some(rt => rt.stationNumber === st.stationNumber),
       hasGcode: store.gcodeOutputs.some(g => g.stationNumber === st.stationNumber),
     })),
-    rollTooling: store.rollTooling.slice(0, 6).map(rt => ({
+    rollTooling: store.rollTooling.slice(0, 6).filter(rt => !!rt.rollProfile).map(rt => ({
       station: rt.stationNumber,
-      rollDiameterMm: rt.rollProfile.rollDiameter,
-      rollWidthMm: parseFloat(rt.rollProfile.rollWidth.toFixed(2)),
-      grooveDepthMm: parseFloat(rt.rollProfile.grooveDepth.toFixed(2)),
-      gapMm: parseFloat(rt.rollProfile.gap.toFixed(3)),
-      kFactor: parseFloat(rt.rollProfile.kFactor.toFixed(4)),
+      rollDiameterMm: rt.rollProfile!.rollDiameter,
+      rollWidthMm: parseFloat(rt.rollProfile!.rollWidth.toFixed(2)),
+      grooveDepthMm: parseFloat(rt.rollProfile!.grooveDepth.toFixed(2)),
+      gapMm: parseFloat(rt.rollProfile!.gap.toFixed(3)),
+      kFactor: parseFloat(rt.rollProfile!.kFactor.toFixed(4)),
     })),
     designScore: store.designScore ? {
       score: store.designScore.overallScore,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { runTestCases } from "../lib/api";
 import { CheckCircle2, XCircle, AlertTriangle, FlaskConical, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
@@ -37,7 +37,7 @@ interface SuiteResult {
   results: TCResult[];
 }
 
-const STATUS_ICON: Record<StageStatus, JSX.Element> = {
+const STATUS_ICON: Record<StageStatus, ReactElement> = {
   pass: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />,
   fail: <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />,
   warn: <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />,

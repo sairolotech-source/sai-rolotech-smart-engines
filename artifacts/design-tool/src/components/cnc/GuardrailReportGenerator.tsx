@@ -445,14 +445,14 @@ export function GuardrailReportGenerator({ onClose }: { onClose: () => void }) {
 
       sectionTitle("CR-310 — Roll Tooling Summary");
       const cr310Rolls = rollTooling.length > 0 && store.profileMetadata?.model === "CR-310"
-        ? rollTooling.map(rt => ({
+        ? rollTooling.filter(rt => !!rt.rollProfile).map(rt => ({
             station: rt.stationNumber,
             label: rt.label,
-            od: rt.rollProfile.rollDiameter,
-            bore: rt.rollProfile.shaftDiameter,
-            width: parseFloat(rt.rollProfile.rollWidth.toFixed(1)),
-            grooveDepth: parseFloat(rt.rollProfile.grooveDepth.toFixed(2)),
-            gap: parseFloat(rt.rollProfile.gap.toFixed(2)),
+            od: rt.rollProfile!.rollDiameter,
+            bore: rt.rollProfile!.shaftDiameter,
+            width: parseFloat(rt.rollProfile!.rollWidth.toFixed(1)),
+            grooveDepth: parseFloat(rt.rollProfile!.grooveDepth.toFixed(2)),
+            gap: parseFloat(rt.rollProfile!.gap.toFixed(2)),
           }))
         : generateRollTooling(CR310, stationCount, rdOD, rdShaft);
 
@@ -491,14 +491,14 @@ export function GuardrailReportGenerator({ onClose }: { onClose: () => void }) {
 
       sectionTitle("CR-194 — Roll Tooling Summary");
       const cr194Rolls = rollTooling.length > 0 && store.profileMetadata?.model === "CR-194"
-        ? rollTooling.map(rt => ({
+        ? rollTooling.filter(rt => !!rt.rollProfile).map(rt => ({
             station: rt.stationNumber,
             label: rt.label,
-            od: rt.rollProfile.rollDiameter,
-            bore: rt.rollProfile.shaftDiameter,
-            width: parseFloat(rt.rollProfile.rollWidth.toFixed(1)),
-            grooveDepth: parseFloat(rt.rollProfile.grooveDepth.toFixed(2)),
-            gap: parseFloat(rt.rollProfile.gap.toFixed(2)),
+            od: rt.rollProfile!.rollDiameter,
+            bore: rt.rollProfile!.shaftDiameter,
+            width: parseFloat(rt.rollProfile!.rollWidth.toFixed(1)),
+            grooveDepth: parseFloat(rt.rollProfile!.grooveDepth.toFixed(2)),
+            gap: parseFloat(rt.rollProfile!.gap.toFixed(2)),
           }))
         : generateRollTooling(CR194, stationCount, rdOD, rdShaft);
 

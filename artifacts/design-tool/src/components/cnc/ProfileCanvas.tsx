@@ -239,7 +239,7 @@ export function ProfileCanvas() {
               const xOff = stBounds[ri] ? stBounds[ri].xOffset : 0;
               return (
                 <Group key={`roll-${rt.stationNumber}`} opacity={opacity}>
-                  {rt.rollProfile.upperRoll.map((seg, i) => {
+                  {(rt.rollProfile?.upperRoll ?? []).map((seg, i) => {
                     const pts = segmentToPoints(seg);
                     return (
                       <Line
@@ -256,7 +256,7 @@ export function ProfileCanvas() {
                       />
                     );
                   })}
-                  {rt.rollProfile.lowerRoll.map((seg, i) => {
+                  {(rt.rollProfile?.lowerRoll ?? []).map((seg, i) => {
                     const pts = segmentToPoints(seg);
                     return (
                       <Line
@@ -344,10 +344,10 @@ export function ProfileCanvas() {
                 {rt && (
                   <>
                     <div className="border-t border-zinc-600 mt-2 pt-2 text-zinc-300 font-semibold">Roll Tooling</div>
-                    <div>Roll Width: {rt.rollProfile.rollWidth} mm</div>
-                    <div>Gap: {rt.rollProfile.gap} mm</div>
-                    <div>Roll Dia: {rt.rollProfile.rollDiameter} mm</div>
-                    <div>Shaft Dia: {rt.rollProfile.shaftDiameter} mm</div>
+                    <div>Roll Width: {rt.rollProfile?.rollWidth ?? "—"} mm</div>
+                    <div>Gap: {rt.rollProfile?.gap ?? "—"} mm</div>
+                    <div>Roll Dia: {rt.rollProfile?.rollDiameter ?? "—"} mm</div>
+                    <div>Shaft Dia: {rt.rollProfile?.shaftDiameter ?? "—"} mm</div>
                   </>
                 )}
               </div>

@@ -80,7 +80,7 @@ function RollGrooveProfile({ shape, angleDeg, depthFrac, outerR, cx, cy, color, 
 }
 
 function RollCrossSection({ rp, side, rollNum, rollType }: {
-  rp: RollToolingResult["rollProfile"];
+  rp: NonNullable<RollToolingResult["rollProfile"]>;
   side: "upper" | "lower";
   rollNum: number;
   rollType?: RollTypeInfo;
@@ -140,7 +140,7 @@ function RollCrossSection({ rp, side, rollNum, rollType }: {
 
 // ─── Per-roll detail card ────────────────────────────────────────────────────
 function RollCard({ rp, side, rollNum, stationLabel, stationNum, rollType, rollMaterial }: {
-  rp: RollToolingResult["rollProfile"];
+  rp: NonNullable<RollToolingResult["rollProfile"]>;
   side: "upper" | "lower";
   rollNum: number;
   stationLabel: string;

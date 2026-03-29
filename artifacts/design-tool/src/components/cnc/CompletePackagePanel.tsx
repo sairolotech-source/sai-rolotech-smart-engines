@@ -527,6 +527,7 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
       const gcodeFolder = zip.folder("GCODE");
       for (const rt of rollTooling) {
         const rp = rt.rollProfile;
+        if (!rp) continue;
         const upperName = `ROLL_${String(rp.upperRollNumber).padStart(3,"0")}_UPPER_${rt.label}.nc`;
         const lowerName = `ROLL_${String(rp.lowerRollNumber).padStart(3,"0")}_LOWER_${rt.label}.nc`;
         gcodeFolder?.file(upperName, rp.upperLatheGcode);
@@ -537,6 +538,7 @@ function ExportTab({ rollTooling, machineData, bomResult }: {
       const splitFolder = zip.folder("GCODE_SPLIT");
       for (const rt of rollTooling) {
         const rp = rt.rollProfile;
+        if (!rp) continue;
         for (const [gcode, num, side] of [
           [rp.upperLatheGcode, rp.upperRollNumber, "UPPER"],
           [rp.lowerLatheGcode, rp.lowerRollNumber, "LOWER"],

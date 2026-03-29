@@ -3,8 +3,7 @@ import { Switch, Route, Router as WouterRouter, useRoute } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuthStore } from "@/store/useAuthStore";
-
-type AppTab = "profile" | "gcode" | "flower" | "cnc" | "3d" | "bom" | "accuracy" | "dxf" | "report" | "sheet" | "coil" | "manual" | "digital-twin" | "dashboard";
+import type { AppTab } from "@/store/useCncStore";
 
 const LicenseKeyScreen = lazy(() => import("@/components/auth/LicenseKeyScreen").then(m => ({ default: m.LicenseKeyScreen })));
 const Home             = lazy(() => import("@/pages/Home"));

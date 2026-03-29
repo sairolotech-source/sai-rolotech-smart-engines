@@ -478,7 +478,7 @@ export function LeftPanel() {
           );
         }
 
-        if (result.convertedFrom === "dwg") {
+        if ((result as { convertedFrom?: string }).convertedFrom === "dwg") {
           setError("✅ DWG converted to DXF! Profile loaded and section type auto-detected.");
         }
 

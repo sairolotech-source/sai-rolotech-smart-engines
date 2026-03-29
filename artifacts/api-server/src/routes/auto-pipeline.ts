@@ -314,7 +314,7 @@ router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>,
         materialType: effectiveMaterial,
       });
       if (!inputVal.valid) {
-        for (const e of inputVal.errors) warnings.push(`[FLOWER-INPUT] ${e.field}: ${e.message}`);
+        for (const e of inputVal.errors) warnings.push(`[FLOWER-INPUT] ${e.field}: ${e.issue}`);
       }
 
       const flowerResult = generateFlowerPattern(geometry, numStations, "S", effectiveMaterial, thickness);
@@ -324,9 +324,8 @@ router.post("/auto-pipeline", (req: Request<unknown, unknown, AutoPipelineBody>,
         materialType: effectiveMaterial,
         thickness,
         numStations,
-        totalBendAngle: flowerStations.reduce((s: number, st: unknown) => {
-          const station = st as { bendAngle?: number };
-          return s + Math.abs(station.bendAngle ?? 0);
+        totalBendAngle: (flowerStations as Array<{ bendAngle?: number }>).reduce<number>((s, st) => {
+          return s + Math.abs(st.bendAngle ?? 0);
         }, 0),
         stripWidth,
         sectionModel: sectionModel ?? "open",

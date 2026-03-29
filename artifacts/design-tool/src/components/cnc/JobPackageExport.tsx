@@ -100,9 +100,9 @@ function runQualityChecks(store: ReturnType<typeof useCncStore.getState>): Quali
     {
       id: 10, category: "Rolls",
       label: "All stations have roll data",
-      passed: rollTooling.length > 0 && rollTooling.every(rt => rt.rollProfile.rollDiameter > 0),
+      passed: rollTooling.length > 0 && rollTooling.every(rt => (rt.rollProfile?.rollDiameter ?? 0) > 0),
       severity: "critical",
-      detail: rollTooling.length > 0 ? `${rollTooling.filter(rt => rt.rollProfile.rollDiameter > 0).length}/${rollTooling.length} stations valid` : "No roll data",
+      detail: rollTooling.length > 0 ? `${rollTooling.filter(rt => (rt.rollProfile?.rollDiameter ?? 0) > 0).length}/${rollTooling.length} stations valid` : "No roll data",
     },
     {
       id: 11, category: "G-Code",
@@ -186,6 +186,7 @@ function generateBomText(store: ReturnType<typeof useCncStore.getState>): string
   bom += `ROLL TOOLING:\n`;
   rollTooling.forEach((rt) => {
     const rp = rt.rollProfile;
+    if (!rp) return;
     bom += `  Station ${rt.stationNumber} (${rt.label}): Upper + Lower Roll\n`;
     bom += `    OD: Ø${rp.rollDiameter.toFixed(3)}mm | Bore: Ø${rp.shaftDiameter.toFixed(3)}mm | Width: ${rp.rollWidth.toFixed(3)}mm\n`;
   });
@@ -386,19 +387,21 @@ export function JobPackageExport() {
     if (rollTooling.length > 0) {
       rollTooling.forEach((rt) => {
         const stn = rt.stationNumber;
+        const rp = rt.rollProfile;
+        if (!rp) return;
         rollsTopFolder?.file(
           `top_stn${stn}_roll.json`,
-          JSON.stringify({ stationNumber: stn, label: rt.label, roll: rt.rollProfile.upperRoll, rollProfile: rt.rollProfile }, null, 2)
+          JSON.stringify({ stationNumber: stn, label: rt.label, roll: rp.upperRoll, rollProfile: rp }, null, 2)
         );
         rollsBottomFolder?.file(
           `bottom_stn${stn}_roll.json`,
-          JSON.stringify({ stationNumber: stn, label: rt.label, roll: rt.rollProfile.lowerRoll, rollProfile: rt.rollProfile }, null, 2)
+          JSON.stringify({ stationNumber: stn, label: rt.label, roll: rp.lowerRoll, rollProfile: rp }, null, 2)
         );
-        if (rt.rollProfile.upperLatheGcode) {
-          cncFolder?.file(`top_stn${stn}_roll.nc`, rt.rollProfile.upperLatheGcode);
+        if (rp.upperLatheGcode) {
+          cncFolder?.file(`top_stn${stn}_roll.nc`, rp.upperLatheGcode);
         }
-        if (rt.rollProfile.lowerLatheGcode) {
-          cncFolder?.file(`bottom_stn${stn}_roll.nc`, rt.rollProfile.lowerLatheGcode);
+        if (rp.lowerLatheGcode) {
+          cncFolder?.file(`bottom_stn${stn}_roll.nc`, rp.lowerLatheGcode);
         }
       });
     }

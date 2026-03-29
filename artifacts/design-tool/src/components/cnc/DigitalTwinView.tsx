@@ -159,8 +159,8 @@ export function DigitalTwinView() {
   }
 
   const stCount = rollTooling.length;
-  const rollDia = rollTooling[0]?.rollProfile.rollDiameter ?? 150;
-  const shaftDia = rollTooling[0]?.rollProfile.shaftDiameter ?? 40;
+  const rollDia = rollTooling[0]?.rollProfile?.rollDiameter ?? 150;
+  const shaftDia = rollTooling[0]?.rollProfile?.shaftDiameter ?? 40;
 
   const SVG_H = 380;
   const marginLeft = 60;
@@ -388,17 +388,17 @@ function StationGrid({ rollTooling, stations, rollGaps, onSelect, materialThickn
               <div className="flex items-center gap-1.5 mb-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                 <span className="font-bold text-xs" style={{ color }}>{rt.label}</span>
-                <span className="text-zinc-600 text-[10px] ml-auto">R{rt.rollProfile.upperRollNumber}/R{rt.rollProfile.lowerRollNumber}</span>
+                <span className="text-zinc-600 text-[10px] ml-auto">R{rt.rollProfile?.upperRollNumber}/R{rt.rollProfile?.lowerRollNumber}</span>
               </div>
               {st && <MiniProfile segments={st.segments} width={80} height={36} />}
               <div className="mt-1.5 space-y-0.5 text-[10px] font-mono text-zinc-400">
                 <div className="flex justify-between">
-                  <span>OD</span><span className="text-zinc-200">{formatMM(rt.rollProfile.rollDiameter)}mm</span>
+                  <span>OD</span><span className="text-zinc-200">{formatMM(rt.rollProfile?.rollDiameter ?? 0)}mm</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Gap</span>
                   <span style={{ color: gapCol }}>
-                    {formatMM(gap?.springbackGap ?? rt.rollProfile.gap)}mm
+                    {formatMM(gap?.springbackGap ?? rt.rollProfile?.gap ?? 0)}mm
                     {gapSeverity && <span className="ml-1 text-[8px]">[{gapSeverity}]</span>}
                   </span>
                 </div>

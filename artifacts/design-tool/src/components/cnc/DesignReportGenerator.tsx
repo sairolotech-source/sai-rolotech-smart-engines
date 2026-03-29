@@ -64,6 +64,7 @@ async function buildAssemblyDrawingImages(rollTooling: RollToolingResult[]): Pro
   const lowerSvg = buildShaftElevationSVGString(rollTooling, "lower");
   const svgW = Math.max(800, rollTooling.reduce((s, rt) => {
     const rp = rt.rollProfile;
+    if (!rp) return s + 10;
     const spec = rt.mfgSpec;
     return s + rp.rollWidth + (spec ? spec.spacerThickness : 10);
   }, 0) * 1.2 + 200);
@@ -409,6 +410,7 @@ export function DesignReportGenerator({ onClose }: { onClose: () => void }) {
         rollTooling.forEach((rt, i) => {
           ensureSpace(5);
           const rp = rt.rollProfile;
+          if (!rp) { y += 5; return; }
           if (i % 2 === 0) {
             doc.setFillColor(248, 250, 252);
             doc.rect(margin, y - 3, contentWidth, 5, "F");

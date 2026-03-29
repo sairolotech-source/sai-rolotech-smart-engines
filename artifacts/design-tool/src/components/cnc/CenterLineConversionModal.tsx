@@ -47,10 +47,10 @@ export function CenterLineConversionModal({ open, onClose, onConverted }: Props)
   const [converting, setConverting] = useState(false);
   const [done, setDone] = useState(false);
   const [result, setResult] = useState<{ bendCount: number; devLength: number; warnings: string[] } | null>(null);
-  const [sourceChoice, setSourceChoice] = useState<"centerline" | "sheetProfile" | null>(() => {
+  const [sourceChoice, setSourceChoice] = useState<"centerline" | "inner_face" | "outer_face" | "sheet_profile" | null>(() => {
     if (!geometry?.segments?.length) return null;
-    const detected = detectProfileSourceType(geometry.segments);
-    return detected === "unknown" ? null : detected;
+    const detection = detectProfileSourceType(geometry.segments);
+    return detection.type === "unknown" ? null : detection.type;
   });
 
   const handleConvert = useCallback(() => {
@@ -86,7 +86,7 @@ export function CenterLineConversionModal({ open, onClose, onConverted }: Props)
     setMaterialThickness(nomThk);
     setMinThickness(minThk);
     setMaxThickness(maxThk);
-    setProfileSourceType("sheetProfile");
+    setProfileSourceType("sheet_profile");
     onClose();
   }, [nomThk, minThk, maxThk, setMaterialThickness, setMinThickness, setMaxThickness, setProfileSourceType, onClose]);
 
@@ -125,7 +125,7 @@ export function CenterLineConversionModal({ open, onClose, onConverted }: Props)
                 <div className="grid grid-cols-2 gap-2">
                   {([
                     { v: "centerline",   label: "Center Line",    desc: "Single line representing the neutral axis — needs thickness expansion", color: "orange" },
-                    { v: "sheetProfile", label: "Sheet Profile",   desc: "Already has full sheet thickness — use directly", color: "blue" },
+                    { v: "sheet_profile", label: "Sheet Profile",   desc: "Already has full sheet thickness — use directly", color: "blue" },
                   ] as const).map(opt => (
                     <button
                       key={opt.v}

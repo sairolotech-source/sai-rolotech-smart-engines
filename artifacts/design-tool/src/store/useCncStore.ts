@@ -1097,8 +1097,16 @@ interface CncState {
   sectionModel: "open" | "closed" | null;
   setSectionModel: (m: "open" | "closed" | null) => void;
 
-  profileSourceType: "centerline" | "sheetProfile" | null;
-  setProfileSourceType: (t: "centerline" | "sheetProfile" | null) => void;
+  profileSourceType: "centerline" | "inner_face" | "outer_face" | "sheet_profile" | null;
+  setProfileSourceType: (t: "centerline" | "inner_face" | "outer_face" | "sheet_profile" | null) => void;
+  profileSourceConfidence: number;           // 0–1 auto-detect confidence
+  setProfileSourceConfidence: (c: number) => void;
+
+  // ── Thickness band (user job-specific, separate from material database range) ──
+  thicknessBandMin: number;                  // min tolerance of actual sheet (e.g. 0.75)
+  thicknessBandMax: number;                  // max tolerance of actual sheet (e.g. 0.85)
+  setThicknessBandMin: (t: number) => void;
+  setThicknessBandMax: (t: number) => void;
 
   flowerGenerateTrigger: number;
   requestFlowerGeneration: () => void;
@@ -1260,6 +1268,13 @@ export const useCncStore = create<CncState>()(persist((set) => ({
 
   profileSourceType: null,
   setProfileSourceType: (t) => set({ profileSourceType: t }),
+  profileSourceConfidence: 0,
+  setProfileSourceConfidence: (c) => set({ profileSourceConfidence: c }),
+
+  thicknessBandMin: 0.9,
+  thicknessBandMax: 1.1,
+  setThicknessBandMin: (t) => set({ thicknessBandMin: Math.max(0.1, t) }),
+  setThicknessBandMax: (t) => set({ thicknessBandMax: Math.max(0.1, t) }),
 
   flowerGenerateTrigger: 0,
   requestFlowerGeneration: () => set((s) => ({ flowerGenerateTrigger: s.flowerGenerateTrigger + 1 })),
@@ -1434,6 +1449,9 @@ export const useCncStore = create<CncState>()(persist((set) => ({
       // Reset section model so user must re-select at start of every new workflow
       sectionModel: null,
       profileSourceType: null,
+      profileSourceConfidence: 0,
+      thicknessBandMin: 0.9,
+      thicknessBandMax: 1.1,
       flowerGenerateTrigger: 0,
       leftPanelScrollTarget: null,
       // Reset validation and dimension confirmation state for new workflow

@@ -259,7 +259,7 @@ function FlowerEmptyState({ geometry, materialThickness }: FlowerEmptyStateProps
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
               <div className="text-[10px] text-zinc-500">Source type</div>
               <div className="text-[10px] font-semibold text-zinc-300 text-right">
-                {profileSourceType === "centerline" ? "Center line → Sheet" : profileSourceType === "sheetProfile" ? "Sheet profile" : "Unknown"}
+                {profileSourceType === "centerline" ? "Center line → Sheet" : profileSourceType === "inner_face" ? "Inner face → Sheet" : profileSourceType === "outer_face" ? "Outer face → Sheet" : profileSourceType === "sheet_profile" ? "Full sheet profile" : "Unknown"}
               </div>
               <div className="text-[10px] text-zinc-500">Segments</div>
               <div className="text-[10px] font-semibold text-zinc-300 text-right">{segments.length}</div>

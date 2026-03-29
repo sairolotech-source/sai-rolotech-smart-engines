@@ -24,7 +24,7 @@ import { useAutoAIMode } from "../../hooks/useAutoAIMode";
 import { validateRollFormingInputs } from "../../lib/inputValidation";
 import { EngineLogger } from "../../lib/engineLogger";
 import { CenterLineConversionModal } from "./CenterLineConversionModal";
-import { detectProfileSourceType } from "../../lib/centerLineConverter";
+import { detectProfileSourceType, type ProfileSourceDetection } from "../../lib/centerLineConverter";
 
 function SectionHeader({
   title,
@@ -221,6 +221,8 @@ export function LeftPanel() {
     confirmedDimensions,
     sectionModel, setSectionModel,
     profileSourceType, setProfileSourceType,
+    profileSourceConfidence, setProfileSourceConfidence,
+    thicknessBandMin, thicknessBandMax, setThicknessBandMin, setThicknessBandMax,
     flowerGenerateTrigger,
     leftPanelScrollTarget, setLeftPanelScrollTarget,
     validationResults, validationApproved,
@@ -472,9 +474,15 @@ export function LeftPanel() {
           const detectedModel = detectSectionModel(result.geometry);
           setSectionModel(detectedModel);
 
-          // Detect center-line vs sheet and auto-open conversion modal
-          const srcType = detectProfileSourceType(result.geometry.segments);
-          setProfileSourceType(srcType === "unknown" ? null : srcType);
+          // Detect center-line vs inner/outer face vs sheet profile
+          const detection: ProfileSourceDetection = detectProfileSourceType(result.geometry.segments);
+          const detectedSrcType = detection.type === "unknown" ? null : detection.type;
+          setProfileSourceType(detectedSrcType);
+          setProfileSourceConfidence(detection.confidence);
+          // Auto-set thickness band to ±5% of nominal
+          const t = useCncStore.getState().materialThickness;
+          setThicknessBandMin(parseFloat((t * 0.95).toFixed(3)));
+          setThicknessBandMax(parseFloat((t * 1.05).toFixed(3)));
           setShowConversionModal(true);
 
           const segCount = result.geometry.segments.length;
@@ -1083,17 +1091,22 @@ export function LeftPanel() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-zinc-500 block mb-0.5">Thickness (mm)</label>
+                <label className="text-[10px] text-zinc-500 block mb-0.5">Nominal Thickness (mm)</label>
                 <input
                   type="number" step={0.05}
                   min={matProps.minThickness}
                   max={matProps.maxThickness}
                   value={materialThickness}
-                  onChange={(e) => setMaterialThickness(parseFloat(e.target.value) || 1)}
+                  onChange={(e) => {
+                    const t = parseFloat(e.target.value) || 1;
+                    setMaterialThickness(t);
+                    setThicknessBandMin(parseFloat((t * 0.95).toFixed(3)));
+                    setThicknessBandMax(parseFloat((t * 1.05).toFixed(3)));
+                  }}
                   className={`${inputCls} ${!isThicknessValid ? "border-red-500 focus:border-red-500" : ""}`}
                 />
                 <div className="text-[10px] text-zinc-500 mt-0.5">
-                  Range: {matProps.minThickness} – {matProps.maxThickness} mm
+                  Mat. range: {matProps.minThickness} – {matProps.maxThickness} mm
                 </div>
                 {!isThicknessValid && (
                   <div className="flex items-start gap-1 mt-1 text-[10px] text-red-400">
@@ -1112,6 +1125,106 @@ export function LeftPanel() {
                 />
               </div>
             </div>
+
+            {/* ── Thickness Band (min / nominal / max) ─────────────────────── */}
+            <div className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg p-2.5 space-y-1.5">
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
+                <span>📐</span> Thickness Band
+                <span className="text-zinc-600 font-normal normal-case">— for roll gap + strip width conservatism</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[9px] text-zinc-500 block mb-0.5">Min (mm)</label>
+                  <input
+                    type="number" step={0.01} min={0.1}
+                    value={thicknessBandMin}
+                    onChange={(e) => setThicknessBandMin(parseFloat(e.target.value) || thicknessBandMin)}
+                    className={inputCls}
+                    title="Minimum tolerance — used for strip width (tightest fit)"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] text-zinc-500 block mb-0.5">Nominal (mm)</label>
+                  <div className="w-full py-1.5 px-2 text-xs font-mono text-blue-400 bg-blue-950/30 border border-blue-800/40 rounded text-center">{materialThickness.toFixed(3)}</div>
+                </div>
+                <div>
+                  <label className="text-[9px] text-zinc-500 block mb-0.5">Max (mm)</label>
+                  <input
+                    type="number" step={0.01} min={0.1}
+                    value={thicknessBandMax}
+                    onChange={(e) => setThicknessBandMax(parseFloat(e.target.value) || thicknessBandMax)}
+                    className={inputCls}
+                    title="Maximum tolerance — used for roll gap lower bound (conservative)"
+                  />
+                </div>
+              </div>
+              {thicknessBandMax < materialThickness && (
+                <div className="text-[9px] text-red-400 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Max thickness is below nominal — gap may be too tight
+                </div>
+              )}
+              {thicknessBandMin > materialThickness && (
+                <div className="text-[9px] text-red-400 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Min thickness is above nominal — strip width calc incorrect
+                </div>
+              )}
+              <div className="text-[9px] text-zinc-600">
+                Band: ±{(((thicknessBandMax - thicknessBandMin) / 2 / materialThickness) * 100).toFixed(1)}% · Roll gap uses max ({thicknessBandMax} mm) · Strip width uses min ({thicknessBandMin} mm)
+              </div>
+            </div>
+
+            {/* ── Profile Source Type — auto-detect + manual override ──────── */}
+            {(() => {
+              const srcLabels: Record<string, string> = {
+                centerline:   "Center Line",
+                inner_face:   "Inner Face",
+                outer_face:   "Outer Face",
+                sheet_profile: "Full Sheet Profile",
+              };
+              const srcDesc: Record<string, string> = {
+                centerline:   "Offset ±t/2 both sides → neutral axis",
+                inner_face:   "Offset outward by full thickness",
+                outer_face:   "Offset inward by full thickness",
+                sheet_profile: "No offset — already full sheet",
+              };
+              const confColor = profileSourceConfidence >= 0.8 ? "text-green-400" : profileSourceConfidence >= 0.6 ? "text-amber-400" : "text-red-400";
+              return (
+                <div className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg p-2.5 space-y-2">
+                  <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
+                    <span>📏</span> Profile Source Type
+                    {profileSourceType && (
+                      <span className={`text-[9px] font-normal normal-case ml-auto ${confColor}`}>
+                        Auto: {(profileSourceConfidence * 100).toFixed(0)}% confidence
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {(["centerline", "inner_face", "outer_face", "sheet_profile"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setProfileSourceType(opt)}
+                        className={`text-[10px] px-2 py-1.5 rounded border text-left transition-all ${
+                          profileSourceType === opt
+                            ? "bg-blue-900/40 border-blue-600/60 text-blue-300 font-bold"
+                            : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500"
+                        }`}
+                        title={srcDesc[opt]}
+                      >
+                        {srcLabels[opt]}
+                      </button>
+                    ))}
+                  </div>
+                  {profileSourceType && (
+                    <div className="text-[9px] text-zinc-500 leading-relaxed">
+                      <span className="text-zinc-300 font-medium">{srcLabels[profileSourceType]}:</span> {srcDesc[profileSourceType]}
+                    </div>
+                  )}
+                  {!profileSourceType && geometry && (
+                    <div className="text-[9px] text-amber-400">⚠ Profile source not detected — select manually above before generating flower pattern</div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

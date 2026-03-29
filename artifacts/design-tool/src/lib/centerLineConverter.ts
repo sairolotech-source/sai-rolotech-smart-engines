@@ -232,11 +232,31 @@ export function convertCenterLineToSheet(input: ConversionInput): ConversionResu
   };
 }
 
-/** Detect if a geometry looks like a center-line (thin single chain) or a sheet profile. */
-export function detectProfileSourceType(segments: Segment[]): "centerline" | "sheetProfile" | "unknown" {
-  if (!segments || segments.length === 0) return "unknown";
+export type ProfileSourceType = "centerline" | "inner_face" | "outer_face" | "sheet_profile";
 
-  // Compute bounding box aspect — center lines tend to be much longer than wide
+export interface ProfileSourceDetection {
+  type: ProfileSourceType | "unknown";
+  confidence: number;         // 0–1
+  reason: string;             // human-readable explanation
+  isClosed: boolean;
+  aspectRatio: number;
+  segmentCount: number;
+}
+
+/**
+ * Detect if imported geometry is a centerline, inner/outer face trace, or full sheet profile.
+ *
+ * Rules (per spec — centerline-to-sheet conversion engine):
+ * - centerline:   open chain, high aspect, segment count ≤ 20, no paired parallel track
+ * - inner_face:   open chain with consistent inner-corner-like geometry (all bends concave)
+ * - outer_face:   open chain with consistent outer-corner-like geometry (all bends convex)
+ * - sheet_profile: closed loop or open chain with two parallel tracks (full sheet)
+ */
+export function detectProfileSourceType(segments: Segment[]): ProfileSourceDetection {
+  if (!segments || segments.length === 0) {
+    return { type: "unknown", confidence: 0, reason: "No segments", isClosed: false, aspectRatio: 0, segmentCount: 0 };
+  }
+
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   let totalLen = 0;
   for (const s of segments) {
@@ -250,26 +270,85 @@ export function detectProfileSourceType(segments: Segment[]): "centerline" | "sh
 
   const bbW = maxX - minX;
   const bbH = maxY - minY;
+  const aspect = Math.max(bbW, bbH) / (Math.min(bbW, bbH) || 1);
 
-  // Check if the geometry is "closed" — first start matches last end
   const first = segments[0];
   const last = segments[segments.length - 1];
-  const isClosed =
-    Math.hypot(
-      (first.startX ?? 0) - (last.endX ?? 0),
-      (first.startY ?? 0) - (last.endY ?? 0)
-    ) < 2.0;
+  const closedGap = Math.hypot(
+    (first.startX ?? 0) - (last.endX ?? 0),
+    (first.startY ?? 0) - (last.endY ?? 0)
+  );
+  const isClosed = closedGap < 2.0;
 
-  // A closed profile with decent area is likely already a sheet profile
+  // ── Rule 1: Closed loop with decent enclosed area → sheet_profile ──────────
   const area = bbW * bbH;
-  if (isClosed && area > 100) return "sheetProfile";
+  if (isClosed && area > 100) {
+    return {
+      type: "sheet_profile",
+      confidence: 0.92,
+      reason: `Closed loop (${segments.length} segs, gap ${closedGap.toFixed(2)} mm) — full sheet profile`,
+      isClosed, aspectRatio: aspect, segmentCount: segments.length,
+    };
+  }
 
-  // A single open chain with high aspect ratio → likely center line
-  const aspect = Math.max(bbW, bbH) / (Math.min(bbW, bbH) || 1);
-  if (!isClosed && aspect > 2.0) return "centerline";
+  // ── Rule 2: Compute bend directions for open chains ─────────────────────────
+  let concaveCount = 0;
+  let convexCount = 0;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const a = segDir(segments[i]);
+    const b = segDir(segments[i + 1]);
+    if (a.len < 1e-6 || b.len < 1e-6) continue;
+    // cross product z-component: positive = left turn (concave from outside), negative = right turn (convex)
+    const cross = (a.dx / a.len) * (b.dy / b.len) - (a.dy / a.len) * (b.dx / b.len);
+    if (cross > 0.05) concaveCount++;
+    else if (cross < -0.05) convexCount++;
+  }
 
-  // Small segment count open chain
-  if (!isClosed && segments.length <= 12) return "centerline";
+  const totalCorners = concaveCount + convexCount;
 
-  return "sheetProfile";
+  // ── Rule 3: Open chain, high aspect → centerline (most common case) ─────────
+  if (!isClosed && aspect > 2.0 && segments.length <= 20) {
+    // Sub-rule: if all bends go same way, might be inner/outer face
+    if (totalCorners > 1 && (concaveCount === 0 || convexCount === 0)) {
+      const allConcave = concaveCount > 0;
+      return {
+        type: allConcave ? "inner_face" : "outer_face",
+        confidence: 0.65,
+        reason: `Open chain (${segments.length} segs) with all ${allConcave ? "concave" : "convex"} corners — likely ${allConcave ? "inner face" : "outer face"} trace`,
+        isClosed, aspectRatio: aspect, segmentCount: segments.length,
+      };
+    }
+    return {
+      type: "centerline",
+      confidence: aspect > 5 ? 0.88 : 0.72,
+      reason: `Open chain, aspect ${aspect.toFixed(1)}:1, ${segments.length} segments — likely center-line drawing`,
+      isClosed, aspectRatio: aspect, segmentCount: segments.length,
+    };
+  }
+
+  // ── Rule 4: Short open chains → centerline ────────────────────────────────
+  if (!isClosed && segments.length <= 12) {
+    return {
+      type: "centerline",
+      confidence: 0.65,
+      reason: `Short open chain (${segments.length} segs) — assumed center-line; verify if inner/outer face`,
+      isClosed, aspectRatio: aspect, segmentCount: segments.length,
+    };
+  }
+
+  // ── Rule 5: Longer open chain with mixed bends → likely sheet profile ───────
+  return {
+    type: "sheet_profile",
+    confidence: 0.58,
+    reason: `Open chain (${segments.length} segs, mixed bends: ${concaveCount}↑ ${convexCount}↓) — assumed sheet profile; verify`,
+    isClosed, aspectRatio: aspect, segmentCount: segments.length,
+  };
+}
+
+/** Legacy shim — returns simple string for old callers. */
+export function detectProfileSourceTypeSimple(segments: Segment[]): "centerline" | "sheetProfile" | "unknown" {
+  const r = detectProfileSourceType(segments);
+  if (r.type === "centerline") return "centerline";
+  if (r.type === "sheet_profile" || r.type === "inner_face" || r.type === "outer_face") return "sheetProfile";
+  return "unknown";
 }

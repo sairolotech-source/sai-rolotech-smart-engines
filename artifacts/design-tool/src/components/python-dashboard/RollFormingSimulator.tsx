@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { getStationExplanation, getManufacturabilityWarnings } from "@/lib/stationLogicEngine";
 import { EngineeringRiskPanel } from "@/components/python-dashboard/EngineeringRiskPanel";
+import { DeformationPredictorPanel } from "@/components/python-dashboard/DeformationPredictorPanel";
+import { BenchmarkValidationPanel } from "@/components/python-dashboard/BenchmarkValidationPanel";
 
 interface ProfilePoint { x: number; y: number; }
 interface RollProfile   { x: number; y: number; }
@@ -721,6 +723,27 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
           className="mx-5 mb-3"
         />
       )}
+
+      {/* ── Deformation Predictor ────────────────────────────── */}
+      {passes.length > 0 && (
+        <DeformationPredictorPanel
+          passes={passes.map(p => ({
+            pass_no:          p.pass_no,
+            stage_type:       p.stage_type,
+            target_angle_deg: p.target_angle_deg,
+            roll_gap_mm:      p.roll_gap_mm,
+            forming_depth_mm: p.forming_depth_mm,
+          }))}
+          material={data.material}
+          thicknessMm={data.thickness_mm}
+          sectionWidthMm={passes[0]?.strip_width_mm ?? 100}
+          sectionHeightMm={Math.max(...passes.map(p => p.forming_depth_mm), 30)}
+          isSymmetric={true}
+        />
+      )}
+
+      {/* ── Benchmark Validation Dashboard ───────────────────── */}
+      <BenchmarkValidationPanel />
 
       {/* ── AI Optimizer Panel ──────────────────────────────── */}
       {optimizerData && (

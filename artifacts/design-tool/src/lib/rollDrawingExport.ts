@@ -588,14 +588,25 @@ export function renderDrawingToDXF(m: DrawingModel): string {
   const push = (...args: (string | number)[]) =>
     args.forEach(a => lines.push(String(a)));
 
+  // ── DXF R2000 (AC1015) — AutoCAD 2000+ compatible ────────────────────────
   push("0","SECTION","2","HEADER");
-  push("9","$ACADVER","1","AC1006");
+  push("9","$ACADVER","1","AC1015");   // R2000 — supported by all modern CAD
+  push("9","$DWGCODEPAGE","3","ANSI_1252");
   push("9","$INSBASE","10","0.0","20","0.0","30","0.0");
-  push("9","$EXTMIN","10","0.0","20","0.0","30","0.0");
-  push("9","$EXTMAX","10","600.0","20","500.0","30","0.0");
+  push("9","$EXTMIN","10","-10.0","20","-10.0","30","0.0");
+  push("9","$EXTMAX","10","620.0","20","510.0","30","0.0");
+  push("9","$LUNITS","70","4");        // Engineering units
+  push("9","$LUPREC","70","4");        // 4 decimal places
+  push("9","$AUNITS","70","0");        // Decimal degrees
+  push("9","$MEASUREMENT","70","1");   // Metric
   push("0","ENDSEC");
 
   push("0","SECTION","2","TABLES");
+  push("0","TABLE","2","LTYPE","70","2");
+  push("0","LTYPE","2","CONTINUOUS","70","0","3","Solid line","72","65","73","0","40","0.0");
+  push("0","LTYPE","2","CENTER",    "70","0","3","Center line","72","65","73","4","40","2.0","49","1.25","74","0","49","-0.25","74","0","49","0.25","74","0","49","-0.25","74","0");
+  push("0","LTYPE","2","DASHED",    "70","0","3","Dashed line","72","65","73","2","40","0.75","49","0.5","74","0","49","-0.25","74","0");
+  push("0","ENDTAB");
   push("0","TABLE","2","LAYER","70","6");
   push("0","LAYER","2","OUTLINE",     "70","0","62","7","6","CONTINUOUS");
   push("0","LAYER","2","ROLL_PROFILE","70","0","62","5","6","CONTINUOUS");
@@ -621,23 +632,19 @@ export function renderDrawingToDXF(m: DrawingModel): string {
 
   const scaleX = 2.5, scaleY = 2.5, offX = 50, offY = 200;
 
-  // ROLL_PROFILE — upper
-  push("0","POLYLINE","8","ROLL_PROFILE","66","1","70","0","62","5");
+  // ROLL_PROFILE — upper (LWPOLYLINE: R2000+ preferred, more compact than POLYLINE)
+  push("0","LWPOLYLINE","8","ROLL_PROFILE","62","5",
+       "90",String(upper.length),"70","0");
   upper.forEach(pt => {
-    push("0","VERTEX","8","ROLL_PROFILE",
-      "10",(pt.x*scaleX+offX).toFixed(4),
-      "20",(pt.y*scaleY+offY).toFixed(4),"30","0.0");
+    push("10",(pt.x*scaleX+offX).toFixed(4),"20",(pt.y*scaleY+offY).toFixed(4));
   });
-  push("0","SEQEND");
 
-  // ROLL_PROFILE — lower
-  push("0","POLYLINE","8","ROLL_PROFILE","66","1","70","0","62","3");
+  // ROLL_PROFILE — lower (LWPOLYLINE)
+  push("0","LWPOLYLINE","8","ROLL_PROFILE","62","3",
+       "90",String(lower.length),"70","0");
   lower.forEach(pt => {
-    push("0","VERTEX","8","ROLL_PROFILE",
-      "10",(pt.x*scaleX+offX).toFixed(4),
-      "20",(pt.y*scaleY+offY).toFixed(4),"30","0.0");
+    push("10",(pt.x*scaleX+offX).toFixed(4),"20",(pt.y*scaleY+offY).toFixed(4));
   });
-  push("0","SEQEND");
 
   // OUTLINE — bounding box of cross-section
   const allPts = [...upper, ...lower];

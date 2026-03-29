@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuditLog, AuditLogPanel } from "@/components/ui/AuditLog";
 import HelpTooltip from "@/components/ui/HelpTooltip";
+import { RoleGatePanel } from "@/components/python-dashboard/RoleGatePanel";
 
 import {
   buildDrawingModel,

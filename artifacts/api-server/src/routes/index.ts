@@ -39,6 +39,7 @@ import autoPipelineRouter from "./auto-pipeline";
 import testCasesRouter from "./test-cases";
 import auditLogRouter from "./audit-log";
 import rbacInfoRouter from "./rbac-info";
+import engineeringEnginesRouter from "./engineering-engines";
 
 const router: IRouter = Router();
 
@@ -92,6 +93,7 @@ router.use(deepVerifyRouter);
 router.use("/gemini-keys", geminiKeysRouter);
 router.use(autoPipelineRouter);
 router.use(testCasesRouter);
+router.use(engineeringEnginesRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

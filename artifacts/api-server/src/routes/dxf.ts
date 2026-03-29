@@ -1,6 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { parseDxfContent } from "../lib/dxf-parser-util";
+import { normalizeGeometry } from "../lib/geometry-normalizer";
+import { extractDimensions } from "../lib/geometry-dimension-engine";
 import { execSync, execFileSync } from "child_process";
 import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
@@ -79,15 +81,21 @@ router.post("/upload-dxf", upload.single("file"), (req: MulterRequest, res: Resp
       if (dwg2dxfBinary) {
         const dxfContent = convertDwgToDxf(req.file.buffer);
         if (dxfContent) {
-          const geometry = parseDxfContent(dxfContent);
+          const rawGeometry = parseDxfContent(dxfContent);
+          const { geometry, health } = normalizeGeometry(rawGeometry);
+          const dimensions = extractDimensions(geometry);
           res.json({
             success: true,
             geometry,
+            health,
+            dimensions,
             fileName: originalName,
             segmentCount: geometry.segments.length,
             bendCount: geometry.bends.length,
             convertedFrom: "dwg",
-            message: "DWG file successfully converted to DXF and parsed.",
+            message: health.isValid
+              ? "DWG converted and parsed successfully"
+              : `DWG parsed with issues: ${health.message}`,
           });
           return;
         }
@@ -106,14 +114,30 @@ router.post("/upload-dxf", upload.single("file"), (req: MulterRequest, res: Resp
     }
 
     const content = req.file.buffer.toString("utf-8");
-    const geometry = parseDxfContent(content);
+    const rawGeometry = parseDxfContent(content);
+    const { geometry, health } = normalizeGeometry(rawGeometry);
+    const dimensions = extractDimensions(geometry);
+
+    if (geometry.segments.length === 0) {
+      res.status(422).json({
+        error: "DXF parsed but no geometry found. File may contain only non-graphical data or unsupported entities.",
+        health,
+        formatHint: "no_geometry",
+      });
+      return;
+    }
 
     res.json({
       success: true,
       geometry,
+      health,
+      dimensions,
       fileName: originalName,
       segmentCount: geometry.segments.length,
       bendCount: geometry.bends.length,
+      message: health.isValid
+        ? `Parsed ${geometry.segments.length} segments, ${geometry.bends.length} bends`
+        : `Parsed with ${health.issues.length} issue(s): ${health.message}`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to parse DXF file";

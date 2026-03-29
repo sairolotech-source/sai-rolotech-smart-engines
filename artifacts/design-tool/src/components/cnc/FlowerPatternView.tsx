@@ -553,16 +553,18 @@ export function FlowerPatternView() {
                       );
                     })}
 
-                    {/* Final profile highlight */}
-                    <Text
-                      x={dims.width / 2 - 50}
-                      y={20}
-                      text={`FINAL: ${stations[stations.length - 1]?.label}`}
-                      fill={STATION_COLORS[(stations.length - 1) % STATION_COLORS.length]}
-                      fontSize={11}
-                      fontStyle="bold"
-                      align="center"
-                    />
+                    {/* Final profile highlight — guard: only render when stations exist and label is defined */}
+                    {stations.length > 0 && stations[stations.length - 1]?.label && (
+                      <Text
+                        x={dims.width / 2 - 50}
+                        y={20}
+                        text={`FINAL: ${stations[stations.length - 1].label}`}
+                        fill={STATION_COLORS[(stations.length - 1) % STATION_COLORS.length]}
+                        fontSize={11}
+                        fontStyle="bold"
+                        align="center"
+                      />
+                    )}
                   </>
                 );
               })()}

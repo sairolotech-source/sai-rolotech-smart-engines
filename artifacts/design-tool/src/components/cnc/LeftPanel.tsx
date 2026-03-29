@@ -274,7 +274,9 @@ export function LeftPanel() {
     setSections((s) => ({ ...s, [key]: !s[key] }));
 
   // ── Typed notification dispatcher (replaces setError("✅ ...") anti-pattern) ─
-  const notify = React.useMemo(() => makeNotifier((msg) => setError(msg as any)), [setError]);
+  // Root-cause fix: strip the `as any` cast so only string | null can reach the store.
+  // makeNotifier already types its argument as string, so no information is lost.
+  const notify = React.useMemo(() => makeNotifier((msg) => setError(msg)), [setError]);
 
   // ── Python API health probe ───────────────────────────────────────────────
   const [pyApiStatus, setPyApiStatus] = useState<"checking" | "pass" | "fail">("checking");
@@ -441,10 +443,19 @@ export function LeftPanel() {
     : 150;
   const autoShaftValue = calcAutoShaftFromProfile(rollDiameter, profileWidth);
 
+  // React #185 root-cause fix: Zustand setShaftDiameter calls set() unconditionally,
+  // which triggers a re-render even when the value is identical. If autoShaftValue
+  // then stays the same number, React sees the dependency unchanged and won't re-run
+  // the effect — BUT if any parent re-render causes a new autoShaftValue to be
+  // computed (even with the same numeric result), the effect fires again.
+  // A ref-equality guard ensures setShaftDiameter is only called when the value
+  // actually changes, breaking the render → effect → set → render cycle.
+  const prevAutoShaftValueRef = useRef<number | null>(null);
   useEffect(() => {
-    if (autoShaft) {
-      setShaftDiameter(autoShaftValue);
-    }
+    if (!autoShaft) return;
+    if (prevAutoShaftValueRef.current === autoShaftValue) return;
+    prevAutoShaftValueRef.current = autoShaftValue;
+    setShaftDiameter(autoShaftValue);
   }, [autoShaft, autoShaftValue, setShaftDiameter]);
 
   const matProps = MATERIAL_DATABASE[materialType];
@@ -576,7 +587,21 @@ export function LeftPanel() {
       setGcodeOutputs([]);
 
       if (result.materialWarnings && result.materialWarnings.length > 0) {
-        setError("⚠ Warnings: " + result.materialWarnings.join(" | "));
+        // Root-cause fix: materialWarnings may be ValidationError objects, not strings.
+        // Extract .issue string from each entry so join() never produces "[object Object]".
+        const warnText = (result.materialWarnings as unknown[])
+          .map((w) => {
+            if (typeof w === "string") return w;
+            if (w !== null && typeof w === "object") {
+              const o = w as Record<string, unknown>;
+              return typeof o.issue === "string" ? o.issue
+                   : typeof o.message === "string" ? o.message
+                   : JSON.stringify(o);
+            }
+            return String(w);
+          })
+          .join(" | ");
+        setError("⚠ Warnings: " + warnText);
       }
 
       scoreTask("flower", `Power Pattern — ${materialType} ${materialThickness}mm × ${numStations} stations`, {
@@ -2221,13 +2246,27 @@ export function LeftPanel() {
 
       {/* Status messages — channel-aware styled display */}
       {error && (() => {
-        const style = getNotificationStyle(String(error));
+        // Root-cause fix for "Δ [object Object]": error state may receive a non-string value
+        // via `as any` cast paths. Extract a safe scalar string before any display or style logic.
+        const errStr: string = (() => {
+          if (typeof error === "string") return error;
+          if (error instanceof Error) return error.message;
+          if (error !== null && typeof error === "object") {
+            const o = error as Record<string, unknown>;
+            if (typeof o.issue === "string")   return o.issue;
+            if (typeof o.message === "string") return o.message;
+            if (typeof o.detail === "string")  return o.detail;
+            return JSON.stringify(o);
+          }
+          return String(error);
+        })();
+        const style = getNotificationStyle(errStr);
         return (
           <div className={`mx-4 mb-4 p-3 rounded-lg text-xs border flex items-start gap-2 ${style.bgColor} ${style.borderColor} ${style.textColor}`}>
             <span className="flex-shrink-0 mt-0.5">
               {style.channel === "success" ? "✓" : style.channel === "warning" ? "⚠" : style.channel === "error" ? "✕" : "ℹ"}
             </span>
-            <span>{String(error).replace(/^[✓⚠✕ℹ✅]\s*/, "")}</span>
+            <span>{errStr.replace(/^[✓⚠✕ℹ✅]\s*/, "")}</span>
           </div>
         );
       })()}

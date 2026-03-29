@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
-import { Eye, Upload, FileImage, Loader2, CheckCircle2, AlertTriangle, X, Brain, Copy, Key } from "lucide-react";
+import { Eye, Upload, FileImage, Loader2, CheckCircle2, AlertTriangle, X, Brain, Copy, FileCode2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getPersonalGeminiKey } from "@/hooks/usePersonalAIKey";
 
@@ -8,6 +8,9 @@ interface VisionResult {
   analysis: string;
   extractedData: {
     thickness?: number;
+    width?: number;
+    height?: number;
+    innerRadius?: number;
     bendAngles?: number[];
     profileType?: string;
     estimatedStations?: number;
@@ -16,13 +19,30 @@ interface VisionResult {
   model: string;
   filename?: string;
   fileSize?: string;
+  fileType?: "image" | "dxf";
+}
+
+const DRAWING_PROMPT = `Analyze this engineering drawing and extract all technical specifications:
+## 1. Profile Type
+## 2. Dimensions (mm) — width, height, flanges, web
+## 3. Bend Angles (°) — list each
+## 4. Inner Radii (mm)
+## 5. Material Thickness (mm)
+## 6. Tolerances
+## 7. Roll Forming Assessment — suitable? estimated stations?
+## 8. Special Notes`;
+
+function isDxfFile(f: File): boolean {
+  return f.name.toLowerCase().endsWith(".dxf") ||
+    f.type === "application/dxf" ||
+    f.type === "application/octet-stream";
 }
 
 export function DrawingVisionView() {
-  const api = { analyzeDrawing: async (_f: File, _q: string) => ({ analysis: "", detectedFeatures: [] as string[] }) };
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [isDxf, setIsDxf] = useState(false);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VisionResult | null>(null);
@@ -30,16 +50,26 @@ export function DrawingVisionView() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((f: File) => {
-    if (!f.type.startsWith("image/")) {
-      toast({ title: "Galat File", description: "Sirf JPG, PNG, WebP image upload karein", variant: "destructive" });
+    const isImage = f.type.startsWith("image/");
+    const dxf = isDxfFile(f);
+
+    if (!isImage && !dxf) {
+      toast({ title: "Galat File", description: "JPG, PNG, WebP image ya .DXF CAD file upload karein", variant: "destructive" });
       return;
     }
+
     setFile(f);
+    setIsDxf(dxf);
     setResult(null);
     setError(null);
-    const reader = new FileReader();
-    reader.onload = e => setPreview(e.target?.result as string);
-    reader.readAsDataURL(f);
+
+    if (isImage) {
+      const reader = new FileReader();
+      reader.onload = e => setPreview(e.target?.result as string);
+      reader.readAsDataURL(f);
+    } else {
+      setPreview(null);
+    }
   }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -71,7 +101,8 @@ export function DrawingVisionView() {
 
   const analyzeViaBrowser = async (f: File, q: string): Promise<VisionResult> => {
     const personalKey = getPersonalGeminiKey();
-    if (!personalKey) throw new Error("Koi API key nahi — pehle 'AI Key' button se apni Gemini key daalo");
+    if (!personalKey) throw new Error("Koi API key nahi — pehle 'AI Key' button se apni Gemini key daalo. DXF files sirf server se analyze hoti hain.");
+    if (isDxfFile(f)) throw new Error("DXF files sirf server se analyze hoti hain — server connection check karein");
 
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -83,16 +114,7 @@ export function DrawingVisionView() {
       reader.readAsDataURL(f);
     });
 
-    const prompt = q.trim() || `Analyze this engineering drawing and extract all technical specifications:
-- Profile type and name
-- All dimensions (mm)
-- Bend angles (degrees)
-- Inner radii (mm)
-- Material thickness (mm)
-- Tolerances
-- Any special notes
-Also identify: is this suitable for roll forming? How many stations approximately needed?`;
-
+    const prompt = q.trim() || DRAWING_PROMPT;
     const body = {
       system_instruction: { parts: [{ text: "You are a senior roll forming and CNC engineering expert. Analyze technical drawings and extract all specifications precisely." }] },
       contents: [{ role: "user", parts: [{ inline_data: { mime_type: f.type, data: base64 } }, { text: prompt }] }],
@@ -113,8 +135,10 @@ Also identify: is this suitable for roll forming? How many stations approximatel
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
     const extractedData: Record<string, unknown> = {};
-    const thicknessMatch = text.match(/thickness[:\s]+([0-9.]+)\s*mm/i);
+    const thicknessMatch = text.match(/thickness[:\s*]+([0-9.]+)\s*mm/i);
     if (thicknessMatch) extractedData["thickness"] = parseFloat(thicknessMatch[1]!);
+    const widthMatch = text.match(/(?:total\s+)?width[:\s*]+([0-9.]+)\s*mm/i);
+    if (widthMatch) extractedData["width"] = parseFloat(widthMatch[1]!);
     const angles: number[] = [];
     for (const m of text.matchAll(/(\d+(?:\.\d+)?)\s*°/g)) angles.push(parseFloat(m[1]!));
     if (angles.length) extractedData["bendAngles"] = angles;
@@ -123,7 +147,7 @@ Also identify: is this suitable for roll forming? How many stations approximatel
     const stationsMatch = text.match(/(\d+)\s*station/i);
     if (stationsMatch) extractedData["estimatedStations"] = parseInt(stationsMatch[1]!);
 
-    return { success: true, analysis: text, extractedData, model: "Gemini 2.5 Pro Vision (Personal Key)", filename: f.name, fileSize: `${(f.size / 1024).toFixed(1)} KB` };
+    return { success: true, analysis: text, extractedData, model: "Gemini 2.5 Pro Vision (Personal Key)", filename: f.name, fileSize: `${(f.size / 1024).toFixed(1)} KB`, fileType: "image" };
   };
 
   const analyze = async () => {
@@ -135,11 +159,12 @@ Also identify: is this suitable for roll forming? How many stations approximatel
       let data: VisionResult;
       try {
         data = await analyzeViaServer(file, question);
-      } catch {
+      } catch (serverErr) {
+        if (isDxfFile(file)) throw serverErr;
         data = await analyzeViaBrowser(file, question);
       }
       setResult(data);
-      toast({ title: "Analysis Complete ✅", description: "Gemini 2.5 Pro ne drawing analyze kar li!" });
+      toast({ title: "Analysis Complete ✅", description: `${data.fileType === "dxf" ? "DXF" : "Drawing"} analyze ho gayi — Gemini ne dimensions nikale!` });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Analysis failed";
       setError(msg);
@@ -159,6 +184,7 @@ Also identify: is this suitable for roll forming? How many stations approximatel
   const clear = () => {
     setFile(null);
     setPreview(null);
+    setIsDxf(false);
     setResult(null);
     setError(null);
     setQuestion("");
@@ -172,26 +198,27 @@ Also identify: is this suitable for roll forming? How many stations approximatel
           <Eye className="w-4 h-4 text-white" />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-white">Drawing Vision — Gemini 2.5 Pro</h2>
-          <p className="text-[10px] text-white/50">Engineering drawing upload karein — AI dimensions, angles, profile type nikaale ga</p>
+          <h2 className="text-sm font-semibold text-white">Drawing Vision — Gemini 2.5 Pro + Codex 5.3</h2>
+          <p className="text-[10px] text-white/50">Image ya DXF upload karein — AI dimensions, angles, profile type nikaale ga</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5 px-2 py-1 rounded-full bg-violet-500/10 border border-violet-500/20">
           <Brain className="w-3 h-3 text-violet-400" />
-          <span className="text-[10px] text-violet-300 font-medium">Gemini 2.5 Pro Vision</span>
+          <span className="text-[10px] text-violet-300 font-medium">Gemini 2.5 Pro</span>
         </div>
       </div>
 
       <div className="flex flex-1 gap-4 p-4 overflow-hidden">
         <div className="flex flex-col gap-4 w-[380px] flex-shrink-0">
+
           <div
             className={`relative border-2 border-dashed rounded-xl transition-all cursor-pointer
               ${dragging ? "border-violet-500 bg-violet-500/10" : "border-white/10 bg-white/2 hover:border-white/20"}
-              ${preview ? "border-solid border-white/10" : ""}`}
+              ${(preview || (file && isDxf)) ? "border-solid border-white/10" : ""}`}
             style={{ minHeight: 220 }}
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            onClick={() => !preview && fileRef.current?.click()}
+            onClick={() => !file && fileRef.current?.click()}
           >
             {preview ? (
               <div className="relative">
@@ -208,14 +235,35 @@ Also identify: is this suitable for roll forming? How many stations approximatel
                   </div>
                 )}
               </div>
+            ) : file && isDxf ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <div className="w-14 h-14 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                  <FileCode2 className="w-7 h-7 text-blue-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-blue-300">{file.name}</p>
+                  <p className="text-[10px] text-white/40 mt-1">{(file.size / 1024).toFixed(1)} KB — DXF CAD File</p>
+                  <p className="text-[10px] text-emerald-400 mt-1">✓ Python engine se parse hogi → Gemini analyze karega</p>
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); clear(); }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+                >
+                  <X className="w-3 h-3" /> File Hatao
+                </button>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10 gap-3">
                 <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
                   <FileImage className="w-6 h-6 text-white/30" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-white/50">Drawing image yahan drop karein</p>
-                  <p className="text-[10px] text-white/30 mt-1">JPG, PNG, WebP — max 20MB</p>
+                  <p className="text-sm text-white/50">Drawing yahan drop karein</p>
+                  <p className="text-[10px] text-white/30 mt-1">JPG, PNG, WebP image — ya .DXF CAD file</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-[10px] text-violet-300">PNG/JPG → Vision AI</div>
+                  <div className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-300">DXF → Python Parse</div>
                 </div>
                 <button className="px-4 py-1.5 rounded-lg bg-violet-600/80 hover:bg-violet-600 text-xs font-medium text-white transition-colors flex items-center gap-1.5">
                   <Upload className="w-3 h-3" /> File Choose Karein
@@ -223,7 +271,8 @@ Also identify: is this suitable for roll forming? How many stations approximatel
               </div>
             )}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+
+          <input ref={fileRef} type="file" accept="image/*,.dxf,application/dxf" className="hidden" onChange={onFileChange} />
 
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] text-white/50 font-medium">Custom Sawaal (Optional)</label>
@@ -247,19 +296,22 @@ Also identify: is this suitable for roll forming? How many stations approximatel
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Gemini Pro Analyze Kar Raha Hai...
+                {isDxf ? "Python parse kar raha hai... Gemini analyze karega..." : "Gemini Pro Analyze Kar Raha Hai..."}
               </>
             ) : (
               <>
                 <Eye className="w-4 h-4" />
-                Drawing Analyze Karo
+                {isDxf ? "DXF Analyze Karo (Python + Gemini)" : "Drawing Analyze Karo"}
               </>
             )}
           </button>
 
           {result?.extractedData && Object.keys(result.extractedData).length > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/3 p-3 flex flex-col gap-2">
-              <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">Extracted Data</p>
+              <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider">
+                Extracted Dimensions
+                {result.fileType === "dxf" && <span className="ml-2 text-blue-400 normal-case">DXF</span>}
+              </p>
               {result.extractedData.profileType && (
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] text-white/50">Profile Type</span>
@@ -270,6 +322,24 @@ Also identify: is this suitable for roll forming? How many stations approximatel
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] text-white/50">Thickness</span>
                   <span className="text-[11px] font-semibold text-emerald-300">{String(result.extractedData.thickness)} mm</span>
+                </div>
+              )}
+              {result.extractedData.width && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-white/50">Width</span>
+                  <span className="text-[11px] font-semibold text-cyan-300">{String(result.extractedData.width)} mm</span>
+                </div>
+              )}
+              {result.extractedData.height && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-white/50">Height</span>
+                  <span className="text-[11px] font-semibold text-cyan-300">{String(result.extractedData.height)} mm</span>
+                </div>
+              )}
+              {result.extractedData.innerRadius && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-white/50">Inner Radius</span>
+                  <span className="text-[11px] font-semibold text-orange-300">{String(result.extractedData.innerRadius)} mm</span>
                 </div>
               )}
               {result.extractedData.estimatedStations && (
@@ -307,6 +377,11 @@ Also identify: is this suitable for roll forming? How many stations approximatel
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300">
                     {result.model}
                   </span>
+                  {result.fileType === "dxf" && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                      DXF → Python → Gemini
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={copyResult}
@@ -327,15 +402,17 @@ Also identify: is this suitable for roll forming? How many stations approximatel
                 <Eye className="w-8 h-8 text-violet-400/50" />
               </div>
               <div>
-                <p className="text-sm font-medium text-white/40">Drawing upload karein</p>
-                <p className="text-xs text-white/25 mt-1">Gemini 2.5 Pro drawing ko dekh ke saari specifications nikaale ga</p>
+                <p className="text-sm font-medium text-white/40">Drawing ya DXF upload karein</p>
+                <p className="text-xs text-white/25 mt-1">Gemini 2.5 Pro + SAI Codex 5.3 drawing ko analyze karke saari specifications nikalenge</p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-2 max-w-sm">
                 {[
-                  { icon: "📐", text: "Dimensions nikaale" },
+                  { icon: "📐", text: "Dimensions nikaale (mm)" },
                   { icon: "🔄", text: "Bend angles detect kare" },
                   { icon: "📏", text: "Material thickness bataye" },
                   { icon: "🏭", text: "Roll forming suitability" },
+                  { icon: "📁", text: "DXF CAD file support" },
+                  { icon: "🐍", text: "Python se DXF parse" },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/3 border border-white/5">
                     <span className="text-base">{item.icon}</span>

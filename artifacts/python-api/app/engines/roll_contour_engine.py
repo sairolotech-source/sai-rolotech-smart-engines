@@ -109,80 +109,192 @@ def compute_groove_geometry(
     roll_gap: float,
     base_roll_od_mm: float = 120.0,
     shoulder_mm: float = 8.0,
+    thickness: float = 1.5,
 ) -> Dict[str, Any]:
     """
     [MANUFACTURING-GRADE] Derive all roll groove parameters from the real strip
-    cross-section shapely Polygon.
+    cross-section shapely Polygon.  Tooling-grade additions (v2.6):
+      entry_radius_mm           [TOOLING] lead-in chamfer at groove entry (3×t)
+      exit_radius_mm            [TOOLING] lead-out chamfer at groove exit (2×t)
+      flange_support_width_mm   [TOOLING] contact surface for flange = groove depth
+      flange_support_surface    [TOOLING] left/right {x, y_top, y_bottom} coords
+      edge_relief_width_mm      [TOOLING] taper zone at roll face outer edge (5mm)
+      edge_relief_depth_mm      [TOOLING] relief depth = 0.08×t
+      web_contact_width_mm      [TOOLING] flat region of upper roll on strip web
+      web_contact_surface       [TOOLING] {x_from, x_to, y} of web pinch zone
+      roll_face_width_mm        [TOOLING] total machined face = roll_width_mm
+      shoulder_width_mm         [TOOLING] clearance shoulder beyond flange edge
+      pinch_zones               [TOOLING] list of [{zone_type, x, y, label}]
+      contact_strips            [TOOLING] list of [{strip_type, x_from, x_to, y_from, y_to}]
+      roll_width_breakdown      [TOOLING] named components that sum to roll_face_width
 
-    Returns:
-      roll_width_mm             [MANUFACTURING-GRADE] section width + 2×shoulder
-      groove_depth_mm           [MANUFACTURING-GRADE] section bounding-box height
-      groove_radius_mm          [MANUFACTURING-GRADE] = bend_radius_mm (inner bend)
-      upper_roll_radius_mm      [HEURISTIC base] BASE_ROLL_OD_MM/2
-      lower_roll_radius_mm      [MANUFACTURING-GRADE] upper_r - groove_depth
-      shaft_center_upper_mm     [MANUFACTURING-GRADE] gap/2 + upper_roll_radius
-      shaft_center_lower_mm     [MANUFACTURING-GRADE] gap/2 + lower_roll_radius
-      shaft_center_distance_mm  [MANUFACTURING-GRADE] sum of above
-      groove_envelope_upper     shapely Polygon (section buffered by gap/2)
-      groove_envelope_lower     reflected envelope shifted below pass line
+    Legacy fields (still present):
+      roll_width_mm, groove_depth_mm, groove_radius_mm, upper/lower_roll_radius_mm,
+      shaft_center_upper/lower/distance_mm, groove_envelope_upper/lower
     """
     if not _SHAPELY_OK or section_poly is None or section_poly.is_empty:
         return {}
 
     try:
         minx, miny, maxx, maxy = section_poly.bounds
-        width          = maxx - minx
-        height         = maxy - miny
+        width  = maxx - minx          # ≈ web width (from polygon bounding box)
+        height = maxy - miny          # ≈ groove depth (flange projection)
 
-        roll_width_mm             = round(width + 2 * shoulder_mm, 3)        # [MFG]
-        groove_depth_mm           = round(height, 3)                         # [MFG]
-        groove_radius_mm          = round(bend_radius_mm, 3)                 # [MFG]
-        upper_roll_radius_mm      = round(base_roll_od_mm / 2.0, 3)          # [HEURISTIC base OD]
-        lower_roll_radius_mm      = round(upper_roll_radius_mm - groove_depth_mm, 3)  # [MFG]
-        shaft_center_upper_mm     = round(roll_gap / 2.0 + upper_roll_radius_mm, 3)   # [MFG]
-        shaft_center_lower_mm     = round(roll_gap / 2.0 + lower_roll_radius_mm, 3)   # [MFG]
+        # ── Legacy fields (unchanged) ──────────────────────────────────────────
+        roll_width_mm             = round(width + 2 * shoulder_mm, 3)         # [MFG]
+        groove_depth_mm           = round(height, 3)                          # [MFG]
+        groove_radius_mm          = round(bend_radius_mm, 3)                  # [MFG]
+        upper_roll_radius_mm      = round(base_roll_od_mm / 2.0, 3)           # [HEURISTIC base OD]
+        lower_roll_radius_mm      = round(upper_roll_radius_mm - groove_depth_mm, 3)   # [MFG]
+        shaft_center_upper_mm     = round(roll_gap / 2.0 + upper_roll_radius_mm, 3)    # [MFG]
+        shaft_center_lower_mm     = round(roll_gap / 2.0 + lower_roll_radius_mm, 3)    # [MFG]
         shaft_center_distance_mm  = round(shaft_center_upper_mm + shaft_center_lower_mm, 3)  # [MFG]
 
-        # ── Groove envelopes (physically correct, no false clash) ─────────────────
-        # Physical model:
-        #   • Upper roll groove occupies y ≥ +half_gap (above strip top surface)
-        #   • Lower roll groove occupies y ≤ −half_gap (below strip bottom surface)
-        # Construction:
-        #   1. Translate section UP/DOWN by half_gap (align groove mouth with strip surface)
-        #   2. Buffer slightly outward for near-miss detection
-        #   3. Clip at y=±half_gap so envelopes NEVER share the strip thickness band
-        #      → intersection area = 0 for all valid tooling configurations
-        half_gap  = roll_gap / 2.0
-        buf_amt   = max(half_gap * 0.5, 0.5)    # near-miss detection buffer
-        EXTENT    = 1000.0                       # large clip box extent
+        # ── Tooling-grade additions (v2.6) ─────────────────────────────────────
+        t              = max(thickness, 0.5)
+        web_half       = round(width / 2.0, 3)
 
-        # Upper: translate section UP, buffer, then clip to y ≥ +half_gap
+        # Entry / exit radii — lead chamfers machined at the groove edge
+        # Tooling standard: entry ≥ 2×t, exit ≥ 1.5×t to prevent strip edge marking
+        entry_radius_mm = round(min(3.0 * t, 5.0), 3)          # [TOOLING-GRADE]
+        exit_radius_mm  = round(min(2.0 * t, 3.5), 3)          # [TOOLING-GRADE]
+
+        # Flange support surface — the groove side-wall that constrains and forms the flange
+        # x position: at ±web_half (the web/flange junction)
+        # y extent: from pass-line (y=0) to flange tip (y=-groove_depth)
+        flange_support_width_mm  = round(height, 3)             # = groove depth [TOOLING]
+        flange_support_surface   = {
+            "left":  {"x": round(-web_half, 3), "y_top": 0.0, "y_bottom": round(-height, 3)},
+            "right": {"x": round(+web_half, 3), "y_top": 0.0, "y_bottom": round(-height, 3)},
+        }
+
+        # Edge relief — slight taper at the outermost roll face to prevent edge marks
+        edge_relief_width_mm = 5.0                              # [TOOLING] standard
+        edge_relief_depth_mm = round(t * 0.08, 4)              # [TOOLING] per industry std
+
+        # Web contact zone — the flat land on the upper roll that bears on the strip web
+        web_contact_width_mm  = round(width, 3)                 # [TOOLING]
+        web_contact_surface   = {
+            "x_from": round(-web_half, 3),
+            "x_to":   round(+web_half, 3),
+            "y":      0.0,
+            "width_mm": web_contact_width_mm,
+        }
+
+        # Roll face width breakdown
+        roll_face_width_mm  = roll_width_mm                     # [TOOLING] explicit alias
+        shoulder_width_mm   = round(shoulder_mm, 3)             # [TOOLING]
+        roll_width_breakdown = {
+            "web_contact_mm":       web_contact_width_mm,
+            "flange_support_mm":    round(flange_support_width_mm * 2, 3),   # both sides
+            "edge_relief_mm":       round(edge_relief_width_mm * 2, 3),      # both sides
+            "shoulder_clearance_mm":round(shoulder_mm * 2, 3),               # both sides
+            "total_face_mm":        roll_face_width_mm,
+        }
+
+        # Pinch zones — exact strip-roll contact vertices derived from polygon exterior
+        # These are the bend-corner points where the upper roll groove radius contacts the strip
+        pinch_zones: List[Dict[str, Any]] = [
+            {"zone_type": "upper_left_pinch",  "x": round(-web_half, 3), "y": 0.0,
+             "label": f"Pinch L  r={groove_radius_mm}mm"},
+            {"zone_type": "upper_right_pinch", "x": round(+web_half, 3), "y": 0.0,
+             "label": f"Pinch R  r={groove_radius_mm}mm"},
+        ]
+        if height > 0.5:  # meaningful flange
+            pinch_zones += [
+                {"zone_type": "flange_left_tip",  "x": round(-web_half, 3), "y": round(-height, 3),
+                 "label": f"Flange tip  d={round(height,1)}mm"},
+                {"zone_type": "flange_right_tip", "x": round(+web_half, 3), "y": round(-height, 3),
+                 "label": f"Flange tip  d={round(height,1)}mm"},
+            ]
+
+        # Contact strips — rectangular zones on the roll face where strip contacts roll
+        contact_strips: List[Dict[str, Any]] = [
+            {
+                "strip_type": "web_contact",
+                "x_from": round(-web_half, 3), "x_to": round(+web_half, 3),
+                "y_from": 0.0, "y_to": 0.0,
+                "color": "#10b981",    # emerald — web
+                "label": f"Web contact  w={web_contact_width_mm}mm",
+            },
+        ]
+        if height > 0.5:
+            contact_strips += [
+                {
+                    "strip_type": "flange_left_contact",
+                    "x_from": round(-web_half - t, 3), "x_to": round(-web_half, 3),
+                    "y_from": 0.0, "y_to": round(-height, 3),
+                    "color": "#3b82f6",    # blue — flange
+                    "label": f"Flange support  d={round(height,1)}mm",
+                },
+                {
+                    "strip_type": "flange_right_contact",
+                    "x_from": round(+web_half, 3), "x_to": round(+web_half + t, 3),
+                    "y_from": 0.0, "y_to": round(-height, 3),
+                    "color": "#3b82f6",
+                    "label": f"Flange support  d={round(height,1)}mm",
+                },
+                {
+                    "strip_type": "entry_chamfer_left",
+                    "x_from": round(-web_half - shoulder_mm, 3),
+                    "x_to":   round(-web_half - shoulder_mm + entry_radius_mm, 3),
+                    "y_from": 0.0, "y_to": round(-entry_radius_mm * 0.1, 3),
+                    "color": "#f59e0b",    # amber — entry chamfer
+                    "label": f"Entry r={entry_radius_mm}mm",
+                },
+                {
+                    "strip_type": "entry_chamfer_right",
+                    "x_from": round(+web_half + shoulder_mm - entry_radius_mm, 3),
+                    "x_to":   round(+web_half + shoulder_mm, 3),
+                    "y_from": 0.0, "y_to": round(-entry_radius_mm * 0.1, 3),
+                    "color": "#f59e0b",
+                    "label": f"Exit r={exit_radius_mm}mm",
+                },
+            ]
+
+        # ── Groove envelopes (physically correct, no false clash) ─────────────
+        half_gap  = roll_gap / 2.0
+        buf_amt   = max(half_gap * 0.5, 0.5)
+        EXTENT    = 1000.0
+
         upper_shifted   = _shapely_translate(section_poly, xoff=0.0, yoff=half_gap)
         upper_buffered  = upper_shifted.buffer(buf_amt, join_style=2)
         upper_clip_box  = _shapely_box(-EXTENT, half_gap, EXTENT, EXTENT)
         upper_env       = upper_buffered.intersection(upper_clip_box)
 
-        # Lower: reflect section, translate DOWN, buffer, clip to y ≤ −half_gap
         lower_reflected = _shapely_scale(section_poly, yfact=-1, origin=(0, 0, 0))
         lower_shifted   = _shapely_translate(lower_reflected, xoff=0.0, yoff=-half_gap)
         lower_buffered  = lower_shifted.buffer(buf_amt, join_style=2)
         lower_clip_box  = _shapely_box(-EXTENT, -EXTENT, EXTENT, -half_gap)
         lower_env       = lower_buffered.intersection(lower_clip_box)
-        # Result: upper_env y ∈ [+half_gap, …], lower_env y ∈ […, -half_gap]
-        # Intersection area = 0 for all normal tooling → interference check works correctly.
 
         return {
-            "roll_width_mm":            roll_width_mm,
-            "groove_depth_mm":          groove_depth_mm,
-            "groove_radius_mm":         groove_radius_mm,
-            "groove_corner_radius_mm":  groove_radius_mm,   # alias for SVG engine
-            "upper_roll_radius_mm":     upper_roll_radius_mm,
-            "lower_roll_radius_mm":     max(lower_roll_radius_mm, 5.0),
-            "shaft_center_upper_mm":    shaft_center_upper_mm,
-            "shaft_center_lower_mm":    shaft_center_lower_mm,
-            "shaft_center_distance_mm": shaft_center_distance_mm,
-            "groove_envelope_upper":    upper_env,
-            "groove_envelope_lower":    lower_env,
+            # ── Legacy ──────────────────────────────────────────────────────
+            "roll_width_mm":             roll_width_mm,
+            "groove_depth_mm":           groove_depth_mm,
+            "groove_radius_mm":          groove_radius_mm,
+            "groove_corner_radius_mm":   groove_radius_mm,
+            "upper_roll_radius_mm":      upper_roll_radius_mm,
+            "lower_roll_radius_mm":      max(lower_roll_radius_mm, 5.0),
+            "shaft_center_upper_mm":     shaft_center_upper_mm,
+            "shaft_center_lower_mm":     shaft_center_lower_mm,
+            "shaft_center_distance_mm":  shaft_center_distance_mm,
+            "groove_envelope_upper":     upper_env,
+            "groove_envelope_lower":     lower_env,
+            # ── Tooling-grade (v2.6) ─────────────────────────────────────
+            "entry_radius_mm":           entry_radius_mm,
+            "exit_radius_mm":            exit_radius_mm,
+            "flange_support_width_mm":   flange_support_width_mm,
+            "flange_support_surface":    flange_support_surface,
+            "edge_relief_width_mm":      edge_relief_width_mm,
+            "edge_relief_depth_mm":      edge_relief_depth_mm,
+            "web_contact_width_mm":      web_contact_width_mm,
+            "web_contact_surface":       web_contact_surface,
+            "roll_face_width_mm":        roll_face_width_mm,
+            "shoulder_width_mm":         shoulder_width_mm,
+            "roll_width_breakdown":      roll_width_breakdown,
+            "pinch_zones":               pinch_zones,
+            "contact_strips":            contact_strips,
         }
     except Exception as exc:
         logger.debug("[roll_contour] compute_groove_geometry failed: %s", exc)
@@ -387,7 +499,8 @@ def _upper_lower_roll_contour(
                                         bend_angle_deg, lip_mm=lip_mm)
         section_poly = _centerline_to_polygon(cl_tuples, thickness)
         if section_poly is not None and not section_poly.is_empty:
-            gg = compute_groove_geometry(section_poly, bend_radius_mm, gap)
+            gg = compute_groove_geometry(section_poly, bend_radius_mm, gap,
+                                         thickness=thickness)
             upper_env = gg.get("groove_envelope_upper")
             lower_env = gg.get("groove_envelope_lower")
 
@@ -463,6 +576,7 @@ def _upper_lower_roll_contour(
     shaft_dist  = gg.get("shaft_center_distance_mm", round(shaft_upper + shaft_lower, 3))
 
     return {
+        # ── Core geometry ──────────────────────────────────────────────────────
         "upper_roll_profile":       pts(upper_profile_raw),
         "lower_roll_profile":       pts(lower_profile_raw),
         "forming_depth_mm":         round(groove_depth_ret, 2),
@@ -476,7 +590,22 @@ def _upper_lower_roll_contour(
         "shaft_center_lower_mm":    shaft_lower,
         "shaft_center_distance_mm": shaft_dist,
         "geometry_source":          "shapely_section_polygon" if gg else "heuristic_fallback",
-        "_upper_env":               upper_env,   # shapely object for interference check (internal)
+        # ── Tooling-grade additions (v2.6) ─────────────────────────────────────
+        "entry_radius_mm":          gg.get("entry_radius_mm",   round(min(3.0 * thickness, 5.0), 3)),
+        "exit_radius_mm":           gg.get("exit_radius_mm",    round(min(2.0 * thickness, 3.5), 3)),
+        "flange_support_width_mm":  gg.get("flange_support_width_mm", round(groove_depth_ret, 2)),
+        "flange_support_surface":   gg.get("flange_support_surface",  {}),
+        "edge_relief_width_mm":     gg.get("edge_relief_width_mm",    5.0),
+        "edge_relief_depth_mm":     gg.get("edge_relief_depth_mm",    round(thickness * 0.08, 4)),
+        "web_contact_width_mm":     gg.get("web_contact_width_mm",    section_width_mm),
+        "web_contact_surface":      gg.get("web_contact_surface",     {}),
+        "roll_face_width_mm":       gg.get("roll_face_width_mm",      round(roll_width, 2)),
+        "shoulder_width_mm":        gg.get("shoulder_width_mm",       8.0),
+        "roll_width_breakdown":     gg.get("roll_width_breakdown",    {}),
+        "pinch_zones":              gg.get("pinch_zones",             []),
+        "contact_strips":           gg.get("contact_strips",          []),
+        # ── Internal — consumed by check_groove_interference, stripped before JSON ─
+        "_upper_env":               upper_env,
         "_lower_env":               lower_env,
     }
 

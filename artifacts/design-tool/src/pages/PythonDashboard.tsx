@@ -31,9 +31,10 @@ import {
 } from "@/services/pythonApi";
 
 export default function PythonDashboard() {
-  const setNumStations     = useCncStore(s => s.setNumStations);
-  const setMaterialType    = useCncStore(s => s.setMaterialType);
+  const setNumStations       = useCncStore(s => s.setNumStations);
+  const setMaterialType      = useCncStore(s => s.setMaterialType);
   const setMaterialThickness = useCncStore(s => s.setMaterialThickness);
+  const setRollTooling       = useCncStore(s => s.setRollTooling);
 
   const [loading, setLoading] = useState(false);
   const [semiAutoLoading, setSemiAutoLoading] = useState(false);
@@ -58,15 +59,52 @@ export default function PythonDashboard() {
 
   useEffect(() => {
     if (!pipelineResult) return;
-    const stEng  = pipelineResult.station_engine as Record<string, unknown> | undefined;
-    const inEng  = pipelineResult.input_engine   as Record<string, unknown> | undefined;
-    const rec    = stEng?.recommended_station_count;
-    const mat    = inEng?.material as string | undefined;
-    const thick  = inEng?.sheet_thickness_mm as number | undefined;
+    const stEng  = pipelineResult.station_engine  as Record<string, unknown> | undefined;
+    const inEng  = pipelineResult.input_engine    as Record<string, unknown> | undefined;
+    const rollCt = pipelineResult.roll_contour_engine as Record<string, unknown> | undefined;
+
+    // ── Basic field sync ──────────────────────────────────────────────────────
+    const rec   = stEng?.recommended_station_count;
+    const mat   = inEng?.material as string | undefined;
+    const thick = inEng?.sheet_thickness_mm as number | undefined;
     if (typeof rec === "number" && rec > 0) setNumStations(rec);
     if (mat)   setMaterialType(mat as Parameters<typeof setMaterialType>[0]);
     if (thick) setMaterialThickness(thick);
-  }, [pipelineResult, setNumStations, setMaterialType, setMaterialThickness]);
+
+    // ── Bridge roll_contour passes → CNC store RollToolingResult[] ────────────
+    // Maps shapely-derived pass geometry into the store so RollToolingView and
+    // DigitalTwinView stay consistent with the Python pipeline station count.
+    const allPasses = [
+      ...((rollCt?.passes as unknown[]) ?? []),
+      rollCt?.calibration_pass,
+    ].filter(Boolean) as Record<string, unknown>[];
+
+    if (allPasses.length > 0) {
+      const mapped = allPasses.map((p, i) => ({
+        stationId:              `python-s${p.pass_no ?? i + 1}`,
+        stationIndex:           i,
+        stationNumber:          (p.pass_no as number) ?? i + 1,
+        label:                  (p.station_label as string) ?? `Station ${i + 1}`,
+        upperRollOD:            ((p.upper_roll_radius_mm as number) ?? 60) * 2,
+        upperRollID:            40,
+        upperRollWidth:         (p.roll_width_mm as number) ?? 76,
+        lowerRollOD:            ((p.lower_roll_radius_mm as number) ?? 40) * 2,
+        lowerRollID:            40,
+        lowerRollWidth:         (p.roll_width_mm as number) ?? 76,
+        rollGap:                (p.roll_gap_mm as number) ?? 1.6,
+        passLineHeight:         0,
+        kFactor:                0.5,
+        neutralAxis:            0.5,
+        deflection:             0,
+        concentricityTolerance: 0.05,
+        description:            (p.stage_type as string) ?? "forming",
+        profileDepthMm:         (p.groove_depth_mm as number) ?? undefined,
+        bendAngles:             [(p.target_angle_deg as number) ?? 0],
+        material:               mat,
+      }));
+      setRollTooling(mapped);
+    }
+  }, [pipelineResult, setNumStations, setMaterialType, setMaterialThickness, setRollTooling]);
 
   const runDebug = useCallback(async (form: ManualModePayload, isSemiConfirm = false) => {
     if (isSemiConfirm) setSemiAutoLoading(true);

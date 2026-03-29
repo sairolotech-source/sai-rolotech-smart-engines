@@ -18,17 +18,52 @@ import {
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 interface Pt2 { x: number; y: number }
 
+interface ContactStrip {
+  strip_type: string;
+  x_from: number; x_to: number;
+  y_from: number; y_to: number;
+  color: string;
+  label: string;
+}
+
+interface PinchZone {
+  zone_type: string;
+  x: number; y: number;
+  label: string;
+}
+
+interface RollWidthBreakdown {
+  web_contact_mm?:        number;
+  flange_support_mm?:     number;
+  edge_relief_mm?:        number;
+  shoulder_clearance_mm?: number;
+  total_face_mm?:         number;
+}
+
 interface PassData {
-  pass_no:             number;
-  station_label:       string;
-  target_angle_deg:    number;
-  stage_type:          string;
-  strip_width_mm?:     number;
-  roll_gap_mm?:        number;
-  profile_centerline?: Pt2[];
-  contact_points?:     Pt2[];
-  upper_roll_profile?: Pt2[] | null;
-  lower_roll_profile?: Pt2[] | null;
+  pass_no:                number;
+  station_label:          string;
+  target_angle_deg:       number;
+  stage_type:             string;
+  strip_width_mm?:        number;
+  roll_gap_mm?:           number;
+  profile_centerline?:    Pt2[];
+  contact_points?:        Pt2[];
+  upper_roll_profile?:    Pt2[] | null;
+  lower_roll_profile?:    Pt2[] | null;
+  // Tooling-grade v2.6
+  contact_strips?:        ContactStrip[];
+  pinch_zones?:           PinchZone[];
+  entry_radius_mm?:       number;
+  exit_radius_mm?:        number;
+  roll_width_mm?:         number;
+  groove_depth_mm?:       number;
+  shaft_center_distance_mm?: number;
+  roll_width_breakdown?:  RollWidthBreakdown;
+  flange_support_width_mm?: number;
+  edge_relief_width_mm?:  number;
+  edge_relief_depth_mm?:  number;
+  geometry_source?:       string;
 }
 
 interface Props {
@@ -160,10 +195,12 @@ export default function ProfileAnnotationPanel({
   const passes = rollContour?.passes ?? [];
   const n      = passes.length;
 
-  const [activeIdx,  setActiveIdx]  = useState(0);
-  const [showAll,    setShowAll]    = useState(true);
-  const [showDims,   setShowDims]   = useState(true);
-  const [showContact, setShowContact] = useState(true);
+  const [activeIdx,    setActiveIdx]    = useState(0);
+  const [showAll,      setShowAll]      = useState(true);
+  const [showDims,     setShowDims]     = useState(true);
+  const [showContact,  setShowContact]  = useState(true);
+  const [showZones,    setShowZones]    = useState(true);
+  const [showPinch,    setShowPinch]    = useState(true);
 
   const go = useCallback((i: number) => setActiveIdx(Math.max(0, Math.min(n - 1, i))), [n]);
 
@@ -293,13 +330,25 @@ export default function ProfileAnnotationPanel({
             className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
               showAll ? "border-violet-500/30 bg-violet-500/10 text-violet-300" : "border-gray-700 text-gray-600"
             }`}>
-            {showAll ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} All passes
+            {showAll ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} All
           </button>
           <button onClick={() => setShowDims(s => !s)}
             className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
               showDims ? "border-blue-500/30 bg-blue-500/10 text-blue-300" : "border-gray-700 text-gray-600"
             }`}>
             <Ruler className="w-3 h-3" /> Dims
+          </button>
+          <button onClick={() => setShowZones(s => !s)}
+            className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
+              showZones ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-gray-700 text-gray-600"
+            }`}>
+            <Eye className="w-3 h-3" /> Zones
+          </button>
+          <button onClick={() => setShowPinch(s => !s)}
+            className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
+              showPinch ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-gray-700 text-gray-600"
+            }`}>
+            <Eye className="w-3 h-3" /> Pinch
           </button>
           <button onClick={() => setShowContact(s => !s)}
             className={`p-1.5 rounded border text-[10px] flex items-center gap-1 transition-colors ${
@@ -344,7 +393,28 @@ export default function ProfileAnnotationPanel({
                            dash={[5, 4]} opacity={0.4} lineCap="round" />;
             })()}
 
-            {/* Active profile (solid, glowing) */}
+            {/* ── Contact strips (web=emerald, flange=blue, chamfer=amber) ─────── */}
+            {showZones && (cur?.contact_strips ?? []).map((cs, i) => {
+              const a = toCanvas(cs.x_from, cs.y_from);
+              const b = toCanvas(cs.x_to,   cs.y_to);
+              const rx = Math.min(a.cx, b.cx);
+              const ry = Math.min(a.cy, b.cy);
+              const rw = Math.abs(b.cx - a.cx) || 4;
+              const rh = Math.abs(b.cy - a.cy) || 4;
+              const isWeb     = cs.strip_type === "web_contact";
+              const opacity   = isWeb ? 0.14 : 0.11;
+              const borderOp  = isWeb ? 0.55 : 0.40;
+              return (
+                <Group key={i}>
+                  <Rect x={rx} y={ry} width={rw} height={rh}
+                        fill={cs.color} opacity={opacity} />
+                  <Rect x={rx} y={ry} width={rw} height={rh}
+                        stroke={cs.color} strokeWidth={0.8} opacity={borderOp} />
+                </Group>
+              );
+            })}
+
+            {/* ── Active profile (solid, glowing) ──────────────────────────── */}
             {activePts.length >= 2 && (
               <>
                 {/* Shadow / glow */}
@@ -364,7 +434,50 @@ export default function ProfileAnnotationPanel({
               </>
             )}
 
-            {/* Contact point markers */}
+            {/* ── Pinch zone markers (amber circles at bend corners) ────────── */}
+            {showPinch && (cur?.pinch_zones ?? []).map((pz, i) => {
+              const { cx, cy } = toCanvas(pz.x, pz.y);
+              const isFlange = pz.zone_type.includes("flange");
+              return (
+                <Group key={i}>
+                  <Circle x={cx} y={cy} radius={isFlange ? 5 : 10}
+                          fill="#f59e0b" opacity={0.18} />
+                  <Circle x={cx} y={cy} radius={isFlange ? 3 : 5.5}
+                          stroke="#f59e0b" strokeWidth={1.2} opacity={0.7} />
+                  <Circle x={cx} y={cy} radius={1.5} fill="#fbbf24" opacity={0.9} />
+                  <Text
+                    x={cx + 8} y={cy - 9}
+                    text={pz.label}
+                    fontSize={7.5} fill="#fbbf24" fontFamily="monospace" opacity={0.8}
+                  />
+                </Group>
+              );
+            })}
+
+            {/* ── Entry / exit radius labels on the pass-line axis ─────────── */}
+            {showZones && cur?.entry_radius_mm != null && (
+              <Group>
+                <Text
+                  x={6} y={H - 44}
+                  text={`Entry r = ${cur.entry_radius_mm}mm`}
+                  fontSize={8} fill="#f59e0b" fontFamily="monospace" opacity={0.75}
+                />
+                <Text
+                  x={6} y={H - 33}
+                  text={`Exit  r = ${cur.exit_radius_mm ?? "—"}mm`}
+                  fontSize={8} fill="#f59e0b" fontFamily="monospace" opacity={0.75}
+                />
+                {cur.edge_relief_width_mm != null && (
+                  <Text
+                    x={6} y={H - 22}
+                    text={`Edge relief ${cur.edge_relief_width_mm}mm × ${cur.edge_relief_depth_mm?.toFixed(2) ?? "?"}mm`}
+                    fontSize={8} fill="#94a3b8" fontFamily="monospace" opacity={0.65}
+                  />
+                )}
+              </Group>
+            )}
+
+            {/* ── Contact point markers (red — existing bend-vertex detection) ─ */}
             {showContact && contactPts.map((p, i) => {
               const { cx, cy } = toCanvas(p.x, p.y);
               return (
@@ -391,18 +504,21 @@ export default function ProfileAnnotationPanel({
             />
 
             {/* Legend */}
-            <Group x={W - 110} y={8}>
-              <Rect x={0} y={0} width={104} height={64} fill="#0a0f1a" cornerRadius={4} opacity={0.8} />
+            <Group x={W - 118} y={8}>
+              <Rect x={0} y={0} width={112} height={88} fill="#0a0f1a" cornerRadius={4} opacity={0.85} />
               {[
                 [stageCol,  "Current station"],
                 ["#ef4444", "Final profile"],
                 ["#60a5fa", "Web dim"],
                 ["#4ade80", "Flange dim"],
                 ["#ef4444", "Contact point"],
+                ["#10b981", "Web contact zone"],
+                ["#3b82f6", "Flange support"],
+                ["#f59e0b", "Pinch / chamfer"],
               ].map(([col, lbl], i) => (
-                <Group key={i} x={6} y={6 + i * 11}>
-                  <Rect x={0} y={2} width={12} height={3} fill={col as string} cornerRadius={1} />
-                  <Text x={16} y={0} text={lbl as string} fontSize={8}
+                <Group key={i} x={6} y={6 + i * 10}>
+                  <Rect x={0} y={2} width={10} height={3} fill={col as string} cornerRadius={1} opacity={0.8} />
+                  <Text x={14} y={0} text={lbl as string} fontSize={7.5}
                         fill="#64748b" fontFamily="monospace" />
                 </Group>
               ))}
@@ -454,7 +570,7 @@ export default function ProfileAnnotationPanel({
       </div>
 
       {/* Station pills */}
-      <div className="px-4 pb-3 flex gap-1 overflow-x-auto">
+      <div className="px-4 pb-2 flex gap-1 overflow-x-auto">
         {passes.map((p, i) => {
           const sc     = STAGE_COL[p.stage_type] ?? "#60a5fa";
           const hasR   = (p.profile_centerline?.length ?? 0) >= 2;
@@ -471,6 +587,37 @@ export default function ProfileAnnotationPanel({
           );
         })}
       </div>
+
+      {/* Tooling-grade roll width breakdown info card */}
+      {cur?.roll_width_breakdown && Object.keys(cur.roll_width_breakdown).length > 0 && (
+        <div className="mx-3 mb-3 rounded-lg border border-gray-700/40 bg-[#080d14] px-3 py-2">
+          <div className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+            Roll Face Width Breakdown — Station {cur.pass_no}
+          </div>
+          <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+            {[
+              ["Web contact",     cur.roll_width_breakdown.web_contact_mm,       "#10b981"],
+              ["Flange support",  cur.roll_width_breakdown.flange_support_mm,    "#3b82f6"],
+              ["Edge relief ×2",  cur.roll_width_breakdown.edge_relief_mm,       "#f59e0b"],
+              ["Shoulder ×2",     cur.roll_width_breakdown.shoulder_clearance_mm,"#94a3b8"],
+              ["Total face",      cur.roll_width_breakdown.total_face_mm,        "#a78bfa"],
+              ["Entry r",         cur.entry_radius_mm,                           "#f59e0b"],
+            ].map(([label, val, color]) => val != null && (
+              <div key={label as string} className="flex flex-col">
+                <span className="text-[8px] text-gray-600 font-mono">{label as string}</span>
+                <span className="text-[10px] font-bold font-mono" style={{ color: color as string }}>
+                  {typeof val === "number" ? `${val.toFixed(2)}mm` : val}
+                </span>
+              </div>
+            ))}
+          </div>
+          {cur.geometry_source && (
+            <div className="mt-1.5 text-[8px] font-mono text-gray-600">
+              src: {cur.geometry_source}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

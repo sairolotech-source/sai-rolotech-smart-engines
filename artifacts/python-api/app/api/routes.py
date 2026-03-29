@@ -45,6 +45,10 @@ from app.engines.roll_dimension_engine import generate_roll_dimensions
 from app.engines.export_dxf_engine import export_rolls_dxf
 from app.engines.export_step_engine import export_roll_step
 from app.engines.export_pack_engine import build_export_pack
+from app.engines.centerline_sheet_converter_arc_engine import (
+    convert_centerline_to_sheet_arc_aware,
+    is_centerline_geometry,
+)
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -204,6 +208,24 @@ def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
     if is_fail(geometry_result):
         return fail_at("geometry_engine", geometry_result)
 
+    # ── Centerline Sheet Converter (Arc-Aware) ─────────────────────────────
+    raw_entities = import_result.get("geometry", {}).get("entities", [])
+    _is_centerline = is_centerline_geometry(raw_entities)
+    centerline_result = _EMPTY
+    if _is_centerline and data.thickness and data.thickness > 0:
+        centerline_result = convert_centerline_to_sheet_arc_aware(
+            geometry=raw_entities,
+            thickness=data.thickness,
+            mode="both",
+            arc_segments=24,
+        )
+        if centerline_result.get("blocking"):
+            logger.warning(
+                "[centerline] Blocking self-intersection detected — "
+                "results included but manual review required"
+            )
+    # ── End Centerline ─────────────────────────────────────────────────────
+
     profile_result = analyze_profile(geometry_result)
     if is_fail(profile_result):
         return fail_at("profile_analysis_engine", profile_result)
@@ -230,13 +252,14 @@ def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
 
     pipeline = {
         "status": "pass",
-        "file_import_engine": import_result,
-        "geometry_engine": geometry_result,
-        "profile_analysis_engine": profile_result,
-        "input_engine": input_result,
+        "file_import_engine":                 import_result,
+        "geometry_engine":                    geometry_result,
+        "centerline_sheet_converter_arc_engine": centerline_result,
+        "profile_analysis_engine":            profile_result,
+        "input_engine":                       input_result,
         **{k: v for k, v in core.items() if k != "status"},
-        "consistency_engine": consistency_result,
-        "final_decision_engine": decision_result,
+        "consistency_engine":                 consistency_result,
+        "final_decision_engine":              decision_result,
     }
 
     report_result = generate_report(pipeline)
@@ -315,8 +338,9 @@ def health():
             "roll_contour", "cam_prep", "cad_export",
             "advanced_roll", "roll_interference", "roll_dimension",
             "export_dxf", "export_step", "export_pack",
+            "centerline_sheet_converter_arc",
         ],
-        "total_engines": 28,
+        "total_engines": 29,
         "endpoints": [
             "GET  /api/health",
             "POST /api/manual-mode",
@@ -546,6 +570,23 @@ async def auto_mode_dxf(
     if is_fail(geometry_result):
         return fail_at("geometry_engine", geometry_result)
 
+    # ── Centerline Sheet Converter (Arc-Aware) ─────────────────────────────
+    raw_entities = import_result.get("geometry", {}).get("entities", [])
+    _is_centerline = is_centerline_geometry(raw_entities)
+    centerline_result = _EMPTY
+    if _is_centerline and thickness and thickness > 0:
+        centerline_result = convert_centerline_to_sheet_arc_aware(
+            geometry=raw_entities,
+            thickness=thickness,
+            mode="both",
+            arc_segments=24,
+        )
+        if centerline_result.get("blocking"):
+            logger.warning(
+                "[centerline/dxf] Blocking self-intersection — manual review required"
+            )
+    # ── End Centerline ─────────────────────────────────────────────────────
+
     profile_result = analyze_profile(geometry_result)
     if is_fail(profile_result):
         return fail_at("profile_analysis_engine", profile_result)
@@ -575,6 +616,7 @@ async def auto_mode_dxf(
         "source_file": file.filename,
         "file_import_engine": import_result,
         "geometry_engine": geometry_result,
+        "centerline_sheet_converter_arc_engine": centerline_result,
         "profile_analysis_engine": profile_result,
         "input_engine": input_result,
         **{k: v for k, v in core.items() if k != "status"},

@@ -130,7 +130,7 @@ export default function PythonDashboard() {
       form.append("file", file);
       form.append("thickness", String(thickness));
       form.append("material", material);
-      form.append("bend_radius", String(thickness));
+      form.append("bend_radius", String(Math.max(thickness * 1.5, 2.0)));
       form.append("strip_speed", "15");
       const resp = await fetch("/papi/api/simulate", { method: "POST", body: form });
       const data = await resp.json();

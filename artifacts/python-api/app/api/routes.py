@@ -986,7 +986,7 @@ def run_manual_mode_export_cad_pack(data: ManualProfileInput):
 # POST /api/simulate
 # ═══════════════════════════════════════════════════════════════
 
-@router.post("/api/simulate")
+@router.post("/simulate")
 async def simulate_roll_forming(
     file: UploadFile = File(...),
     thickness: float = Form(1.5),
@@ -1017,30 +1017,18 @@ async def simulate_roll_forming(
         raw_geo = raw_geo.get("entities", [])
 
     # ── Clean geometry ───────────────────────────────────────────
-    clean_result = clean_geometry(raw_geo)
-    cleaned_entities = clean_result.get("entities") or []
+    geometry_result = clean_geometry(raw_geo)
+    cleaned_entities = geometry_result.get("entities") or []
 
     # ── Profile analysis ─────────────────────────────────────────
-    profile_result = analyze_profile(cleaned_entities)
+    profile_result = analyze_profile(geometry_result)
 
     # ── Validate inputs ──────────────────────────────────────────
-    input_result = validate_inputs({
-        "bend_count":  profile_result.get("bend_count", 4),
-        "width":       profile_result.get("section_width_mm", 120),
-        "height":      profile_result.get("section_height_mm", 50),
-        "thickness":   thickness,
-        "material":    material,
-        "profile_type": profile_result.get("profile_type", "unknown"),
-    })
+    input_result = validate_inputs(thickness, material)
 
-    # ── Roll contour engine ───────────────────────────────────────
-    station_result = estimate_station(profile_result)
-    roll_contour_result = generate_roll_contour(
-        profile_result,
-        station_result,
-        {"thickness": thickness, "material": material},
-        input_result,
-    )
+    # ── Core engines (flower → station → shaft → roll contour) ───
+    core = _run_core_engines(profile_result, input_result)
+    roll_contour_result = core.get("roll_contour_engine", {})
 
     passes = roll_contour_result.get("passes", [])
     calib  = roll_contour_result.get("calibration_pass")

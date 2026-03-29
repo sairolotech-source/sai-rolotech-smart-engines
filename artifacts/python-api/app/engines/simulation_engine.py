@@ -185,56 +185,73 @@ def detect_defects(
     strip_width_mm: float,
     material: str,
 ) -> List[Dict]:
+    """
+    Detect forming defects.
+    Thresholds calibrated for real roll-forming industry practice:
+    - R/t = 1.0 is typical for GI/CR; strain at outer fibre ≈ 25-33% is normal
+    - Edge wave threshold based on unsupported web width, not total strip width
+    """
     issues = []
-    slenderness = strip_width_mm / thickness_mm if thickness_mm > 0 else 0
     Fy = YIELD_STRENGTH_MPA.get(material, 250)
-    fracture_strain = 0.3 if "SS" not in material else 0.2
+
+    # Fracture strain thresholds (industry-calibrated for roll forming R/t ≥ 1)
+    # GI, MS: elongation ~28%, effective fracture strain ~40%
+    # SS: elongation ~40%, effective fracture strain ~35%
+    # CR: elongation ~30%, effective fracture strain ~38%
+    fracture_map = {"GI": 0.40, "MS": 0.38, "SS": 0.32, "HR": 0.38, "CR": 0.38, "AL": 0.30}
+    fracture_strain = fracture_map.get(material, 0.38)
 
     if strain > fracture_strain:
         issues.append({
             "type": "cracking_risk",
             "severity": "HIGH",
             "icon": "💥",
-            "message": f"Outer-fibre strain {strain:.1%} exceeds {fracture_strain:.0%} — cracking risk at bend zone",
+            "message": f"Outer-fibre strain {strain:.1%} exceeds {fracture_strain:.0%} fracture limit — cracking risk",
         })
-    elif strain > fracture_strain * 0.7:
+    elif strain > fracture_strain * 0.75:
         issues.append({
             "type": "cracking_risk",
             "severity": "MEDIUM",
             "icon": "⚠️",
-            "message": f"Strain {strain:.1%} approaching fracture limit — monitor bend zone",
+            "message": f"Strain {strain:.1%} at {fracture_strain * 0.75:.0%}–{fracture_strain:.0%} range — monitor bend zone",
         })
 
-    if ratio > 0.65 and slenderness > 100:
+    # Edge wave: use free-span estimate ≈ strip_width * 0.4 (unsupported between rolls)
+    free_span = strip_width_mm * 0.4
+    slenderness = free_span / thickness_mm if thickness_mm > 0 else 0
+    if ratio > 0.70 and slenderness > 120:
         issues.append({
             "type": "edge_wave",
             "severity": "MEDIUM",
             "icon": "🌊",
-            "message": f"Slenderness ratio {slenderness:.0f} — edge wave risk; check strip tension",
+            "message": f"Free-span slenderness {slenderness:.0f} — edge wave risk; check inter-roll strip tension",
         })
 
-    if ratio > 0.80 and thickness_mm < 0.8:
+    # Wrinkling: thin material at late pass
+    if ratio > 0.80 and thickness_mm < 0.6:
         issues.append({
             "type": "wrinkling",
             "severity": "HIGH",
             "icon": "〰️",
-            "message": "Thin strip at late forming pass — wrinkling risk; verify roll gap",
+            "message": f"Thin strip ({thickness_mm}mm) at late forming — wrinkling risk; verify roll gap",
         })
 
-    if 0.25 < ratio < 0.70 and angle_deg > 40 and slenderness > 70:
+    # Longitudinal bow
+    if 0.30 < ratio < 0.70 and angle_deg > 35 and slenderness > 90:
         issues.append({
             "type": "bow",
             "severity": "LOW",
             "icon": "🏹",
-            "message": "Longitudinal bow possible — verify roll alignment and strip entry",
+            "message": "Longitudinal bow possible — verify roll bearing alignment and strip entry guide",
         })
 
-    if ratio > 0.90 and Fy > 300 and angle_deg > 85:
+    # Springback alert for high-strength materials at final pass
+    if ratio > 0.92 and Fy > 300 and angle_deg > 85:
         issues.append({
             "type": "springback_excess",
             "severity": "MEDIUM",
             "icon": "↩️",
-            "message": "High-strength material at final pass — springback compensation critical",
+            "message": f"High-strength material (Fy={Fy}MPa) near final pass — verify springback over-bend",
         })
 
     return issues
@@ -245,22 +262,44 @@ def detect_defects(
 # ─────────────────────────────────────────────
 
 def compute_quality_score(all_passes: List[Dict]) -> Dict:
-    """Compute an overall forming quality score (0–100)."""
+    """
+    Compute an overall forming quality score (0–100).
+    Deduplicates defect types across stations so a recurring structural issue
+    (like strain near limit) counts once, not once per station.
+    """
     score = 100
-    high_defects = sum(
-        1 for p in all_passes for d in p.get("defects", []) if d["severity"] == "HIGH"
-    )
-    med_defects = sum(
-        1 for p in all_passes for d in p.get("defects", []) if d["severity"] == "MEDIUM"
-    )
-    score -= high_defects * 15
-    score -= med_defects * 5
+    unique_high: set = set()
+    unique_med:  set = set()
+    total_high = 0
+    total_med  = 0
+    for p in all_passes:
+        for d in p.get("defects", []):
+            if d["severity"] == "HIGH":
+                total_high += 1
+                unique_high.add(d["type"])
+            elif d["severity"] == "MEDIUM":
+                total_med += 1
+                unique_med.add(d["type"])
+
+    score -= len(unique_high) * 15
+    score -= len(unique_med)  * 5
     max_strain = max((p.get("strain", 0) for p in all_passes), default=0)
-    if max_strain > 0.20:
+    if max_strain > 0.35:
         score -= 10
     score = max(0, min(100, score))
-    label = "EXCELLENT" if score >= 90 else "GOOD" if score >= 75 else "ACCEPTABLE" if score >= 55 else "POOR"
-    return {"score": score, "label": label, "high_defects": high_defects, "med_defects": med_defects}
+    label = (
+        "EXCELLENT"  if score >= 90 else
+        "GOOD"       if score >= 75 else
+        "ACCEPTABLE" if score >= 55 else "POOR"
+    )
+    return {
+        "score": score,
+        "label": label,
+        "high_defects": total_high,
+        "med_defects":  total_med,
+        "unique_high_types": list(unique_high),
+        "unique_med_types":  list(unique_med),
+    }
 
 
 # ─────────────────────────────────────────────

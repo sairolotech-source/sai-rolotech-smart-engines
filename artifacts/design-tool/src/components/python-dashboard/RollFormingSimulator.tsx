@@ -335,23 +335,66 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
               fill={cur.stage_color} opacity="0.9" />
           ))}
 
-          {/* Roll profiles (upper = orange, lower = blue) */}
+          {/* Final target profile — red dashed overlay (standard color) */}
+          {showFlower && passes.length > 1 && (
+            <polyline
+              points={toPolyline(passes[passes.length - 1].profile_points)}
+              fill="none" stroke="#ef4444" strokeWidth="1.0"
+              strokeDasharray="4,3" opacity="0.55"
+              strokeLinecap="round"
+            />
+          )}
+
+          {/* Roll profiles — STANDARD COLORS: upper=blue, lower=green */}
           {cur.upper_roll_profile && (
             <polyline
               points={toPolyline(cur.upper_roll_profile as ProfilePoint[])}
-              fill="none" stroke="#f97316" strokeWidth="1.2"
-              strokeDasharray="3,2" opacity="0.6"
+              fill="none" stroke="#3b82f6" strokeWidth="1.2"
+              strokeDasharray="3,2" opacity="0.7"
               strokeLinecap="round"
             />
           )}
           {cur.lower_roll_profile && (
             <polyline
               points={toPolyline(cur.lower_roll_profile as ProfilePoint[])}
-              fill="none" stroke="#3b82f6" strokeWidth="1.2"
-              strokeDasharray="3,2" opacity="0.6"
+              fill="none" stroke="#22c55e" strokeWidth="1.2"
+              strokeDasharray="3,2" opacity="0.7"
               strokeLinecap="round"
             />
           )}
+
+          {/* Flower dimension overlay — angle + width label per faded pass */}
+          {showFlower && passes.map((p, i) => {
+            if (!p.profile_points.length) return null;
+            const mid = p.profile_points[Math.floor(p.profile_points.length / 2)];
+            const isActive = i === activeIdx;
+            // Only label every other pass to avoid clutter, always label active
+            if (!isActive && i % 2 !== 0) return null;
+            const prev = i > 0 ? passes[i - 1] : null;
+            const widthDelta = prev ? (p.strip_width_mm - prev.strip_width_mm) : 0;
+            return (
+              <g key={`dim-${i}`}>
+                {isActive ? (
+                  <>
+                    <text x={mid.x + 2} y={mid.y - 6} fontSize="4.5" fill={p.stage_color}
+                      fontFamily="monospace" fontWeight="bold">
+                      {`θ=${p.target_angle_deg.toFixed(0)}°`}
+                    </text>
+                    {widthDelta !== 0 && (
+                      <text x={mid.x + 2} y={mid.y - 1} fontSize="3.5" fill="#a78bfa" fontFamily="monospace">
+                        {widthDelta > 0 ? `+${widthDelta.toFixed(1)}` : widthDelta.toFixed(1)}mm
+                      </text>
+                    )}
+                  </>
+                ) : (
+                  <text x={mid.x + 1} y={mid.y - 2} fontSize="3" fill={p.stage_color}
+                    fontFamily="monospace" opacity="0.5">
+                    {`S${p.pass_no}`}
+                  </text>
+                )}
+              </g>
+            );
+          })}
 
           {/* Contact-point red dots — strip↔roll intersections */}
           {cur.profile_points.length > 1 && (() => {
@@ -407,23 +450,39 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
           )}
         </div>
 
-        {/* Legend (top-right) */}
-        {cur.upper_roll_profile && (
-          <div className="absolute top-3 right-3 text-[9px] space-y-0.5">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 border-t border-dashed border-orange-400" />
-              <span className="text-gray-500">Upper Roll</span>
-            </div>
+        {/* Legend (top-right) — STANDARD COLOR SCHEME */}
+        <div className="absolute top-3 right-3 text-[9px] space-y-0.5 bg-black/40 rounded px-2 py-1.5">
+          {cur.upper_roll_profile && <>
             <div className="flex items-center gap-1.5">
               <div className="w-4 border-t border-dashed border-blue-400" />
-              <span className="text-gray-500">Lower Roll</span>
+              <span className="text-gray-400">Upper Roll</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-4 border-t border-solid" style={{ borderColor: cur.stage_color }} />
-              <span className="text-gray-500">Sheet Profile</span>
+              <div className="w-4 border-t border-dashed border-green-400" />
+              <span className="text-gray-400">Lower Roll</span>
             </div>
+          </>}
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 border-t border-solid border-yellow-400" />
+            <span className="text-gray-400">Strip (gold)</span>
           </div>
-        )}
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 border-t border-solid" style={{ borderColor: cur.stage_color }} />
+            <span className="text-gray-400">Current Stage</span>
+          </div>
+          {showFlower && passes.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 border-t border-dashed border-red-400" />
+              <span className="text-gray-400">Final Profile</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-white" />
+            </div>
+            <span className="text-gray-400">Contact Pt</span>
+          </div>
+        </div>
 
         {/* Progress bar (bottom) */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900">
@@ -633,6 +692,14 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
         onToggle={() => setShowWarnings(s => !s)}
       />
 
+      {/* ── Smart Design Assistant ──────────────────────────── */}
+      <SmartDesignAssistant
+        passes={passes}
+        material={data.material}
+        thickness={data.thickness_mm}
+        optimizer={optimizerData}
+      />
+
       {/* ── AI Optimizer Panel ──────────────────────────────── */}
       {optimizerData && (
         <AiOptimizerPanel optimizer={optimizerData} />
@@ -641,6 +708,158 @@ export default function RollFormingSimulator({ data, optimizerData, decisionData
       {/* ── Decision Panel ─────────────────────────────────── */}
       {decisionData && (
         <DecisionPanel decision={decisionData} />
+      )}
+    </div>
+  );
+}
+
+// ─── SMART DESIGN ASSISTANT ──────────────────────────────────────────────────
+
+function SmartDesignAssistant({
+  passes, material, thickness, optimizer,
+}: {
+  passes: SimPass[];
+  material: string;
+  thickness: number;
+  optimizer?: OptimizerData | null;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!passes.length) return null;
+
+  const total = passes.length;
+  const maxAngle = Math.max(...passes.map(p => p.target_angle_deg));
+  const avgIncrement = maxAngle / Math.max(total - 1, 1);
+  const maxStrain = Math.max(...passes.map(p => p.strain));
+  const calPass = passes.find(p => p.stage_type === "calibration");
+
+  // Suggest optimal station count
+  const suggestedCount = Math.ceil(maxAngle / 12); // 12° per station is ideal
+  const currentOD = passes[0]?.forming_depth_mm
+    ? Math.max(80, passes[0].forming_depth_mm * 8 + 40)
+    : 100;
+  const suggestedOD = Math.round(Math.max(80, Math.min(250, currentOD / 5) * 5));
+  const suggestedBore = Math.round(suggestedOD * 0.45 / 5) * 5;
+  const suggestedFace = Math.round(Math.max(...passes.map(p => p.strip_width_mm)) * 1.1 / 5) * 5;
+  const suggestedGap  = +(thickness * 1.05).toFixed(2);
+
+  // Risk stations
+  const riskyStations = passes.filter(p =>
+    p.strain > 0.18 || (
+      passes.indexOf(p) > 0 &&
+      p.target_angle_deg - passes[passes.indexOf(p) - 1].target_angle_deg > 15
+    )
+  );
+
+  // Bend distribution analysis
+  const flatCount = passes.filter(p => p.stage_type === "flat").length;
+  const formCount = passes.filter(p => ["initial_bend","progressive_forming","lip_forming","pre_bend"].includes(p.stage_type)).length;
+  const calCount  = passes.filter(p => p.stage_type === "calibration").length;
+
+  const scoreColor = optimizer?.optimization_score
+    ? optimizer.optimization_score >= 85 ? "text-green-400" :
+      optimizer.optimization_score >= 65 ? "text-yellow-400" : "text-red-400"
+    : "text-violet-400";
+
+  return (
+    <div className="border-t border-violet-500/15">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-5 py-2.5 flex items-center gap-2 hover:bg-white/2 transition-colors"
+      >
+        <Cpu className="w-3.5 h-3.5 text-violet-400" />
+        <span className="text-xs font-semibold text-violet-300 uppercase tracking-wider">
+          Smart Design Assistant
+        </span>
+        <span className="ml-2 text-[9px] text-gray-600 italic">
+          OD · face width · station count · gap · risky stations
+        </span>
+        {optimizer && (
+          <span className={`ml-auto text-xs font-bold font-mono ${scoreColor}`}>
+            {optimizer.optimization_score}/100
+          </span>
+        )}
+        <ChevronRight className={`w-3.5 h-3.5 text-gray-500 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-5 pb-4 flex flex-col gap-3">
+          {/* Recommendation grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {[
+              { label: "Recommended Station Count", value: `${suggestedCount} stations`, sub: `Current: ${total} (${total === suggestedCount ? "✓ optimal" : total < suggestedCount ? "↑ too few" : "↓ can reduce"})`, color: "border-violet-500/20 text-violet-300" },
+              { label: "Suggested Roll OD",         value: `Ø ${suggestedOD} mm`,        sub: `Based on max depth ${Math.max(...passes.map(p => p.forming_depth_mm)).toFixed(1)} mm`,        color: "border-blue-500/20 text-blue-300" },
+              { label: "Suggested Bore Dia",        value: `Ø ${suggestedBore} mm`,       sub: `≈ 45% of OD for rigidity`,           color: "border-blue-500/20 text-blue-300" },
+              { label: "Suggested Face Width",      value: `${suggestedFace} mm`,         sub: `Strip ${Math.max(...passes.map(p => p.strip_width_mm)).toFixed(1)} mm + 10% clearance`, color: "border-green-500/20 text-green-300" },
+              { label: "Suggested Roll Gap",        value: `${suggestedGap} mm`,          sub: `${thickness} mm + 5% clearance (${material})`,                 color: "border-green-500/20 text-green-300" },
+              { label: "Avg Angle/Station",         value: `${avgIncrement.toFixed(1)}°`, sub: avgIncrement > 15 ? "⚠ Too high — add stations" : "✓ Good distribution",                     color: avgIncrement > 15 ? "border-red-500/20 text-red-300" : "border-green-500/20 text-green-300" },
+            ].map(r => (
+              <div key={r.label} className={`rounded-xl border px-3 py-2 ${r.color}`}>
+                <div className="text-[8px] uppercase tracking-wider opacity-60 mb-0.5">{r.label}</div>
+                <div className="text-sm font-bold font-mono leading-tight">{r.value}</div>
+                <div className="text-[9px] opacity-60 mt-0.5 leading-tight">{r.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Station distribution breakdown */}
+          <div className="text-xs bg-violet-500/5 border border-violet-500/15 rounded-xl px-3 py-2.5">
+            <div className="text-[9px] uppercase tracking-wider text-violet-500 font-semibold mb-1.5">Bend Distribution</div>
+            <div className="flex items-center gap-4 text-gray-400">
+              <span>Entry/Flat: <strong className="text-gray-300">{flatCount}</strong></span>
+              <span>Forming: <strong className="text-violet-300">{formCount}</strong></span>
+              <span>Calibration: <strong className="text-green-400">{calCount}</strong></span>
+              <span className="ml-auto text-gray-600">Total: {total}</span>
+            </div>
+            <div className="mt-1.5 h-2 rounded-full bg-gray-800 overflow-hidden flex">
+              <div className="h-full bg-gray-600"   style={{ width: `${(flatCount/total)*100}%` }} title="Flat" />
+              <div className="h-full bg-violet-500" style={{ width: `${(formCount/total)*100}%` }} title="Forming" />
+              <div className="h-full bg-green-500"  style={{ width: `${(calCount/total)*100}%` }} title="Calibration" />
+            </div>
+          </div>
+
+          {/* Risky stations */}
+          {riskyStations.length > 0 && (
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-orange-500 font-semibold mb-1.5">
+                Risky Stations ({riskyStations.length})
+              </div>
+              {riskyStations.map(p => (
+                <div key={p.pass_no} className="text-[10px] text-orange-300 flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                  Station {p.pass_no} ({p.stage_type.replace(/_/g," ")}):
+                  {p.strain > 0.18 && ` strain ${(p.strain*100).toFixed(1)}%`}
+                  {passes.indexOf(p) > 0 &&
+                    p.target_angle_deg - passes[passes.indexOf(p)-1].target_angle_deg > 15 &&
+                    ` — Δangle ${(p.target_angle_deg - passes[passes.indexOf(p)-1].target_angle_deg).toFixed(1)}° (too high)`}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Calibration pass recommendation */}
+          {!calPass ? (
+            <div className="text-xs text-amber-400 flex items-center gap-2 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              No calibration pass detected. Add a final calibration station for springback correction and profile accuracy.
+            </div>
+          ) : (
+            <div className="text-xs text-green-400 flex items-center gap-2 bg-green-500/8 border border-green-500/20 rounded-lg px-3 py-2">
+              <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+              Calibration pass present at Station {calPass.pass_no}. Springback correction applied.
+            </div>
+          )}
+
+          {/* Max strain warning */}
+          {maxStrain > 0.2 && (
+            <div className="text-xs text-red-400 flex items-center gap-2 bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              Peak strain {(maxStrain*100).toFixed(1)}% is near {material} elongation limit. Consider larger bend radius or more forming stations.
+            </div>
+          )}
+
+          <div className="text-[9px] text-gray-600 mt-1 font-mono">
+            smart_design_assistant · rule-based recommendations · validate before production
+          </div>
+        </div>
       )}
     </div>
   );

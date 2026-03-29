@@ -1093,6 +1093,21 @@ export default function RollDrawingPanel({
           <Download className="w-3 h-3" /> Export — {partBase}
         </div>
 
+        {/* ★ ONE-CLICK FULL PRODUCTION SET ★ */}
+        <button
+          onClick={handleDownloadZIP}
+          disabled={downloading}
+          className="w-full flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 rounded-xl mb-3 transition-all disabled:opacity-50
+            bg-gradient-to-r from-amber-600/25 to-orange-600/20
+            border-2 border-amber-500/50 text-amber-300
+            hover:from-amber-600/40 hover:to-orange-600/35 hover:border-amber-400
+            shadow-lg shadow-amber-900/20"
+        >
+          <Archive className="w-4 h-4" />
+          {downloading ? "Building Package…" : `📦 Download Full Production Set — All ${totalPasses} Stations`}
+          <span className="text-[9px] text-amber-500 font-normal ml-1">(SVG + DXF + PDF + Manifest)</span>
+        </button>
+
         {/* Row 1: SVG */}
         <div className="flex flex-wrap gap-2 mb-2">
           <button

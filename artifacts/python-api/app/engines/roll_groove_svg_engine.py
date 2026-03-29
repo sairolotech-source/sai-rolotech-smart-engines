@@ -17,6 +17,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("roll_groove_svg_engine")
 
+def _esc(s: str) -> str:
+    """Escape user-supplied strings before embedding in SVG text elements."""
+    return (str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#x27;"))
+
 try:
     from shapely.geometry import Polygon, LineString, box
     from shapely.ops import unary_union
@@ -185,16 +194,16 @@ def _make_pass_svg(
             f'fill="#f59e0b" font-size="9" font-family="monospace">gap={gap:.2f}mm</text>'
         )
 
-    # Title + labels
+    # Title + labels (user strings escaped against XSS)
     title_col = "#22c55e" if is_calib else "#94a3b8"
     elems.append(
         f'<text x="{SVG_W//2}" y="14" text-anchor="middle" fill="{title_col}" '
         f'font-size="10" font-weight="bold" font-family="monospace">'
-        f'{label.replace("Station ","Stn ")}</text>'
+        f'{_esc(label.replace("Station ","Stn "))}</text>'
     )
     elems.append(
         f'<text x="{SVG_W//2}" y="26" text-anchor="middle" fill="#a78bfa" '
-        f'font-size="10" font-family="monospace">{angle:.1f}° · {stage}</text>'
+        f'font-size="10" font-family="monospace">{angle:.1f}° · {_esc(stage)}</text>'
     )
 
     info_y = SVG_H - 48

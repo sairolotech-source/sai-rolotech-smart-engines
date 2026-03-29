@@ -16,7 +16,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 
-from app.api.schemas import AutoModeInput, ManualProfileInput
+from app.api.schemas import AutoModeInput, ManualProfileInput, SvgProfileInput
 from app.engines.import_engine import parse_entities, parse_dxf_bytes
 from app.engines.geometry_engine import clean_geometry
 from app.engines.profile_analysis_engine import analyze_profile
@@ -1210,26 +1210,22 @@ async def run_engineering_risk(payload: dict):
 # ─── POST /api/flower-svg ───────────────────────────────────────────────────────
 
 @router.post("/flower-svg")
-async def endpoint_flower_svg(payload: Dict[str, Any]):
+def endpoint_flower_svg(body: SvgProfileInput):
     """
-    Generate real shapely-computed flower pattern SVG.
+    Generate shapely-computed flower pattern SVG.
 
-    Expects full pipeline results in body:
-      { profile_result, input_result, roll_contour_result, station_result }
-    Returns:
-      { status, svg_string, station_count, flat_strip_mm, ... }
+    Returns: { status, svg_string, station_count, flat_strip_mm, profile_type, shapely_used }
     """
     try:
-        profile_result      = payload.get("profile_result") or {}
-        input_result        = payload.get("input_result") or {}
-        roll_contour_result = payload.get("roll_contour_result") or {}
-        station_result      = payload.get("station_result") or {}
+        pipeline = execute_manual_pipeline(body.to_manual_profile_input())
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
 
         result = generate_flower_svg(
-            profile_result=profile_result,
-            input_result=input_result,
-            roll_contour_result=roll_contour_result,
-            station_result=station_result,
+            profile_result=pipeline.get("profile_analysis_engine", {}),
+            input_result=pipeline.get("input_engine", {}),
+            roll_contour_result=pipeline.get("roll_contour_engine", {}),
+            station_result=pipeline.get("station_engine", {}),
         )
         return result
 
@@ -1241,25 +1237,26 @@ async def endpoint_flower_svg(payload: Dict[str, Any]):
 # ─── POST /api/roll-svg ─────────────────────────────────────────────────────────
 
 @router.post("/roll-svg")
-async def endpoint_roll_svg(payload: Dict[str, Any]):
+def endpoint_roll_svg(body: SvgProfileInput):
     """
     Generate per-station shapely-computed roll groove SVG strings.
 
-    Expects:
-      { profile_result, input_result, roll_contour_result }
-    Returns:
-      { status, station_svgs: [...], total_stations, shapely_used }
+    Returns: { status, svg_string, station_svgs: [...], total_stations, shapely_used }
+    Top-level svg_string = first station SVG for quick preview.
     """
     try:
-        profile_result      = payload.get("profile_result") or {}
-        input_result        = payload.get("input_result") or {}
-        roll_contour_result = payload.get("roll_contour_result") or {}
+        pipeline = execute_manual_pipeline(body.to_manual_profile_input())
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
 
         result = generate_roll_groove_svgs(
-            profile_result=profile_result,
-            input_result=input_result,
-            roll_contour_result=roll_contour_result,
+            profile_result=pipeline.get("profile_analysis_engine", {}),
+            input_result=pipeline.get("input_engine", {}),
+            roll_contour_result=pipeline.get("roll_contour_engine", {}),
         )
+        # Top-level svg_string (first station) required by task spec
+        first_svg = (result.get("station_svgs") or [{}])[0].get("svg_string", "")
+        result["svg_string"] = first_svg
         return result
 
     except Exception as exc:

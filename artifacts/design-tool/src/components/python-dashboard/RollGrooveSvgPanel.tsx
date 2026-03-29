@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Loader2, Cog, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { type ManualModePayload } from '@/services/pythonApi';
 
 interface StationSvg {
   station_no: number;
@@ -16,6 +17,7 @@ interface StationSvg {
 interface RollGrooveResult {
   status: string;
   engine: string;
+  svg_string: string;
   station_svgs: StationSvg[];
   total_stations: number;
   shapely_used: boolean;
@@ -31,32 +33,24 @@ const STAGE_BADGE: Record<string, string> = {
 };
 
 interface Props {
-  profileResult: Record<string, unknown> | null;
-  inputResult: Record<string, unknown> | null;
-  rollContourResult: Record<string, unknown> | null;
+  payload: ManualModePayload | null;
 }
 
-export default function RollGrooveSvgPanel({ profileResult, inputResult, rollContourResult }: Props) {
+export default function RollGrooveSvgPanel({ payload }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RollGrooveResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
 
-  const canGenerate = !!(profileResult && inputResult && rollContourResult);
-
   const generate = useCallback(async () => {
-    if (!canGenerate) return;
+    if (!payload) return;
     setLoading(true);
     setError(null);
     try {
       const resp = await fetch('/papi/api/roll-svg', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profile_result: profileResult,
-          input_result: inputResult,
-          roll_contour_result: rollContourResult,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await resp.json();
       setResult(data);
@@ -69,14 +63,14 @@ export default function RollGrooveSvgPanel({ profileResult, inputResult, rollCon
     } finally {
       setLoading(false);
     }
-  }, [canGenerate, profileResult, inputResult, rollContourResult]);
+  }, [payload]);
 
   const stations = result?.station_svgs ?? [];
   const active = stations[activeIdx] ?? null;
 
   return (
     <div className="rounded-xl border border-cyan-500/20 bg-[#0d1117] p-4 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Cog className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Roll Groove Detail</span>
@@ -88,7 +82,7 @@ export default function RollGrooveSvgPanel({ profileResult, inputResult, rollCon
         </div>
         <button
           onClick={generate}
-          disabled={!canGenerate || loading}
+          disabled={!payload || loading}
           className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-40 text-cyan-300 text-xs font-medium px-3 py-1.5 transition-colors"
         >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Cog className="w-3.5 h-3.5" />}
@@ -96,7 +90,7 @@ export default function RollGrooveSvgPanel({ profileResult, inputResult, rollCon
         </button>
       </div>
 
-      {!canGenerate && !result && (
+      {!payload && !result && (
         <div className="text-xs text-gray-500 italic">Run the pipeline first to generate roll groove diagrams.</div>
       )}
 
@@ -109,7 +103,6 @@ export default function RollGrooveSvgPanel({ profileResult, inputResult, rollCon
 
       {stations.length > 0 && (
         <>
-          {/* Station pills */}
           <div className="flex flex-wrap gap-1.5">
             {stations.map((s, i) => (
               <button
@@ -128,21 +121,17 @@ export default function RollGrooveSvgPanel({ profileResult, inputResult, rollCon
 
           {active && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              {/* SVG */}
               <div
                 className="rounded-lg border border-gray-700/40 bg-[#0a0f1e] overflow-hidden"
                 dangerouslySetInnerHTML={{ __html: active.svg_string }}
               />
-
-              {/* Specs */}
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-gray-200">{active.station_label}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-mono ${STAGE_BADGE[active.stage_type] ?? 'bg-gray-700/30 text-gray-400 border-gray-600/30'}`}>
                     {active.stage_type}
                   </span>
                 </div>
-
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                   {[
                     ['Angle', `${active.angle_deg.toFixed(1)}°`],
@@ -159,8 +148,6 @@ export default function RollGrooveSvgPanel({ profileResult, inputResult, rollCon
                     </React.Fragment>
                   ))}
                 </div>
-
-                {/* Prev / Next */}
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={() => setActiveIdx(i => Math.max(0, i - 1))}

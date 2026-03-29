@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Loader2, Flower2, AlertTriangle } from 'lucide-react';
+import { Loader2, Flower2, AlertTriangle, ZoomIn, ZoomOut } from 'lucide-react';
+import { type ManualModePayload } from '@/services/pythonApi';
 
 interface FlowerSvgResult {
   status: string;
@@ -13,38 +14,24 @@ interface FlowerSvgResult {
 }
 
 interface Props {
-  profileResult: Record<string, unknown> | null;
-  inputResult: Record<string, unknown> | null;
-  rollContourResult: Record<string, unknown> | null;
-  stationResult: Record<string, unknown> | null;
+  payload: ManualModePayload | null;
 }
 
-export default function FlowerSvgPanel({
-  profileResult,
-  inputResult,
-  rollContourResult,
-  stationResult,
-}: Props) {
+export default function FlowerSvgPanel({ payload }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FlowerSvgResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const canGenerate = !!(profileResult && inputResult && rollContourResult);
+  const [zoom, setZoom] = useState(1);
 
   const generate = useCallback(async () => {
-    if (!canGenerate) return;
+    if (!payload) return;
     setLoading(true);
     setError(null);
     try {
       const resp = await fetch('/papi/api/flower-svg', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profile_result: profileResult,
-          input_result: inputResult,
-          roll_contour_result: rollContourResult,
-          station_result: stationResult ?? {},
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await resp.json();
       setResult(data);
@@ -56,11 +43,11 @@ export default function FlowerSvgPanel({
     } finally {
       setLoading(false);
     }
-  }, [canGenerate, profileResult, inputResult, rollContourResult, stationResult]);
+  }, [payload]);
 
   return (
     <div className="rounded-xl border border-violet-500/20 bg-[#0d1117] p-4 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Flower2 className="w-4 h-4 text-violet-400" />
           <span className="text-sm font-semibold text-gray-200">Flower Pattern</span>
@@ -70,17 +57,30 @@ export default function FlowerSvgPanel({
             </span>
           )}
         </div>
-        <button
-          onClick={generate}
-          disabled={!canGenerate || loading}
-          className="flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-40 text-violet-300 text-xs font-medium px-3 py-1.5 transition-colors"
-        >
-          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flower2 className="w-3.5 h-3.5" />}
-          {loading ? 'Generating…' : 'Generate Flower SVG'}
-        </button>
+        <div className="flex items-center gap-2">
+          {result?.svg_string && (
+            <>
+              <button onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} className="p-1 rounded text-gray-400 hover:text-gray-200 transition-colors" title="Zoom out">
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] text-gray-500 font-mono w-10 text-center">{Math.round(zoom * 100)}%</span>
+              <button onClick={() => setZoom(z => Math.min(3, z + 0.25))} className="p-1 rounded text-gray-400 hover:text-gray-200 transition-colors" title="Zoom in">
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+          <button
+            onClick={generate}
+            disabled={!payload || loading}
+            className="flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-40 text-violet-300 text-xs font-medium px-3 py-1.5 transition-colors"
+          >
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flower2 className="w-3.5 h-3.5" />}
+            {loading ? 'Generating…' : 'Generate Flower SVG'}
+          </button>
+        </div>
       </div>
 
-      {!canGenerate && !result && (
+      {!payload && !result && (
         <div className="text-xs text-gray-500 italic">Run the pipeline first to generate the flower pattern.</div>
       )}
 
@@ -99,10 +99,11 @@ export default function FlowerSvgPanel({
             <span>Flat strip: <span className="text-yellow-300">{result.flat_strip_mm} mm</span></span>
             <span>Final width: <span className="text-blue-300">{result.final_width_mm} mm</span></span>
           </div>
-          <div
-            className="w-full overflow-x-auto rounded-lg border border-gray-700/40 bg-[#0a0f1e]"
-            dangerouslySetInnerHTML={{ __html: result.svg_string }}
-          />
+          <div className="w-full overflow-auto rounded-lg border border-gray-700/40 bg-[#0a0f1e]">
+            <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', transition: 'transform 0.15s' }}
+              dangerouslySetInnerHTML={{ __html: result.svg_string }}
+            />
+          </div>
         </>
       )}
     </div>

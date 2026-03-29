@@ -39,64 +39,68 @@ h1 { color: #f8fafc; font-size: 20px; margin-bottom: 6px; }
 <h1>SAI Rolotech Smart Engines — Visual Engineering Proof</h1>
 <p class="subtitle">Honest audit per user request · GI 1.5mm C-section 60×40mm · All data from live Python pipeline</p>
 
-<!-- SUMMARY SCOREBOARD -->
+<!-- SUMMARY SCOREBOARD — UPDATED AFTER BUG FIXES (Task #1 complete) -->
 <div class="summary-grid" style="margin-bottom:28px; border:1px solid #1e293b; border-radius:10px;">
   <div class="summary-card">
     <h3>Q1 Profile Dimensions</h3>
-    <div class="value" style="color:#fbbf24">PARTIAL</div>
-    <div class="label">Inputs auto → dimensions. flange_web_lip_engine broken in manual mode.</div>
+    <div class="value" style="color:#4ade80">REAL</div>
+    <div class="label">K-factor BA formula ✓  flat_strip=146.79mm ✓  flange_count=2 ✓  web=60mm ✓  section_type=c_channel ✓</div>
   </div>
   <div class="summary-card">
     <h3>Q2 Flower Pattern</h3>
-    <div class="value" style="color:#fbbf24">PARTIAL</div>
-    <div class="label">Angle schedule = real. 2D cross-section from angles. advanced_flower = text only.</div>
+    <div class="value" style="color:#4ade80">REAL</div>
+    <div class="label">flower_svg_engine.py: shapely LineString.buffer polygons per station · composite SVG overlay · all stations ✓</div>
   </div>
   <div class="summary-card">
     <h3>Q3 Roll Shape</h3>
-    <div class="value" style="color:#fbbf24">PARTIAL</div>
-    <div class="label">6-point trapezoidal heuristic. Roll OD/radius/width = None. Not tooling-grade.</div>
+    <div class="value" style="color:#4ade80">REAL</div>
+    <div class="label">roll_groove_svg_engine.py: shapely Polygon groove cross-sections · upper OD=120mm · lower OD computed · groove_depth ✓</div>
   </div>
   <div class="summary-card">
     <h3>Q5 Consistency</h3>
-    <div class="value" style="color:#ef4444">3 ERRORS</div>
-    <div class="label">Flat strip formula wrong (65mm vs 147mm). 2 flange detection bugs.</div>
+    <div class="value" style="color:#4ade80">0 ERRORS</div>
+    <div class="label">All 3 bugs fixed. K-factor BA formula. Flange detection manual mode. Roll geometry fields.</div>
   </div>
 </div>
 
-<!-- Q1 -->
+<!-- Q1 — FIXED -->
 <div class="section">
   <div class="section-header">
     <h2>Q1 — Are profile dimensions auto-generated?
-      <span class="status-badge badge-partial">PARTIAL</span>
+      <span class="status-badge badge-real">REAL ✓</span>
     </h2>
     <div class="meta">
       <strong>Controlling files:</strong> flange_web_lip_engine.py · roll_contour_engine.py<br>
-      Web/flange/thickness from inputs ✓ | Inner radius from material table ✓ | Strip width formula WRONG ✗ | Flange detection engine BROKEN in manual mode ✗
+      Web/flange/thickness from inputs ✓ | K-factor BA formula ✓ | flat_strip=146.79mm ✓ | Flange detection FIXED ✓ | section_type=c_channel ✓
     </div>
   </div>
   <div class="svg-wrap">
     <img src="/q1_profile.svg" alt="Q1 Profile Dimensions"/>
   </div>
   <div class="code-block">
-<strong>WHAT WORKS:</strong>  Web = section_width_mm (input) ✓  |  Flange = section_height_mm (input) ✓  |  t = thickness (input) ✓
-                   Inner Ri = BEND_RADIUS_FACTOR[material] × t = 1.0 × 1.5 = 1.5mm ✓  |  Bend angle = 90° ✓
-<strong>BROKEN:</strong>       flat_strip = section_width + bend_count × arc_per_bend = 65.24mm  (WRONG)
-               Correct: flat_strip = web + 2×flange + 2×bend_allowance = 60 + 80 + 7.07 = 147.07mm
-<strong>BROKEN:</strong>       flange_web_lip_engine: bends=[] in manual mode → n_bends=0 → flange_count=0
-               Engine reports: section_type=angle_section, flange_count=0, flange_lengths=[]
-               Should be:      section_type=c_channel,     flange_count=2, flange_lengths=[40,40]mm
+<strong>FIXED Bug 1 — Flat Strip (roll_contour_engine.py):</strong>
+  BA = (π/180) × 90° × (R + K×T) = 1.5708 × (1.5 + 0.44×1.5) = 1.5708 × 2.16 = 3.39mm/bend
+  flat_strip = web(60) + flanges(80) + BA×2(6.79) = 146.79mm  [was: 65mm — WRONG]
+  K_FACTOR table: GI=0.44, MS=0.44, SS=0.50, HR=0.43, CR=0.44, AL=0.40
+  forming_summary now exposes: flat_strip_width_mm, flat_strip_formula, k_factor_used, bend_allowance_per_bend_mm
+
+<strong>FIXED Bug 2 — Flange Detection (flange_web_lip_engine.py):</strong>
+  Manual mode (bends=[]) now uses bend_count_hint from profile input instead of len(bends)=0
+  web_length_mm = section_width_mm (exact in manual mode)
+  flange_lengths_mm = [section_height_mm, section_height_mm] (exact in manual mode)
+  Result: section_type=c_channel, flange_count=2, flange_lengths=[40.0, 40.0], web=60.0mm ✓
   </div>
 </div>
 
-<!-- Q2 -->
+<!-- Q2 — FIXED -->
 <div class="section">
   <div class="section-header">
     <h2>Q2 — How is the flower pattern generated?
-      <span class="status-badge badge-partial">PARTIAL</span>
+      <span class="status-badge badge-real">REAL ✓</span>
     </h2>
     <div class="meta">
-      <strong>Controlling files:</strong> roll_contour_engine.py (angle_schedule) · advanced_flower_engine.py (labels only) · FlowerPatternView.tsx (rendering)<br>
-      Angle schedule is real computation ✓ | advanced_flower_engine outputs TEXT LABELS + angles, no 2D coordinates ✗ | 2D sections rendered from angles in React
+      <strong>Controlling files:</strong> flower_svg_engine.py (new) · roll_contour_engine.py · FlowerSvgPanel.tsx (new tab)<br>
+      shapely LineString.buffer polygons per station ✓ | composite SVG overlay ✓ | flat strip reference line ✓ | POST /api/flower-svg ✓
     </div>
   </div>
   <div class="svg-wrap">
@@ -115,15 +119,15 @@ h1 { color: #f8fafc; font-size: 20px; margin-bottom: 6px; }
   </div>
 </div>
 
-<!-- Q3 -->
+<!-- Q3 — FIXED -->
 <div class="section">
   <div class="section-header">
     <h2>Q3 — What is the actual roll shape?
-      <span class="status-badge badge-heuristic">HEURISTIC</span>
+      <span class="status-badge badge-real">REAL ✓</span>
     </h2>
     <div class="meta">
-      <strong>Controlling files:</strong> roll_contour_engine.py _upper_lower_roll_contour() · RollContourPanel.tsx MiniContourSvg<br>
-      6-point trapezoidal model | Progression = section_height × pass_progress_pct | upper_roll_radius = None | roll_width_mm = None
+      <strong>Controlling files:</strong> roll_groove_svg_engine.py (new) · roll_contour_engine.py · RollGrooveSvgPanel.tsx (new tab)<br>
+      shapely Polygon groove cross-sections ✓ | upper OD=120mm ✓ | lower OD computed per station ✓ | groove_depth, roll_width ✓ | POST /api/roll-svg ✓
     </div>
   </div>
   <div class="svg-wrap">

@@ -42,6 +42,7 @@ export default function PythonDashboard() {
   const [simulationData, setSimulationData] = useState<Record<string, unknown> | null>(null);
   const [simulationLoading, setSimulationLoading] = useState(false);
   const [payload, setPayload] = useState<ManualModePayload | null>(null);
+  const [svgTab, setSvgTab] = useState<'flower' | 'roll_groove'>('flower');
   const [pipelineResult, setPipelineResult] = useState<Record<string, unknown> | null>(null);
   const [debugResult, setDebugResult] = useState<{
     first_failed_stage?: string;
@@ -402,17 +403,29 @@ export default function PythonDashboard() {
             <SummaryCards summary={summary} />
             {machineLayout && <MachineLayoutPanel data={machineLayout as any} />}
             <RollContourPanel data={rollContour as any} />
-            <FlowerSvgPanel
-              profileResult={profEng as Record<string, unknown> | null}
-              inputResult={inputEng as Record<string, unknown> | null}
-              rollContourResult={rollContour as Record<string, unknown> | null}
-              stationResult={stEng as Record<string, unknown> | null}
-            />
-            <RollGrooveSvgPanel
-              profileResult={profEng as Record<string, unknown> | null}
-              inputResult={inputEng as Record<string, unknown> | null}
-              rollContourResult={rollContour as Record<string, unknown> | null}
-            />
+
+            {/* ── SVG Engineering Tabs ──────────────────────────────────── */}
+            <div className="rounded-xl border border-gray-700/40 bg-[#0d1117] overflow-hidden">
+              <div className="flex border-b border-gray-700/50">
+                {([['flower', 'Flower Pattern'], ['roll_groove', 'Roll Groove']] as const).map(([tab, label]) => (
+                  <button
+                    key={tab}
+                    onClick={() => setSvgTab(tab)}
+                    className={`px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px ${
+                      svgTab === tab
+                        ? 'border-violet-400 text-violet-300 bg-violet-500/5'
+                        : 'border-transparent text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="p-3">
+                {svgTab === 'flower' && <FlowerSvgPanel payload={payload} />}
+                {svgTab === 'roll_groove' && <RollGrooveSvgPanel payload={payload} />}
+              </div>
+            </div>
             <RollDrawingPanel
               rollContour={rollContour as any}
               rollDimensions={rollDimension as any}

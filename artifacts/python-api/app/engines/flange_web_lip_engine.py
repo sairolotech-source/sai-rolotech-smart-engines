@@ -100,7 +100,7 @@ def _classify_section_type(
     if bend_count <= 2 and flange_count <= 1:
         return "angle_section", "Single flange — L-section"
     if flange_count >= 2 and lip_count == 0 and return_bends == 0:
-        return "simple_channel", "U-channel — web + 2 flanges"
+        return "c_channel", "C-channel — web + 2 flanges"
     if flange_count >= 2 and lip_count >= 2:
         return "lipped_channel", "C-section — web + 2 flanges + lips"
     if return_bends > 0:

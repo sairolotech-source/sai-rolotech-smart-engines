@@ -14,6 +14,16 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("flower_svg_engine")
 
+# ── HTML entity escaping for SVG text content ─────────────────────────────────
+def _esc(s: str) -> str:
+    """Escape user-supplied strings before embedding in SVG text elements."""
+    return (str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#x27;"))
+
 try:
     from shapely.geometry import LineString, Polygon, MultiPolygon
     from shapely.ops import unary_union
@@ -253,14 +263,14 @@ def generate_flower_svg(
             f'font-size="10" font-family="monospace">{label}</text>'
         )
 
-    # ── Dimension labels ───────────────────────────────────────────────────────
+    # ── Dimension labels (user strings are escaped against XSS) ────────────────
     dim_y = PAD + 12
     dims = [
-        (f"Profile: {ptype}", "#f8fafc"),
+        (f"Profile: {_esc(ptype)}", "#f8fafc"),
         (f"Web = {web_mm:.0f} mm", "#fbbf24"),
         (f"Flange = {flange_mm:.0f} mm", "#4ade80"),
         (f"t = {thickness} mm", "#f87171"),
-        (f"Material = {material}", "#94a3b8"),
+        (f"Material = {_esc(material)}", "#94a3b8"),
         (f"Stations = {n_total}", "#c084fc"),
     ]
     for k, (txt, col) in enumerate(dims):
@@ -273,7 +283,7 @@ def generate_flower_svg(
     title_elem = (
         f'<text x="10" y="20" fill="#f8fafc" font-size="14" '
         f'font-weight="bold" font-family="sans-serif">'
-        f'Flower Pattern — {ptype} ({web_mm:.0f}×{flange_mm:.0f} mm) '
+        f'Flower Pattern — {_esc(ptype)} ({web_mm:.0f}×{flange_mm:.0f} mm) '
         f'· {n_total} stations · shapely-computed 2D polygons</text>'
     )
 

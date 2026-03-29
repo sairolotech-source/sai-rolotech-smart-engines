@@ -257,9 +257,11 @@ export default function PythonDashboard() {
   const consistency     = (pipelineResult?.consistency_engine ?? null) as Record<string, unknown> | null;
   const machineLayout   = (pipelineResult?.machine_layout_engine ?? null) as Record<string, unknown> | null;
   const rollContour     = (pipelineResult?.roll_contour_engine ?? simulationData?.roll_contour_engine ?? null) as Record<string, unknown> | null;
-  const rollDimension   = (pipelineResult?.roll_dimension_engine ?? null) as Record<string, unknown> | null;
-  const camPrep         = (pipelineResult?.cam_prep_engine ?? null) as Record<string, unknown> | null;
-  const cadExportData   = (cadExportResult?.cad_export ?? null) as Record<string, unknown> | null;
+  const rollDimension         = (pipelineResult?.roll_dimension_engine ?? null) as Record<string, unknown> | null;
+  const camPrep               = (pipelineResult?.cam_prep_engine ?? null) as Record<string, unknown> | null;
+  const flowerSvgEngine       = (pipelineResult?.flower_svg_engine ?? null) as Record<string, unknown> | null;
+  const rollContourInterf     = (pipelineResult?.roll_contour_interference ?? null) as Record<string, unknown> | null;
+  const cadExportData         = (cadExportResult?.cad_export ?? null) as Record<string, unknown> | null;
   const cadCamPrep      = (cadExportResult?.cam_prep ?? camPrep) as Record<string, unknown> | null;
 
   const profEng   = (pipelineResult?.profile_analysis_engine ?? (pipelineResult ? {} : null)) as Record<string, unknown> | null;
@@ -427,7 +429,7 @@ export default function PythonDashboard() {
             {/* ── Codex Engineer AI ─────────────────────────────────────── */}
             <CodexEngineerPanel
               pipelineResult={pipelineResult ?? undefined}
-              payload={payload as Record<string, unknown> | undefined}
+              payload={payload as unknown as Record<string, unknown> | undefined}
             />
 
             {/* ── SVG Engineering Tabs ──────────────────────────────────── */}
@@ -448,7 +450,7 @@ export default function PythonDashboard() {
                 ))}
               </div>
               <div className="p-3">
-                {svgTab === 'flower' && <FlowerSvgPanel payload={payload} />}
+                {svgTab === 'flower' && <FlowerSvgPanel payload={payload} pipelineData={flowerSvgEngine as any} />}
                 {svgTab === 'roll_groove' && <RollGrooveSvgPanel payload={payload} />}
               </div>
             </div>
@@ -466,6 +468,7 @@ export default function PythonDashboard() {
               interferenceResult={
                 (pipelineResult?.roll_interference_engine ?? null) as any
               }
+              shapelyInterference={rollContourInterf as any}
             />
             <RollFormingSimulator
               data={(simulationData?.simulation_engine ?? null) as any}

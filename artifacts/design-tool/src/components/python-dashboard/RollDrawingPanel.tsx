@@ -77,11 +77,31 @@ interface RollContourData {
   forming_summary:  Record<string, any>;
 }
 
+interface ShapelyInterference {
+  status?:          string;
+  confidence?:      string;
+  blocking?:        boolean;
+  any_clash?:       boolean;
+  clash_count?:     number;
+  clear_stations?:  number[];
+  clash_stations?:  number[];
+  warning_stations?:number[];
+  station_checks?:  Array<{
+    status: string;
+    pass_no: number;
+    clash_area_mm2: number;
+    min_clearance_mm: number;
+    blocking: boolean;
+    message?: string;
+  }>;
+}
+
 interface Props {
-  rollContour:         RollContourData | null;
-  rollDimensions:      RollDimensions  | null;
-  profileType?:        string;
-  springbackDeg?:      number;
+  rollContour:           RollContourData | null;
+  rollDimensions:        RollDimensions  | null;
+  profileType?:          string;
+  springbackDeg?:        number;
+  shapelyInterference?:  ShapelyInterference | null;
   interferenceResult?: {
     status?:   string;
     blocking?: boolean;
@@ -651,6 +671,7 @@ export default function RollDrawingPanel({
   profileType: profileTypeProp,
   springbackDeg: springbackDegProp,
   interferenceResult,
+  shapelyInterference,
 }: Props) {
   const [selected,      setSelected]      = useState(0);
   const [view,          setView]          = useState<"all3"|"cross"|"front"|"side">("all3");
@@ -952,10 +973,11 @@ export default function RollDrawingPanel({
       </div>
 
       {/* ── Roll Interference Warning ── */}
-      {interferenceResult && (
+      {(interferenceResult || shapelyInterference) && (
         <div className="px-5 py-3 border-b border-slate-700/30">
           <InterferenceWarningPanel
             interferenceResult={interferenceResult}
+            shapelyInterference={shapelyInterference}
             selectedStation={pass?.pass_no}
           />
         </div>

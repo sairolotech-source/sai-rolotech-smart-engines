@@ -32,6 +32,8 @@ from app.engines.report_engine import generate_report
 from app.engines.pdf_export_engine import export_report_pdf
 from app.engines.consistency_engine import validate_consistency
 from app.engines.final_decision_engine import make_final_decision
+from app.engines.flange_web_lip_engine import detect_flange_web_lip
+from app.engines.machine_layout_engine import generate_machine_layout
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -54,15 +56,17 @@ def _run_core_engines(
     profile_result: Dict[str, Any],
     input_result: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Run the shared downstream engines: flower → stations → shaft/bearing/duty/roll."""
+    """Run the shared downstream engines: flange_web_lip → flower → stations → shaft/bearing/duty/roll → machine_layout."""
+    flange_result = detect_flange_web_lip(profile_result)
+
     flower_result = generate_flower(profile_result, input_result)
     if is_fail(flower_result):
         return fail_at("flower_pattern_engine", flower_result)
 
-    station_result = estimate_station(profile_result, input_result, flower_result)
-    shaft_result = select_shaft(profile_result, input_result, station_result)
-    bearing_result = select_bearing(shaft_result, input_result)
-    duty_result = classify_duty(profile_result, input_result, station_result, shaft_result)
+    station_result  = estimate_station(profile_result, input_result, flower_result)
+    shaft_result    = select_shaft(profile_result, input_result, station_result)
+    bearing_result  = select_bearing(shaft_result, input_result)
+    duty_result     = classify_duty(profile_result, input_result, station_result, shaft_result)
     roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
     roll_calc_result = generate_roll_design_calc(
         profile_result=profile_result,
@@ -71,9 +75,19 @@ def _run_core_engines(
         station_result=station_result,
         shaft_result=shaft_result,
     )
+    layout_result = generate_machine_layout(
+        profile_result=profile_result,
+        input_result=input_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+        bearing_result=bearing_result,
+        roll_calc_result=roll_calc_result,
+        duty_result=duty_result,
+    )
 
     return {
         "status": "pass",
+        "flange_web_lip_engine": flange_result,
         "advanced_flower_engine": flower_result,
         "station_engine": station_result,
         "roll_logic_engine": roll_logic_result,
@@ -81,6 +95,7 @@ def _run_core_engines(
         "bearing_engine": bearing_result,
         "duty_engine": duty_result,
         "roll_design_calc_engine": roll_calc_result,
+        "machine_layout_engine": layout_result,
     }
 
 
@@ -233,15 +248,27 @@ def health():
     return {
         "status": "pass",
         "service": "python-fastapi",
-        "version": "2.2.0",
+        "version": "2.3.0",
         "engines": [
             "file_import", "geometry", "profile_analysis", "input",
-            "advanced_flower", "station", "roll_logic", "shaft",
-            "bearing", "duty", "roll_design_calc",
+            "flange_web_lip", "advanced_flower", "station", "roll_logic",
+            "shaft", "bearing", "duty", "roll_design_calc", "machine_layout",
             "consistency", "final_decision",
             "report", "pdf_export",
         ],
-        "total_engines": 15,
+        "total_engines": 17,
+        "endpoints": [
+            "GET  /api/health",
+            "POST /api/manual-mode",
+            "POST /api/manual-mode-debug",
+            "POST /api/manual-mode-export-pdf",
+            "POST /api/manual-mode-download-pdf",
+            "POST /api/semi-auto-confirm",
+            "POST /api/auto-mode",
+            "POST /api/dxf-upload  (alias: /api/auto-mode-dxf)",
+            "POST /api/preview-dxf",
+            "GET  /api/run-manual-tests",
+        ],
     }
 
 
@@ -334,16 +361,30 @@ def run_manual_mode(data: ManualProfileInput):
 # ─── GET /api/run-tests ──────────────────────────────────────────────────────
 
 @router.get("/run-tests")
+@router.get("/run-manual-tests")
 def run_tests():
-    """Run 5 built-in test cases and return pass/fail for each."""
+    """Run 8 built-in test cases and return pass/fail for each."""
     from app.api.schemas import ManualProfileInput
 
     CASES = [
-        {"name": "TC-01: GI Simple Channel", "bend_count": 2, "section_width_mm": 100, "section_height_mm": 40, "thickness": 0.8, "material": "GI", "profile_type": "simple_channel"},
-        {"name": "TC-02: CR Lipped Channel", "bend_count": 4, "section_width_mm": 120, "section_height_mm": 55, "thickness": 1.0, "material": "CR", "profile_type": "lipped_channel"},
-        {"name": "TC-03: SS Heavy Section", "bend_count": 6, "section_width_mm": 150, "section_height_mm": 60, "thickness": 1.5, "material": "SS", "profile_type": "lipped_channel"},
-        {"name": "TC-04: HR Complex Profile", "bend_count": 8, "section_width_mm": 200, "section_height_mm": 80, "thickness": 2.0, "material": "HR", "profile_type": "complex_profile"},
-        {"name": "TC-05: HR Shutter 8 Bends", "bend_count": 8, "section_width_mm": 250, "section_height_mm": 30, "thickness": 1.2, "material": "HR", "profile_type": "shutter_profile"},
+        # ── Standard profiles ────────────────────────────────────────────
+        {"name": "TC-01: GI Simple Channel", "bend_count": 2, "section_width_mm": 100, "section_height_mm": 40, "thickness": 0.8, "material": "GI", "profile_type": "simple_channel",
+         "_expected_mode": "auto_mode", "_expected_min_confidence": 70},
+        {"name": "TC-02: CR Lipped Channel", "bend_count": 4, "section_width_mm": 120, "section_height_mm": 55, "thickness": 1.0, "material": "CR", "profile_type": "lipped_channel",
+         "_expected_mode": "auto_mode", "_expected_min_confidence": 80},
+        {"name": "TC-03: SS Heavy Section", "bend_count": 6, "section_width_mm": 150, "section_height_mm": 60, "thickness": 1.5, "material": "SS", "profile_type": "lipped_channel",
+         "_expected_mode": "auto_mode", "_expected_min_confidence": 75},
+        {"name": "TC-04: HR Complex Profile", "bend_count": 8, "section_width_mm": 200, "section_height_mm": 80, "thickness": 2.0, "material": "HR", "profile_type": "complex_profile",
+         "_expected_mode": None, "_expected_min_confidence": 60},
+        {"name": "TC-05: HR Shutter 8 Bends", "bend_count": 8, "section_width_mm": 250, "section_height_mm": 30, "thickness": 1.2, "material": "HR", "profile_type": "shutter_profile",
+         "_expected_mode": None, "_expected_min_confidence": 65},
+        # ── Edge cases ───────────────────────────────────────────────────
+        {"name": "TC-06: Contradiction — Lipped Channel No Lips", "bend_count": 2, "section_width_mm": 100, "section_height_mm": 40, "thickness": 1.0, "material": "GI", "profile_type": "lipped_channel",
+         "_expected_mode": "manual_review", "_expected_min_confidence": 0},
+        {"name": "TC-07: Contradiction — Heavy Duty Small Shaft Input", "bend_count": 8, "section_width_mm": 300, "section_height_mm": 100, "thickness": 3.0, "material": "HR", "profile_type": "complex_profile",
+         "_expected_mode": None, "_expected_min_confidence": 50},
+        {"name": "TC-08: MS Industrial Wide Section", "bend_count": 10, "section_width_mm": 400, "section_height_mm": 120, "thickness": 3.5, "material": "MS", "profile_type": "complex_profile",
+         "_expected_mode": None, "_expected_min_confidence": 50},
     ]
 
     results = []
@@ -351,25 +392,39 @@ def run_tests():
 
     for tc in CASES:
         name = tc.pop("name")
+        expected_mode       = tc.pop("_expected_mode", None)
+        expected_min_conf   = tc.pop("_expected_min_confidence", 0)
         try:
             data = ManualProfileInput(**tc)
             result = execute_manual_pipeline(data)
             status = "pass" if result.get("status") == "pass" else "fail"
             if status == "fail":
                 all_pass = False
-            summary = result.get("report_engine", {}).get("engineering_summary", {})
-            decision = result.get("final_decision_engine", {})
+            summary     = result.get("report_engine", {}).get("engineering_summary", {})
+            decision    = result.get("final_decision_engine", {})
             consistency = result.get("consistency_engine", {})
+            actual_mode = decision.get("selected_mode")
+            actual_conf = decision.get("overall_confidence", 0)
+            mode_ok     = (expected_mode is None) or (actual_mode == expected_mode)
+            conf_ok     = actual_conf >= expected_min_conf
+            validation  = "pass" if (mode_ok and conf_ok) else "warning"
             results.append({
                 "name": name,
                 "status": status,
+                "validation": validation,
+                "expected_mode": expected_mode,
+                "actual_mode": actual_mode,
+                "expected_min_confidence": expected_min_conf,
+                "actual_confidence": actual_conf,
                 "stations": summary.get("recommended_station_count"),
                 "shaft_mm": summary.get("shaft_diameter_mm"),
                 "bearing": summary.get("bearing_type"),
                 "roll_od_mm": summary.get("estimated_roll_od_mm"),
+                "line_length_m": result.get("machine_layout_engine", {}).get("total_line_length_m"),
+                "drive_type": result.get("machine_layout_engine", {}).get("drive_type"),
                 "complexity": summary.get("forming_complexity_class"),
-                "selected_mode": decision.get("selected_mode"),
-                "overall_confidence": decision.get("overall_confidence"),
+                "selected_mode": actual_mode,
+                "overall_confidence": actual_conf,
                 "consistency_status": consistency.get("consistency_status"),
                 "failed_stage": result.get("failed_stage"),
             })
@@ -382,6 +437,7 @@ def run_tests():
         "total": len(CASES),
         "passed": sum(1 for r in results if r["status"] == "pass"),
         "failed": sum(1 for r in results if r["status"] != "pass"),
+        "validation_warnings": sum(1 for r in results if r.get("validation") == "warning"),
         "test_cases": results,
     }
 
@@ -397,6 +453,7 @@ def run_manual_mode_debug(data: ManualProfileInput):
     ENGINE_ORDER = [
         "profile_analysis_engine",
         "input_engine",
+        "flange_web_lip_engine",
         "advanced_flower_engine",
         "station_engine",
         "roll_logic_engine",
@@ -404,6 +461,7 @@ def run_manual_mode_debug(data: ManualProfileInput):
         "bearing_engine",
         "duty_engine",
         "roll_design_calc_engine",
+        "machine_layout_engine",
         "consistency_engine",
         "final_decision_engine",
         "report_engine",
@@ -506,3 +564,203 @@ def run_manual_mode_download_pdf(data: ManualProfileInput):
         filename=pdf_result["filename"],
         media_type="application/pdf",
     )
+
+
+# ─── POST /api/auto-mode-dxf (alias for /api/dxf-upload) ─────────────────────
+
+@router.post("/auto-mode-dxf")
+async def auto_mode_dxf(
+    thickness: float,
+    material: str,
+    file: UploadFile = File(...),
+):
+    """Alias for /api/dxf-upload — canonical blueprint name."""
+    if not file.filename or not file.filename.lower().endswith(".dxf"):
+        raise HTTPException(status_code=400, detail="Only .dxf files accepted")
+
+    dxf_bytes = await file.read()
+    logger.info("[auto-mode-dxf] file=%s size=%d thickness=%.2f material=%s",
+                file.filename, len(dxf_bytes), thickness, material)
+
+    import_result = parse_dxf_bytes(dxf_bytes)
+    if is_fail(import_result):
+        return fail_at("file_import_engine", import_result)
+
+    geometry_result = clean_geometry(import_result["geometry"])
+    if is_fail(geometry_result):
+        return fail_at("geometry_engine", geometry_result)
+
+    profile_result = analyze_profile(geometry_result)
+    if is_fail(profile_result):
+        return fail_at("profile_analysis_engine", profile_result)
+
+    input_result = validate_inputs(thickness, material)
+    if is_fail(input_result):
+        return fail_at("input_engine", input_result)
+
+    core = _run_core_engines(profile_result, input_result)
+    if is_fail(core):
+        return core
+
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
+    pipeline = {
+        "status": "pass",
+        "source_file": file.filename,
+        "file_import_engine": import_result,
+        "geometry_engine": geometry_result,
+        "profile_analysis_engine": profile_result,
+        "input_engine": input_result,
+        **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine": consistency_result,
+        "final_decision_engine": decision_result,
+    }
+
+    pipeline["report_engine"] = generate_report(pipeline)
+    return pipeline
+
+
+# ─── POST /api/preview-dxf ────────────────────────────────────────────────────
+
+@router.post("/preview-dxf")
+async def preview_dxf(
+    file: UploadFile = File(...),
+):
+    """
+    Lightweight DXF preview — runs import + geometry + profile_analysis only.
+    Returns geometry stats without full pipeline or accuracy engines.
+    Useful for confirming DXF is readable before committing to full pipeline run.
+    """
+    if not file.filename or not file.filename.lower().endswith(".dxf"):
+        raise HTTPException(status_code=400, detail="Only .dxf files accepted")
+
+    dxf_bytes = await file.read()
+    logger.info("[preview-dxf] file=%s size=%d bytes", file.filename, len(dxf_bytes))
+
+    import_result = parse_dxf_bytes(dxf_bytes)
+    if is_fail(import_result):
+        return {
+            "status": "fail",
+            "stage": "file_import_engine",
+            "preview_available": False,
+            "file_import_engine": import_result,
+        }
+
+    geometry_result = clean_geometry(import_result["geometry"])
+    if is_fail(geometry_result):
+        return {
+            "status": "fail",
+            "stage": "geometry_engine",
+            "preview_available": False,
+            "file_import_engine": import_result,
+            "geometry_engine": geometry_result,
+        }
+
+    profile_result = analyze_profile(geometry_result)
+
+    geometry = import_result.get("geometry", {})
+    entity_counts = {
+        "total_entities": len(geometry.get("entities", [])),
+        "lines": sum(1 for e in geometry.get("entities", []) if e.get("type") == "LINE"),
+        "arcs": sum(1 for e in geometry.get("entities", []) if e.get("type") == "ARC"),
+        "polylines": sum(1 for e in geometry.get("entities", []) if e.get("type") in {"LWPOLYLINE", "POLYLINE"}),
+    }
+
+    return {
+        "status": "pass",
+        "preview_available": True,
+        "source_file": file.filename,
+        "file_size_bytes": len(dxf_bytes),
+        "entity_summary": entity_counts,
+        "geometry_engine": {
+            "status": geometry_result.get("status"),
+            "entity_count": geometry_result.get("entity_count"),
+            "bounding_box": geometry_result.get("bounding_box"),
+            "warnings": geometry_result.get("warnings", []),
+        },
+        "profile_preview": {
+            "status": profile_result.get("status"),
+            "section_width_mm": profile_result.get("section_width_mm"),
+            "section_height_mm": profile_result.get("section_height_mm"),
+            "bend_count": profile_result.get("bend_count"),
+            "profile_type": profile_result.get("profile_type"),
+            "return_bends_count": profile_result.get("return_bends_count"),
+            "warnings": profile_result.get("warnings", []),
+        },
+        "ready_for_full_pipeline": profile_result.get("status") == "pass",
+        "note": "This is a preview only — run /api/auto-mode-dxf for full engineering analysis.",
+    }
+
+
+# ─── POST /api/semi-auto-confirm ─────────────────────────────────────────────
+
+@router.post("/semi-auto-confirm")
+def semi_auto_confirm(data: Dict[str, Any]):
+    """
+    Semi-auto confirmation — takes user-confirmed values (corrected from detected),
+    re-runs full manual pipeline, and marks result as semi_auto_confirmed.
+    Expects:
+      confirmed: { bend_count, section_width_mm, section_height_mm, thickness,
+                   material, profile_type, return_bends_count?, station_count? }
+      original:  { ...detected values for audit trail }
+    """
+    confirmed = data.get("confirmed", {})
+    original  = data.get("original", {})
+
+    if not confirmed:
+        raise HTTPException(status_code=400, detail="'confirmed' block is required")
+
+    required_fields = ["bend_count", "section_width_mm", "section_height_mm", "thickness", "material"]
+    missing = [f for f in required_fields if f not in confirmed]
+    if missing:
+        raise HTTPException(status_code=422, detail=f"Missing required confirmed fields: {missing}")
+
+    try:
+        manual_input = ManualProfileInput(
+            bend_count=int(confirmed["bend_count"]),
+            section_width_mm=float(confirmed["section_width_mm"]),
+            section_height_mm=float(confirmed["section_height_mm"]),
+            thickness=float(confirmed["thickness"]),
+            material=str(confirmed["material"]),
+            profile_type=confirmed.get("profile_type", "custom"),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Invalid confirmed values: {e}")
+
+    logger.info(
+        "[semi-auto-confirm] confirmed bends=%d w=%.1f h=%.1f thickness=%.2f material=%s",
+        manual_input.bend_count, manual_input.section_width_mm,
+        manual_input.section_height_mm, manual_input.thickness, manual_input.material,
+    )
+
+    result = execute_manual_pipeline(manual_input)
+
+    # Override mode to semi_auto_confirmed regardless of final decision
+    if result.get("final_decision_engine"):
+        result["final_decision_engine"]["selected_mode"] = "semi_auto_confirmed"
+        result["final_decision_engine"]["semi_auto_note"] = (
+            "Values confirmed by engineer — pipeline re-run with user-corrected inputs"
+        )
+
+    result["semi_auto_metadata"] = {
+        "mode": "semi_auto_confirmed",
+        "confirmed_by": "user",
+        "confirmed_values": confirmed,
+        "original_detected_values": original,
+        "fields_changed": [
+            k for k in confirmed
+            if str(confirmed.get(k)) != str(original.get(k))
+        ],
+    }
+
+    return result

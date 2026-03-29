@@ -19,19 +19,21 @@ interface Props {
 }
 
 const LABEL: Record<string, string> = {
-  profile_analysis_engine: "Profile Analysis",
-  input_engine: "Input Validation",
-  advanced_flower_engine: "Flower Pattern",
-  station_engine: "Station Estimate",
-  roll_logic_engine: "Roll Logic",
-  shaft_engine: "Shaft Selection",
-  bearing_engine: "Bearing Selection",
-  duty_engine: "Duty Classification",
-  roll_design_calc_engine: "Roll Design Calc",
-  consistency_engine: "Consistency Check",
-  final_decision_engine: "Final Decision",
-  report_engine: "Report Generation",
-  pdf_export_engine: "PDF Export",
+  profile_analysis_engine:  "Profile Analysis",
+  input_engine:             "Input Validation",
+  flange_web_lip_engine:    "Flange / Web / Lip",
+  advanced_flower_engine:   "Flower Pattern",
+  station_engine:           "Station Estimate",
+  roll_logic_engine:        "Roll Logic",
+  shaft_engine:             "Shaft Selection",
+  bearing_engine:           "Bearing Selection",
+  duty_engine:              "Duty Classification",
+  roll_design_calc_engine:  "Roll Design Calc",
+  machine_layout_engine:    "Machine Layout",
+  consistency_engine:       "Consistency Check",
+  final_decision_engine:    "Final Decision",
+  report_engine:            "Report Generation",
+  pdf_export_engine:        "PDF Export",
 };
 
 const MODE_COLOR: Record<string, string> = {

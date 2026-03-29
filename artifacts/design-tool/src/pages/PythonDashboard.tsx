@@ -9,6 +9,8 @@ import { ReportPreview } from "@/components/python-dashboard/ReportPreview";
 import { TestResults } from "@/components/python-dashboard/TestResults";
 import FinalDecisionPanel from "@/components/python-dashboard/FinalDecisionPanel";
 import SemiAutoPanel from "@/components/python-dashboard/SemiAutoPanel";
+import DxfUploadPanel from "@/components/python-dashboard/DxfUploadPanel";
+import MachineLayoutPanel from "@/components/python-dashboard/MachineLayoutPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -55,6 +57,34 @@ export default function PythonDashboard() {
     setPayload(form);
     runDebug(form, false);
   }, [runDebug]);
+
+  const handleDxfPipelineResult = useCallback((result: Record<string, unknown>) => {
+    setPipelineResult(result);
+    setPdfResult(null);
+    setError(null);
+    setConfirmedNote(null);
+    // Build a synthetic stage_debug list from the pipeline result for PipelineStatusPanel
+    const ENGINE_ORDER = [
+      "profile_analysis_engine", "input_engine", "flange_web_lip_engine",
+      "advanced_flower_engine", "station_engine", "roll_logic_engine",
+      "shaft_engine", "bearing_engine", "duty_engine", "roll_design_calc_engine",
+      "machine_layout_engine", "consistency_engine", "final_decision_engine", "report_engine",
+    ];
+    const stages = ENGINE_ORDER.map((k) => {
+      const eng = (result[k] ?? {}) as Record<string, unknown>;
+      return {
+        stage: k,
+        status: (eng.status as string) ?? "not_run",
+        reason: eng.reason as string | undefined,
+        selected_mode: eng.selected_mode as string | undefined,
+        overall_confidence: eng.overall_confidence as number | undefined,
+        consistency_status: eng.consistency_status as string | undefined,
+        blocking: eng.blocking as boolean | undefined,
+        issues_found: eng.issues_found as number | undefined,
+      };
+    });
+    setDebugResult({ stage_debug: stages, first_failed_stage: result.failed_stage as string | undefined });
+  }, []);
 
   const handleSemiAutoConfirm = useCallback((vals: {
     bend_count: number;
@@ -133,6 +163,7 @@ export default function PythonDashboard() {
   const assumptions     = (rollCalc?.assumptions as string[]) ?? [];
   const finalDecision   = (pipelineResult?.final_decision_engine ?? null) as Record<string, unknown> | null;
   const consistency     = (pipelineResult?.consistency_engine ?? null) as Record<string, unknown> | null;
+  const machineLayout   = (pipelineResult?.machine_layout_engine ?? null) as Record<string, unknown> | null;
 
   const profEng   = (pipelineResult?.profile_analysis_engine ?? {}) as Record<string, unknown>;
   const inputEng  = (pipelineResult?.input_engine ?? {}) as Record<string, unknown>;
@@ -168,7 +199,7 @@ export default function PythonDashboard() {
             <Activity className="w-5 h-5 text-violet-400" />
             <div>
               <div className="text-lg font-bold text-gray-100">Python API Debug Dashboard</div>
-              <div className="text-[10px] text-gray-500">Sai Rolotech Smart Engines v2.2.0 — FastAPI on port 9000</div>
+              <div className="text-[10px] text-gray-500">Sai Rolotech Smart Engines v2.3.0 — 17 Engines — FastAPI on port 9000</div>
             </div>
           </div>
           <a href="/" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">
@@ -200,6 +231,7 @@ export default function PythonDashboard() {
           {/* LEFT COLUMN */}
           <div className="lg:col-span-1 space-y-4">
             <InputPanel onRun={handleRun} loading={loading} />
+            <DxfUploadPanel onPipelineResult={handleDxfPipelineResult} />
 
             <div className="rounded-xl border border-gray-700/50 bg-gray-900/60 p-4 space-y-2">
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</div>
@@ -210,7 +242,7 @@ export default function PythonDashboard() {
                   className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 text-xs font-medium py-2 transition-colors"
                 >
                   <FlaskConical className="w-3.5 h-3.5" />
-                  {testLoading ? "Running Tests…" : "Run 5 Test Cases"}
+                  {testLoading ? "Running Tests…" : "Run 8 Test Cases"}
                 </button>
                 <button
                   onClick={handleExportPdf}
@@ -260,6 +292,7 @@ export default function PythonDashboard() {
             )}
 
             <SummaryCards summary={summary} />
+            {machineLayout && <MachineLayoutPanel data={machineLayout as any} />}
             <WarningPanel warnings={warnings} assumptions={assumptions} />
 
             {pdfResult && (

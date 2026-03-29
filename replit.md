@@ -97,11 +97,12 @@ The project is structured as a pnpm workspace monorepo comprising `api-server`, 
 
 Added alongside the TypeScript/Express API server. Runs at `artifacts/python-api/`.
 
-**Architecture:** Fully modular — each engine is a separate Python file (15 total):
+**Architecture:** Fully modular — each engine is a separate Python file (17 total as of v2.3.0):
 - `app/utils/engineering_rules.py` — Single source of truth (mirrors `engineering-rules.ts`)
 - `app/engines/import_engine.py` — Entity list + real ezdxf DXF file parsing
 - `app/engines/geometry_engine.py` — Bbox, open/closed profile, degenerate segment cleanup
 - `app/engines/profile_analysis_engine.py` — Real bend detection (line angle changes + arcs)
+- `app/engines/flange_web_lip_engine.py` — NEW: Web/flange/lip detection, symmetry, section type classification
 - `app/engines/input_engine.py` — Thickness + material validation (Rule Book materials)
 - `app/engines/advanced_flower_engine.py` — Forming pass distribution by complexity tier
 - `app/engines/station_engine.py` — Rule Book §4 station formula
@@ -110,6 +111,7 @@ Added alongside the TypeScript/Express API server. Runs at `artifacts/python-api
 - `app/engines/bearing_engine.py` — Rule Book §7 bearing table
 - `app/engines/duty_engine.py` — Final machine duty classification
 - `app/engines/roll_design_calc_engine.py` — Roll OD, pass gap, spacer, calibration
+- `app/engines/machine_layout_engine.py` — NEW: Stand spacing, shaft center distance, drive type, motor kW, gearbox, entry guide, straightener, frame, coil stand, line length
 - `app/engines/consistency_engine.py` — Cross-validation (14 checks: bend↔profile, shaft↔duty, OD↔shaft, etc.)
 - `app/engines/final_decision_engine.py` — Accuracy Control System: 100-pt confidence score → Auto/Semi Auto/Manual Review mode
 - `app/engines/report_engine.py` — 19-field engineering summary + 10-section readable report
@@ -121,22 +123,29 @@ Added alongside the TypeScript/Express API server. Runs at `artifacts/python-api
 - consistency_engine runs 14 cross-checks and blocks auto_mode if any critical check fails
 - Semi Auto triggers SemiAutoPanel in frontend — user can review/correct all detected values before re-run
 
-**Endpoints (9 total):**
-- `GET  /api/health` — Health check (lists all 15 engines)
+**machine_layout_engine rules:** LIGHT=400mm/3.7kW/chain≤8 | MEDIUM=500mm/7.5kW/gear 9-16 | HEAVY=600mm/15kW | INDUSTRIAL=700mm/22kW/tandem>16; SS/HR require straightener; wide sections get double-head decoiler
+
+**Endpoints (12 total as of v2.3.0):**
+- `GET  /api/health` — Health check (17 engines, all endpoint list)
 - `POST /api/auto-mode` — Full pipeline from entity list
 - `POST /api/manual-mode` — Pipeline from manual profile dimensions
 - `POST /api/dxf-upload` — Real DXF file upload → full pipeline (ezdxf)
+- `POST /api/auto-mode-dxf` — Canonical alias for /api/dxf-upload
+- `POST /api/preview-dxf` — Lightweight DXF preview (import + geometry + profile only, no full pipeline)
+- `POST /api/semi-auto-confirm` — Takes confirmed values, re-runs pipeline, marks mode=semi_auto_confirmed
 - `POST /api/auto-mode-export-pdf` — Auto pipeline + PDF result (JSON)
 - `POST /api/manual-mode-export-pdf` — Manual pipeline + PDF result (JSON)
 - `POST /api/manual-mode-download-pdf` — Manual pipeline → download PDF file
 - `POST /api/manual-mode-debug` — Pipeline + per-engine stage debug with mode/confidence
-- `GET  /api/run-tests` — 5 built-in test cases (5/5 pass, shows mode+confidence)
+- `GET  /api/run-tests` or `GET /api/run-manual-tests` — 8 built-in test cases (8/8 pass)
 
 **Frontend Dashboard** (`/python` — no auth required):
+- `DxfUploadPanel` — NEW: Drag-and-drop DXF upload, preview button, DXF preview result (entity counts, bbox, profile), then full pipeline trigger with material inputs
+- `MachineLayoutPanel` — NEW: Stand count/spacing, shaft center distance, drive type chip, motor/gearbox labels, entry guide, straightener, frame, coil stand, line length visualizer (entry + roll forming + exit bar)
 - `FinalDecisionPanel` — Mode badge (green/yellow/red) + 100-pt score + 7-bar confidence breakdown + blocking reasons
 - `SemiAutoPanel` — Appears when mode=semi_auto or manual_review; 12 editable fields with detected↔confirmed columns + "Confirm & Re-run Pipeline" button; PDF export locked until confirmed
-- `PipelineStatusPanel` — 12 engine stages with per-engine mode/confidence/consistency inline info
-- `TestResults` — Shows mode + confidence/100 + consistency_status per test case
+- `PipelineStatusPanel` — 14 engine stages (now includes flange_web_lip + machine_layout) with per-engine mode/confidence/consistency inline info
+- `TestResults` — 8 test cases showing mode (actual vs expected), confidence, line length, drive type, consistency status
 
 **Rule Book parity:** LIGHT→40mm→6208 | MEDIUM→50mm→6210 | HEAVY→60mm→6212 | INDUSTRIAL→70mm→6214
 

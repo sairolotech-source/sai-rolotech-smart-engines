@@ -9,10 +9,10 @@
  *  - DIN-style dimension annotations
  *  - Roll specification table
  */
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, Printer, Download,
-  Layers, Circle, AlignCenter, ZoomIn, Info
+  Layers, Circle, AlignCenter, ZoomIn, Info, FileDown, Package
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -548,11 +548,350 @@ function MiniThumb({ pass, active, onClick }: { pass: PassData; active: boolean;
   );
 }
 
+// ─── SVG EXPORT GENERATOR ────────────────────────────────────────────────────
+// Generates a complete A3-landscape engineering drawing as an SVG string.
+// All coordinates in "SVG units" (1 unit ≈ 0.75 pt for screen, or mm for print).
+
+function buildStationSVG(
+  pass:      PassData,
+  rd:        RollDimensions,
+  thickness: number,
+  material:  string,
+  profileType: string = "",
+): string {
+  const W = 1189, H = 841;   // A3 landscape (mm × 3.56 px/mm ÷ 3.56 = mm)
+  const stageColor = STAGE_COLOR[pass.stage_type] || "#8b5cf6";
+  const date = new Date().toLocaleDateString("en-GB");
+
+  const upper = pass.upper_roll_profile;
+  const lower = pass.lower_roll_profile;
+
+  /* ── Cross-section nip view (left third) ── */
+  const cW = 380, cH = 380, cX = 40, cY = 80, cPad = 40;
+  const allPts = [...upper, ...lower];
+  const xs = allPts.map(p => p.x), ys = allPts.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const sx = (v: number) => cX + cPad + ((v - minX) / (maxX - minX || 1)) * (cW - cPad * 2);
+  const sy = (v: number) => cY + cPad + ((v - minY) / (maxY - minY || 1)) * (cH - cPad * 2);
+  const uPath = upper.map((p, i) => `${i === 0 ? "M" : "L"} ${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(" ");
+  const lPath = lower.map((p, i) => `${i === 0 ? "M" : "L"} ${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(" ");
+
+  // Upper fill polygon
+  const uFillPts = [
+    `${cX + cPad},${cY + cPad}`, `${cX + cW - cPad},${cY + cPad}`,
+    ...upper.slice().reverse().map(p => `${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`),
+  ].join(" ");
+  const lFillPts = [
+    `${cX + cPad},${cY + cH - cPad}`, `${cX + cW - cPad},${cY + cH - cPad}`,
+    ...lower.slice().reverse().map(p => `${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`),
+  ].join(" ");
+
+  const uMidX = sx((upper[0].x + upper[upper.length - 1].x) / 2);
+  const uMidY = sy(upper[Math.floor(upper.length / 2)].y);
+  const lMidY = sy(lower[Math.floor(lower.length / 2)].y);
+  const stripW = sx(upper[upper.length - 1].x) - sx(upper[0].x);
+
+  /* ── Front view (circle, centre third) ── */
+  const fCx = 660, fCy = 300, fR = 140;
+  const scale = fR / (rd.estimated_roll_od_mm / 2);
+  const fBoreR = (rd.bore_dia_mm / 2) * scale;
+  const fGrooveD = (pass.forming_depth_mm / (rd.estimated_roll_od_mm / 2)) * fR;
+  const fGrooveW = pass.strip_width_mm * scale * 0.55;
+  const fKwW = (rd.keyway_width_mm / 2) * scale;
+  const fKwH = fKwW * 0.8;
+
+  /* ── Side view (right area) ── */
+  const sX = 880, sW = 260, sH = 360, sCy = 300;
+  const scaleS = (sH * 0.45) / (rd.estimated_roll_od_mm / 2);
+  const sOuterR = (rd.estimated_roll_od_mm / 2) * scaleS;
+  const sBoreR  = (rd.bore_dia_mm / 2) * scaleS;
+  const sFW     = (rd.face_width_mm / 2) * scaleS;
+  const sDepth  = pass.forming_depth_mm * scaleS;
+  const sSW     = (pass.strip_width_mm / 2) * scaleS * 0.45;
+  const sCx     = sX + sW / 2;
+
+  const sUpperPts = [
+    `${sCx - sFW},${sCy - sOuterR}`,
+    `${sCx - sSW},${sCy - sOuterR}`,
+    `${sCx - sSW},${sCy - sOuterR + sDepth}`,
+    `${sCx + sSW},${sCy - sOuterR + sDepth}`,
+    `${sCx + sSW},${sCy - sOuterR}`,
+    `${sCx + sFW},${sCy - sOuterR}`,
+    `${sCx + sFW},${sCy - sBoreR}`,
+    `${sCx - sFW},${sCy - sBoreR}`,
+  ].join(" ");
+
+  const sLowerPts = [
+    `${sCx - sFW},${sCy + sOuterR}`,
+    `${sCx - sSW},${sCy + sOuterR}`,
+    `${sCx - sSW},${sCy + sOuterR - sDepth}`,
+    `${sCx + sSW},${sCy + sOuterR - sDepth}`,
+    `${sCx + sSW},${sCy + sOuterR}`,
+    `${sCx + sFW},${sCy + sOuterR}`,
+    `${sCx + sFW},${sCy + sBoreR}`,
+    `${sCx - sFW},${sCy + sBoreR}`,
+  ].join(" ");
+
+  /* ── Build SVG ── */
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+  <defs>
+    <style>
+      text { font-family: 'Courier New', monospace; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="${W}" height="${H}" fill="#0c1220"/>
+
+  <!-- DIN border -->
+  <rect x="10" y="10" width="${W - 20}" height="${H - 20}"
+    fill="none" stroke="#334155" stroke-width="2"/>
+  <rect x="15" y="15" width="${W - 30}" height="${H - 30}"
+    fill="none" stroke="#1e40af" stroke-width="0.8"/>
+
+  <!-- Title bar -->
+  <rect x="15" y="15" width="${W - 30}" height="52" fill="#1e1b4b" stroke="#312e81" stroke-width="0.6"/>
+  <text x="30" y="38" font-size="16" font-weight="bold" fill="#a5b4fc">SAI ROLOTECH SMART ENGINES v2.3.0</text>
+  <text x="30" y="56" font-size="10" fill="#64748b">ROLL TOOLING DRAWING — ENGINEERING APPROXIMATION ONLY — NOT FEM</text>
+  <text x="${W - 30}" y="38" font-size="12" fill="#60a5fa" text-anchor="end">${pass.station_label.toUpperCase()}</text>
+  <text x="${W - 30}" y="56" font-size="10" fill="#475569" text-anchor="end">${material} · ${thickness}mm · ${pass.stage_type.replace(/_/g," ").toUpperCase()}</text>
+
+  <!-- View labels -->
+  <text x="${cX + cW / 2}" y="${cY - 10}" font-size="9" fill="#475569" text-anchor="middle" font-style="italic">CROSS-SECTION — NIP VIEW</text>
+  <text x="${fCx}" y="75" font-size="9" fill="#475569" text-anchor="middle" font-style="italic">FRONT VIEW — ROLL FACE</text>
+  <text x="${sCx}" y="75" font-size="9" fill="#475569" text-anchor="middle" font-style="italic">SECTION A-A — SIDE VIEW</text>
+
+  <!-- ═══ CROSS-SECTION VIEW ═══ -->
+
+  <!-- Upper roll body fill -->
+  <polygon points="${uFillPts}" fill="#1e293b"/>
+  <!-- Lower roll body fill -->
+  <polygon points="${lFillPts}" fill="#064e3b"/>
+
+  <!-- Upper roll profile -->
+  <path d="${uPath}" fill="none" stroke="#60a5fa" stroke-width="2.5"/>
+  <!-- Lower roll profile -->
+  <path d="${lPath}" fill="none" stroke="#34d399" stroke-width="2.5"/>
+
+  <!-- Strip -->
+  <rect x="${sx(upper[0].x).toFixed(1)}" y="${uMidY.toFixed(1)}"
+    width="${stripW.toFixed(1)}" height="${(lMidY - uMidY).toFixed(1)}"
+    fill="#fbbf24" opacity="0.35" stroke="#fbbf24" stroke-width="1"/>
+
+  <!-- Strip flow arrows -->
+  <line x1="${(sx(upper[0].x) + stripW * 0.3).toFixed(1)}" y1="${((uMidY + lMidY) / 2).toFixed(1)}"
+        x2="${(sx(upper[0].x) + stripW * 0.45).toFixed(1)}" y2="${((uMidY + lMidY) / 2).toFixed(1)}"
+        stroke="#fbbf24" stroke-width="1.5"/>
+  <polygon points="${(sx(upper[0].x) + stripW * 0.45).toFixed(1)},${((uMidY + lMidY) / 2).toFixed(1)} ${(sx(upper[0].x) + stripW * 0.42).toFixed(1)},${((uMidY + lMidY) / 2 - 3).toFixed(1)} ${(sx(upper[0].x) + stripW * 0.42).toFixed(1)},${((uMidY + lMidY) / 2 + 3).toFixed(1)}" fill="#fbbf24"/>
+
+  <!-- Centre line -->
+  <line x1="${uMidX.toFixed(1)}" y1="${cY}" x2="${uMidX.toFixed(1)}" y2="${cY + cH}"
+    stroke="#334155" stroke-width="0.8" stroke-dasharray="6,4"/>
+
+  <!-- DIM: strip width -->
+  <line x1="${sx(upper[0].x).toFixed(1)}" y1="${(cY + cH - 15).toFixed(1)}"
+        x2="${sx(upper[upper.length-1].x).toFixed(1)}" y2="${(cY + cH - 15).toFixed(1)}"
+        stroke="#fbbf24" stroke-width="0.8"/>
+  <polygon points="${sx(upper[0].x).toFixed(1)},${(cY + cH - 15).toFixed(1)} ${(sx(upper[0].x) + 6).toFixed(1)},${(cY + cH - 18).toFixed(1)} ${(sx(upper[0].x) + 6).toFixed(1)},${(cY + cH - 12).toFixed(1)}" fill="#fbbf24"/>
+  <polygon points="${sx(upper[upper.length-1].x).toFixed(1)},${(cY + cH - 15).toFixed(1)} ${(sx(upper[upper.length-1].x) - 6).toFixed(1)},${(cY + cH - 18).toFixed(1)} ${(sx(upper[upper.length-1].x) - 6).toFixed(1)},${(cY + cH - 12).toFixed(1)}" fill="#fbbf24"/>
+  <text x="${uMidX.toFixed(1)}" y="${(cY + cH - 18).toFixed(1)}" font-size="9" fill="#fbbf24" text-anchor="middle">Strip W: ${pass.strip_width_mm.toFixed(1)} mm</text>
+
+  <!-- DIM: form depth -->
+  ${pass.forming_depth_mm > 0 ? `
+  <line x1="${(cX + cW - 20).toFixed(1)}" y1="${uMidY.toFixed(1)}"
+        x2="${(cX + cW - 20).toFixed(1)}" y2="${lMidY.toFixed(1)}"
+        stroke="#a78bfa" stroke-width="0.8"/>
+  <text x="${(cX + cW - 10).toFixed(1)}" y="${((uMidY + lMidY) / 2).toFixed(1)}" font-size="8" fill="#a78bfa">Depth</text>
+  <text x="${(cX + cW - 10).toFixed(1)}" y="${((uMidY + lMidY) / 2 + 10).toFixed(1)}" font-size="8" fill="#a78bfa">${pass.forming_depth_mm.toFixed(1)}mm</text>
+  ` : ""}
+
+  <!-- DIM: roll gap -->
+  <text x="${(cX + 8).toFixed(1)}" y="${((uMidY + lMidY) / 2).toFixed(1)}" font-size="8" fill="#34d399">Gap</text>
+  <text x="${(cX + 8).toFixed(1)}" y="${((uMidY + lMidY) / 2 + 10).toFixed(1)}" font-size="8" fill="#34d399">${pass.roll_gap_mm}mm</text>
+
+  <!-- Angle annotation -->
+  <text x="${(uMidX + 10).toFixed(1)}" y="${(uMidY - 12).toFixed(1)}" font-size="10" fill="${stageColor}" font-weight="bold">θ = ${pass.target_angle_deg.toFixed(1)}°</text>
+
+  <!-- Legend -->
+  <rect x="${cX}" y="${cY + cH + 5}" width="200" height="32" fill="#0f172a" stroke="#1e293b" stroke-width="0.5" rx="2"/>
+  <line x1="${cX + 8}" y1="${cY + cH + 16}" x2="${cX + 28}" y2="${cY + cH + 16}" stroke="#60a5fa" stroke-width="2"/>
+  <text x="${cX + 32}" y="${cY + cH + 19}" font-size="8" fill="#94a3b8">Upper Roll</text>
+  <line x1="${cX + 8}" y1="${cY + cH + 28}" x2="${cX + 28}" y2="${cY + cH + 28}" stroke="#34d399" stroke-width="2"/>
+  <text x="${cX + 32}" y="${cY + cH + 31}" font-size="8" fill="#94a3b8">Lower Roll</text>
+
+  <!-- ═══ FRONT VIEW ═══ -->
+
+  <!-- Roll OD circle -->
+  <circle cx="${fCx}" cy="${fCy}" r="${fR}" fill="#1e293b" stroke="#60a5fa" stroke-width="2"/>
+
+  <!-- Groove on OD -->
+  ${pass.forming_depth_mm > 0 ? `
+  <path d="M ${fCx - fR},${fCy}
+    L ${fCx - fR + fGrooveD * 0.5},${fCy}
+    L ${fCx - fGrooveW * 0.6},${fCy + fGrooveD * 1.2}
+    L ${fCx + fGrooveW * 0.6},${fCy + fGrooveD * 1.2}
+    L ${fCx + fR - fGrooveD * 0.5},${fCy}
+    L ${fCx + fR},${fCy}"
+    fill="none" stroke="${stageColor}" stroke-width="2"/>
+  ` : ""}
+
+  <!-- Bore circle -->
+  <circle cx="${fCx}" cy="${fCy}" r="${fBoreR}" fill="#0f172a" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+  <!-- Keyway -->
+  <rect x="${fCx - fKwW}" y="${fCy - fBoreR - fKwH}" width="${fKwW * 2}" height="${fKwH}"
+    fill="#0f172a" stroke="#f59e0b" stroke-width="1.2"/>
+
+  <!-- Centre cross -->
+  <line x1="${fCx - fBoreR - 8}" y1="${fCy}" x2="${fCx + fBoreR + 8}" y2="${fCy}" stroke="#334155" stroke-width="0.8" stroke-dasharray="5,3"/>
+  <line x1="${fCx}" y1="${fCy - fBoreR - 8}" x2="${fCx}" y2="${fCy + fBoreR + 8}" stroke="#334155" stroke-width="0.8" stroke-dasharray="5,3"/>
+
+  <!-- OD dim -->
+  <line x1="${fCx}" y1="${fCy}" x2="${fCx + fR}" y2="${fCy}" stroke="#60a5fa" stroke-width="1"/>
+  <text x="${fCx + fR * 0.55}" y="${fCy - 6}" font-size="10" fill="#60a5fa" text-anchor="middle" font-weight="bold">⌀${rd.estimated_roll_od_mm} h6</text>
+
+  <!-- Bore dim -->
+  <text x="${fCx - fBoreR - 20}" y="${fCy - fBoreR * 0.5}" font-size="9" fill="#e2e8f0">⌀${rd.bore_dia_mm} H7</text>
+
+  <!-- Keyway dim -->
+  <text x="${fCx}" y="${fCy - fBoreR - fKwH - 8}" font-size="9" fill="#f59e0b" text-anchor="middle">KW ${rd.keyway_width_mm}mm (DIN 6885)</text>
+
+  <!-- Depth label -->
+  ${pass.forming_depth_mm > 0 ? `
+  <text x="${fCx}" y="${fCy + fR + 20}" font-size="10" fill="${stageColor}" text-anchor="middle" font-weight="bold">Groove Depth: ${pass.forming_depth_mm.toFixed(1)} mm</text>
+  ` : ""}
+
+  <!-- Stage label -->
+  <text x="${fCx}" y="${fCy - fR - 12}" font-size="9" fill="${stageColor}" text-anchor="middle">[ ${pass.stage_type.replace(/_/g," ").toUpperCase()} ]</text>
+
+  <!-- ═══ SIDE VIEW ═══ -->
+
+  <!-- Upper roll -->
+  <polygon points="${sUpperPts}" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5"/>
+  <polyline points="${sCx - sFW},${sCy - sOuterR} ${sCx - sSW},${sCy - sOuterR} ${sCx - sSW},${sCy - sOuterR + sDepth} ${sCx + sSW},${sCy - sOuterR + sDepth} ${sCx + sSW},${sCy - sOuterR} ${sCx + sFW},${sCy - sOuterR}"
+    fill="none" stroke="${stageColor}" stroke-width="2.5"/>
+
+  <!-- Lower roll -->
+  <polygon points="${sLowerPts}" fill="#064e3b" stroke="#34d399" stroke-width="1.5"/>
+  <polyline points="${sCx - sFW},${sCy + sOuterR} ${sCx - sSW},${sCy + sOuterR} ${sCx - sSW},${sCy + sOuterR - sDepth} ${sCx + sSW},${sCy + sOuterR - sDepth} ${sCx + sSW},${sCy + sOuterR} ${sCx + sFW},${sCy + sOuterR}"
+    fill="none" stroke="${stageColor}" stroke-width="2.5"/>
+
+  <!-- Strip -->
+  <rect x="${sCx - sSW}" y="${sCy - thickness * scaleS / 2}" width="${sSW * 2}" height="${thickness * scaleS}"
+    fill="#fbbf24" opacity="0.4" stroke="#fbbf24" stroke-width="1"/>
+
+  <!-- Shaft centre line -->
+  <line x1="${sX}" y1="${sCy}" x2="${sX + sW}" y2="${sCy}" stroke="#334155" stroke-width="0.8" stroke-dasharray="6,4"/>
+
+  <!-- Bore zone -->
+  <rect x="${sCx - sFW}" y="${sCy - sBoreR}" width="${sFW * 2}" height="${sBoreR * 2}"
+    fill="none" stroke="#475569" stroke-width="0.8" stroke-dasharray="4,3"/>
+
+  <!-- DIM: face width -->
+  <line x1="${sCx - sFW}" y1="${sCy + sOuterR + 18}" x2="${sCx + sFW}" y2="${sCy + sOuterR + 18}" stroke="#60a5fa" stroke-width="0.8"/>
+  <text x="${sCx}" y="${sCy + sOuterR + 32}" font-size="9" fill="#60a5fa" text-anchor="middle">Face: ${rd.face_width_mm} mm</text>
+
+  <!-- DIM: OD -->
+  <line x1="${sCx + sFW + 10}" y1="${sCy - sOuterR}" x2="${sCx + sFW + 10}" y2="${sCy + sOuterR}" stroke="#94a3b8" stroke-width="0.8"/>
+  <text x="${sCx + sFW + 14}" y="${sCy - 4}" font-size="8" fill="#94a3b8">⌀${rd.estimated_roll_od_mm}</text>
+
+  <!-- DIM: bore -->
+  <line x1="${sCx - sFW - 10}" y1="${sCy - sBoreR}" x2="${sCx - sFW - 10}" y2="${sCy + sBoreR}" stroke="#f59e0b" stroke-width="0.8"/>
+  <text x="${sCx - sFW - 14}" y="${sCy - 4}" font-size="8" fill="#f59e0b" text-anchor="end">⌀${rd.bore_dia_mm}</text>
+
+  <!-- ═══ TITLE BLOCK (bottom right) ═══ -->
+  <rect x="${W - 380}" y="${H - 185}" width="365" height="170" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
+
+  <!-- Title block grid lines -->
+  <line x1="${W - 380}" y1="${H - 155}" x2="${W - 15}" y2="${H - 155}" stroke="#1e293b" stroke-width="0.5"/>
+  <line x1="${W - 380}" y1="${H - 130}" x2="${W - 15}" y2="${H - 130}" stroke="#1e293b" stroke-width="0.5"/>
+  <line x1="${W - 380}" y1="${H - 105}" x2="${W - 15}" y2="${H - 105}" stroke="#1e293b" stroke-width="0.5"/>
+  <line x1="${W - 380}" y1="${H - 80}" x2="${W - 15}" y2="${H - 80}" stroke="#1e293b" stroke-width="0.5"/>
+  <line x1="${W - 380}" y1="${H - 55}" x2="${W - 15}" y2="${H - 55}" stroke="#1e293b" stroke-width="0.5"/>
+  <line x1="${W - 380}" y1="${H - 30}" x2="${W - 15}" y2="${H - 30}" stroke="#1e293b" stroke-width="0.5"/>
+  <line x1="${W - 200}" y1="${H - 185}" x2="${W - 200}" y2="${H - 15}" stroke="#1e293b" stroke-width="0.5"/>
+
+  <!-- Labels (left col) -->
+  <text x="${W - 375}" y="${H - 167}" font-size="7.5" fill="#64748b">DRAWING NO.</text>
+  <text x="${W - 375}" y="${H - 142}" font-size="7.5" fill="#64748b">PROFILE TYPE</text>
+  <text x="${W - 375}" y="${H - 117}" font-size="7.5" fill="#64748b">MATERIAL</text>
+  <text x="${W - 375}" y="${H - 92}" font-size="7.5" fill="#64748b">THICKNESS</text>
+  <text x="${W - 375}" y="${H - 67}" font-size="7.5" fill="#64748b">STAGE</text>
+  <text x="${W - 375}" y="${H - 42}" font-size="7.5" fill="#64748b">DATE</text>
+  <text x="${W - 375}" y="${H - 17}" font-size="7.5" fill="#64748b">SCALE</text>
+
+  <!-- Labels (right col) -->
+  <text x="${W - 195}" y="${H - 167}" font-size="7.5" fill="#64748b">ROLL OD</text>
+  <text x="${W - 195}" y="${H - 142}" font-size="7.5" fill="#64748b">BORE DIA.</text>
+  <text x="${W - 195}" y="${H - 117}" font-size="7.5" fill="#64748b">FACE WIDTH</text>
+  <text x="${W - 195}" y="${H - 92}" font-size="7.5" fill="#64748b">SHAFT DIA.</text>
+  <text x="${W - 195}" y="${H - 67}" font-size="7.5" fill="#64748b">KEYWAY</text>
+  <text x="${W - 195}" y="${H - 42}" font-size="7.5" fill="#64748b">ROLL MATERIAL</text>
+  <text x="${W - 195}" y="${H - 17}" font-size="7.5" fill="#64748b">SURFACE FINISH</text>
+
+  <!-- Values (left col) -->
+  <text x="${W - 375}" y="${H - 157}" font-size="9" fill="#e2e8f0" font-weight="bold">SRE-S${pass.pass_no.toString().padStart(2,"0")}-${date.replace(/\//g,"-")}</text>
+  <text x="${W - 375}" y="${H - 132}" font-size="9" fill="#a5b4fc">${profileType || "u_channel"}</text>
+  <text x="${W - 375}" y="${H - 107}" font-size="9" fill="#a5b4fc">${material}</text>
+  <text x="${W - 375}" y="${H - 82}" font-size="9" fill="#a5b4fc">${thickness} mm</text>
+  <text x="${W - 375}" y="${H - 57}" font-size="9" fill="${stageColor}">${pass.stage_type.replace(/_/g," ")}</text>
+  <text x="${W - 375}" y="${H - 32}" font-size="9" fill="#94a3b8">${date}</text>
+  <text x="${W - 375}" y="${H - 17}" font-size="9" fill="#94a3b8">1:1 (approx)</text>
+
+  <!-- Values (right col) -->
+  <text x="${W - 195}" y="${H - 157}" font-size="9" fill="#60a5fa" font-weight="bold">⌀${rd.estimated_roll_od_mm} h6</text>
+  <text x="${W - 195}" y="${H - 132}" font-size="9" fill="#fbbf24">⌀${rd.bore_dia_mm} H7</text>
+  <text x="${W - 195}" y="${H - 107}" font-size="9" fill="#c4b5fd">${rd.face_width_mm} mm</text>
+  <text x="${W - 195}" y="${H - 82}" font-size="9" fill="#34d399">⌀${rd.shaft_dia_mm} mm</text>
+  <text x="${W - 195}" y="${H - 57}" font-size="9" fill="#f97316">${rd.keyway_width_mm} mm (DIN 6885)</text>
+  <text x="${W - 195}" y="${H - 32}" font-size="9" fill="#f87171">EN31 / D2 · 60-62 HRC</text>
+  <text x="${W - 195}" y="${H - 17}" font-size="9" fill="#94a3b8">Ra 0.8 μm</text>
+
+  <!-- Forming data box -->
+  <rect x="15" y="${H - 185}" width="295" height="170" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
+  <text x="20" y="${H - 170}" font-size="8" fill="#64748b">FORMING DATA — ${pass.station_label.toUpperCase()}</text>
+  <line x1="15" y1="${H - 162}" x2="310" y2="${H - 162}" stroke="#1e293b" stroke-width="0.5"/>
+  ${[
+    ["Bend Angle",    `${pass.target_angle_deg}°`],
+    ["Overform",      `${pass.target_angle_deg}°`],
+    ["Roll Gap",      `${pass.roll_gap_mm} mm`],
+    ["Form Depth",    `${pass.forming_depth_mm.toFixed(1)} mm`],
+    ["Strip Width",   `${pass.strip_width_mm.toFixed(1)} mm`],
+    ["Progress",      `${pass.pass_progress_pct.toFixed(0)}%`],
+  ].map(([label, val], i) => `
+    <text x="22" y="${H - 148 + i * 22}" font-size="8" fill="#64748b">${label}:</text>
+    <text x="130" y="${H - 148 + i * 22}" font-size="9" fill="#e2e8f0" font-weight="bold">${val}</text>
+  `).join("")}
+
+  <!-- Watermark -->
+  <text x="${W / 2}" y="${H / 2}" font-size="80" fill="#1e293b" text-anchor="middle"
+    dominant-baseline="middle" opacity="0.15" transform="rotate(-30 ${W / 2} ${H / 2})">SAI ROLOTECH</text>
+
+</svg>`;
+}
+
+// ─── Download helpers ─────────────────────────────────────────────────────────
+
+function triggerSVGDownload(svgString: string, filename: string) {
+  const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function RollDrawingPanel({ rollContour, rollDimensions }: Props) {
-  const [selected, setSelected] = useState(0);
-  const [view,     setView]     = useState<"all3" | "cross" | "front" | "side">("all3");
+  const [selected,    setSelected]    = useState(0);
+  const [view,        setView]        = useState<"all3" | "cross" | "front" | "side">("all3");
+  const [downloading, setDownloading] = useState(false);
 
   if (!rollContour || rollContour.status !== "pass") {
     return (
@@ -583,23 +922,72 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
 
   const stageColor = STAGE_COLOR[pass.stage_type] || "#8b5cf6";
   const totalPasses = allPasses.length;
+  const material    = rollContour.material as string;
+  const thickness   = rollContour.thickness_mm as number;
+
+  const handleDownloadStation = useCallback(() => {
+    setDownloading(true);
+    try {
+      const svg = buildStationSVG(pass, rd, thickness, material);
+      const name = `roll-drawing-S${String(pass.pass_no).padStart(2, "0")}-${material}-${thickness}mm.svg`;
+      triggerSVGDownload(svg, name);
+    } finally {
+      setTimeout(() => setDownloading(false), 600);
+    }
+  }, [pass, rd, material, thickness]);
+
+  const handleDownloadAll = useCallback(() => {
+    setDownloading(true);
+    try {
+      allPasses.forEach((p, i) => {
+        setTimeout(() => {
+          const svg  = buildStationSVG(p, rd, thickness, material);
+          const name = `roll-drawing-S${String(p.pass_no).padStart(2, "0")}-${material}-${p.target_angle_deg}deg.svg`;
+          triggerSVGDownload(svg, name);
+        }, i * 120);
+      });
+    } finally {
+      setTimeout(() => setDownloading(false), allPasses.length * 120 + 400);
+    }
+  }, [allPasses, rd, material, thickness]);
 
   return (
     <div className="bg-[#0c1220] rounded-2xl border border-slate-700/60 overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="px-5 py-3 border-b border-slate-700/60 flex items-center gap-3">
+      <div className="px-5 py-3 border-b border-slate-700/60 flex items-center gap-3 flex-wrap">
         <Circle className="w-4 h-4 text-violet-400" />
         <div>
           <span className="text-sm font-bold text-violet-300 uppercase tracking-wider">
             Roll Tooling Drawing
           </span>
           <span className="ml-3 text-xs text-slate-500 font-mono">
-            {rollContour.material} · {rollContour.thickness_mm}mm · ⌀{rd.estimated_roll_od_mm}OD · ⌀{rd.bore_dia_mm}bore
+            {material} · {thickness}mm · ⌀{rd.estimated_roll_od_mm}OD · ⌀{rd.bore_dia_mm}bore
           </span>
         </div>
+
+        {/* Download buttons */}
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={handleDownloadStation}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-all disabled:opacity-50"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            Download Station {pass.pass_no}
+          </button>
+          <button
+            onClick={handleDownloadAll}
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-all disabled:opacity-50"
+          >
+            <Package className="w-3.5 h-3.5" />
+            {downloading ? "Downloading…" : `Download All ${totalPasses} Stations`}
+          </button>
+        </div>
+
         {/* View toggle */}
-        <div className="ml-auto flex items-center gap-1 bg-slate-800 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-0.5">
           {([
             ["all3",  "3-View"],
             ["cross", "Cross"],

@@ -50,6 +50,8 @@ from app.engines.centerline_sheet_converter_arc_engine import (
     is_centerline_geometry,
 )
 from app.engines.simulation_engine import run_simulation as run_sim_engine
+from app.engines.ai_optimizer_engine import optimize_roll_forming_plan
+from app.engines.simulation_decision_engine import decide_simulation_status
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -1094,9 +1096,27 @@ async def simulate_roll_forming(
         strip_speed_mpm=strip_speed,
     )
 
+    # ── AI Optimizer ─────────────────────────────────────────────
+    station_result = core.get("station_engine", {})
+    optimizer_result = optimize_roll_forming_plan(
+        simulation_result=simulation_result,
+        station_result=station_result,
+        profile_result=profile_result,
+        input_result=input_result,
+    )
+
+    # ── Decision Engine ───────────────────────────────────────────
+    decision_result = decide_simulation_status(
+        simulation_result=simulation_result,
+        optimizer_result=optimizer_result,
+        quality=simulation_result.get("quality"),
+    )
+
     return {
         "status": "pass",
-        "profile_analysis_engine": profile_result,
-        "roll_contour_engine":     roll_contour_result,
-        "simulation_engine":       simulation_result,
+        "profile_analysis_engine":    profile_result,
+        "roll_contour_engine":        roll_contour_result,
+        "simulation_engine":          simulation_result,
+        "ai_optimizer_engine":        optimizer_result,
+        "simulation_decision_engine": decision_result,
     }

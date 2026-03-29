@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight,
-  Activity, Zap, AlertTriangle, CheckCircle, Info, Layers
+  Activity, Zap, AlertTriangle, CheckCircle, Info, Layers,
+  Bot, ShieldCheck, ShieldAlert, ShieldOff, Plus, Wrench
 } from "lucide-react";
 
 interface ProfilePoint { x: number; y: number; }
@@ -49,8 +50,40 @@ interface SimData {
   simulation_passes: SimPass[];
 }
 
+interface OptimizerCorrection {
+  stand: number;
+  action: string;
+  detail: string;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+}
+
+interface OptimizerData {
+  optimization_score: number;
+  optimization_label: string;
+  suggestions: string[];
+  corrections: OptimizerCorrection[];
+  pass_distribution_notes: string[];
+  recommended_station_count: number;
+  optimised_station_count: number;
+  stations_added: number;
+  material: string;
+}
+
+interface DecisionData {
+  decision: "acceptable_for_preliminary_export" | "semi_auto_rework" | "manual_review";
+  traffic_light: "GREEN" | "YELLOW" | "RED";
+  recommended_action: string;
+  readiness_pct: number;
+  summary: string[];
+  blocking_defects: string[];
+  optimizer_score: number;
+  quality_score: number;
+}
+
 interface Props {
   data: SimData | null;
+  optimizerData?: OptimizerData | null;
+  decisionData?: DecisionData | null;
   loading?: boolean;
 }
 
@@ -97,7 +130,7 @@ function toPath(pts: ProfilePoint[]): string {
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
-export default function RollFormingSimulator({ data, loading }: Props) {
+export default function RollFormingSimulator({ data, optimizerData, decisionData, loading }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [playing,   setPlaying]   = useState(false);
   const [showFlower, setShowFlower] = useState(true);
@@ -486,6 +519,195 @@ export default function RollFormingSimulator({ data, loading }: Props) {
         )}
         <div className="ml-auto text-[10px] text-gray-600 font-mono">
           simulation_engine · {data.total_passes} passes
+        </div>
+      </div>
+
+      {/* ── AI Optimizer Panel ──────────────────────────────── */}
+      {optimizerData && (
+        <AiOptimizerPanel optimizer={optimizerData} />
+      )}
+
+      {/* ── Decision Panel ─────────────────────────────────── */}
+      {decisionData && (
+        <DecisionPanel decision={decisionData} />
+      )}
+    </div>
+  );
+}
+
+// ─── AI OPTIMIZER PANEL ──────────────────────────────────────────────────────
+
+function AiOptimizerPanel({ optimizer }: { optimizer: OptimizerData }) {
+  const [open, setOpen] = useState(true);
+
+  const scoreColor =
+    optimizer.optimization_score >= 88 ? "text-green-400" :
+    optimizer.optimization_score >= 70 ? "text-yellow-400" : "text-red-400";
+
+  const priorityColor: Record<string, string> = {
+    HIGH:   "bg-red-500/10 border-red-500/30 text-red-300",
+    MEDIUM: "bg-yellow-500/10 border-yellow-500/30 text-yellow-300",
+    LOW:    "bg-blue-500/10 border-blue-500/30 text-blue-300",
+  };
+
+  return (
+    <div className="border-t border-violet-500/10">
+      {/* Header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-5 py-3 flex items-center gap-2 hover:bg-white/2 transition-colors"
+      >
+        <Bot className="w-4 h-4 text-violet-400" />
+        <span className="text-xs font-semibold text-violet-300 uppercase tracking-wider">
+          AI Optimizer
+        </span>
+        <span className={`ml-2 text-sm font-bold font-mono ${scoreColor}`}>
+          {optimizer.optimization_score}/100 — {optimizer.optimization_label}
+        </span>
+        {optimizer.stations_added > 0 && (
+          <span className="ml-2 flex items-center gap-1 text-[10px] bg-violet-500/15 text-violet-300 border border-violet-500/20 rounded-full px-2 py-0.5">
+            <Plus className="w-2.5 h-2.5" />
+            {optimizer.stations_added} station{optimizer.stations_added > 1 ? "s" : ""} recommended
+          </span>
+        )}
+        <ChevronRight className={`ml-auto w-3.5 h-3.5 text-gray-500 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="px-5 pb-4 flex flex-col gap-3">
+          {/* Station count change */}
+          {optimizer.stations_added > 0 && (
+            <div className="flex items-center gap-3 text-xs bg-violet-500/8 border border-violet-500/20 rounded-lg px-3 py-2">
+              <Layers className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+              <span className="text-violet-300">
+                Station plan: <strong>{optimizer.recommended_station_count}</strong> original
+                → <strong className="text-violet-200">{optimizer.optimised_station_count}</strong> optimised
+                <span className="text-violet-500 ml-1">({optimizer.material})</span>
+              </span>
+            </div>
+          )}
+
+          {/* Suggestions */}
+          {optimizer.suggestions.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <div className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold">Suggestions</div>
+              {optimizer.suggestions.map((s, i) => (
+                <div key={i} className="text-xs text-gray-300 flex items-start gap-2 leading-relaxed">
+                  <span className="text-violet-400 mt-0.5">•</span>
+                  {s}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-green-400 flex items-center gap-2">
+              <CheckCircle className="w-3.5 h-3.5" />
+              No issues found — current station plan is optimal
+            </div>
+          )}
+
+          {/* Corrections */}
+          {optimizer.corrections.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <div className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold">
+                Tooling Corrections ({optimizer.corrections.length})
+              </div>
+              {optimizer.corrections.map((c, i) => (
+                <div key={i} className={`text-xs rounded-lg border px-3 py-2 ${priorityColor[c.priority]}`}>
+                  <div className="flex items-center gap-1.5 font-semibold mb-0.5">
+                    <Wrench className="w-3 h-3" />
+                    Stand {c.stand} — {c.action.replace(/_/g, " ").toUpperCase()}
+                    <span className="ml-auto text-[9px] opacity-70">{c.priority}</span>
+                  </div>
+                  <div className="opacity-80 text-[10px]">{c.detail}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pass distribution notes */}
+          {optimizer.pass_distribution_notes.length > 0 && (
+            <div className="flex flex-col gap-1 text-[10px] text-gray-500 border-t border-white/5 pt-2">
+              {optimizer.pass_distribution_notes.map((n, i) => (
+                <div key={i}>• {n}</div>
+              ))}
+            </div>
+          )}
+
+          <div className="text-[9px] text-gray-600 mt-1 font-mono">
+            ai_optimizer_engine · rule-based approximation — not a ML model
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DECISION PANEL ───────────────────────────────────────────────────────────
+
+function DecisionPanel({ decision }: { decision: DecisionData }) {
+  const cfg = {
+    acceptable_for_preliminary_export: {
+      Icon: ShieldCheck,
+      label: "ACCEPTABLE FOR PRELIMINARY EXPORT",
+      border: "border-green-500/30",
+      bg:     "bg-green-500/8",
+      icon:   "text-green-400",
+      badge:  "bg-green-500/15 text-green-300 border-green-500/25",
+      light:  "bg-green-500",
+    },
+    semi_auto_rework: {
+      Icon: ShieldAlert,
+      label: "SEMI-AUTO REWORK REQUIRED",
+      border: "border-yellow-500/30",
+      bg:     "bg-yellow-500/8",
+      icon:   "text-yellow-400",
+      badge:  "bg-yellow-500/15 text-yellow-300 border-yellow-500/25",
+      light:  "bg-yellow-500",
+    },
+    manual_review: {
+      Icon: ShieldOff,
+      label: "MANUAL ENGINEERING REVIEW",
+      border: "border-red-500/30",
+      bg:     "bg-red-500/8",
+      icon:   "text-red-400",
+      badge:  "bg-red-500/15 text-red-300 border-red-500/25",
+      light:  "bg-red-500",
+    },
+  }[decision.decision];
+
+  const { Icon } = cfg;
+
+  return (
+    <div className={`border-t ${cfg.border}`}>
+      <div className={`px-5 py-4 ${cfg.bg}`}>
+        {/* Header row */}
+        <div className="flex items-center gap-3 mb-3">
+          {/* Traffic light dot */}
+          <div className={`w-3 h-3 rounded-full ${cfg.light} shadow-lg`} style={{ boxShadow: `0 0 8px 2px ${cfg.light.replace("bg-", "")}` }} />
+          <Icon className={`w-5 h-5 ${cfg.icon}`} />
+          <span className={`text-xs font-bold tracking-wider ${cfg.icon}`}>{cfg.label}</span>
+          <span className={`ml-auto text-xs font-bold font-mono border rounded-full px-2.5 py-0.5 ${cfg.badge}`}>
+            {decision.readiness_pct}% ready
+          </span>
+        </div>
+
+        {/* Summary bullets */}
+        <div className="flex flex-col gap-1 mb-2">
+          {decision.summary.map((s, i) => (
+            <div key={i} className="text-xs text-gray-300">{s}</div>
+          ))}
+        </div>
+
+        {/* Recommended action */}
+        <div className={`text-xs rounded-lg border px-3 py-2 ${cfg.badge} opacity-90 leading-relaxed`}>
+          {decision.recommended_action}
+        </div>
+
+        {/* Scores row */}
+        <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-500 font-mono">
+          <span>Optimizer: <strong className="text-gray-400">{decision.optimizer_score}/100</strong></span>
+          <span>Quality: <strong className="text-gray-400">{decision.quality_score}/100</strong></span>
+          <span className="ml-auto">simulation_decision_engine</span>
         </div>
       </div>
     </div>

@@ -383,6 +383,8 @@ export default function PythonDashboard() {
             <RollContourPanel data={rollContour as any} />
             <RollFormingSimulator
               data={(simulationData?.simulation_engine ?? null) as any}
+              optimizerData={(simulationData?.ai_optimizer_engine ?? null) as any}
+              decisionData={(simulationData?.simulation_decision_engine ?? null) as any}
               loading={simulationLoading}
             />
             <CadExportPanel

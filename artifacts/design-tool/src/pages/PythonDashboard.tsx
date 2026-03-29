@@ -21,6 +21,7 @@ import RollFormingSimulator from "@/components/python-dashboard/RollFormingSimul
 import RollDrawingPanel from "@/components/python-dashboard/RollDrawingPanel";
 import RollForming3DPanel from "@/components/python-dashboard/RollForming3DPanel";
 import CodexEngineerPanel from "@/components/python-dashboard/CodexEngineerPanel";
+import ProfileAnnotationPanel from "@/components/python-dashboard/ProfileAnnotationPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -413,6 +414,14 @@ export default function PythonDashboard() {
               flangeMm={(payload?.section_width_mm as number) ?? (detectedValues.section_width_mm as number) ?? 40}
               thicknessMm={(payload?.thickness as number) ?? 1.5}
               material={(payload?.material as string) ?? "GI"}
+            />
+
+            {/* ── 2D Profile Annotation Panel ───────────────────────────── */}
+            <ProfileAnnotationPanel
+              rollContour={rollContour as any}
+              webMm={(payload?.section_height_mm as number) ?? (detectedValues.section_height_mm as number) ?? 60}
+              flangeMm={(payload?.section_width_mm as number) ?? (detectedValues.section_width_mm as number) ?? 40}
+              thicknessMm={(payload?.thickness as number) ?? 1.5}
             />
 
             {/* ── Codex Engineer AI ─────────────────────────────────────── */}

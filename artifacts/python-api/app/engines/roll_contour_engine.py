@@ -17,6 +17,36 @@ from typing import Any, Dict, List, Tuple
 
 logger = logging.getLogger("roll_contour_engine")
 
+# ── Geometry helper — real per-station profile centerline ─────────────────────
+try:
+    from app.engines.flower_svg_engine import section_centerline as _section_centerline
+    _CL_OK = True
+except Exception:
+    _CL_OK = False
+    def _section_centerline(*_a, **_kw):  # type: ignore[misc]
+        return []
+
+
+def _profile_centerline_for_pass(
+    profile_type: str,
+    section_w: float,
+    section_h: float,
+    angle_deg: float,
+    lip_mm: float = 0.0,
+) -> List[Dict[str, float]]:
+    """Return [{x, y}] centerline for the given angle.  Falls back to [] if shapely missing."""
+    pts = _section_centerline(profile_type, section_w, section_h, angle_deg, lip_mm=lip_mm)
+    return [{"x": round(x, 3), "y": round(y, 3)} for x, y in pts]
+
+
+def _contact_points_from_centerline(cl: List[Dict[str, float]]) -> List[Dict[str, float]]:
+    """Identify roll-contact points: all intermediate bend vertices + both tips."""
+    if not cl:
+        return []
+    # For a c_channel: [fl_l, web_l, web_r, fl_r]
+    # All points are contact candidates; intermediate ones are bend vertices.
+    return cl  # every vertex is a contact point in a simple polygon
+
 # ── Springback compensation (degrees added to compensate springback) ───────────
 SPRINGBACK_DEG: Dict[str, float] = {
     "GI":  1.5,
@@ -257,13 +287,16 @@ def generate_roll_contour(
             total_passes=forming_passes,
             has_lips=has_lips,
         )
+        cl = _profile_centerline_for_pass(profile_type, section_w, section_h, angle)
         passes.append({
-            "pass_no":          i + 1,
-            "station_label":    f"Station {i + 1}",
-            "target_angle_deg": angle,
-            "roll_gap_mm":      roll_gap,
-            "strip_width_mm":   sw,
-            "stage_type":       _stage_label(i, forming_passes, has_lips, profile_type),
+            "pass_no":            i + 1,
+            "station_label":      f"Station {i + 1}",
+            "target_angle_deg":   angle,
+            "roll_gap_mm":        roll_gap,
+            "strip_width_mm":     sw,
+            "stage_type":         _stage_label(i, forming_passes, has_lips, profile_type),
+            "profile_centerline": cl,
+            "contact_points":     _contact_points_from_centerline(cl),
             **contour,
         })
 
@@ -278,14 +311,17 @@ def generate_roll_contour(
         total_passes=forming_passes,
         has_lips=has_lips,
     )
+    cal_cl = _profile_centerline_for_pass(profile_type, section_w, section_h, 90.0)
     calibration_pass = {
-        "pass_no":          n_stations,
-        "station_label":    f"Station {n_stations} (Calibration)",
-        "target_angle_deg": 90.0,
-        "roll_gap_mm":      round(roll_gap * 0.98, 3),
-        "strip_width_mm":   section_w,
-        "stage_type":       "calibration",
-        "purpose":          "Final sizing — ensures profile holds dimension post-springback",
+        "pass_no":            n_stations,
+        "station_label":      f"Station {n_stations} (Calibration)",
+        "target_angle_deg":   90.0,
+        "roll_gap_mm":        round(roll_gap * 0.98, 3),
+        "strip_width_mm":     section_w,
+        "stage_type":         "calibration",
+        "purpose":            "Final sizing — ensures profile holds dimension post-springback",
+        "profile_centerline": cal_cl,
+        "contact_points":     _contact_points_from_centerline(cal_cl),
         **cal_contour,
     }
 

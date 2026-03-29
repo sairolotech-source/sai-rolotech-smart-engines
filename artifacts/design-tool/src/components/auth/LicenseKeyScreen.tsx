@@ -25,12 +25,7 @@ function formatDemoTime(ms: number): string {
 }
 
 function formatKeyInput(raw: string): string {
-  const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const parts: string[] = [];
-  for (let i = 0; i < clean.length && i < 20; i += 5) {
-    parts.push(clean.slice(i, i + 5));
-  }
-  return parts.join("-");
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 export function LicenseKeyScreen({ onUnlocked }: Props) {
@@ -84,8 +79,8 @@ export function LicenseKeyScreen({ onUnlocked }: Props) {
     if (!key.trim() || !name.trim() || !mobile.trim()) {
       setError("Sab fields bharo — Key, Naam aur Mobile"); return;
     }
-    if (key.replace(/-/g, "").length < 16) {
-      setError("Key complete nahi hai — poori key daalo"); return;
+    if (key.replace(/[^A-Z0-9]/g, "").length < 8) {
+      setError("Key bahut choti hai — poori key daalo"); return;
     }
     if (mobile.replace(/\D/g, "").length < 10) {
       setError("Valid mobile number daalo (10 digits)"); return;
@@ -262,13 +257,13 @@ export function LicenseKeyScreen({ onUnlocked }: Props) {
                   type="text"
                   value={key}
                   onChange={handleKeyChange}
-                  placeholder="SAIR-XXXXX-XXXXX-XXXXX"
-                  maxLength={23}
+                  placeholder="License key yahan type karein"
+                  maxLength={30}
                   className="w-full h-11 pl-10 pr-4 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono placeholder:text-zinc-700 focus:outline-none focus:border-amber-500/50 transition-all tracking-wider"
                   onKeyDown={e => e.key === "Enter" && handleActivate()}
                 />
               </div>
-              <p className="text-[10px] text-zinc-600 mt-1">Format: SAIR-XXXXX-XXXXX-XXXXX</p>
+              <p className="text-[10px] text-zinc-600 mt-1">SAI Rolotech se mili key exactly type karein</p>
             </div>
           )}
 

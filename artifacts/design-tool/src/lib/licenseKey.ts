@@ -10,7 +10,7 @@ const STORAGE_TYPE   = "sai_lic_type";      // "full" | "demo"
 const STORAGE_DEMO_START = "sai_demo_start";
 
 const API_BASE = "/api/license";
-const DEMO_KEY = "SAIR-DEMO-2026-TRIAL";
+const DEMO_KEY = "SAIRDEMO2026";
 const DEMO_MAX_MS = 72 * 60 * 60 * 1000;   // 3 din
 
 // ── Device fingerprint — persistent per machine ────────────────────────────────

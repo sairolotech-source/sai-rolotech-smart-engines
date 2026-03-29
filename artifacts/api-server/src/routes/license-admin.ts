@@ -5,16 +5,20 @@ import crypto from "crypto";
 
 const REGISTRY_PATH = path.resolve("/home/runner/workspace/data/license-registry.json");
 const ADMIN_PASSWORD = process.env["ADMIN_PASSWORD"] || "SAIRTECH-ADMIN-2026";
-const DEMO_KEY = "SAIRDEMO2026TRIAL";
+const DEMO_KEY = "SAIRDEMO2026";
 const DEMO_TRIAL_HOURS = 72; // 3 din = 72 ghante
 
 const VALID_LICENSE_KEYS = new Set([
-  "SAIR2026ROLLFORM",
-  "SAIR2026ENGINEER",
-  "SAIR2026PREMIUMS",
-  "SAIRPRO2026MSTR",
-  "SAIRDEMO2026TRIAL",
+  "SAIRFULL2026A",
+  "SAIRFULL2026B",
+  "SAIRFULL2026C",
+  "SAIRFULL2026D",
+  "SAIRDEMO2026",
 ]);
+
+function normalizeKey(raw: string): string {
+  return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
 
 interface LicenseEntry {
   id: string;
@@ -72,7 +76,7 @@ function requireAdmin(req: Request, res: Response): boolean {
 }
 
 function isDemoExpiredForEntry(entry: LicenseEntry): boolean {
-  if (entry.key !== DEMO_KEY) return false;
+  if (normalizeKey(entry.key) !== DEMO_KEY) return false;
   const startStr = entry.demoStartedAt || entry.activatedAt;
   const startTime = new Date(startStr).getTime();
   if (isNaN(startTime)) return false;
@@ -95,7 +99,7 @@ licenseRouter.post("/register", (req: Request, res: Response) => {
     return;
   }
 
-  const cleanKey = (key ?? "").trim().toUpperCase().replace(/-/g, "");
+  const cleanKey = normalizeKey(key ?? "");
   if (!VALID_LICENSE_KEYS.has(cleanKey)) {
     res.status(403).json({ ok: false, error: "Invalid license key — sahi key daalo" });
     return;
@@ -114,7 +118,7 @@ licenseRouter.post("/register", (req: Request, res: Response) => {
     }
 
     // Demo key: check if trial already expired on this machine (server-side permanent lock)
-    if (cleanKey === DEMO_KEY || existing.key === DEMO_KEY) {
+    if (cleanKey === DEMO_KEY || normalizeKey(existing.key) === DEMO_KEY) {
       if (isDemoExpiredForEntry(existing)) {
         res.status(403).json({
           ok: false,

@@ -418,9 +418,7 @@ const LazyPinGate = lazy(() =>
 );
 
 function App() {
-  const [pinOk, setPinOk] = useState(() => {
-    try { return sessionStorage.getItem("sai_pin_ok") === "1"; } catch { return false; }
-  });
+  const [pinOk, setPinOk] = useState(false);
 
   if (!pinOk) {
     return (

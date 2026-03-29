@@ -2,11 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Lock, ShieldAlert } from "lucide-react";
 
 const CORRECT_PIN = "1164";
-const SESSION_KEY = "sai_pin_ok";
-
-export function isPinVerified(): boolean {
-  return sessionStorage.getItem(SESSION_KEY) === "1";
-}
 
 interface Props {
   onUnlocked: () => void;
@@ -67,7 +62,6 @@ export function PinGateScreen({ onUnlocked }: Props) {
 
   const verifyPin = (entered: string) => {
     if (entered === CORRECT_PIN) {
-      sessionStorage.setItem(SESSION_KEY, "1");
       onUnlocked();
     } else {
       const next = attempts + 1;

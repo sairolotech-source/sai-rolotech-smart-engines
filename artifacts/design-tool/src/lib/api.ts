@@ -253,10 +253,16 @@ export async function generateFlower(
       throw new Error(err.error || "Generation failed");
     }
     const data = await res.json();
+    // FIX P0-3: if backend reports success:false (hard input errors), surface as thrown error
+    if (data.success === false) {
+      const errMsgs = data._verification?.inputErrorMessages ?? ["Input validation failed"];
+      EngineLogger.error("Flower", `Input errors: ${errMsgs.join("; ")}`);
+      throw new Error(`Flower pattern blocked: ${errMsgs[0] ?? "invalid inputs"}`);
+    }
     if (data && Array.isArray(data.stations)) {
       data.stations = data.stations.map(normalizeStation);
     }
-    EngineLogger.logResult("Flower", { stationsGenerated: data?.stations?.length ?? 0, totalBends: data?.totalBends ?? 0, kFactor: data?.kFactor });
+    EngineLogger.logResult("Flower", { stationsGenerated: data?.stations?.length ?? 0, totalBends: data?.totalBends ?? 0, kFactor: data?.kFactor, verificationStatus: data?._verification?.status });
     return data;
   });
 }

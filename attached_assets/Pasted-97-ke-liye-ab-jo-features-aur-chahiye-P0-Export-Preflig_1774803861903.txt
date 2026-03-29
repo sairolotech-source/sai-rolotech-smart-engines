@@ -1,0 +1,577 @@
+97% ke liye ab jo features aur chahiye
+P0
+Export Preflight Modal
+Regenerate Selected / All Incomplete
+Per-station root cause details
+Collision / interference visual overlay
+CNC readiness validator
+P1
+pass-wise angle report
+springback summary
+material-aware warnings
+operator action suggestions
+P2
+audit PDF
+persistent debug logs
+benchmark profiles library
+golden regression suite
+Codex ko dene ke liye best master audit prompt
+Perform a full production-readiness audit of this roll forming software and raise the project from current state to 97%+ reliability.
+
+Goals:
+- No fake success states
+- No silent failure
+- No frontend crash on null/partial data
+- No export allowed when stations are incomplete
+- No CNC-ready label unless validated
+- Every feature must work on both normal and edge-case inputs
+
+Audit all modules in depth:
+
+1. DXF import and geometry normalization
+2. Centerline / inner / outer conversion to sheet profile
+3. Auto-dimension generation
+4. Flower pattern generation with per-pass numeric angle arrays
+5. Roll tooling generation per station
+6. Station readiness badges and summary logic
+7. Export pipelines: ZIP, CSV, XML, DXF
+8. CompletePackagePanel, RollToolingView, DigitalTwinView, FormingSimulationView
+9. G-code generation and CNC-readiness validation
+10. Auth, persistence, and audit logging
+
+For every issue found, return:
+- severity: P0 / P1 / P2
+- root cause
+- affected files
+- exact patch
+- user-visible risk
+- backend risk
+- regression risk
+- test cases required
+
+Mandatory requirements:
+- Run code review across every feature and tool path
+- Check success, warning, failure, partial-data, and empty-state paths
+- Flag all places where geometry, dimensions, flower data, rollProfile, export payload, or gcode can be undefined, stale, synthesized, or misleading
+- Replace all dishonest success toasts with truthful result summaries
+- Add explicit export blockers and exact failure reasons
+- Validate every badge against real underlying data
+- Add missing integration tests and regression tests
+- Report anything that can still break during actual operator use
+
+Final output format:
+A. Executive summary
+B. File-by-file bug list
+C. Immediate P0 fixes
+D. Test matrix by feature
+E. Remaining risks after patches
+F. Final readiness score with justification
+AGENTS.md ke liye strict rules
+
+OpenAI docs ke mutabik Codex AGENTS.md ko kaam shuru karne se pehle padhta hai, isliye waha ye rules daalo taaki har baar same discipline follow ho.
+
+# Roll Forming Project Rules
+
+## Truthfulness
+Never mark a task complete unless:
+- code path exists
+- UI renders correctly
+- export output exists if applicable
+- validation passes
+- edge-case handling is present
+
+## Safety
+Never label output as CNC-ready unless the CNC validator passes.
+
+## UI rules
+Do not show success toasts for partial, synthesized, blocked, or empty results.
+All disabled buttons must show exact reasons.
+
+## Station rules
+Every station must be classified as exactly one of:
+- Complete
+- Incomplete
+- No Profile
+- Blocked
+
+Every status must be backed by real validation data.
+
+## Null safety
+No direct unsafe access to rollProfile, flower data, dimensions, geometry, export payload, or gcode.
+
+## Export rules
+Block export if any required station data is missing.
+Show exact blocking station numbers and reasons.
+
+## Audit rules
+For every patch:
+- explain bug
+- explain fix
+- add/update tests
+- list remaining risks
+Test matrix bhi force karna zaroori hai
+
+Codex se ye bhi banwao:
+
+Create a feature test matrix covering:
+- valid input
+- invalid input
+- empty input
+- partial input
+- regenerated state
+- stale cached state
+- export attempt
+- simulation view
+- digital twin view
+- package summary view
+- cnc validator
+
+Return the matrix as:
+feature | scenario | expected UI | expected backend state | expected export behavior | pass/fail
+Mera honest verdict
+
+Abhi tum 82–86% zone me ho.
+97% tak pahunchne ke liye sirf coding nahi, verification discipline chahiye.
+
+Sabse zyada value ye 5 cheezein dengi:
+
+collision overlay
+CNC validator
+export preflight
+regenerate incomplete stations
+full regression test matrix
+
+Ye lag gaye to software “kaam karta hai” se “bharose ke saath chal sakta hai” zone me aa jayega.
+
+Main ab iska file-wise Codex execution pack bana deta hoon: AGENTS.md + audit prompt + test matrix + patch checklist ek saath.
+
+JI BANYE
+Codex Execution Pack Roll Forming
+Codex Execution Pack — Roll Forming Software (97% Target)
+1) Mission
+
+Raise the project from current production readiness to 97%+ by forcing:
+
+truthful UI states
+zero silent failure
+zero unsafe null access
+deterministic geometry and tooling flow
+export only when truly valid
+CNC-ready only after validator pass
+full feature-path testing
+2) AGENTS.md (paste into repo root)
+# Roll Forming Project Rules
+
+
+## Truthfulness
+Never mark a task complete unless:
+- code path exists
+- UI renders correctly
+- export output exists if applicable
+- validation passes
+- edge-case handling is present
+
+
+## Safety
+Never label output as CNC-ready unless the CNC validator passes.
+
+
+## UI rules
+Do not show success toasts for partial, synthesized, blocked, or empty results.
+All disabled buttons must show exact reasons.
+
+
+## Station rules
+Every station must be classified as exactly one of:
+- Complete
+- Incomplete
+- No Profile
+- Blocked
+
+
+Every status must be backed by real validation data.
+
+
+## Null safety
+No direct unsafe access to rollProfile, flower data, dimensions, geometry, export payload, or gcode.
+Always guard rendering and export paths.
+
+
+## Export rules
+Block export if any required station data is missing.
+Show exact blocking station numbers and reasons.
+Require a preflight validation summary before export.
+
+
+## Geometry rules
+DXF parse success is not profile success.
+Profile success is not tooling success.
+Tooling success is not export success.
+Each stage must validate independently.
+
+
+## CNC rules
+Generated code is not the same as safe runnable code.
+All G-code must pass readiness validation before being labeled CNC-ready.
+
+
+## Audit rules
+For every patch:
+- explain bug
+- explain fix
+- add/update tests
+- list remaining risks
+
+
+## Test discipline
+Every feature must be checked for:
+- valid input
+- invalid input
+- empty input
+- partial input
+- stale cached input
+- regenerated state
+- export attempt
+- UI fallback behavior
+3) Master Codex Audit Prompt
+Perform a full production-readiness audit of this roll forming software and raise the project to 97%+ reliability.
+
+
+Non-negotiable goals:
+- No fake success states
+- No silent failure
+- No frontend crash on null/partial data
+- No export allowed when stations are incomplete
+- No CNC-ready label unless validated
+- Every feature must work on both normal and edge-case inputs
+
+
+Audit these modules in depth:
+1. DXF import and geometry normalization
+2. Centerline / inner / outer conversion to sheet profile
+3. Auto-dimension generation
+4. Flower pattern generation with per-pass numeric angle arrays
+5. Roll tooling generation per station
+6. Station readiness badges and summary logic
+7. Export pipelines: ZIP, CSV, XML, DXF
+8. CompletePackagePanel, RollToolingView, DigitalTwinView, FormingSimulationView
+9. G-code generation and CNC-readiness validation
+10. Auth, persistence, and audit logging
+
+
+For every issue found, return:
+- severity: P0 / P1 / P2
+- root cause
+- affected files
+- exact patch
+- user-visible risk
+- backend risk
+- regression risk
+- test cases required
+
+
+Mandatory requirements:
+- Review every feature path and tool path
+- Check success, warning, failure, partial-data, and empty-state paths
+- Flag all places where geometry, dimensions, flower data, rollProfile, export payload, or gcode can be undefined, stale, synthesized, or misleading
+- Replace all dishonest success toasts with truthful result summaries
+- Add explicit export blockers and exact failure reasons
+- Validate every badge against real underlying data
+- Add missing integration tests and regression tests
+- Report anything that can still break during actual operator use
+
+
+Final output format:
+A. Executive summary
+B. File-by-file bug list
+C. Immediate P0 fixes
+D. Test matrix by feature
+E. Remaining risks after patches
+F. Final readiness score with justification
+4) P0 Patch Checklist
+P0-A: Export Preflight Report
+
+Build a modal/report that appears before ZIP/CSV/XML/DXF export.
+
+Must show:
+
+total stations
+complete stations
+incomplete stations
+no-profile stations
+blocked stations
+missing geometry count
+missing dimensions count
+missing flower data count
+missing rollProfile count
+missing gcode count
+exact station numbers and reasons
+
+Pass rule:
+
+export button continues only if required validations pass
+otherwise export stays blocked with explicit reason
+P0-B: Regenerate Missing Stations
+
+Add:
+
+Regenerate Selected Stations
+Regenerate All Incomplete Stations
+
+Must support:
+
+no-profile stations
+incomplete stations
+synthesized stations
+retry after parse success but tooling failure
+
+Pass rule:
+
+after regeneration, statuses refresh automatically
+summary panel updates immediately
+P0-C: Station Root Cause Details
+
+For every station, surface exact reason:
+
+rollProfile absent
+geometry synthesis failed
+dimension generation failed
+bend extraction failed
+flower pattern missing
+calibration incomplete
+G-code missing
+collision/interference block
+backend error state
+P0-D: Collision / Interference Overlay
+
+Add visualization in tooling and digital twin views.
+
+Show:
+
+roll-to-roll clash
+roll-to-strip unsafe overlap
+shaft clearance warning
+minimum gap warning
+stand numbers with conflict
+
+Pass rule:
+
+collision state must affect readiness summary if severe
+P0-E: CNC Readiness Validator
+
+Differentiate:
+
+generated G-code
+safe runnable G-code
+
+Validator must check:
+
+missing tool references
+missing feed/spindle values
+invalid axis moves
+unsafe retract
+impossible coordinates
+unsupported post output
+empty program sections
+
+Pass rule:
+
+only validated stations may be marked CNC-ready
+5) P1 Upgrade Checklist
+P1-A: Pass-wise Angle Report
+
+For each station/pass show:
+
+target angle
+corrected angle
+springback overbend
+calibration pass flag
+final deviation
+P1-B: Material-aware Warnings
+
+Support at least:
+
+GI
+CR
+SS
+aluminium
+
+Show:
+
+recommended bend radius
+springback estimate
+overbend suggestion
+risk warning for sharp bends
+P1-C: Persistent Audit Logs
+
+Persist pipeline logs for:
+
+parse
+normalize
+dimension
+flower
+tooling
+export
+validator
+6) Feature Test Matrix Template
+
+Use this exact format:
+
+feature | scenario | expected UI | expected backend state | expected export behavior | pass/fail
+
+Required rows:
+
+DXF Import
+valid DXF
+empty DXF
+malformed DXF
+DXF with 0 segments
+DXF with arcs only
+DXF with duplicate entities
+DXF with reversed contour
+DXF with small gaps
+Conversion Engine
+centerline + valid thickness
+centerline + missing thickness
+inner profile conversion
+outer profile conversion
+narrow flange
+impossible offset geometry
+multi-bend profile
+Dimensions
+straight lengths visible
+bend angles visible
+radii visible
+total width visible
+dimensions blocked by invalid geometry
+Flower Engine
+1-bend profile
+2-bend profile
+4-bend profile
+asymmetric profile
+calibration pass present
+invalid section type
+zero division edge case
+Roll Tooling
+all stations complete
+some stations incomplete
+some stations no-profile
+blocked station
+regenerate selected
+regenerate all incomplete
+Exports
+ZIP export with all complete
+ZIP export with missing stations
+CSV export partial data
+XML export partial data
+DXF export blocked state
+export after regeneration
+Views
+RollToolingView with complete data
+RollToolingView with missing rollProfile
+CompletePackagePanel partial state
+DigitalTwinView partial state
+FormingSimulationView empty state
+G-code / CNC
+generated but unsafe code
+missing tool refs
+missing feed/spindle
+invalid move
+safe validated code
+Persistence / Audit
+session restore
+stale cache
+failed save
+audit history retained
+
+
+
+
+### Batch 5 — Platform Safety
+- auth.ts
+- persistence / storage layer
+- audit logger
+- retry / error surfaces
+
+
+---
+
+
+## 8) Strict Review Questions for Codex
+
+
+Ask Codex to answer all of these:
+1. Where can a station appear complete while actually missing geometry, dimensions, flower data, rollProfile, or gcode?
+2. Which exports can still succeed with incomplete station data?
+3. Which views can still mislead the operator after partial generation?
+4. Which code paths still assume non-null rollProfile or dimensions?
+5. Which modules can return synthesized output without explicit warning?
+6. Where is generated G-code treated as CNC-ready without safety validation?
+7. Where can parse success be mistaken for full process success?
+8. Which stale cached states can survive and mislead the UI?
+9. Which toasts/messages are still too optimistic?
+10. Which bugs are most likely during actual operator use?
+
+
+---
+
+
+## 9) Final Score Rules
+
+
+Codex must not claim 97% unless all are true:
+- feature audit completed
+- P0 fixes patched
+- regression tests added
+- export preflight active
+- collision overlay active
+- CNC validator active
+- regenerate incomplete stations flow active
+- no dishonest success toasts remain
+- no high-risk null path remains in main views
+
+
+Scoring guide:
+- 85–89%: strong but operator-supervised
+- 90–94%: high-confidence engineering tool
+- 95–97%: near-production-grade with controlled residual risk
+- 98%+: only if regression suite, validator, preflight, and collision checks all pass comprehensively
+
+
+---
+
+
+## 10) Copy-Paste Command for Immediate Use
+
+
+```text
+Start with Batch 1 and Batch 3.
+Do a strict real-code review.
+Patch only P0 issues first.
+After each patch batch, return:
+- files changed
+- exact bug fixed
+- exact behavior change
+- tests added
+- remaining risks
+- readiness score delta
+Do not mark complete until code path, UI path, and export/validator path are all verified.
+11) Recommended Execution Sequence
+paste AGENTS.md into repo root
+run Master Codex Audit Prompt
+patch Batch 1 + Batch 3 first
+patch export preflight and regenerate actions
+patch collision overlay and CNC validator
+generate feature test matrix
+run regression sweep
+re-score honestly
+12) Expected Outcome
+
+After this pack is executed properly, the software should move from current strong-but-supervised state to:
+
+honest operator-facing behavior
+controlled exports
+reliable regeneration path
+visible collision risk
+validated CNC readiness
+near-97% production readiness

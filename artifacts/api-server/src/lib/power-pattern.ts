@@ -324,5 +324,8 @@ export function generateFlowerPattern(
     numStations: n,
     validation: inputValidation,
     stretchedWidth: parseFloat(baseStripWidth.toFixed(3)),
+    // FIX P0-2: mark when angles were synthesized (no bends in geometry) so UI can warn operator
+    _synthesizedAngles: rawTotalBend === 0,
+    _synthesizedNote: rawTotalBend === 0 ? `No bend angles found in geometry — ${n}-station schedule estimated at ${anglePerStation.toFixed(1)}°/station. Verify by loading a DXF with explicit bend entities or entering angles manually.` : undefined,
   };
 }

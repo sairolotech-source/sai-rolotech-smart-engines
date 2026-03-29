@@ -276,7 +276,8 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
 
     const totalChecks = deepResult.checks.length || 1;
     const passed = deepResult.checks.filter(c => c.status === "ok").length;
-    const accuracyScore = Math.min(100, Math.round(98 * (passed / totalChecks) + 2));
+    // FIX P0-4: score is 0-100, not 2-100 — floor of 2 was misleading when all checks fail
+    const accuracyScore = Math.min(100, Math.round(100 * (passed / totalChecks)));
 
     if (deepResult.autoCorrections.length > 0) {
       console.log(`[flower] Deep verification: ${deepResult.autoCorrections.length} auto-corrections applied`);
@@ -285,20 +286,31 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
       }
     }
 
+    // FIX P0-3: surface inputValidation.errors + warnings in response so frontend can toast them
+    const hasInputIssues = inputValidation.errors.length > 0 || inputValidation.warnings.length > 0;
+    const verificationStatus =
+      inputValidation.errors.length > 0 ? "INPUT_ERRORS" :
+      deepResult.autoCorrections.length > 0 ? "AUTO_CORRECTED" :
+      inputValidation.warnings.length > 0 ? "WARNINGS" :
+      "VERIFIED";
+
     res.json({
-      success: true,
+      success: inputValidation.errors.length === 0,  // FIX P0-3: false when input has hard errors
+      hasWarnings: hasInputIssues,
       ...result,
       stations: autoFixedStations,
       sectionModelUsed: sectionModel ?? "auto",
       modelNote,
       _verification: {
         inputErrors: inputValidation.errors.length,
+        inputErrorMessages: inputValidation.errors,
         inputWarnings: inputValidation.warnings.length,
+        inputWarningMessages: inputValidation.warnings,
         deepChecks: deepResult.checks.length,
         autoCorrections: deepResult.autoCorrections.length,
         accuracyScore,
         recommendations: deepResult.recommendations.slice(0, 5),
-        status: inputValidation.valid && deepResult.autoCorrections.length === 0 ? "VERIFIED" : "AUTO_CORRECTED",
+        status: verificationStatus,
       },
     });
   } catch (err: unknown) {

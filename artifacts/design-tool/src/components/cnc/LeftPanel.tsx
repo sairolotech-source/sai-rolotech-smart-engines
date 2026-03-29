@@ -477,13 +477,16 @@ export function LeftPanel() {
           setProfileSourceType(srcType === "unknown" ? null : srcType);
           setShowConversionModal(true);
 
-          setError(
-            `✅ Profile loaded — AI auto-detected: ${detectedModel === "closed" ? "Closed Section (Model B — tube/hollow)" : "Open Section (Model A — C/Z/U/hat)"}. You may override via the Section Model selector.`
-          );
-        }
-
-        if ((result as { convertedFrom?: string }).convertedFrom === "dwg") {
-          setError("✅ DWG converted to DXF! Profile loaded and section type auto-detected.");
+          const segCount = result.geometry.segments.length;
+          const bendCount2 = result.geometry.bendPoints?.length ?? 0;
+          const isDwg = (result as { convertedFrom?: string }).convertedFrom === "dwg";
+          toast({
+            title: isDwg ? "DWG Converted & Loaded" : "Profile Loaded",
+            description: `${segCount} segments · ${bendCount2} bends · ${detectedModel === "closed" ? "Closed Section (Model B)" : "Open Section (Model A)"} auto-detected${bendCount2 === 0 ? " — no bends found, check profile or use manual drawing" : ""}`,
+          });
+          setError(null);
+        } else {
+          toast({ title: "Profile Loaded — No Geometry", description: "DXF parsed but 0 segments found. Check that the file contains LINE/POLYLINE/ARC entities.", variant: "destructive" });
         }
 
         const geo = result.geometry;
@@ -561,10 +564,26 @@ export function LeftPanel() {
 
       {
         const stCount = result.stations.length;
+        const vStatus = result._verification?.status ?? "VERIFIED";
+        const vWarnings: string[] = result._verification?.inputWarningMessages ?? [];
+        const vAutoFixes: number = result._verification?.autoCorrections ?? 0;
+        const isSynthesized: boolean = !!(result as { _synthesizedAngles?: boolean })._synthesizedAngles;
+
         if (stCount === 0) {
           toast({ title: "Generation Warning", description: "Power Pattern ran but returned 0 stations — check profile geometry and inputs.", variant: "destructive" });
+        } else if (vStatus === "AUTO_CORRECTED" || vWarnings.length > 0 || isSynthesized) {
+          toast({
+            title: "Power Pattern — Warnings",
+            description: [
+              `${stCount} stations · ${materialType} ${materialThickness}mm`,
+              isSynthesized ? "⚠ No bends found — angles are estimated, not derived from geometry" : "",
+              vAutoFixes > 0 ? `⚠ ${vAutoFixes} auto-correction(s) applied (roll gap)` : "",
+              vWarnings.length > 0 ? `⚠ ${vWarnings[0]}` : "",
+            ].filter(Boolean).join(" · "),
+            variant: "destructive",
+          });
         } else {
-          toast({ title: "Power Pattern Generated", description: `${stCount} stations created for ${materialType} ${materialThickness}mm — now generate Roll Tooling to complete profiles` });
+          toast({ title: "Power Pattern Generated", description: `${stCount} stations · ${materialType} ${materialThickness}mm · Verified — now generate Roll Tooling` });
         }
       }
 

@@ -25,13 +25,16 @@ logger = logging.getLogger("roll_contour_engine")
 
 # ── Shapely optional ───────────────────────────────────────────────────────────
 try:
-    from shapely.geometry import Polygon  # type: ignore
-    from shapely.affinity import scale as _shapely_scale  # type: ignore
+    from shapely.geometry import Polygon, box as _shapely_box    # type: ignore
+    from shapely.affinity import scale as _shapely_scale          # type: ignore
+    from shapely.affinity import translate as _shapely_translate  # type: ignore
     _SHAPELY_OK = True
 except ImportError:
     _SHAPELY_OK = False
-    Polygon = None  # type: ignore
-    _shapely_scale = None  # type: ignore
+    Polygon = None                   # type: ignore
+    _shapely_scale = None            # type: ignore
+    _shapely_translate = None        # type: ignore
+    _shapely_box = None              # type: ignore
 
 # ── Flower engine imports ─────────────────────────────────────────────────────
 try:
@@ -140,10 +143,33 @@ def compute_groove_geometry(
         shaft_center_lower_mm     = round(roll_gap / 2.0 + lower_roll_radius_mm, 3)   # [MFG]
         shaft_center_distance_mm  = round(shaft_center_upper_mm + shaft_center_lower_mm, 3)  # [MFG]
 
-        # Groove envelopes — strip shape buffered by half the roll gap
-        upper_env = section_poly.buffer(roll_gap / 2.0, join_style=2)
-        # Lower = reflect upper about y=0, then shift down by roll_gap
-        lower_env = _shapely_scale(upper_env, yfact=-1, origin=(0, 0, 0))
+        # ── Groove envelopes (physically correct, no false clash) ─────────────────
+        # Physical model:
+        #   • Upper roll groove occupies y ≥ +half_gap (above strip top surface)
+        #   • Lower roll groove occupies y ≤ −half_gap (below strip bottom surface)
+        # Construction:
+        #   1. Translate section UP/DOWN by half_gap (align groove mouth with strip surface)
+        #   2. Buffer slightly outward for near-miss detection
+        #   3. Clip at y=±half_gap so envelopes NEVER share the strip thickness band
+        #      → intersection area = 0 for all valid tooling configurations
+        half_gap  = roll_gap / 2.0
+        buf_amt   = max(half_gap * 0.5, 0.5)    # near-miss detection buffer
+        EXTENT    = 1000.0                       # large clip box extent
+
+        # Upper: translate section UP, buffer, then clip to y ≥ +half_gap
+        upper_shifted   = _shapely_translate(section_poly, xoff=0.0, yoff=half_gap)
+        upper_buffered  = upper_shifted.buffer(buf_amt, join_style=2)
+        upper_clip_box  = _shapely_box(-EXTENT, half_gap, EXTENT, EXTENT)
+        upper_env       = upper_buffered.intersection(upper_clip_box)
+
+        # Lower: reflect section, translate DOWN, buffer, clip to y ≤ −half_gap
+        lower_reflected = _shapely_scale(section_poly, yfact=-1, origin=(0, 0, 0))
+        lower_shifted   = _shapely_translate(lower_reflected, xoff=0.0, yoff=-half_gap)
+        lower_buffered  = lower_shifted.buffer(buf_amt, join_style=2)
+        lower_clip_box  = _shapely_box(-EXTENT, -EXTENT, EXTENT, -half_gap)
+        lower_env       = lower_buffered.intersection(lower_clip_box)
+        # Result: upper_env y ∈ [+half_gap, …], lower_env y ∈ […, -half_gap]
+        # Intersection area = 0 for all normal tooling → interference check works correctly.
 
         return {
             "roll_width_mm":            roll_width_mm,

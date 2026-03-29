@@ -40,7 +40,7 @@ from app.engines.roll_contour_engine import generate_roll_contour
 from app.engines.cad_export_engine import generate_cad_export
 from app.engines.cam_prep_engine import generate_cam_prep
 from app.engines.advanced_roll_engine import generate_advanced_rolls
-from app.engines.roll_interference_engine import check_roll_interference
+from app.engines.roll_interference_engine import check_roll_interference, check_contour_interference
 from app.engines.roll_dimension_engine import generate_roll_dimensions
 from app.engines.export_dxf_engine import export_rolls_dxf
 from app.engines.export_step_engine import export_roll_step
@@ -137,8 +137,20 @@ def _run_core_engines(
         station_result=station_result,
     )
 
+    # ── Flower SVG Engine (per-station polygon data) ───────────────────────
+    # generate_flower_svg returns station_polygons[], profile_dimensions, validation{}
+    flower_svg_result = generate_flower_svg(
+        profile_result=profile_result,
+        input_result=input_result,
+        roll_contour_result=roll_contour_result,
+        station_result=station_result,
+    )
+
     # ── Roll Interference Engine ───────────────────────────────────────────
+    # heuristic y-compare on advanced_roll stand_data
     roll_interference_result = check_roll_interference(advanced_roll_result)
+    # shapely-based check on roll_contour passes (manufacturing-grade)
+    roll_contour_interference = check_contour_interference(roll_contour_result)
 
     # ── Roll Dimension Engine ──────────────────────────────────────────────
     roll_dimension_result = generate_roll_dimensions(
@@ -149,20 +161,22 @@ def _run_core_engines(
 
     return {
         "status": "pass",
-        "flange_web_lip_engine":     flange_result,
-        "advanced_flower_engine":    flower_result,
-        "station_engine":            station_result,
-        "roll_logic_engine":         roll_logic_result,
-        "shaft_engine":              shaft_result,
-        "bearing_engine":            bearing_result,
-        "duty_engine":               duty_result,
-        "roll_design_calc_engine":   roll_calc_result,
-        "machine_layout_engine":     layout_result,
-        "roll_contour_engine":       roll_contour_result,
-        "cam_prep_engine":           cam_prep_result,
-        "advanced_roll_engine":      advanced_roll_result,
-        "roll_interference_engine":  roll_interference_result,
-        "roll_dimension_engine":     roll_dimension_result,
+        "flange_web_lip_engine":        flange_result,
+        "advanced_flower_engine":       flower_result,
+        "flower_svg_engine":            flower_svg_result,    # per-station polygons + validation
+        "station_engine":               station_result,
+        "roll_logic_engine":            roll_logic_result,
+        "shaft_engine":                 shaft_result,
+        "bearing_engine":               bearing_result,
+        "duty_engine":                  duty_result,
+        "roll_design_calc_engine":      roll_calc_result,
+        "machine_layout_engine":        layout_result,
+        "roll_contour_engine":          roll_contour_result,
+        "cam_prep_engine":              cam_prep_result,
+        "advanced_roll_engine":         advanced_roll_result,
+        "roll_interference_engine":     roll_interference_result,     # heuristic
+        "roll_contour_interference":    roll_contour_interference,    # shapely-grade
+        "roll_dimension_engine":        roll_dimension_result,
     }
 
 

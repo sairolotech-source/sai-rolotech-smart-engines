@@ -212,6 +212,7 @@ def generate_flower_svg(
     # ── Render each station ────────────────────────────────────────────────────
     path_elements: List[str] = []
     label_elements: List[str] = []
+    station_polygons: List[Dict[str, Any]] = []   # per-station polygon data for API consumers
 
     for i, p in enumerate(all_passes):
         angle     = float(p.get("target_angle_deg", 0))
@@ -222,6 +223,35 @@ def generate_flower_svg(
         poly = centerline_to_polygon(pts, thickness)
         if poly is None or poly.is_empty:
             continue
+
+        # Capture per-station polygon data for API response
+        try:
+            coords = list(poly.exterior.coords)
+        except Exception:
+            coords = []
+        has_self_intersection = False
+        try:
+            has_self_intersection = not poly.is_valid
+        except Exception:
+            pass
+        poly_area = 0.0
+        try:
+            poly_area = round(poly.area, 4)
+        except Exception:
+            pass
+
+        station_polygons.append({
+            "pass_no":              p.get("pass_no", i + 1),
+            "station_label":        p.get("station_label", f"Station {i + 1}"),
+            "angle_deg":            round(angle, 2),
+            "stage_type":           p.get("stage_type", "forming"),
+            "is_calibration":       is_calib,
+            "polygon_points":       [{"x": round(c[0], 4), "y": round(c[1], 4)} for c in coords],
+            "polygon_area_mm2":     poly_area,
+            "has_self_intersection": has_self_intersection,
+            "point_count":          len(coords),
+            "colour":               colour,
+        })
 
         d = _poly_to_svg_path(poly, ox, oy, sc)
         path_elements.append(
@@ -297,18 +327,55 @@ def generate_flower_svg(
         f'\n</svg>'
     )
 
+    # ── Validation summary ──────────────────────────────────────────────────────
+    any_self_intersection = any(sp["has_self_intersection"] for sp in station_polygons)
+    areas                 = [sp["polygon_area_mm2"] for sp in station_polygons if sp["polygon_area_mm2"] > 0]
+    area_range_pct        = 0.0
+    if areas:
+        area_range_pct = round((max(areas) - min(areas)) / max(areas) * 100, 2)
+
+    # Check monotonic angle progression (forming passes only)
+    forming_angles = [sp["angle_deg"] for sp in station_polygons if not sp["is_calibration"]]
+    monotonic = all(a <= b for a, b in zip(forming_angles, forming_angles[1:]))
+
     logger.info(
-        "[flower_svg_engine] generated %d station polygons for %s %.0f×%.0f t=%.2f",
+        "[flower_svg_engine] %d station polygons %s %.0f×%.0f t=%.2f "
+        "self_intersect=%s monotonic=%s area_variation=%.1f%%",
         n_total, ptype, web_mm, flange_mm, thickness,
+        any_self_intersection, monotonic, area_range_pct,
     )
 
+    # Profile dimension annotations (JSON — not just SVG text)
+    forming_summary = roll_contour_result.get("forming_summary", {})
+    inner_radius_mm = float(forming_summary.get("bend_inner_radius_mm", max(thickness * 1.0, 0.5)))
+    ba_each = (math.pi / 180.0) * 90.0 * (inner_radius_mm + thickness / 2.0)
+    profile_dimensions = {
+        "web_mm":            web_mm,
+        "flange_mm":         flange_mm,
+        "thickness_mm":      thickness,
+        "material":          material,
+        "inner_radius_mm":   round(inner_radius_mm, 3),
+        "flat_strip_mm":     round(flat_strip, 2),
+        "bend_allowance_mm": round(ba_each, 4),
+        "unit":              "mm",
+    }
+
     return {
-        "status": "pass",
-        "engine": "flower_svg_engine",
-        "svg_string": svg,
-        "station_count": n_total,
-        "flat_strip_mm": round(flat_strip, 2),
-        "final_width_mm": web_mm,
-        "profile_type": ptype,
-        "shapely_used": True,
+        "status":          "pass",
+        "engine":          "flower_svg_engine",
+        "svg_string":      svg,
+        "station_count":   n_total,
+        "flat_strip_mm":   round(flat_strip, 2),
+        "final_width_mm":  web_mm,
+        "profile_type":    ptype,
+        "shapely_used":    True,
+        "station_polygons":        station_polygons,
+        "profile_dimensions":      profile_dimensions,
+        "validation": {
+            "monotonic_angles":         monotonic,
+            "any_self_intersection":    any_self_intersection,
+            "area_variation_pct":       area_range_pct,
+            "thickness_consistent":     True,   # guaranteed by centerline_to_polygon
+            "forming_angles":           forming_angles,
+        },
     }

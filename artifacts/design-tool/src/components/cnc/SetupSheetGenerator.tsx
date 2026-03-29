@@ -27,7 +27,7 @@ function generateSetupSheetHTML(store: ReturnType<typeof useCncStore.getState>):
         <td>${esc(rp.rollWidth.toFixed(3))}</td>
         <td>${esc(rp.grooveDepth.toFixed(3))}</td>
         <td>${esc(rp.gap.toFixed(3))}</td>
-        <td>Upper: G54Z${esc(rp.upperRollCenterY.toFixed(3))}<br/>Lower: G54Z${esc(rp.lowerRollCenterY.toFixed(3))}</td>
+        <td>Upper: G54Z${esc(rp.upperRollCenterY != null && isFinite(rp.upperRollCenterY) ? rp.upperRollCenterY.toFixed(3) : "N/A")}<br/>Lower: G54Z${esc(rp.lowerRollCenterY != null && isFinite(rp.lowerRollCenterY) ? rp.lowerRollCenterY.toFixed(3) : "N/A")}</td>
       </tr>`;
   }).join("");
 

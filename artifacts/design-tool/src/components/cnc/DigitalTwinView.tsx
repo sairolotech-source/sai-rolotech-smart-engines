@@ -256,7 +256,7 @@ export function DigitalTwinView() {
         <div>
           <div className="text-sm font-bold text-zinc-100">🏭 Digital Twin — Machine Side View</div>
           <div className="text-xs text-zinc-400">
-            {stCount} Stations · {stCount * 2} Rolls · Pass Line: {formatMM(rollTooling[0]?.rollProfile?.passLineY ?? 0)} mm · 1 unit = 1mm
+            {stCount} Stations · {stCount * 2} Rolls · Pass Line: {rollTooling[0]?.rollProfile?.passLineY != null && isFinite(rollTooling[0].rollProfile!.passLineY) ? formatMM(rollTooling[0].rollProfile!.passLineY) + " mm" : "N/A"} · 1 unit = 1mm
           </div>
         </div>
 
@@ -309,7 +309,7 @@ export function DigitalTwinView() {
           <text x={8} y={bedY + 14} fill="#4b5563" fontSize={9} fontFamily="monospace">MACHINE BED</text>
 
           <line x1={0} y1={passY} x2={svgW} y2={passY} stroke={PASS_LINE_COLOR} strokeWidth={1.5} strokeDasharray="10 5" />
-          <text x={4} y={passY - 5} fill={PASS_LINE_COLOR} fontSize={9} fontFamily="monospace">PASS LINE ({formatMM(rollTooling[0]?.rollProfile?.passLineY ?? 0)}mm)</text>
+          <text x={4} y={passY - 5} fill={PASS_LINE_COLOR} fontSize={9} fontFamily="monospace">{`PASS LINE (${rollTooling[0]?.rollProfile?.passLineY != null && isFinite(rollTooling[0].rollProfile!.passLineY) ? formatMM(rollTooling[0].rollProfile!.passLineY) + "mm" : "N/A"})`}</text>
 
           <rect x={marginLeft - 40} y={passY - 15} width={20} height={30} fill="#1e293b" stroke="#475569" strokeWidth={1.5} rx={2} />
           <text x={marginLeft - 45} y={passY + 25} fill="#475569" fontSize={8} fontFamily="monospace">ENTRY</text>

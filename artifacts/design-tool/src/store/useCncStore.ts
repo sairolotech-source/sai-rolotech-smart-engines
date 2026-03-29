@@ -1475,7 +1475,7 @@ export const useCncStore = create<CncState>()(persist((set) => ({
 }), {
   name: "sai-rolotech-smart-enginesai-cnc-v3",
   storage: createJSONStorage(() => localStorage),
-  version: 5,
+  version: 6,
   migrate: (persistedState: unknown, fromVersion: number) => {
     const s = (persistedState ?? {}) as Record<string, unknown>;
     if (fromVersion < 4) {
@@ -1526,6 +1526,21 @@ export const useCncStore = create<CncState>()(persist((set) => ({
       const thickness: number = (s as Record<string, unknown>).materialThickness as number ?? 1.5;
       s.rollTooling = rawRt.map((item: unknown) => {
         const rt = item as RollToolingResult;
+        return repairOrSynthesizeRollProfile(rt, thickness);
+      });
+    }
+
+    // v6 migration: force-repair any rollProfile records where passLineY is missing or non-finite.
+    // These can exist in v5 localStorage saved before the passLineY root-cause fix was applied.
+    // repairOrSynthesizeRollProfile now checks passLineY presence before short-circuiting.
+    if (fromVersion < 6) {
+      const rawRt: unknown[] = Array.isArray(s.rollTooling) ? s.rollTooling : [];
+      const thickness: number = (s as Record<string, unknown>).materialThickness as number ?? 1.5;
+      s.rollTooling = rawRt.map((item: unknown) => {
+        const rt = item as RollToolingResult;
+        const rp = rt.rollProfile as (Record<string, unknown> | undefined);
+        // Only repair if passLineY is missing or non-finite — avoid unnecessary re-synthesis
+        if (rp && rp.passLineY != null && isFinite(rp.passLineY as number)) return rt;
         return repairOrSynthesizeRollProfile(rt, thickness);
       });
     }

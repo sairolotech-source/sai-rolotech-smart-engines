@@ -2040,7 +2040,8 @@ export function RollToolingView() {
     );
   }
 
-  const passLine = rollTooling[0]?.rollProfile?.passLineY ?? 0;
+  const _passLineRaw = rollTooling[0]?.rollProfile?.passLineY;
+  const passLine = _passLineRaw != null && isFinite(_passLineRaw) ? _passLineRaw : null;
   const matType = rollTooling[0]?.rollProfile?.kFactor === 0.44 ? "GI" : rollTooling[0]?.rollProfile?.kFactor === 0.42 ? "HR" : "CR";  // FIX: kFactor 0.42 is HR not CR (DIN 6935); else fallback CR
 
   return (
@@ -2089,7 +2090,7 @@ export function RollToolingView() {
           {latestToolingScore && (
             <AccuracyBadge score={latestToolingScore.overallScore} threshold={accuracyThreshold} size="sm" />
           )}
-          <span className="text-green-400 font-mono">Pass Line Y = {passLine.toFixed(3)} mm</span>
+          <span className="text-green-400 font-mono">Pass Line Y = {passLine != null ? passLine.toFixed(3) + " mm" : "N/A"}</span>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-zinc-400">Upper (Top)</span></div>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500" /><span className="text-zinc-400">Lower (Bottom)</span></div>
           {(() => {

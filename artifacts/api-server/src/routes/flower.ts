@@ -203,6 +203,17 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
       return;
     }
 
+    // Normalize geometry: frontend stores bends as 'bendPoints'; server parses them as 'bends'.
+    // Accept either field name so the route works regardless of where the geometry originates.
+    const rawGeomAny = geometry as unknown as Record<string, unknown>;
+    if (!Array.isArray(rawGeomAny.bends) && Array.isArray(rawGeomAny.bendPoints)) {
+      rawGeomAny.bends = (rawGeomAny.bendPoints as Array<{ angle?: number; radius?: number }>).map(bp => ({
+        angle: bp.angle ?? 0,
+        radius: bp.radius,
+      }));
+    }
+    if (!Array.isArray(rawGeomAny.bends)) rawGeomAny.bends = [];
+
     const stations = Math.max(1, Math.min(30, parseInt(String(numStations)) || 5));
     const prefix = stationPrefix || "S";
     const matType = materialType || "GI";
@@ -227,10 +238,13 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
     }
 
     // ── Deep Accuracy Verification (offline, synchronous) ──────────────────
+    const safeProcessedStations = Array.isArray(processedStations) ? processedStations : [];
+    const totalProcessedBendAngle = safeProcessedStations.reduce((s, st) => s + Math.abs(st.bendAngle ?? 0), 0);
+
     const inputValidation = validateFlowerInputs({
       thickness: matThickness,
       numStations: stations,
-      totalBendAngle: processedStations.reduce((s, st) => s + Math.abs(st.bendAngle ?? 0), 0),
+      totalBendAngle: totalProcessedBendAngle,
       stripWidth: result.stripWidth ?? 200,
       materialType: matType,
     });
@@ -239,10 +253,10 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
       materialType: matType,
       thickness: matThickness,
       numStations: stations,
-      totalBendAngle: processedStations.reduce((s, st) => s + Math.abs(st.bendAngle ?? 0), 0),
+      totalBendAngle: totalProcessedBendAngle,
       stripWidth: result.stripWidth ?? 200,
       sectionModel: sectionModel ?? "open",
-      stations: processedStations.map((st, i) => ({
+      stations: safeProcessedStations.map((st, i) => ({
         stationNumber: i + 1,
         bendAngle: Math.abs(st.bendAngle ?? 0),
         rollDiameter: st.rollDiameter ?? 150,
@@ -252,7 +266,7 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
       })),
     });
 
-    const autoFixedStations = processedStations.map((st, i) => {
+    const autoFixedStations = safeProcessedStations.map((st, i) => {
       const fix = deepResult.autoCorrections.find(c => c.param === `S${i + 1}_rollGap`);
       if (fix) {
         return { ...st, rollGap: fix.to, _corrected: true };

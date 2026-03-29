@@ -175,7 +175,19 @@ export function generateFlowerPattern(
   const gapOversize = ROLL_GAP_OVERSIZE[mat] ?? 1.05;
   const maxAngleOpen = MAX_ANGLE_PER_STATION[mat]?.open ?? 15;
 
-  const rawTotalBend = geometry.bends.reduce((sum, b) => sum + Math.abs(b.angle || 0), 0);
+  // Normalize geometry: accept both 'bends' (server DXF parse) and 'bendPoints' (frontend store field name)
+  const rawGeom = geometry as unknown as Record<string, unknown>;
+  const safeBends: Array<{ angle: number; radius?: number }> = Array.isArray(rawGeom.bends)
+    ? (rawGeom.bends as Array<{ angle: number; radius?: number }>)
+    : Array.isArray(rawGeom.bendPoints)
+    ? (rawGeom.bendPoints as Array<{ angle?: number; radius?: number }>).map(bp => ({ angle: bp.angle ?? 0, radius: bp.radius }))
+    : [];
+  const safeSegs: Array<{ length?: number }> = Array.isArray(rawGeom.segments)
+    ? (rawGeom.segments as Array<{ length?: number }>)
+    : [];
+  const safeTotalLength: number = typeof rawGeom.totalLength === "number" ? (rawGeom.totalLength as number) : 0;
+
+  const rawTotalBend = safeBends.reduce((sum, b) => sum + Math.abs(b.angle || 0), 0);
   const totalBendAngle = rawTotalBend > 0 ? rawTotalBend : n * maxAngleOpen * 0.7;
 
   /**
@@ -200,18 +212,18 @@ export function generateFlowerPattern(
   const baseRollOD = Math.max(80, Math.round(2 * (minInnerRadius + t) + 40));
 
   let baseStripWidth: number;
-  if (geometry.bends.length > 0 && geometry.segments.length > 0) {
-    const flanges = geometry.segments.map(s => s.length ?? 0);
-    const bends = geometry.bends.map(b => ({
+  if (safeBends.length > 0 && safeSegs.length > 0) {
+    const flanges = safeSegs.map(s => s.length ?? 0);
+    const bends = safeBends.map(b => ({
       angle: Math.abs(b.angle || 0),
       innerRadius: b.radius ?? t * Kr,
     }));
     baseStripWidth = computeNeutralAxisStripWidth(bends, flanges, K, t);
     if (baseStripWidth <= 0) {
-      baseStripWidth = geometry.totalLength > 0 ? geometry.totalLength : 100 + t * 5;
+      baseStripWidth = safeTotalLength > 0 ? safeTotalLength : 100 + t * 5;
     }
   } else {
-    baseStripWidth = geometry.totalLength > 0 ? geometry.totalLength : 100 + t * 5;
+    baseStripWidth = safeTotalLength > 0 ? safeTotalLength : 100 + t * 5;
   }
 
   const inputValidation = validateFlowerInputs({

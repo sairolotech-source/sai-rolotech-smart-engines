@@ -501,8 +501,6 @@ export interface GeminiVerifyPayload {
   thickness: number;
   numStations: number;
   offlineResults: ParameterCheck[];
-  personalGeminiKeys?: { id: string; key: string; label: string }[];
-  personalDeepseekKey?: string;
 }
 
 export interface GeminiVerifyResult {

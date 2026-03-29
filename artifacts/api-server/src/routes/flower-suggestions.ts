@@ -261,52 +261,32 @@ function buildOfflineSuggestions(payload: Record<string, unknown>) {
   };
 }
 
-async function callGeminiForSuggestions(
-  prompt: string,
-  personalGeminiKeys: PersonalGeminiKeyEntry[],
-  personalDeepseekKey?: string,
-): Promise<string | null> {
-  const messages = [{ role: "user", content: prompt }];
-
-  for (const entry of personalGeminiKeys) {
-    try {
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${entry.key}` },
-        body: JSON.stringify({
-          model: "gemini-2.5-pro",
-          messages,
-          max_tokens: 8192,
-          temperature: 0.4,
-          response_format: { type: "json_object" },
-        }),
-        signal: AbortSignal.timeout(45000),
-      });
-      if (!res.ok) continue;
-      const data = await res.json() as { choices: { message: { content: string } }[] };
-      const text = data.choices?.[0]?.message?.content;
-      if (text) { console.log(`[flower-suggestions] Gemini ok via personal key: ${entry.label}`); return text; }
-    } catch (e) {
-      console.warn(`[flower-suggestions] Personal key ${entry.label} failed:`, e);
-    }
+async function callCodexForSuggestions(prompt: string): Promise<string | null> {
+  const orKey = process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
+    ?? process.env["OPENROUTER_API_KEY_"]
+    ?? process.env["OPENROUTER_API_KEY"];
+  if (!orKey) return null;
+  const orUrl = `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`;
+  try {
+    const res = await fetch(orUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
+      body: JSON.stringify({
+        model: "openai/codex-mini-latest",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 8192,
+        temperature: 0.4,
+        response_format: { type: "json_object" },
+      }),
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { choices: { message: { content: string } }[] };
+    const text = data.choices?.[0]?.message?.content;
+    if (text) { console.log("[flower-suggestions] OpenRouter Codex Mini ok"); return text; }
+  } catch (e) {
+    console.warn("[flower-suggestions] OpenRouter Codex Mini failed:", e);
   }
-
-  if (personalDeepseekKey) {
-    try {
-      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${personalDeepseekKey}` },
-        body: JSON.stringify({ model: "deepseek-chat", messages, max_tokens: 6000, temperature: 0.4 }),
-        signal: AbortSignal.timeout(30000),
-      });
-      if (res.ok) {
-        const data = await res.json() as { choices: { message: { content: string } }[] };
-        const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[flower-suggestions] DeepSeek ok"); return text; }
-      }
-    } catch { /* ignore */ }
-  }
-
   return null;
 }
 
@@ -340,14 +320,11 @@ router.post("/flower-suggestions", async (req: Request, res: Response) => {
       grooveDepth, stationLabel, profileComplexity,
     };
 
-    const keys = Array.isArray(personalGeminiKeys) ? personalGeminiKeys : [];
     let aiText: string | null = null;
     let usedAI = false;
 
-    if (keys.length > 0 || personalDeepseekKey) {
-      const prompt = buildSuggestionPrompt(payload);
-      aiText = await callGeminiForSuggestions(prompt, keys, typeof personalDeepseekKey === "string" ? personalDeepseekKey : undefined);
-    }
+    const prompt = buildSuggestionPrompt(payload);
+    aiText = await callCodexForSuggestions(prompt);
 
     if (aiText) {
       try {

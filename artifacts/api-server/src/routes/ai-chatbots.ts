@@ -4,52 +4,35 @@ import { openai, aiProvider } from "@workspace/integrations-openai-ai-server";
 import { SAI_CONFIDENTIALITY_RULES, SAI_ERROR_BRAND } from "../lib/ai-confidentiality";
 import { ULTRA_VALIDATION_RULES } from "../lib/validation-rules";
 
-type AIProvider = "nvidia" | "kimi" | "sambanova" | "gemini" | "anthropic" | "openrouter";
+type AIProvider = "openrouter";
 
 interface PersonalGeminiKeyEntry { id: string; key: string; label: string }
 
 async function tryPersonalKeys(
   systemPrompt: string,
   messages: { role: string; content: string }[],
-  personalGeminiKeys: PersonalGeminiKeyEntry[],
-  personalDeepseekKey?: string,
+  _personalGeminiKeys: PersonalGeminiKeyEntry[],
+  _personalDeepseekKey?: string,
 ): Promise<{ text: string | null; failedKeyIds: string[]; provider: string }> {
-  const failedKeyIds: string[] = [];
   const msgs = [{ role: "system", content: systemPrompt }, ...messages];
-
-  for (const entry of personalGeminiKeys) {
+  const orKey = process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"];
+  const orUrl = `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`;
+  if (orKey) {
     try {
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      const res = await fetch(orUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${entry.key}` },
-        body: JSON.stringify({ model: "gemini-2.5-pro", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!res.ok) { failedKeyIds.push(entry.id); continue; }
-      const data = await res.json() as { choices: { message: { content: string } }[] };
-      const text = data.choices?.[0]?.message?.content;
-      if (text) return { text, failedKeyIds, provider: `personal-gemini:${entry.label}` };
-      failedKeyIds.push(entry.id);
-    } catch { failedKeyIds.push(entry.id); }
-  }
-
-  if (personalDeepseekKey) {
-    try {
-      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${personalDeepseekKey}` },
-        body: JSON.stringify({ model: "deepseek-chat", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
-        signal: AbortSignal.timeout(15000),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
+        body: JSON.stringify({ model: "openai/codex-mini-latest", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        signal: AbortSignal.timeout(30000),
       });
       if (res.ok) {
         const data = await res.json() as { choices: { message: { content: string } }[] };
         const text = data.choices?.[0]?.message?.content;
-        if (text) return { text, failedKeyIds, provider: "personal-deepseek" };
+        if (text) return { text, failedKeyIds: [], provider: "openrouter-codex" };
       }
     } catch { /* ignore */ }
   }
-
-  return { text: null, failedKeyIds, provider: "" };
+  return { text: null, failedKeyIds: [], provider: "" };
 }
 
 interface ProviderConfig {
@@ -62,49 +45,12 @@ interface ProviderConfig {
 
 function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
   return {
-    gemini: {
-      key: process.env["AI_INTEGRATIONS_GEMINI_API_KEY"],
-      url: `${process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"] ?? "https://generativelanguage.googleapis.com"}/v1beta/openai/chat/completions`,
-      model: "gemini-2.5-pro",
-      maxTokens: 4096,
-      format: "openai",
-    },
-    anthropic: {
-      key: process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"],
-      url: `${process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"] ?? "https://api.anthropic.com"}/v1/messages`,
-      model: "claude-opus-4-5",
-      maxTokens: 4096,
-      format: "anthropic",
-    },
     openrouter: {
       key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
         ?? process.env["OPENROUTER_API_KEY_"]
-        ?? process.env["OPENROUTER_API_KEY"]
-        ?? process.env["OPEN_ROUTER_"]
-        ?? process.env["OPEN_ROUTE"],
+        ?? process.env["OPENROUTER_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`,
       model: "openai/codex-mini-latest",
-      maxTokens: 4096,
-      format: "openai",
-    },
-    sambanova: {
-      key: process.env["SAMBANOVA_API_KEY"],
-      url: "https://api.sambanova.ai/v1/chat/completions",
-      model: "Meta-Llama-3.3-70B-Instruct",
-      maxTokens: 4096,
-      format: "openai",
-    },
-    kimi: {
-      key: process.env["KIMI_API_KEY"],
-      url: "https://api.moonshot.cn/v1/chat/completions",
-      model: "moonshot-v1-32k",
-      maxTokens: 4096,
-      format: "openai",
-    },
-    nvidia: {
-      key: process.env["NVIDIA_NGC_API_KEY"],
-      url: "https://integrate.api.nvidia.com/v1/chat/completions",
-      model: "meta/llama-3.3-70b-instruct",
       maxTokens: 4096,
       format: "openai",
     },
@@ -174,7 +120,7 @@ async function callExternalAI(
   }
 }
 
-const FALLBACK_CHAIN: AIProvider[] = ["gemini", "sambanova", "openrouter"];
+const FALLBACK_CHAIN: AIProvider[] = ["openrouter"];
 
 async function callWithFallback(
   systemPrompt: string,
@@ -813,7 +759,7 @@ When answering:
     }
 
     if (!response) {
-      const providers: AIProvider[] = ["gemini", "sambanova", "openrouter", "anthropic"];
+      const providers: AIProvider[] = ["openrouter"];
       for (const provider of providers) {
         response = await callExternalAI(provider, systemPrompt, msgs);
         if (response) { usedProvider = provider; break; }

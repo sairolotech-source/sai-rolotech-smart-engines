@@ -195,9 +195,9 @@ Return ONLY the JSON, no explanation.`;
 
     let aiResult: string | null = null;
     try {
-      if (aiProvider === "gemini") {
+      if (openai) {
         const response = await openai.chat.completions.create({
-          model: "gemini-2.5-pro",
+          model: "openai/codex-mini-latest",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userMsg },
@@ -215,7 +215,7 @@ Return ONLY the JSON, no explanation.`;
         const jsonMatch = aiResult.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]) as PassEngineOutput;
-          res.json({ ...parsed, source: "gemini-2.5-pro" });
+          res.json({ ...parsed, source: "openai/codex-mini-latest" });
           return;
         }
       } catch {

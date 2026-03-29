@@ -34,7 +34,7 @@ async function callOpenAI(
 ): Promise<string | null> {
   if (!openai) return null;
   try {
-    const model = aiProvider === "gemini" ? "gemini-2.5-pro" : "gpt-4o-mini";
+    const model = "openai/codex-mini-latest";
     const res = await openai.chat.completions.create({
       model,
       messages: [

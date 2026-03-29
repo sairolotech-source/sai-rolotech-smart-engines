@@ -141,82 +141,29 @@ ${SAI_CONFIDENTIALITY_RULES}`;
 
   const failedKeyIds: string[] = [];
 
-  for (const entry of personalGeminiKeys) {
-    try {
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${entry.key}` },
-        body: JSON.stringify({ model: "gemini-2.5-flash", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!res.ok) {
-        console.log(`[AI Fallback] Personal key "${entry.label}" failed (${res.status}) — switching to next`);
-        failedKeyIds.push(entry.id);
-        continue;
-      }
-      const data = await res.json() as { choices: { message: { content: string } }[] };
-      const text = data.choices?.[0]?.message?.content;
-      if (text) {
-        console.log(`[AI Fallback] Responded via Personal Gemini key "${entry.label}"`);
-        return { text, failedKeyIds };
-      }
-      failedKeyIds.push(entry.id);
-    } catch {
-      console.log(`[AI Fallback] Personal key "${entry.label}" error — switching to next`);
-      failedKeyIds.push(entry.id);
-    }
-  }
+  const orKey = process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
+    ?? process.env["OPENROUTER_API_KEY_"]
+    ?? process.env["OPENROUTER_API_KEY"];
+  const orUrl = `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`;
 
-  if (personalDeepseekKey) {
+  if (orKey) {
     try {
-      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      const res = await fetch(orUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${personalDeepseekKey}` },
-        body: JSON.stringify({ model: "deepseek-chat", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
-        signal: AbortSignal.timeout(15000),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
+        body: JSON.stringify({ model: "openai/codex-mini-latest", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        signal: AbortSignal.timeout(30000),
       });
       if (res.ok) {
         const data = await res.json() as { choices: { message: { content: string } }[] };
         const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[AI Fallback] Responded via Personal DeepSeek key"); return { text, failedKeyIds }; }
+        if (text) { console.log("[AI Fallback] Responded via OpenRouter Codex Mini"); return { text, failedKeyIds }; }
+      } else {
+        console.log(`[AI Fallback] OpenRouter Codex Mini failed (${res.status})`);
       }
-    } catch { console.log("[AI Fallback] Personal DeepSeek key error"); }
+    } catch { console.log("[AI Fallback] OpenRouter Codex Mini error"); }
   }
 
-  const staticProviders = [
-    {
-      key: process.env["AI_INTEGRATIONS_OPENROUTER_API_KEY"]
-        ?? process.env["OPENROUTER_API_KEY_"]
-        ?? process.env["OPENROUTER_API_KEY"]
-        ?? process.env["OPEN_ROUTER_"]
-        ?? process.env["OPEN_ROUTE"],
-      url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/api/v1/chat/completions`,
-      model: "openai/codex-mini-latest",
-      label: "OpenRouter Codex Mini (gpt-5.3-codex)",
-    },
-    {
-      key: process.env["SAMBANOVA_API_KEY"],
-      url: "https://api.sambanova.ai/v1/chat/completions",
-      model: "Meta-Llama-3.3-70B-Instruct",
-      label: "SambaNova Llama 70B",
-    },
-  ];
-
-  for (const p of staticProviders) {
-    if (!p.key) continue;
-    try {
-      const res = await fetch(p.url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
-        body: JSON.stringify({ model: p.model, messages: msgs, max_tokens: 4096, temperature: 0.5 }),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!res.ok) { console.log(`[AI Fallback] ${p.label} failed (${res.status})`); continue; }
-      const data = await res.json() as { choices: { message: { content: string } }[] };
-      const text = data.choices?.[0]?.message?.content;
-      if (text) { console.log(`[AI Fallback] Responded via ${p.label}`); return { text, failedKeyIds }; }
-    } catch { console.log(`[AI Fallback] ${p.label} error`); continue; }
-  }
   return { text: null, failedKeyIds };
 }
 

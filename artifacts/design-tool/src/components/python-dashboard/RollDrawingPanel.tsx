@@ -555,11 +555,13 @@ function MiniThumb({ pass, active, onClick }: { pass: PassData; active: boolean;
 // All coordinates in "SVG units" (1 unit ≈ 0.75 pt for screen, or mm for print).
 
 function buildStationSVG(
-  pass:      PassData,
-  rd:        RollDimensions,
-  thickness: number,
-  material:  string,
-  profileType: string = "",
+  pass:        PassData,
+  rd:          RollDimensions,
+  thickness:   number,
+  material:    string,
+  profileType: string  = "",
+  revision:    string  = "A",
+  approved:    boolean = false,
 ): string {
   const W = 1189, H = 841;   // A3 landscape (mm × 3.56 px/mm ÷ 3.56 = mm)
   const stageColor = STAGE_COLOR[pass.stage_type] || "#8b5cf6";
@@ -816,12 +818,12 @@ function buildStationSVG(
   <line x1="${W - 200}" y1="${H - 185}" x2="${W - 200}" y2="${H - 15}" stroke="#1e293b" stroke-width="0.5"/>
 
   <!-- Labels (left col) -->
-  <text x="${W - 375}" y="${H - 167}" font-size="7.5" fill="#64748b">DRAWING NO.</text>
+  <text x="${W - 375}" y="${H - 167}" font-size="7.5" fill="#64748b">PART NO.</text>
   <text x="${W - 375}" y="${H - 142}" font-size="7.5" fill="#64748b">PROFILE TYPE</text>
   <text x="${W - 375}" y="${H - 117}" font-size="7.5" fill="#64748b">MATERIAL</text>
   <text x="${W - 375}" y="${H - 92}" font-size="7.5" fill="#64748b">THICKNESS</text>
   <text x="${W - 375}" y="${H - 67}" font-size="7.5" fill="#64748b">STAGE</text>
-  <text x="${W - 375}" y="${H - 42}" font-size="7.5" fill="#64748b">DATE</text>
+  <text x="${W - 375}" y="${H - 42}" font-size="7.5" fill="#64748b">DATE / REV</text>
   <text x="${W - 375}" y="${H - 17}" font-size="7.5" fill="#64748b">SCALE</text>
 
   <!-- Labels (right col) -->
@@ -834,12 +836,12 @@ function buildStationSVG(
   <text x="${W - 195}" y="${H - 17}" font-size="7.5" fill="#64748b">SURFACE FINISH</text>
 
   <!-- Values (left col) -->
-  <text x="${W - 375}" y="${H - 157}" font-size="9" fill="#e2e8f0" font-weight="bold">SRE-S${pass.pass_no.toString().padStart(2,"0")}-${date.replace(/\//g,"-")}</text>
+  <text x="${W - 375}" y="${H - 157}" font-size="9" fill="#e2e8f0" font-weight="bold">SRE-${(profileType||"UCH").substring(0,3).toUpperCase()}-S${pass.pass_no.toString().padStart(2,"0")}-${revision}</text>
   <text x="${W - 375}" y="${H - 132}" font-size="9" fill="#a5b4fc">${profileType || "u_channel"}</text>
   <text x="${W - 375}" y="${H - 107}" font-size="9" fill="#a5b4fc">${material}</text>
   <text x="${W - 375}" y="${H - 82}" font-size="9" fill="#a5b4fc">${thickness} mm</text>
   <text x="${W - 375}" y="${H - 57}" font-size="9" fill="${stageColor}">${pass.stage_type.replace(/_/g," ")}</text>
-  <text x="${W - 375}" y="${H - 32}" font-size="9" fill="#94a3b8">${date}</text>
+  <text x="${W - 375}" y="${H - 32}" font-size="9" fill="#94a3b8">${date} / REV ${revision}</text>
   <text x="${W - 375}" y="${H - 17}" font-size="9" fill="#94a3b8">1:1 (approx)</text>
 
   <!-- Values (right col) -->
@@ -850,6 +852,18 @@ function buildStationSVG(
   <text x="${W - 195}" y="${H - 57}" font-size="9" fill="#f97316">${rd.keyway_width_mm} mm (DIN 6885)</text>
   <text x="${W - 195}" y="${H - 32}" font-size="9" fill="#f87171">EN31 / D2 · 60-62 HRC</text>
   <text x="${W - 195}" y="${H - 17}" font-size="9" fill="#94a3b8">Ra 0.8 μm</text>
+
+  ${approved ? `
+  <!-- APPROVED FOR MANUFACTURING stamp -->
+  <rect x="${W - 380}" y="${H - 230}" width="365" height="38" fill="#052e16" stroke="#16a34a" stroke-width="1.5" rx="3"/>
+  <text x="${W - 197}" y="${H - 218}" font-size="9" fill="#4ade80" text-anchor="middle" font-weight="bold" letter-spacing="2">✔ APPROVED FOR MANUFACTURING</text>
+  <text x="${W - 197}" y="${H - 205}" font-size="7.5" fill="#16a34a" text-anchor="middle">Sai Rolotech Smart Engines · ${date} · REV ${revision}</text>
+  ` : `
+  <!-- DRAFT stamp -->
+  <rect x="${W - 380}" y="${H - 230}" width="365" height="38" fill="#1c1917" stroke="#57534e" stroke-width="0.8" rx="3"/>
+  <text x="${W - 197}" y="${H - 218}" font-size="9" fill="#78716c" text-anchor="middle" font-weight="bold" letter-spacing="2">⚠ ENGINEERING DRAFT — NOT FOR MANUFACTURE</text>
+  <text x="${W - 197}" y="${H - 205}" font-size="7.5" fill="#57534e" text-anchor="middle">Verify all dimensions before production use · REV ${revision}</text>
+  `}
 
   <!-- Forming data box -->
   <rect x="15" y="${H - 185}" width="295" height="170" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
@@ -874,12 +888,146 @@ function buildStationSVG(
 </svg>`;
 }
 
+// ─── DXF EXPORT GENERATOR ─────────────────────────────────────────────────────
+// Generates a minimal ASCII DXF R12 file for the upper/lower roll profiles.
+
+function buildStationDXF(
+  pass:      PassData,
+  rd:        RollDimensions,
+  thickness: number,
+  material:  string,
+  revision:  string = "A",
+): string {
+  const upper = pass.upper_roll_profile;
+  const lower = pass.lower_roll_profile;
+  const date  = new Date().toLocaleDateString("en-GB");
+
+  const lines: string[] = [];
+
+  const push = (...args: (string | number)[]) =>
+    args.forEach(a => lines.push(String(a)));
+
+  // Header
+  push("0","SECTION","2","HEADER");
+  push("9","$ACADVER","1","AC1006");
+  push("9","$INSBASE","10","0.0","20","0.0","30","0.0");
+  push("9","$EXTMIN","10","0.0","20","0.0","30","0.0");
+  push("9","$EXTMAX","10","500.0","20","500.0","30","0.0");
+  push("0","ENDSEC");
+
+  // Tables
+  push("0","SECTION","2","TABLES");
+  push("0","TABLE","2","LAYER","70","3");
+  push("0","LAYER","2","UPPER_ROLL","70","0","62","5","6","CONTINUOUS");
+  push("0","LAYER","2","LOWER_ROLL","70","0","62","3","6","CONTINUOUS");
+  push("0","LAYER","2","STRIP","70","0","62","2","6","CONTINUOUS");
+  push("0","LAYER","2","DIMS","70","0","62","1","6","CONTINUOUS");
+  push("0","LAYER","2","CENTRE","70","0","62","8","6","CENTER");
+  push("0","ENDTAB");
+  push("0","ENDSEC");
+
+  // Entities
+  push("0","SECTION","2","ENTITIES");
+
+  // Drawing comment text
+  push("0","TEXT");
+  push("8","DIMS","10","0.0","20","420.0","30","0.0","40","6","1",
+    `SAI ROLOTECH · ${pass.station_label} · ${material} · ${thickness}mm · REV ${revision} · ${date}`);
+
+  push("0","TEXT");
+  push("8","DIMS","10","0.0","20","410.0","30","0.0","40","4","1",
+    `PART: SRE-${(material).substring(0,3).toUpperCase()}-S${String(pass.pass_no).padStart(2,"0")}-${revision}  OD:${rd.estimated_roll_od_mm}  BORE:${rd.bore_dia_mm}H7  FACE:${rd.face_width_mm}  GAP:${pass.roll_gap_mm}mm`);
+
+  // Scale upper profile so it's readable
+  const scaleX = 2.5, scaleY = 2.5;
+  const offsetX = 50, offsetY = 200;
+
+  // Upper roll profile as polyline
+  push("0","POLYLINE","8","UPPER_ROLL","66","1","70","0","62","5");
+  upper.forEach(pt => {
+    push("0","VERTEX","8","UPPER_ROLL",
+      "10", (pt.x * scaleX + offsetX).toFixed(4),
+      "20", (pt.y * scaleY + offsetY).toFixed(4),
+      "30","0.0");
+  });
+  push("0","SEQEND");
+
+  // Lower roll profile as polyline
+  push("0","POLYLINE","8","LOWER_ROLL","66","1","70","0","62","3");
+  lower.forEach(pt => {
+    push("0","VERTEX","8","LOWER_ROLL",
+      "10", (pt.x * scaleX + offsetX).toFixed(4),
+      "20", (pt.y * scaleY + offsetY).toFixed(4),
+      "30","0.0");
+  });
+  push("0","SEQEND");
+
+  // Strip boundary (rectangle)
+  const stripLeft   = (upper[0].x  * scaleX + offsetX).toFixed(4);
+  const stripRight  = (upper[upper.length-1].x * scaleX + offsetX).toFixed(4);
+  const uMidY       = ((upper[0].y + upper[upper.length-1].y) / 2 * scaleY + offsetY).toFixed(4);
+  const lMidY       = ((lower[0].y + lower[lower.length-1].y) / 2 * scaleY + offsetY).toFixed(4);
+  push("0","LINE","8","STRIP","62","2","10",stripLeft,"20",uMidY,"30","0.0","11",stripRight,"21",uMidY,"31","0.0");
+  push("0","LINE","8","STRIP","62","2","10",stripLeft,"20",lMidY,"30","0.0","11",stripRight,"21",lMidY,"31","0.0");
+  push("0","LINE","8","STRIP","62","2","10",stripLeft,"20",uMidY,"30","0.0","11",stripLeft,"21",lMidY,"31","0.0");
+  push("0","LINE","8","STRIP","62","2","10",stripRight,"20",uMidY,"30","0.0","11",stripRight,"21",lMidY,"31","0.0");
+
+  // Centre line
+  const cX = ((upper[0].x + upper[upper.length-1].x) / 2 * scaleX + offsetX).toFixed(4);
+  push("0","LINE","8","CENTRE","62","8","10",cX,"20","0.0","30","0.0","11",cX,"21","500.0","31","0.0");
+
+  // Dimension: strip width
+  const sw = upper[upper.length-1].x - upper[0].x;
+  push("0","TEXT","8","DIMS","10",(upper[0].x * scaleX + offsetX + sw * scaleX / 2).toFixed(4),
+    "20",(parseFloat(lMidY) + 15).toFixed(4),"30","0.0","40","5","1",
+    `Strip W: ${pass.strip_width_mm.toFixed(1)} mm  Angle: ${pass.target_angle_deg}°  Gap: ${pass.roll_gap_mm} mm`);
+
+  // Front view: bore and OD circles
+  const fcx = 350, fcy = 200;
+  const fod = rd.estimated_roll_od_mm / 2 * 0.6;
+  const fbr = rd.bore_dia_mm / 2 * 0.6;
+  push("0","CIRCLE","8","UPPER_ROLL","62","5","10",fcx,"20",fcy,"30","0.0","40",fod.toFixed(4));
+  push("0","CIRCLE","8","DIMS","62","8","10",fcx,"20",fcy,"30","0.0","40",fbr.toFixed(4));
+
+  push("0","ENDSEC");
+  push("0","EOF");
+
+  return lines.join("\r\n");
+}
+
+// ─── PDF PRINT HELPER ─────────────────────────────────────────────────────────
+// Opens the SVG in a new print window; user chooses PDF printer or prints.
+
+function printStationPDF(svgString: string, title: string) {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<title>${title}</title>
+<style>
+  @page { size: A3 landscape; margin: 0; }
+  body  { margin: 0; padding: 0; background: #000; }
+  svg   { width: 100vw; height: 100vh; display: block; }
+  @media print {
+    body { background: #0c1220; }
+    svg  { width: 297mm; height: 420mm; }
+  }
+</style>
+</head>
+<body>${svgString}
+<script>window.onload = () => { setTimeout(() => window.print(), 400); };<\/script>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 // ─── Download helpers ─────────────────────────────────────────────────────────
 
-function triggerSVGDownload(svgString: string, filename: string) {
-  const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
   a.href     = url;
   a.download = filename;
   document.body.appendChild(a);
@@ -888,12 +1036,21 @@ function triggerSVGDownload(svgString: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function triggerSVGDownload(svgString: string, filename: string) {
+  triggerBlobDownload(
+    new Blob([svgString], { type: "image/svg+xml;charset=utf-8" }),
+    filename,
+  );
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function RollDrawingPanel({ rollContour, rollDimensions }: Props) {
   const [selected,    setSelected]    = useState(0);
   const [view,        setView]        = useState<"all3" | "cross" | "front" | "side">("all3");
   const [downloading, setDownloading] = useState(false);
+  const [revision,    setRevision]    = useState("A");
+  const [approved,    setApproved]    = useState(false);
 
   if (!rollContour || rollContour.status !== "pass") {
     return (
@@ -927,31 +1084,68 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
   const material    = rollContour.material as string;
   const thickness   = rollContour.thickness_mm as number;
 
+  const profType  = (rollContour as Record<string,unknown>).profile_type as string || "";
+  const partBase  = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(pass.pass_no).padStart(2,"0")}-REV${revision}`;
+
   const handleDownloadStation = useCallback(() => {
     setDownloading(true);
     try {
-      const svg = buildStationSVG(pass, rd, thickness, material);
-      const name = `roll-drawing-S${String(pass.pass_no).padStart(2, "0")}-${material}-${thickness}mm.svg`;
-      triggerSVGDownload(svg, name);
-    } finally {
-      setTimeout(() => setDownloading(false), 600);
-    }
-  }, [pass, rd, material, thickness]);
+      const svg  = buildStationSVG(pass, rd, thickness, material, profType, revision, approved);
+      triggerSVGDownload(svg, `${partBase}.svg`);
+    } finally { setTimeout(() => setDownloading(false), 600); }
+  }, [pass, rd, material, thickness, profType, revision, approved, partBase]);
 
   const handleDownloadAll = useCallback(() => {
     setDownloading(true);
+    allPasses.forEach((p, i) => {
+      setTimeout(() => {
+        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved);
+        const base = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(p.pass_no).padStart(2,"0")}-REV${revision}`;
+        triggerSVGDownload(svg, `${base}.svg`);
+      }, i * 150);
+    });
+    setTimeout(() => setDownloading(false), allPasses.length * 150 + 500);
+  }, [allPasses, rd, material, thickness, profType, revision, approved]);
+
+  const handleDownloadPDF = useCallback(() => {
+    const svg = buildStationSVG(pass, rd, thickness, material, profType, revision, approved);
+    printStationPDF(svg, `${partBase}.pdf`);
+  }, [pass, rd, material, thickness, profType, revision, approved, partBase]);
+
+  const handleDownloadZIP = useCallback(async () => {
+    setDownloading(true);
     try {
-      allPasses.forEach((p, i) => {
-        setTimeout(() => {
-          const svg  = buildStationSVG(p, rd, thickness, material);
-          const name = `roll-drawing-S${String(p.pass_no).padStart(2, "0")}-${material}-${p.target_angle_deg}deg.svg`;
-          triggerSVGDownload(svg, name);
-        }, i * 120);
+      const zip = new JSZip();
+      const folder = zip.folder(`SRE-${profType || "roll"}-REV${revision}`)!;
+      allPasses.forEach(p => {
+        const svg  = buildStationSVG(p, rd, thickness, material, profType, revision, approved);
+        const dxf  = buildStationDXF(p, rd, thickness, material, revision);
+        const base = `SRE-${(profType || material).substring(0,3).toUpperCase()}-S${String(p.pass_no).padStart(2,"0")}-REV${revision}`;
+        folder.file(`${base}.svg`, svg);
+        folder.file(`${base}.dxf`, dxf);
       });
-    } finally {
-      setTimeout(() => setDownloading(false), allPasses.length * 120 + 400);
-    }
-  }, [allPasses, rd, material, thickness]);
+      // README
+      folder.file("README.txt",
+        `SAI ROLOTECH SMART ENGINES — Roll Tooling Drawing Pack\n` +
+        `Profile: ${profType || "custom"}  Material: ${material}  Thickness: ${thickness}mm\n` +
+        `Revision: ${revision}  Stations: ${allPasses.length}\n` +
+        `Generated: ${new Date().toLocaleString("en-GB")}\n` +
+        `\nFiles: Each station has .svg (engineering drawing) + .dxf (CAD profile)\n` +
+        `DXF Layers: UPPER_ROLL (blue), LOWER_ROLL (green), STRIP (yellow), DIMS, CENTRE\n` +
+        `\n${approved ? "STATUS: APPROVED FOR MANUFACTURING" : "STATUS: ENGINEERING DRAFT — NOT FOR MANUFACTURE"}\n`
+      );
+      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+      triggerBlobDownload(blob, `SRE-${profType || "roll"}-REV${revision}-AllStations.zip`);
+    } finally { setDownloading(false); }
+  }, [allPasses, rd, material, thickness, profType, revision, approved]);
+
+  const handleDownloadDXF = useCallback(() => {
+    const dxf = buildStationDXF(pass, rd, thickness, material, revision);
+    triggerBlobDownload(
+      new Blob([dxf], { type: "application/dxf;charset=utf-8" }),
+      `${partBase}.dxf`,
+    );
+  }, [pass, rd, material, thickness, revision, partBase]);
 
   return (
     <div className="bg-[#0c1220] rounded-2xl border border-slate-700/60 overflow-hidden">
@@ -968,23 +1162,29 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
           </span>
         </div>
 
-        {/* Download buttons */}
-        <div className="flex items-center gap-2 ml-auto">
+        {/* Revision + Approved controls */}
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-lg px-2.5 py-1">
+            <Edit3 className="w-3 h-3 text-slate-400" />
+            <span className="text-[10px] text-slate-400">REV</span>
+            <input
+              type="text"
+              value={revision}
+              onChange={e => setRevision(e.target.value.toUpperCase().slice(0,4))}
+              className="w-8 bg-transparent text-xs font-bold text-amber-300 text-center outline-none"
+              maxLength={4}
+            />
+          </div>
           <button
-            onClick={handleDownloadStation}
-            disabled={downloading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-all disabled:opacity-50"
+            onClick={() => setApproved(v => !v)}
+            className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg border font-semibold transition-all ${
+              approved
+                ? "bg-green-500/15 border-green-500/50 text-green-400"
+                : "bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-300"
+            }`}
           >
-            <FileDown className="w-3.5 h-3.5" />
-            Download Station {pass.pass_no}
-          </button>
-          <button
-            onClick={handleDownloadAll}
-            disabled={downloading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-all disabled:opacity-50"
-          >
-            <Package className="w-3.5 h-3.5" />
-            {downloading ? "Downloading…" : `Download All ${totalPasses} Stations`}
+            {approved ? <Lock className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+            {approved ? "APPROVED" : "Draft"}
           </button>
         </div>
 
@@ -1024,6 +1224,47 @@ export default function RollDrawingPanel({ rollContour, rollDimensions }: Props)
           className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-30">
           <ChevronRight className="w-4 h-4" />
         </button>
+      </div>
+
+      {/* ── Export toolbar ── */}
+      <div className="px-4 py-2 border-b border-slate-700/40 bg-slate-900/40 flex items-center gap-2 flex-wrap">
+        <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mr-1">Export</span>
+
+        {/* SVG - current station */}
+        <button onClick={handleDownloadStation} disabled={downloading}
+          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-all disabled:opacity-50">
+          <FileDown className="w-3 h-3" /> SVG · S{pass.pass_no}
+        </button>
+
+        {/* PDF - current station */}
+        <button onClick={handleDownloadPDF} disabled={downloading}
+          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all disabled:opacity-50">
+          <FileText className="w-3 h-3" /> PDF · S{pass.pass_no}
+        </button>
+
+        {/* DXF - current station */}
+        <button onClick={handleDownloadDXF} disabled={downloading}
+          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all disabled:opacity-50">
+          <Download className="w-3 h-3" /> DXF · S{pass.pass_no}
+        </button>
+
+        <span className="w-px h-4 bg-slate-700 mx-0.5" />
+
+        {/* SVG All */}
+        <button onClick={handleDownloadAll} disabled={downloading}
+          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-all disabled:opacity-50">
+          <Layers className="w-3 h-3" /> SVG · All {totalPasses}
+        </button>
+
+        {/* ZIP All (SVG + DXF) */}
+        <button onClick={handleDownloadZIP} disabled={downloading}
+          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-all disabled:opacity-50">
+          <Archive className="w-3 h-3" />
+          {downloading ? "Building…" : `ZIP Pack · All ${totalPasses}`}
+        </button>
+
+        {/* Part number display */}
+        <span className="ml-auto text-[9px] font-mono text-slate-500">{partBase}</span>
       </div>
 
       {/* ── Active station info strip ── */}

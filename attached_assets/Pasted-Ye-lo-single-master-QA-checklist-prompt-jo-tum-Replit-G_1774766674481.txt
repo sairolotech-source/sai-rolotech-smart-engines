@@ -1,0 +1,616 @@
+Ye lo — **single master QA checklist prompt** jo tum Replit / Gemini / any coding agent ko de sakte ho taaki Roll Tooling Drawing module ko deeply test karke bugs, mismatch, export issues, geometry issues aur manufacturing risks pakde ja sake.
+
+# MASTER QA + VALIDATION PROMPT
+
+## Roll Tooling Drawing Panel — Production Grade Verification
+
+You are a senior CAD/CAM QA engineer, frontend QA engineer, SVG export specialist, and roll forming tooling reviewer.
+
+Your task is to fully validate the **Roll Tooling Drawing Panel** and its export pipeline.
+Do not assume anything is correct just because the frontend compiles.
+Treat this as a **manufacturing-sensitive drawing system** where even a small mismatch can create production loss.
+
+---
+
+## PRIMARY OBJECTIVE
+
+Audit, test, and verify the complete behavior of the Roll Tooling Drawing module, especially:
+
+1. **Download Station N**
+2. **Download All N Stations**
+3. Generated **SVG drawing structure**
+4. **Dimension correctness**
+5. **View-to-view consistency**
+6. **Station data consistency**
+7. **Print readiness**
+8. **Manufacturing readiness**
+9. **Failure cases**
+10. **UI/UX safety and reliability**
+
+You must inspect both:
+
+* frontend rendering logic
+* exported SVG generation logic
+
+Do not stop at surface-level review.
+You must perform a deep validation pass and report every issue clearly.
+
+---
+
+## MODULE CONTEXT
+
+The Roll Tooling Drawing panel produces SVG drawings after pipeline execution.
+
+Each exported SVG is expected to contain:
+
+* A3 landscape format: **1189 × 841**
+* DIN border with double-line frame
+* Title bar / title block
+* Cross-section nip view:
+
+  * upper roll profile
+  * lower roll profile
+  * strip between rolls
+  * bend angle annotation
+  * gap dimensions
+  * depth dimensions
+* Front view:
+
+  * full circular roll
+  * OD dimension
+  * bore with H7 notation
+  * keyway per DIN 6885
+  * groove depth cut
+* Side view / Section A-A:
+
+  * axial cross-section
+  * face width
+  * OD
+  * bore pocket
+  * groove profile
+* DIN title block fields
+* Forming data box
+* Watermark: **SAI ROLOTECH**
+
+---
+
+## STRICT QA RULES
+
+1. Never say “looks fine” without proof.
+2. Never assume dimensions are correct because labels exist.
+3. Compare displayed values against source calculation data.
+4. Compare all views against each other.
+5. Report exact mismatch source:
+
+   * calculation bug
+   * rendering bug
+   * labeling bug
+   * export bug
+   * stale state bug
+   * formatting bug
+   * browser download bug
+6. If data is missing, say exactly which variable or pipeline stage is missing.
+7. If a fix is needed, propose the safest fix with minimal regression risk.
+8. Do not rewrite unrelated code.
+9. Preserve working behavior where possible.
+10. Prioritize manufacturing correctness over visual prettiness.
+
+---
+
+## TEST EXECUTION PLAN
+
+Run all of the following checks.
+
+---
+
+# PART 1 — UI BEHAVIOR VALIDATION
+
+Validate the panel behavior in the app UI.
+
+### Check:
+
+* Do buttons appear only after pipeline execution?
+* Are buttons hidden before data exists?
+* Does selected station button text update correctly?
+* Does total station count update correctly?
+* Is the header layout stable on small and large screen widths?
+* Do buttons overlap title text?
+* Are buttons disabled when station data is invalid or empty?
+* Does changing selected station update preview and export target together?
+* Is there any stale station selection after rerun?
+
+### Must detect:
+
+* hidden state bugs
+* stale state bugs
+* null data crashes
+* wrong selected station export
+* header overflow issues
+
+---
+
+# PART 2 — DOWNLOAD FUNCTION VALIDATION
+
+Validate both button actions.
+
+## A. Download Station N
+
+Check:
+
+* Does it download exactly one SVG?
+* Is the filename correct?
+* Is the selected station number correct in filename and content?
+* Does downloaded file open in browser correctly?
+* Does repeated clicking cause duplicate or broken files?
+* Does it fail silently?
+
+## B. Download All N Stations
+
+Check:
+
+* Does it export all stations?
+* Are all stations unique?
+* Are filenames unique and ordered?
+* Does stagger delay actually prevent browser blocking?
+* Is any station skipped?
+* Are there race conditions?
+* Are wrong station drawings exported due to async closure/state bug?
+* Does export break when station count is high?
+
+### Test with:
+
+* 1 station
+* 2 stations
+* 4 stations
+* 8 stations
+* 12 stations
+* max realistic station count supported by pipeline
+
+---
+
+# PART 3 — SVG FILE STRUCTURE VALIDATION
+
+For every exported SVG, inspect structure.
+
+### Verify:
+
+* valid SVG root
+* correct width and height
+* proper viewBox
+* no clipped geometry
+* no off-canvas geometry
+* no missing groups
+* no broken paths
+* no NaN / undefined / null in SVG attributes
+* no text overlap in title block
+* no dimension arrows outside sheet
+* no hidden annotation behind other layers
+
+### Must flag:
+
+* malformed SVG
+* invalid numeric values
+* rendering only in browser but not in CAD/SVG tools
+* missing namespace issues
+* print scaling issues
+
+---
+
+# PART 4 — DRAWING LAYOUT VALIDATION
+
+Confirm sheet layout is professional and readable.
+
+### Verify:
+
+* A3 landscape proportions are correct
+* border margin is consistent
+* double-line DIN frame is correctly placed
+* title block fits inside lower/right zone properly
+* forming data box placement is stable
+* watermark centered and not blocking dimensions
+* all three views are placed cleanly
+* sufficient white space exists
+* no overlapping leaders, arrows, dimension text, or section labels
+
+### Must test:
+
+* short profile
+* wide profile
+* deep profile
+* large OD case
+* small OD case
+
+---
+
+# PART 5 — GEOMETRY VALIDATION
+
+This is critical.
+
+You must verify that the geometry shown in each view is consistent with the station tooling data.
+
+## Cross-section nip view
+
+Check:
+
+* upper roll contour matches upper geometry
+* lower roll contour matches lower geometry
+* strip sits correctly in nip
+* strip thickness visually and numerically makes sense
+* roll gap is correct
+* form depth is correct
+* bend angle annotation matches station value
+* center alignment is correct
+* upper and lower profiles do not unintentionally intersect
+
+## Front view
+
+Check:
+
+* OD circle matches stated OD
+* bore size matches title block and dimension callout
+* keyway width/depth is correct if represented
+* groove depth cut matches tooling values
+* concentricity is maintained
+
+## Side view / Section A-A
+
+Check:
+
+* face width matches stated width
+* OD matches front view OD
+* bore matches front view bore
+* groove profile depth matches nip/front values
+* section is logically consistent with actual roll body
+
+### Must detect:
+
+* same data labeled differently in different views
+* graphic approximation not matching numbers
+* incorrect scale between views
+* groove depth mismatch
+* bore mismatch
+* section/profile inconsistency
+
+---
+
+# PART 6 — DIMENSION VALIDATION
+
+Every dimension must be checked against source data and against visible geometry.
+
+### Verify:
+
+* OD dimension
+* bore dimension
+* keyway dimension
+* face width
+* roll gap
+* form depth
+* strip width
+* bend angle
+* shaft size in title block
+* material and thickness fields
+
+### For each dimension:
+
+* identify source variable
+* identify render location
+* confirm numeric value
+* confirm unit consistency
+* confirm text formatting
+* confirm placement readability
+
+### Must detect:
+
+* rounded label but unrounded geometry
+* mm value mismatch
+* stale values from prior pipeline run
+* title block values not syncing with drawing
+* dimension text detached from dimension lines
+
+---
+
+# PART 7 — TITLE BLOCK VALIDATION
+
+Inspect title block deeply.
+
+### Confirm correct population of:
+
+* Drawing No.
+* Profile Type
+* Material
+* Thickness
+* Date
+* Roll OD
+* Bore
+* Face Width
+* Shaft
+* Keyway
+* Roll Material
+* Surface Finish
+
+### Check:
+
+* empty values
+* placeholder text accidentally exported
+* old station data shown on new station
+* formatting inconsistent across stations
+* date generation format stability
+* text overflow inside title block cells
+
+---
+
+# PART 8 — FORMING DATA BOX VALIDATION
+
+Verify:
+
+* Bend Angle
+* Roll Gap
+* Form Depth
+* Strip Width
+* Progress %
+
+### Check:
+
+* progress matches station index and total count
+* bend angle matches station stage
+* strip width matches input width or developed width logic used
+* form depth matches actual geometry
+* roll gap matches cross-section dimension display
+
+---
+
+# PART 9 — PIPELINE INPUT TEST MATRIX
+
+Run the module with multiple realistic cases.
+
+## Mandatory test cases
+
+### Case 1
+
+* Bend Count: 2
+* Width: 170
+* Height: 50
+* Thickness: 3
+* Material: MS
+
+### Case 2
+
+* Bend Count: 4
+* Width: 100
+* Height: 40
+* Thickness: 1.2
+* Material: GI
+
+### Case 3
+
+* Bend Count: 6
+* Width: 250
+* Height: 75
+* Thickness: 2
+* Material: SS
+
+### Case 4
+
+* Bend Count: 8
+* Width: 60
+* Height: 25
+* Thickness: 0.8
+* Material: CR
+
+### Case 5
+
+* Thin strip edge case
+* Thickness: 0.4
+
+### Case 6
+
+* Thick strip edge case
+* Thickness: 4 to 6 if supported
+
+### Case 7
+
+* Very small profile width
+* Very large profile width
+
+### Case 8
+
+* High station count stress test
+
+For each case report:
+
+* station count
+* render success/failure
+* export success/failure
+* geometry quality
+* dimension consistency
+* title block correctness
+* any browser performance issue
+
+---
+
+# PART 10 — STATE MANAGEMENT / RERUN TESTS
+
+This is very important.
+
+Validate what happens when user changes inputs and reruns pipeline.
+
+### Test sequence:
+
+1. Run one profile
+2. Select a later station
+3. Download Station
+4. Change inputs
+5. Rerun pipeline
+6. Download again
+7. Download All
+
+### Must verify:
+
+* no stale old SVG content
+* selected station resets or remains intentionally and correctly
+* station count updates
+* no mixed title block values from previous run
+* no old geometry reused
+* no cached watermark/title/date issues
+
+---
+
+# PART 11 — ERROR HANDLING
+
+Force bad conditions.
+
+### Test:
+
+* empty pipeline result
+* missing station array
+* one station missing required fields
+* undefined bend angle
+* invalid thickness
+* negative width
+* zero OD
+* null bore
+* NaN dimension values
+
+### Verify:
+
+* app does not crash
+* buttons hide or disable safely
+* export refuses invalid drawing safely
+* user gets clear error feedback
+* no corrupted SVG download occurs
+
+---
+
+# PART 12 — PRINT / FABRICATION READINESS
+
+Treat drawing as if it may be sent to production.
+
+### Verify:
+
+* sheet opens in browser
+* sheet opens in SVG-capable design tool
+* linework is readable at print scale
+* dimensions are legible
+* watermark does not hide dimensions
+* title block readable
+* border not clipped in print
+* scaling remains correct when printed to A3 landscape
+
+### Must report:
+
+* suitable for concept only
+* suitable for review
+* suitable for shop drawing
+* suitable for manufacturing release
+* not suitable yet
+
+You must choose one of these and justify it.
+
+---
+
+# PART 13 — CODE REVIEW CHECKS
+
+Inspect implementation quality.
+
+### Check:
+
+* pure function vs UI-coupled export logic
+* repeated code blocks that may drift
+* hardcoded dimensions
+* magic numbers without explanation
+* missing type safety
+* async download loop safety
+* cleanup of object URLs if used
+* encoding correctness
+* text escaping in SVG
+* locale/date formatting stability
+* deterministic output across runs
+
+### Must identify:
+
+* quick patch code
+* fragile assumptions
+* future regression risks
+* missing helpers/utilities
+* maintainability concerns
+
+---
+
+# PART 14 — OUTPUT FORMAT REQUIRED
+
+Your final report must be structured exactly like this:
+
+## 1. Overall Verdict
+
+* PASS / PASS WITH RISKS / FAIL
+
+## 2. What Works Correctly
+
+* bullet list
+
+## 3. Critical Bugs
+
+* bullet list with severity and exact cause
+
+## 4. Geometry / Dimension Issues
+
+* bullet list
+
+## 5. Export / Download Issues
+
+* bullet list
+
+## 6. UI / State Issues
+
+* bullet list
+
+## 7. Print / Manufacturing Readiness
+
+* choose one:
+
+  * concept only
+  * review ready
+  * shop drawing ready
+  * manufacturing ready
+* explain why
+
+## 8. Recommended Fixes in Priority Order
+
+* P0
+* P1
+* P2
+
+## 9. Safe Code Changes to Apply Now
+
+* only minimal low-risk fixes
+
+## 10. Optional Improvements
+
+* future enhancements only
+
+---
+
+# PART 15 — IMPORTANT FINAL INSTRUCTION
+
+Do not give generic feedback.
+
+For every issue found, include:
+
+* where it is
+* why it happens
+* severity
+* what user will experience
+* safest fix
+
+If no issue is found in a category, explicitly write:
+
+* “No issue found in this category after validation.”
+
+Do not skip any section.
+
+Iske baad tum us agent ko ye bhi bol sakte ho:
+
+**“First inspect the current implementation, then run the full validation, then give me only real issues — not generic suggestions.”**
+
+Agar chaho, main ab iska **Phase 2 master prompt** bhi likh deta hoon:
+**SVG + PDF + DXF + ZIP export engine ke liye**.

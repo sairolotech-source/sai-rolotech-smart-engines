@@ -1,8 +1,30 @@
 import { useState } from "react";
 import type { ManualModePayload } from "@/services/pythonApi";
 
-const MATERIALS = ["GI", "GP", "CR", "HR", "MS", "SS", "ALUMINIUM"];
-const PROFILES = ["simple_channel", "lipped_channel", "shutter_profile", "complex_profile"];
+const MATERIALS = ["GI", "GP", "CR", "HR", "MS", "SS", "AL", "CU", "HSLA", "TI", "PP"];
+const PROFILES = [
+  "c_channel",
+  "simple_channel",
+  "z_purlin",
+  "lipped_channel",
+  "hat_section",
+  "angle_section",
+  "box_section",
+  "complex_section",
+  "shutter_profile",
+];
+
+const PROFILE_LABELS: Record<string, string> = {
+  c_channel:       "C-section / Channel",
+  simple_channel:  "Simple Channel / U",
+  z_purlin:        "Z-section / Z-Purlin",
+  lipped_channel:  "Lipped Channel (C+lips)",
+  hat_section:     "Hat / Omega Section",
+  angle_section:   "Simple Angle (L)",
+  box_section:     "Box / Hollow Section",
+  complex_section: "Complex / Multi-bend",
+  shutter_profile: "Shutter / Roller Door",
+};
 
 interface Props {
   onRun: (payload: ManualModePayload) => void;
@@ -11,15 +33,17 @@ interface Props {
 
 export function InputPanel({ onRun, loading }: Props) {
   const [form, setForm] = useState<ManualModePayload>({
-    bend_count: 6,
-    section_width_mm: 120,
-    section_height_mm: 55,
-    thickness: 1.0,
-    material: "CR",
-    profile_type: "lipped_channel",
+    bend_count:        2,
+    section_width_mm:  60,
+    section_height_mm: 40,
+    thickness:         1.5,
+    material:          "GI",
+    profile_type:      "c_channel",
+    return_bends_count: 0,
+    lips_present:      false,
   });
 
-  function set(key: keyof ManualModePayload, value: string | number) {
+  function set<K extends keyof ManualModePayload>(key: K, value: ManualModePayload[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
@@ -28,6 +52,40 @@ export function InputPanel({ onRun, loading }: Props) {
       <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Manual Mode Input</div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-gray-500">Profile Type</span>
+          <select
+            value={form.profile_type}
+            onChange={e => set("profile_type", e.target.value)}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
+          >
+            {PROFILES.map(p => (
+              <option key={p} value={p}>{PROFILE_LABELS[p] ?? p}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-gray-500">Material</span>
+          <select
+            value={form.material}
+            onChange={e => set("material", e.target.value)}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
+          >
+            {MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-gray-500">Thickness (mm)</span>
+          <input
+            type="number" min={0.3} max={6} step={0.05}
+            value={form.thickness}
+            onChange={e => set("thickness", Number(e.target.value))}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
+          />
+        </label>
+
         <label className="flex flex-col gap-1">
           <span className="text-[10px] text-gray-500">Bend Count</span>
           <input
@@ -59,35 +117,23 @@ export function InputPanel({ onRun, loading }: Props) {
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] text-gray-500">Thickness (mm)</span>
+          <span className="text-[10px] text-gray-500">Return Bends</span>
           <input
-            type="number" min={0.3} max={4} step={0.05}
-            value={form.thickness}
-            onChange={e => set("thickness", Number(e.target.value))}
+            type="number" min={0} max={6}
+            value={form.return_bends_count ?? 0}
+            onChange={e => set("return_bends_count", Number(e.target.value))}
             className="rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
           />
         </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-[10px] text-gray-500">Material</span>
-          <select
-            value={form.material}
-            onChange={e => set("material", e.target.value)}
-            className="rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
-          >
-            {MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-[10px] text-gray-500">Profile Type</span>
-          <select
-            value={form.profile_type}
-            onChange={e => set("profile_type", e.target.value)}
-            className="rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
-          >
-            {PROFILES.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
+        <label className="flex items-center gap-2 col-span-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.lips_present ?? false}
+            onChange={e => set("lips_present", e.target.checked)}
+            className="w-4 h-4 rounded accent-violet-500"
+          />
+          <span className="text-sm text-gray-300">Lips / stiffeners present</span>
         </label>
       </div>
 

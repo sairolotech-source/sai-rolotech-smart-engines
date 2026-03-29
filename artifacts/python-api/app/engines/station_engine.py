@@ -120,28 +120,40 @@ def estimate(
     recommended = min(recommended, 30)
     minimum     = max(bend_count + 2, recommended - 2)
 
+    # ── Premium / high-accuracy tier ──────────────────────────────────────────
+    # Extra intermediate straightening passes (≈20% more forming passes)
+    # + 1 extra calibration pass for all materials
+    # + 1 more for hard materials (SS, HSLA, TI) needing tighter sizing
+    extra_intermediate = max(1, math.ceil(forming_passes * 0.20))
+    extra_calib_premium = 2 if material in {"SS", "HSLA", "TI"} else 1
+    premium = min(recommended + extra_intermediate + extra_calib_premium, 36)
+
     reason_log = {
-        "passes_per_bend":         ppb,
-        "forming_passes":          forming_passes,
-        "entry_stations":          entry_stations,
-        "calibration_stations":    calibration_stations,
-        "section_extra":           section_extra,
-        "return_extra":            return_extra,
-        "springback_extra":        springback_extra,
-        "max_angle_per_pass_deg":  _max_angle_per_pass(material, thickness),
-        "primary_bend_angle_deg":  PRIMARY_ANGLE,
-        "material":                material,
-        "thickness_band":          _thickness_band(thickness),
+        "passes_per_bend":           ppb,
+        "forming_passes":            forming_passes,
+        "entry_stations":            entry_stations,
+        "calibration_stations":      calibration_stations,
+        "section_extra":             section_extra,
+        "return_extra":              return_extra,
+        "springback_extra":          springback_extra,
+        "max_angle_per_pass_deg":    _max_angle_per_pass(material, thickness),
+        "primary_bend_angle_deg":    PRIMARY_ANGLE,
+        "material":                  material,
+        "thickness_band":            _thickness_band(thickness),
+        "premium_extra_intermediate": extra_intermediate,
+        "premium_extra_calib":       extra_calib_premium,
     }
 
     logger.info(
-        "[station_engine v2.0] bends=%d mat=%s t=%.2f ppb=%d forming=%d → recommended=%d min=%d",
-        bend_count, material, thickness, ppb, forming_passes, recommended, minimum,
+        "[station_engine v2.0] bends=%d mat=%s t=%.2f ppb=%d forming=%d "
+        "→ min=%d recommended=%d premium=%d",
+        bend_count, material, thickness, ppb, forming_passes, minimum, recommended, premium,
     )
 
     return pass_response("station_engine", {
-        "recommended_station_count": recommended,
         "min_station_count":         minimum,
+        "recommended_station_count": recommended,
+        "premium_station_count":     premium,
         "complexity_tier":           flower_result.get("forming_complexity_class", "SIMPLE"),
         "section_type":              section_type,
         "reason_log":                reason_log,

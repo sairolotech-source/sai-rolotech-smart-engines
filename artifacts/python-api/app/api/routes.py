@@ -293,7 +293,8 @@ def execute_manual_pipeline(data: ManualProfileInput) -> Dict[str, Any]:
         "profile_type": data.profile_type or COMPLEXITY_LABELS[complexity],
         "complexity_tier": complexity,
         "profile_open": True,
-        "return_bends_count": 0,
+        "return_bends_count": data.return_bends_count,
+        "lips_present": data.lips_present,
         "symmetry_status": "unknown",
     }
 

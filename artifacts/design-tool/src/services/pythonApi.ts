@@ -7,6 +7,8 @@ export interface ManualModePayload {
   thickness: number;
   material: string;
   profile_type: string;
+  return_bends_count?: number;
+  lips_present?: boolean;
 }
 
 export async function runManualModeDebug(payload: ManualModePayload) {

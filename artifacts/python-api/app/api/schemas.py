@@ -17,3 +17,5 @@ class ManualProfileInput(BaseModel):
     thickness: float = Field(..., gt=0, description="Sheet thickness in mm")
     material: str = Field(..., description="Material code")
     profile_type: Optional[str] = Field("custom", description="Profile label override")
+    return_bends_count: int = Field(0, ge=0, description="Number of return/hem bends")
+    lips_present: bool = Field(False, description="Whether lips/stiffeners are present")

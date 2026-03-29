@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useCncStore } from "@/store/useCncStore";
 import { Activity, FlaskConical, Download, FileJson, ArrowLeft, Package } from "lucide-react";
 import { InputPanel } from "@/components/python-dashboard/InputPanel";
 import { PipelineStatusPanel } from "@/components/python-dashboard/PipelineStatusPanel";
@@ -25,6 +26,10 @@ import {
 } from "@/services/pythonApi";
 
 export default function PythonDashboard() {
+  const setNumStations     = useCncStore(s => s.setNumStations);
+  const setMaterialType    = useCncStore(s => s.setMaterialType);
+  const setMaterialThickness = useCncStore(s => s.setMaterialThickness);
+
   const [loading, setLoading] = useState(false);
   const [semiAutoLoading, setSemiAutoLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
@@ -44,6 +49,18 @@ export default function PythonDashboard() {
   const [pdfResult, setPdfResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmedNote, setConfirmedNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pipelineResult) return;
+    const stEng  = pipelineResult.station_engine as Record<string, unknown> | undefined;
+    const inEng  = pipelineResult.input_engine   as Record<string, unknown> | undefined;
+    const rec    = stEng?.recommended_station_count;
+    const mat    = inEng?.material as string | undefined;
+    const thick  = inEng?.sheet_thickness_mm as number | undefined;
+    if (typeof rec === "number" && rec > 0) setNumStations(rec);
+    if (mat)   setMaterialType(mat as Parameters<typeof setMaterialType>[0]);
+    if (thick) setMaterialThickness(thick);
+  }, [pipelineResult, setNumStations, setMaterialType, setMaterialThickness]);
 
   const runDebug = useCallback(async (form: ManualModePayload, isSemiConfirm = false) => {
     if (isSemiConfirm) setSemiAutoLoading(true);

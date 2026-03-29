@@ -80,9 +80,11 @@ def build_summary(
     roll_calc: Dict[str, Any],
     machine_layout: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    station_count = station.get("recommended_station_count", "N/A")
-    shaft_dia     = shaft.get("suggested_shaft_diameter_mm", "N/A")
-    ml            = machine_layout or {}
+    station_count   = station.get("recommended_station_count", "N/A")
+    station_min     = station.get("min_station_count",         "N/A")
+    station_premium = station.get("premium_station_count",     "N/A")
+    shaft_dia       = shaft.get("suggested_shaft_diameter_mm", "N/A")
+    ml              = machine_layout or {}
 
     return {
         "project_type":             "Roll Forming Preliminary Engineering",
@@ -96,7 +98,9 @@ def build_summary(
         "forming_complexity_class": flower.get("forming_complexity_class", "N/A"),
         "complexity_score":         flower.get("complexity_score", "N/A"),
         "estimated_forming_passes": flower.get("estimated_forming_passes", "N/A"),
+        "min_station_count":        station_min,
         "recommended_station_count": station_count,
+        "premium_station_count":    station_premium,
         "shaft_diameter_mm":        shaft_dia,
         "bearing_type":             bearing.get("suggested_bearing_type", "N/A"),
         "machine_duty_class":       duty.get("duty_class", roll_calc.get("duty_class", "N/A")),
@@ -196,11 +200,18 @@ def build_readable_report(
     # ── SECTION 5: STATION ESTIMATE ───────────────────────────────────────────
     lines.append("SECTION 5: STATION ESTIMATE")
     lines.append("-" * 40)
-    lines.append(f"  Recommended Stations : {summary['recommended_station_count']}")
+    lines.append(f"  Minimum Safe Stations  : {summary.get('min_station_count', 'N/A')}")
+    lines.append(f"  Recommended Stations   : {summary['recommended_station_count']}")
+    lines.append(f"  Premium / High-Acc.    : {summary.get('premium_station_count', 'N/A')}")
+    rl = station.get("reason_log", {})
+    if rl:
+        lines.append(f"  Passes/Bend            : {rl.get('passes_per_bend', '?')}  "
+                     f"(max {rl.get('max_angle_per_pass_deg', '?')}°/pass, "
+                     f"{rl.get('thickness_band', '?')} {rl.get('material', '?')})")
     stations_note = station.get("notes", [])
     for n in (stations_note if isinstance(stations_note, list) else [stations_note]):
         if n:
-            lines.append(f"  Note                 : {n}")
+            lines.append(f"  Note                   : {n}")
     lines.append("")
 
     # ── SECTION 6: SHAFT & BEARING SELECTION ──────────────────────────────────

@@ -19,6 +19,7 @@ import RollGrooveSvgPanel from "@/components/python-dashboard/RollGrooveSvgPanel
 import CadExportPanel from "@/components/python-dashboard/CadExportPanel";
 import RollFormingSimulator from "@/components/python-dashboard/RollFormingSimulator";
 import RollDrawingPanel from "@/components/python-dashboard/RollDrawingPanel";
+import RollForming3DPanel from "@/components/python-dashboard/RollForming3DPanel";
 import {
   runManualModeDebug,
   exportManualPdf,
@@ -403,6 +404,15 @@ export default function PythonDashboard() {
             <SummaryCards summary={summary} />
             {machineLayout && <MachineLayoutPanel data={machineLayout as any} />}
             <RollContourPanel data={rollContour as any} />
+
+            {/* ── 3D Roll Forming Simulation ────────────────────────────── */}
+            <RollForming3DPanel
+              rollContour={rollContour as any}
+              webMm={(payload?.section_height_mm as number) ?? (detectedValues.section_height_mm as number) ?? 60}
+              flangeMm={(payload?.section_width_mm as number) ?? (detectedValues.section_width_mm as number) ?? 40}
+              thicknessMm={(payload?.thickness as number) ?? 1.5}
+              material={(payload?.material as string) ?? "GI"}
+            />
 
             {/* ── SVG Engineering Tabs ──────────────────────────────────── */}
             <div className="rounded-xl border border-gray-700/40 bg-[#0d1117] overflow-hidden">

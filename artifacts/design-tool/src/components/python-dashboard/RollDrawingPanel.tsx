@@ -278,14 +278,63 @@ function CrossSectionView({
         </g>
       )}
 
+      {/* ── Contact-point red dots ──────────────────── */}
+      {(() => {
+        const contactPts: Array<{ x: number; y: number; label: string }> = [];
+        // Upper roll contact: first, last, and inflection points
+        if (upperPx.length > 0) {
+          contactPts.push({ ...upperPx[0],                           label: "U" });
+          contactPts.push({ ...upperPx[upperPx.length - 1],          label: "U" });
+          if (upperPx.length > 4) contactPts.push({ ...upperPx[Math.floor(upperPx.length / 2)], label: "U" });
+        }
+        // Lower roll contact: first, last
+        if (lowerPx.length > 0) {
+          contactPts.push({ ...lowerPx[0],                           label: "L" });
+          contactPts.push({ ...lowerPx[lowerPx.length - 1],          label: "L" });
+        }
+        // Detect corner inflection points in upper profile
+        for (let i = 1; i < upperPx.length - 1; i++) {
+          const dx1 = upperPx[i].x - upperPx[i-1].x;
+          const dy1 = upperPx[i].y - upperPx[i-1].y;
+          const dx2 = upperPx[i+1].x - upperPx[i].x;
+          const dy2 = upperPx[i+1].y - upperPx[i].y;
+          const ang = Math.abs(Math.atan2(dy1*dx2 - dx1*dy2, dx1*dx2 + dy1*dy2));
+          if (ang > 0.15) contactPts.push({ ...upperPx[i], label: "C" });
+        }
+        return contactPts.map((cp, ci) => (
+          <g key={`rdp-cp-${ci}`}>
+            <circle cx={cp.x} cy={cp.y} r="5" fill="#ef4444" opacity="0.12" />
+            <circle cx={cp.x} cy={cp.y} r="3" fill="#ef4444" opacity="0.8" />
+            <circle cx={cp.x} cy={cp.y} r="1.2" fill="#ffffff" opacity="0.95" />
+          </g>
+        ));
+      })()}
+
+      {/* ── Neutral zone shading — mid-strip region ── */}
+      <rect
+        x={upperPx[Math.floor(upperPx.length * 0.3)]?.x ?? pad}
+        y={stripY1}
+        width={Math.abs((upperPx[Math.floor(upperPx.length * 0.7)]?.x ?? W-pad) - (upperPx[Math.floor(upperPx.length * 0.3)]?.x ?? pad))}
+        height={stripH}
+        fill="#6366f1" opacity="0.08"
+        stroke="#6366f1" strokeWidth="0.4" strokeDasharray="2,2"
+      />
+      <text
+        x={W / 2} y={(stripY1 + stripY2) / 2 + 2}
+        fontSize="4.5" fill="#6366f1" textAnchor="middle" opacity="0.7"
+      >Neutral Zone</text>
+
       {/* Legend */}
-      <rect x={4} y={4} width={70} height={32} fill="#0f172a" stroke="#1e293b" strokeWidth="0.5" rx="2" />
+      <rect x={4} y={4} width={82} height={44} fill="#0f172a" stroke="#1e293b" strokeWidth="0.5" rx="2" />
       <line x1={8} y1={12} x2={20} y2={12} stroke="#60a5fa" strokeWidth="1.5" />
       <text x={23} y={14} fontSize="5.5" fill="#94a3b8">Upper Roll</text>
       <line x1={8} y1={22} x2={20} y2={22} stroke="#34d399" strokeWidth="1.5" />
       <text x={23} y={24} fontSize="5.5" fill="#94a3b8">Lower Roll</text>
       <rect x={8} y={27} width={12} height={4} fill="#fbbf24" opacity="0.5" />
       <text x={23} y={33} fontSize="5.5" fill="#94a3b8">Strip</text>
+      <circle cx={13} cy={39} r="2.5" fill="#ef4444" opacity="0.85" />
+      <circle cx={13} cy={39} r="1" fill="#ffffff" opacity="0.9" />
+      <text x={23} y={41} fontSize="5.5" fill="#94a3b8">Contact Point</text>
 
       {/* Title block */}
       <text x={W / 2} y={H - 6} fontSize="6" fill="#475569" textAnchor="middle">
@@ -587,6 +636,7 @@ export default function RollDrawingPanel({
 }: Props) {
   const [selected,      setSelected]      = useState(0);
   const [view,          setView]          = useState<"all3"|"cross"|"front"|"side">("all3");
+  const [drawingMode,   setDrawingMode]   = useState<"basic"|"engineering"|"manufacturing">("engineering");
   const [downloading,   setDownloading]   = useState(false);
   const [revision,      setRevision]      = useState("R0");
   const [releaseState,  setReleaseState]  = useState<ReleaseState>("draft");
@@ -862,7 +912,7 @@ export default function RollDrawingPanel({
       </div>
 
       {/* ── View toggle ── */}
-      <div className="flex gap-1.5 px-5 py-2 border-b border-slate-700/30">
+      <div className="flex gap-1.5 px-5 py-2 border-b border-slate-700/30 flex-wrap">
         {([
           ["all3",  "All 3 Views",   Layers      ],
           ["cross", "Cross-Section", Circle      ],
@@ -881,7 +931,41 @@ export default function RollDrawingPanel({
             <Icon className="w-3 h-3" />{label}
           </button>
         ))}
+        <div className="ml-auto flex items-center gap-1">
+          <span className="text-[9px] text-slate-600 mr-1">Mode:</span>
+          {([
+            ["basic",           "Basic",         "text-sky-400",    "border-sky-500/40 bg-sky-500/10"   ],
+            ["engineering",     "Engineering",   "text-violet-400", "border-violet-500/40 bg-violet-500/10"],
+            ["manufacturing",   "Mfg Release",   "text-amber-400",  "border-amber-500/40 bg-amber-500/10"],
+          ] as const).map(([m, label, activeText, activeBg]) => (
+            <button
+              key={m}
+              onClick={() => setDrawingMode(m)}
+              className={`text-[9px] px-2.5 py-1 rounded-lg border transition-all ${
+                drawingMode === m
+                  ? `${activeText} ${activeBg} font-semibold`
+                  : "border-slate-700/50 text-slate-600 hover:text-slate-400"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* ── Drawing mode info banner ── */}
+      {drawingMode === "basic" && (
+        <div className="px-5 py-1.5 border-b border-sky-500/15 bg-sky-500/5 text-[9px] text-sky-400 flex items-center gap-1.5">
+          <Info className="w-3 h-3" />
+          Basic View — station number, bend angle, flower step, upper/lower roll contact. For operator or client demos.
+        </div>
+      )}
+      {drawingMode === "manufacturing" && (
+        <div className="px-5 py-1.5 border-b border-amber-500/15 bg-amber-500/5 text-[9px] text-amber-400 flex items-center gap-1.5">
+          <Info className="w-3 h-3" />
+          Manufacturing View — full machining details with tolerances, part number, revision, and assembly relation.
+        </div>
+      )}
 
       {/* ── Stage badge ── */}
       <div className="px-5 pt-3 pb-1 flex items-center gap-2">
@@ -946,6 +1030,62 @@ export default function RollDrawingPanel({
           </div>
         )}
       </div>
+
+      {/* ── Drawing Mode Detail Panel ── */}
+      {drawingMode === "basic" && (
+        <div className="mx-5 mb-3 rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
+          <div className="text-[9px] uppercase tracking-wider text-sky-500 font-semibold mb-2 flex items-center gap-1.5">
+            <Info className="w-3 h-3" /> Basic View Summary
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              ["Station",       `${pass.pass_no} / ${totalPasses}`             ],
+              ["Bend Angle",    `${pass.target_angle_deg}°`                     ],
+              ["Stage",         pass.stage_type.replace(/_/g," ").toUpperCase() ],
+              ["Progress",      `${pass.pass_progress_pct.toFixed(0)}%`         ],
+              ["Strip Width",   `${pass.strip_width_mm.toFixed(1)} mm`          ],
+              ["Roll Gap",      `${pass.roll_gap_mm.toFixed(2)} mm`             ],
+              ["Upper Contact", "Left + Right edges"],
+              ["Lower Contact", "Web center zone"],
+            ].map(([k, v]) => (
+              <div key={k} className="text-xs">
+                <div className="text-sky-600 text-[9px]">{k}</div>
+                <div className="text-slate-300 font-mono">{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {drawingMode === "manufacturing" && (
+        <div className="mx-5 mb-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+          <div className="text-[9px] uppercase tracking-wider text-amber-500 font-semibold mb-2 flex items-center gap-1.5">
+            <Info className="w-3 h-3" /> Manufacturing Release Details
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {[
+              ["Part Number",   `SRT-${profType?.toUpperCase() ?? "ROLL"}-S${pass.pass_no.toString().padStart(2,"0")}-${revision}` ],
+              ["Material",      "EN31 / D2 Tool Steel (60+ HRC)"               ],
+              ["OD Tolerance",  `Ø ${rd.estimated_roll_od_mm.toFixed(1)} ±0.02 mm` ],
+              ["Bore Tolerance",`Ø ${rd.bore_dia_mm.toFixed(1)} H7 (+0.025/0)` ],
+              ["Face Width",    `${rd.face_width_mm} ±0.05 mm`                  ],
+              ["Keyway",        `${rd.keyway_width_mm} mm JS9`                  ],
+              ["Surface Finish","Ra 0.8 µm (ground)"                            ],
+              ["Hardness",      "58–62 HRC (case), 38–42 HRC (core)"           ],
+              ["Inspection",    "100% CMM + Hardness check"                    ],
+            ].map(([k, v]) => (
+              <div key={k} className="text-xs">
+                <div className="text-amber-600 text-[9px]">{k}</div>
+                <div className="text-slate-300 font-mono text-[10px] leading-tight">{v}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-amber-500/15 text-[9px] text-slate-600 font-mono">
+            Machining note: Rough turn → Hardening → Finish grind OD → Bore → Keyway → Profile mill.
+            Profile contour to be verified by CMM against CAD model before assembly.
+          </div>
+        </div>
+      )}
 
       {/* ── Export toolbar ── */}
       <div className="border-t border-slate-700/40 px-5 py-3 bg-slate-900/30">

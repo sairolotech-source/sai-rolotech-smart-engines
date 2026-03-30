@@ -14,36 +14,61 @@ interface Message {
 }
 
 interface Props {
-  pipelineResult?: Record<string, unknown> | null;
-  payload?:        Record<string, unknown> | null;
+  pipelineResult?:       Record<string, unknown> | null;
+  payload?:              Record<string, unknown> | null;
+  profileCategory?:      string | null;
+  remainingWeaknesses?:  string[];
 }
 
 // ─── Quick prompts ────────────────────────────────────────────────────────────
-const QUICK: { icon: React.ReactNode; label: string; prompt: string }[] = [
+const QUICK: { icon: React.ReactNode; label: string; prompt: string; shutter?: boolean }[] = [
   {
-    icon:   <FlaskConical className="w-3 h-3" />,
-    label:  "Flat strip formula",
-    prompt: "Explain the neutral-axis flat strip formula used here and verify it gives the correct result for my current profile.",
+    icon:    <FlaskConical className="w-3 h-3" />,
+    label:   "Flat strip formula",
+    prompt:  "Explain the neutral-axis flat strip formula used here and verify it gives the correct result for my current profile.",
   },
   {
-    icon:   <Zap className="w-3 h-3" />,
-    label:  "Roll gap analysis",
-    prompt: "Analyze the roll gap and groove depth for each station. Are they within standard manufacturing tolerances? Suggest adjustments if needed.",
+    icon:    <Zap className="w-3 h-3" />,
+    label:   "Roll gap analysis",
+    prompt:  "Analyze the roll gap and groove depth for each station. Are they within standard manufacturing tolerances? Suggest adjustments if needed.",
   },
   {
-    icon:   <Code2 className="w-3 h-3" />,
-    label:  "Python geometry code",
-    prompt: "Write Python code using shapely to generate the full 2D profile polygon for each station from the angle progression in the pipeline.",
+    icon:    <Code2 className="w-3 h-3" />,
+    label:   "Python geometry code",
+    prompt:  "Write Python code using shapely to generate the full 2D profile polygon for each station from the angle progression in the pipeline.",
   },
   {
-    icon:   <Wrench className="w-3 h-3" />,
-    label:  "Springback correction",
-    prompt: "Calculate the springback angle for each station and what overbend angle should be set on the upper roll to compensate.",
+    icon:    <Wrench className="w-3 h-3" />,
+    label:   "Springback correction",
+    prompt:  "Calculate the springback angle for each station and what overbend angle should be set on the upper roll to compensate.",
   },
   {
-    icon:   <BookOpen className="w-3 h-3" />,
-    label:  "Station count check",
-    prompt: "Is the station count optimal for this profile? What is the rule of thumb for angle increment per station and how does this profile compare?",
+    icon:    <BookOpen className="w-3 h-3" />,
+    label:   "Station count check",
+    prompt:  "Is the station count optimal for this profile? What is the rule of thumb for angle increment per station and how does this profile compare?",
+  },
+  {
+    icon:    <FlaskConical className="w-3 h-3" />,
+    label:   "🪟 Shutter real score",
+    shutter: true,
+    prompt:  `You are a senior roll-forming tooling engineer auditing a shutter slat profile.
+
+Using the pipeline context provided, compute a REAL engineering score (0–100) for this shutter slat design. Break it down across these 6 dimensions, each worth up to 100 points, then give a weighted composite:
+
+1. **Flat strip width accuracy** (weight 20%): Is the calculated blank width consistent with the neutral-axis formula? Compare against the sum of all segment arc lengths. Penalise if deviation > 0.5 mm.
+
+2. **Rib geometry quality** (weight 20%): Count the rib passes. Each rib should have symmetric angle increments (left = right leg). Penalise asymmetry > 1°. Minimum 4 ribs for a 77 mm slat.
+
+3. **Station count vs industry standard** (weight 15%): Typical shutter slat: 8–14 forming passes + 1 calibration. Is the count within range? Penalise if outside ± 2 of optimum for the rib count.
+
+4. **Roll gap and groove depth per station** (weight 20%): All roll gaps should be in range [t × 0.9, t × 1.3] where t = sheet thickness. Groove depth should match flange height within 5 %. List any out-of-spec stations.
+
+5. **Springback compensation** (weight 15%): Is springback_effective_deg accounted for? Expected range for GI steel 0.8–1.2 mm: 1°–4°. Penalise if 0 or > 8°.
+
+6. **Known engineering limitations** (weight 10%): If remaining_weaknesses list is non-empty, penalise proportionally. Each weakness = −5 pts from this dimension.
+
+For each dimension: state the actual measured value, the ideal target, and the sub-score.
+End with a summary table, the composite score, and the top 2 corrective actions.`,
   },
 ];
 
@@ -136,7 +161,7 @@ function inlineFormat(text: string): React.ReactNode {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CodexEngineerPanel({ pipelineResult, payload }: Props) {
+export default function CodexEngineerPanel({ pipelineResult, payload, profileCategory, remainingWeaknesses = [] }: Props) {
   const [messages,  setMessages]  = useState<Message[]>([]);
   const [input,     setInput]     = useState("");
   const [streaming, setStreaming] = useState(false);

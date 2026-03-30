@@ -682,6 +682,8 @@ export default function PythonDashboard() {
             <CodexEngineerPanel
               pipelineResult={pipelineResult ?? undefined}
               payload={payload as unknown as Record<string, unknown> | undefined}
+              profileCategory={profileCategory}
+              remainingWeaknesses={remainingWeaknesses}
             />
 
             {/* ── T004: Honest Grade Report ─────────────────────────────── */}

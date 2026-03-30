@@ -177,6 +177,12 @@ export default function CodexEngineerPanel({ pipelineResult, payload, profileCat
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
+  // Detect if current profile is a shutter slat
+  const isShutter = profileCategory === "shutter_slat"
+    || (payload?.profile_type as string | undefined)?.toLowerCase().includes("shutter")
+    || (pipelineResult?.profile_analysis_engine as Record<string, unknown> | undefined)
+       ?.section_type_detected?.toString().toLowerCase().includes("shutter");
+
   // Build trimmed pipeline context (avoid huge JSON in requests)
   const buildContext = useCallback((): Record<string, unknown> | undefined => {
     if (!ctxOn || !pipelineResult) return undefined;
@@ -185,31 +191,42 @@ export default function CodexEngineerPanel({ pipelineResult, payload, profileCat
     const pae = (pipelineResult.profile_analysis_engine ?? {}) as Record<string, unknown>;
     const ste = (pipelineResult.station_engine       ?? {}) as Record<string, unknown>;
     const fm  = (rc.forming_summary ?? {}) as Record<string, unknown>;
-    const passes = (rc.passes as Record<string, unknown>[] | undefined)?.slice(0, 6) ?? [];
+    // Include all passes for shutter scoring, sample 6 for others
+    const allPasses = (rc.passes as Record<string, unknown>[] | undefined) ?? [];
+    const passes    = isShutter ? allPasses : allPasses.slice(0, 6);
 
-    return {
+    const ctx: Record<string, unknown> = {
       profile: {
         type:              pae.section_type_detected ?? payload?.profile_type ?? "unknown",
+        profile_category:  profileCategory ?? fm.profile_category ?? "unknown",
         material:          payload?.material ?? rc.material ?? "GI",
         thickness_mm:      payload?.thickness ?? rc.thickness_mm,
         web_mm:            payload?.section_height_mm ?? pae.web_mm,
         flange_mm:         payload?.section_width_mm  ?? pae.flange_mm,
         bend_radius_mm:    payload?.bend_radius        ?? rc.bend_radius_mm,
+        bend_count:        pae.bend_count ?? null,
+        has_lips:          pae.has_lips ?? null,
       },
       forming: {
-        flat_strip_width_mm: fm.flat_strip_width_mm,
-        neutral_axis_factor: fm.neutral_axis_factor,
-        total_passes:        rc.total_passes ?? ste.total_stations,
-        springback_deg:      rc.springback_deg,
+        flat_strip_width_mm:       fm.flat_strip_width_mm,
+        neutral_axis_factor:       fm.neutral_axis_factor,
+        total_passes:              rc.total_passes ?? ste.total_stations,
+        springback_deg:            rc.springback_deg,
+        springback_effective_deg:  fm.springback_effective_deg ?? null,
+        angle_schedule_mode:       fm.angle_schedule_mode ?? null,
+        flat_strip_formula:        fm.flat_strip_formula ?? null,
+        remaining_weaknesses:      remainingWeaknesses.length > 0 ? remainingWeaknesses : null,
       },
       station_sample: passes.map((p) => ({
         pass_no:              p.pass_no,
         station_label:        p.station_label,
+        stage_type:           p.stage_type,
         target_angle_deg:     p.target_angle_deg,
         upper_roll_radius_mm: p.upper_roll_radius_mm,
         lower_roll_radius_mm: p.lower_roll_radius_mm,
         roll_gap_mm:          p.roll_gap_mm,
         groove_depth_mm:      p.groove_depth_mm,
+        strip_width_mm:       p.strip_width_mm,
       })),
       simulation: {
         quality_score: (se.quality as Record<string, unknown> | undefined)?.score,
@@ -218,7 +235,21 @@ export default function CodexEngineerPanel({ pipelineResult, payload, profileCat
         material:      se.material,
       },
     };
-  }, [pipelineResult, payload, ctxOn]);
+
+    // Extra shutter-specific fields when relevant
+    if (isShutter) {
+      ctx.shutter_extra = {
+        bend_groups:            fm.bend_groups ?? null,
+        rib_count:              pae.bend_count ?? null,
+        complexity_tier:        pae.complexity_tier ?? null,
+        complexity_label:       pae.complexity_label ?? null,
+        section_type_detected:  pae.section_type_detected ?? null,
+        angle_schedule_mode:    fm.angle_schedule_mode ?? null,
+      };
+    }
+
+    return ctx;
+  }, [pipelineResult, payload, ctxOn, profileCategory, remainingWeaknesses, isShutter]);
 
   const sendMessage = useCallback(async (question: string) => {
     if (!question.trim() || streaming) return;
@@ -378,8 +409,33 @@ export default function CodexEngineerPanel({ pipelineResult, payload, profileCat
           {messages.length === 0 && (
             <div className="px-4 pt-3 pb-2">
               <div className="text-[9px] text-gray-600 uppercase tracking-wider mb-2">Quick questions</div>
+              {/* Shutter real-score button — featured row when shutter profile is active */}
+              {(() => {
+                const shutterQ = QUICK.find(q => q.shutter);
+                if (!shutterQ) return null;
+                return (
+                  <button
+                    key={shutterQ.label}
+                    onClick={() => void sendMessage(shutterQ.prompt)}
+                    disabled={streaming}
+                    className={`w-full flex items-center gap-2 text-[10.5px] px-3 py-2 mb-2 rounded-lg border font-semibold transition-colors disabled:opacity-40 ${
+                      isShutter
+                        ? "border-amber-500/50 bg-amber-500/12 text-amber-300 hover:bg-amber-500/20 hover:border-amber-500/70 ring-1 ring-amber-500/20"
+                        : "border-gray-700/50 bg-gray-800/30 text-gray-500 hover:text-amber-400 hover:border-amber-500/30"
+                    }`}
+                  >
+                    <span className="text-base leading-none">🪟</span>
+                    <span>{isShutter ? "Score this shutter profile (real engineering audit)" : "Shutter real score"}</span>
+                    {isShutter && (
+                      <span className="ml-auto text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-500">
+                        ACTIVE
+                      </span>
+                    )}
+                  </button>
+                );
+              })()}
               <div className="flex flex-wrap gap-1.5">
-                {QUICK.map(q => (
+                {QUICK.filter(q => !q.shutter).map(q => (
                   <button
                     key={q.label}
                     onClick={() => void sendMessage(q.prompt)}
@@ -436,7 +492,21 @@ export default function CodexEngineerPanel({ pipelineResult, payload, profileCat
             {/* Quick prompts after first message */}
             {messages.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {QUICK.slice(0, 3).map(q => (
+                {isShutter && (() => {
+                  const shutterQ = QUICK.find(q => q.shutter);
+                  if (!shutterQ) return null;
+                  return (
+                    <button
+                      key={shutterQ.label}
+                      onClick={() => void sendMessage(shutterQ.prompt)}
+                      disabled={streaming}
+                      className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/8 text-amber-400 hover:bg-amber-500/15 hover:border-amber-500/60 transition-colors disabled:opacity-40 font-semibold"
+                    >
+                      🪟 Shutter score
+                    </button>
+                  );
+                })()}
+                {QUICK.filter(q => !q.shutter).slice(0, 3).map(q => (
                   <button
                     key={q.label}
                     onClick={() => void sendMessage(q.prompt)}

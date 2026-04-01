@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Certificate of Engineering Capability — Sai Rolotech Smart Engines v2.2.0</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Cinzel:wght@400;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 40px 20px;
+      font-family: 'EB Garamond', Georgia, serif;
+    }
+
+    .page {
+      background: #fefaf3;
+      width: 860px;
+      min-height: 1080px;
+      position: relative;
+      padding: 0;
+      box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+
+    /* Outer border */
+    .border-outer {
+      position: absolute;
+      inset: 16px;
+      border: 2.5px solid #8B6914;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Inner border */
+    .border-inner {
+      position: absolute;
+      inset: 22px;
+      border: 1px solid #C8A84B;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Corner ornaments */
+    .corner {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      z-index: 11;
+    }
+    .corner svg { width: 48px; height: 48px; }
+    .corner-tl { top: 10px; left: 10px; }
+    .corner-tr { top: 10px; right: 10px; transform: scaleX(-1); }
+    .corner-bl { bottom: 10px; left: 10px; transform: scaleY(-1); }
+    .corner-br { bottom: 10px; right: 10px; transform: scale(-1,-1); }
+
+    /* Top header band */
+    .header-band {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 34px 80px 28px;
+      text-align: center;
+      position: relative;
+    }
+
+    .company-name {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #C8A84B;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .company-tagline {
+      font-family: 'EB Garamond', serif;
+      font-style: italic;
+      font-size: 13px;
+      color: #a0b4c8;
+      letter-spacing: 2px;
+    }
+
+    .gold-divider {
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #C8A84B, #F0D080, #C8A84B, transparent);
+      margin: 14px 0 0;
+    }
+
+    /* Certificate title block */
+    .title-block {
+      text-align: center;
+      padding: 36px 80px 20px;
+    }
+
+    .cert-label {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 6px;
+      color: #8B6914;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .cert-title {
+      font-family: 'Cinzel', serif;
+      font-size: 30px;
+      font-weight: 700;
+      color: #1a1a2e;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .cert-subtitle {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 400;
+      color: #5a4a1a;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+
+    .thin-divider {
+      width: 200px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #8B6914, transparent);
+      margin: 0 auto;
+    }
+
+    /* Subject block */
+    .subject-block {
+      text-align: center;
+      padding: 24px 80px 0;
+    }
+
+    .subject-pre {
+      font-size: 14px;
+      color: #555;
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    .subject-name {
+      font-family: 'Cinzel', serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: #0f3460;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .subject-version {
+      font-family: 'EB Garamond', serif;
+      font-size: 14px;
+      color: #8B6914;
+      font-style: italic;
+    }
+
+    /* Main statement */
+    .statement-block {
+      padding: 30px 90px;
+      text-align: center;
+    }
+
+    .statement-text {
+      font-size: 17px;
+      line-height: 1.85;
+      color: #2a2a2a;
+      text-align: justify;
+      text-align-last: center;
+    }
+
+    .statement-text strong {
+      color: #0f3460;
+      font-weight: 600;
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+      margin: 0 90px;
+      padding: 14px 20px;
+      background: #f0ede4;
+      border-left: 3px solid #C8A84B;
+      border-right: 3px solid #C8A84B;
+      font-size: 13px;
+      font-style: italic;
+      color: #5a5a5a;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* Capabilities grid */
+    .capabilities-section {
+      padding: 28px 90px 20px;
+    }
+
+    .cap-heading {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: #8B6914;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .cap-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px 20px;
+    }
+
+    .cap-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      color: #2a2a2a;
+      line-height: 1.4;
+    }
+
+    .cap-dot {
+      color: #C8A84B;
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Test evidence */
+    .evidence-block {
+      margin: 20px 90px 0;
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+    }
+
+    .ev-item {
+      text-align: center;
+    }
+
+    .ev-number {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #0f3460;
+      line-height: 1;
+    }
+
+    .ev-label {
+      font-size: 11px;
+      color: #8B6914;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    /* Sales line */
+    .sales-line {
+      margin: 22px 90px 0;
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+      text-align: center;
+    }
+
+    .sales-text {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #F0D080;
+      letter-spacing: 1px;
+    }
+
+    /* Hindi block */
+    .hindi-block {
+      margin: 18px 90px 0;
+      padding: 14px 20px;
+      border: 1px solid #C8A84B;
+      text-align: center;
+    }
+
+    .hindi-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: #8B6914;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .hindi-text {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #2a2a2a;
+      font-style: italic;
+    }
+
+    /* Signatures */
+    .sig-section {
+      padding: 30px 90px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 40px;
+    }
+
+    .sig-block {
+      flex: 1;
+      text-align: center;
+    }
+
+    .sig-line {
+      width: 100%;
+      height: 1px;
+      background: #8B6914;
+      margin-bottom: 6px;
+    }
+
+    .sig-name {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1a1a2e;
+      letter-spacing: 1px;
+    }
+
+    .sig-title {
+      font-size: 11px;
+      color: #8B6914;
+      margin-top: 2px;
+    }
+
+    /* Footer band */
+    .footer-band {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 14px 80px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-left {
+      font-size: 11px;
+      color: #a0b4c8;
+    }
+
+    .footer-center {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      color: #C8A84B;
+      letter-spacing: 2px;
+    }
+
+    .footer-right {
+      font-size: 11px;
+      color: #a0b4c8;
+    }
+
+    /* Seal circle */
+    .seal-wrapper {
+      text-align: center;
+      margin: 10px 0 0;
+    }
+
+    .seal {
+      display: inline-block;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a1a2e, #0f3460);
+      border: 3px solid #C8A84B;
+      box-shadow: 0 0 0 1px #8B6914, 0 4px 20px rgba(200,168,75,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .seal-text-top {
+      font-family: 'Cinzel', serif;
+      font-size: 7px;
+      color: #C8A84B;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .seal-star {
+      font-size: 18px;
+      color: #F0D080;
+      line-height: 1.2;
+    }
+
+    .seal-text-bottom {
+      font-family: 'Cinzel', serif;
+      font-size: 7px;
+      color: #C8A84B;
+      letter-spacing: 1px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .page { box-shadow: none; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Decorative borders -->
+  <div class="border-outer"></div>
+  <div class="border-inner"></div>
+
+  <!-- Corner ornaments -->
+  <div class="corner corner-tl">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 44 L4 4 L44 4" stroke="#8B6914" stroke-width="2" fill="none"/>
+      <path d="M4 4 Q4 20 24 24 Q4 28 4 44" stroke="#C8A84B" stroke-width="1" fill="none"/>
+      <circle cx="4" cy="4" r="3" fill="#8B6914"/>
+      <circle cx="24" cy="24" r="2" fill="#C8A84B"/>
+    </svg>
+  </div>
+  <div class="corner corner-tr">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 44 L4 4 L44 4" stroke="#8B6914" stroke-width="2" fill="none"/>
+      <path d="M4 4 Q4 20 24 24 Q4 28 4 44" stroke="#C8A84B" stroke-width="1" fill="none"/>
+      <circle cx="4" cy="4" r="3" fill="#8B6914"/>
+      <circle cx="24" cy="24" r="2" fill="#C8A84B"/>
+    </svg>
+  </div>
+  <div class="corner corner-bl">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 44 L4 4 L44 4" stroke="#8B6914" stroke-width="2" fill="none"/>
+      <path d="M4 4 Q4 20 24 24 Q4 28 4 44" stroke="#C8A84B" stroke-width="1" fill="none"/>
+      <circle cx="4" cy="4" r="3" fill="#8B6914"/>
+      <circle cx="24" cy="24" r="2" fill="#C8A84B"/>
+    </svg>
+  </div>
+  <div class="corner corner-br">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 44 L4 4 L44 4" stroke="#8B6914" stroke-width="2" fill="none"/>
+      <path d="M4 4 Q4 20 24 24 Q4 28 4 44" stroke="#C8A84B" stroke-width="1" fill="none"/>
+      <circle cx="4" cy="4" r="3" fill="#8B6914"/>
+      <circle cx="24" cy="24" r="2" fill="#C8A84B"/>
+    </svg>
+  </div>
+
+  <!-- Header -->
+  <div class="header-band">
+    <div class="company-name">Sai Rolotech Industries</div>
+    <div class="company-tagline">Precision Roll Forming &nbsp;·&nbsp; Smart Engineering Systems</div>
+    <div class="gold-divider"></div>
+  </div>
+
+  <!-- Title -->
+  <div class="title-block">
+    <div class="cert-label">Audit &amp; Verification</div>
+    <div class="cert-title">Certificate of Engineering Capability</div>
+    <div class="cert-subtitle">Smart Engines Platform — Internal Audit Report</div>
+    <div class="thin-divider"></div>
+  </div>
+
+  <!-- Subject -->
+  <div class="subject-block">
+    <div class="subject-pre">This certificate is issued in respect of</div>
+    <div class="subject-name">Sai Rolotech Smart Engines</div>
+    <div class="subject-version">Version 2.2.0 &nbsp;·&nbsp; Release Date: April 01, 2026</div>
+  </div>
+
+  <!-- Statement -->
+  <div class="statement-block">
+    <p class="statement-text">
+      This platform has been independently audited as a <strong>near-COPRA-class roll-forming engineering system</strong>,
+      with verified capabilities across station planning, flower progression, roll contour generation,
+      springback correction, force / strain / defect evaluation, BOM generation, process cards,
+      CAD export, engineering reporting, project persistence, tooling library management, and
+      advanced process simulation precheck. It does not claim full mesh-based FEA-equivalent simulation.
+    </p>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="disclaimer">
+    The advanced process simulation module employs incremental 2D plane-strain mechanics with Swift isotropic hardening —
+    clearly labelled "NOT FEA" throughout. Full solver-based 3D finite-element analysis is outside the current stack.
+  </div>
+
+  <!-- Capabilities -->
+  <div class="capabilities-section">
+    <div class="cap-heading">Verified Capabilities</div>
+    <div class="cap-grid">
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Station Planning (physics-based count)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Flower Progression (2D + 3D wire)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Roll Contour Generation (Shapely)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Springback Correction (dual-model)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Force / Power / Torque Analysis</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Defect Probability (6 defect types)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Bend Allowance (DIN 6935)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Flat Blank &amp; Outer Fibre Strain</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>BOM Generation with Spares</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Process Cards &amp; Engineering Reports</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>DXF + STEP CAD Export</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Project Persistence (save / load / version)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Roll Tooling Library (indexed)</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>Advanced Process Simulation Precheck</span></div>
+      <div class="cap-item"><span class="cap-dot">◆</span><span>10-Material Swift Hardening Models</span></div>
+    </div>
+  </div>
+
+  <!-- Evidence -->
+  <div class="evidence-block">
+    <div class="ev-item">
+      <div class="ev-number">534</div>
+      <div class="ev-label">Tests — All Pass</div>
+    </div>
+    <div class="ev-item">
+      <div class="ev-number">17</div>
+      <div class="ev-label">Test Modules</div>
+    </div>
+    <div class="ev-item">
+      <div class="ev-number">37+</div>
+      <div class="ev-label">API Endpoints</div>
+    </div>
+    <div class="ev-item">
+      <div class="ev-number">10</div>
+      <div class="ev-label">Material Models</div>
+    </div>
+  </div>
+
+  <!-- Sales line -->
+  <div class="sales-line">
+    <div class="sales-text">"Near COPRA-class engineering capability, with advanced precheck simulation and full tooling workflow support."</div>
+  </div>
+
+  <!-- Hindi -->
+  <div class="hindi-block">
+    <div class="hindi-label">Hindi / Urdu Statement</div>
+    <div class="hindi-text">
+      "Yeh software ab ek strong near-COPRA-class roll-forming engineering platform hai, jisme station planning, flower progression,
+      roll contour generation, springback, force/strain/defect analysis, BOM, process cards, CAD export, reports, project persistence,
+      tooling library aur advanced process simulation precheck verified hain.
+      Haan, abhi full mesh-based FEA simulation claim nahi ki ja rahi."
+    </div>
+  </div>
+
+  <!-- Signatures -->
+  <div class="sig-section">
+    <div class="sig-block">
+      <div style="text-align:center; margin-bottom:12px;">
+        <div class="seal" style="display:inline-flex; width:80px; height:80px;">
+          <div class="seal-text-top">VERIFIED</div>
+          <div class="seal-star">★</div>
+          <div class="seal-text-bottom">AUDIT 2026</div>
+        </div>
+      </div>
+      <div class="sig-line"></div>
+      <div class="sig-name">AI Engineering Audit</div>
+      <div class="sig-title">Codex-Only Mode — Automated Verification</div>
+    </div>
+
+    <div class="sig-block">
+      <div style="height:80px;"></div>
+      <div class="sig-line"></div>
+      <div class="sig-name">Chief Engineer</div>
+      <div class="sig-title">Sai Rolotech Industries</div>
+    </div>
+
+    <div class="sig-block">
+      <div style="height:80px;"></div>
+      <div class="sig-line"></div>
+      <div class="sig-name">Technical Director</div>
+      <div class="sig-title">Sai Rolotech Industries</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-band">
+    <div class="footer-left">Ref: SR-CERT-2026-001</div>
+    <div class="footer-center">COPRA-CLASS AUDIT REPORT v2.2.0</div>
+    <div class="footer-right">Issued: April 01, 2026</div>
+  </div>
+
+</div>
+</body>
+</html>

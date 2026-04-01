@@ -3,9 +3,11 @@ main.py — Sai Rolotech Smart Engines v2.2.0 — Python FastAPI Server
 Runs on port 9000 alongside the TypeScript/Express API server (port 8080).
 """
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from app.api.routes import router
 
@@ -36,6 +38,14 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+
+@app.get("/certificate", include_in_schema=False)
+def serve_certificate():
+    cert_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "CERTIFICATE_OF_CAPABILITY.html")
+    if os.path.exists(cert_path):
+        return FileResponse(cert_path, media_type="text/html")
+    return {"error": "Certificate file not found"}
 
 
 @app.get("/")

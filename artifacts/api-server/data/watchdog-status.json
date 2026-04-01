@@ -1,12 +1,12 @@
 {
-  "startedAt": "2026-04-01T19:58:04.877Z",
-  "lastHealthCheck": "2026-04-01T20:50:05.474Z",
+  "startedAt": "2026-04-01T21:08:17.034Z",
+  "lastHealthCheck": null,
   "lastGitPush": null,
   "lastGitPushResult": null,
   "lastGitPull": null,
   "lastGitPullResult": null,
   "gitPullCount": 0,
-  "healthChecksPassed": 26,
+  "healthChecksPassed": 0,
   "healthChecksFailed": 0,
   "consecutiveFailures": 0,
   "gitPushCount": 0,
@@ -15,144 +15,9 @@
   "isElectron": false,
   "logs": [
     {
-      "time": "07:58:04 pm",
+      "time": "09:08:17 pm",
       "type": "success",
       "message": "Watchdog SHURU — auto-push + health monitor active"
-    },
-    {
-      "time": "07:58:14 pm",
-      "type": "info",
-      "message": "Startup auto-push check kar raha hai..."
-    },
-    {
-      "time": "08:00:04 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:02:04 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:04:04 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:06:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:08:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:10:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:12:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:14:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:16:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:18:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:20:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:22:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:24:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:26:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:28:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:30:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:32:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:34:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:36:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:38:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:40:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:42:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:44:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:46:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:48:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
-    },
-    {
-      "time": "08:50:05 pm",
-      "type": "info",
-      "message": "Health: API OK"
     }
   ]
 }

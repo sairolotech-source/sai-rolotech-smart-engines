@@ -1617,3 +1617,73 @@ def endpoint_flower_3d(body: dict):
     except Exception as exc:
         logger.error("flower-3d error: %s", exc, exc_info=True)
         return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/advanced-simulation ───────────────────────────────────────────
+
+@router.post("/advanced-simulation")
+def endpoint_advanced_simulation(body: dict):
+    """
+    Run pass-by-pass Advanced Process Simulation Precheck.
+
+    NOT FEA. Uses incremental mechanics:
+      - Swift isotropic hardening (Ramberg-Osgood plasticity)
+      - Pass-by-pass cumulative plastic strain propagation
+      - Residual stress tracking via moment-curvature elastic unloading
+      - Hertzian contact pressure estimation (cylinder-on-flat)
+      - Graduated defect probability scores (0–1, physics-based margins)
+
+    Body:
+      profile_result   — from profile/input engines
+      input_result     — {'sheet_thickness_mm': float, 'material': str, ...}
+      roll_od_mm       — forming roll outer diameter mm (default 180)
+      face_width_mm    — roll face width mm (default 100)
+      station_pitch_mm — machine station pitch mm (default 300)
+      strip_speed_mpm  — strip speed m/min (default 12)
+    """
+    try:
+        from app.engines.advanced_process_simulation import run_advanced_process_simulation
+
+        profile_r      = body.get("profile_result", {})
+        input_r        = body.get("input_result", {})
+        roll_od        = float(body.get("roll_od_mm", 180.0))
+        face_w         = float(body.get("face_width_mm", 100.0))
+        station_pitch  = float(body.get("station_pitch_mm", 300.0))
+        strip_speed    = float(body.get("strip_speed_mpm", 12.0))
+
+        flower_r = generate_flower(profile_r, input_r)
+        if flower_r.get("status") != "pass":
+            return {"status": "fail", "reason": "Flower engine failed — cannot simulate"}
+
+        result = run_advanced_process_simulation(
+            flower_result=flower_r,
+            input_result=input_r,
+            profile_result=profile_r,
+            roll_od_mm=roll_od,
+            face_width_mm=face_w,
+            station_pitch_mm=station_pitch,
+            strip_speed_mpm=strip_speed,
+        )
+        return result
+
+    except Exception as exc:
+        logger.error("advanced-simulation error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── GET /api/material-model/{code} ──────────────────────────────────────────
+
+@router.get("/material-model/{code}")
+def endpoint_material_model(code: str):
+    """
+    Return full Swift/Ramberg-Osgood plasticity material model for a material code.
+    Includes stress-strain curve points for plotting.
+
+    Materials: GI, MS, SS, CR, HR, AL, HSLA, CU, TI, PP
+    """
+    try:
+        from app.engines.advanced_process_simulation import get_material_model
+        return get_material_model(code)
+    except Exception as exc:
+        logger.error("material-model error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}

@@ -1,5 +1,104 @@
-from typing import Dict, Any, List
+import math
+from typing import Dict, Any, List, Optional, Tuple
 from app.utils.response import pass_response, fail_response
+
+
+# ─── 3D FLOWER / WIRE TRANSITION ─────────────────────────────────────────────
+
+def compute_2d_centerline(
+    segment_lengths_mm: List[float],
+    bend_angles_deg: List[float],
+    start_x: float = 0.0,
+    start_y: float = 0.0,
+) -> List[Tuple[float, float]]:
+    """
+    Compute the 2D cross-section centerline of the strip at a given forming pass.
+
+    Algorithm:
+      Walk along the strip from left edge to right edge.
+      At each interior point (bend zone), turn by bend_angle_deg.
+      Return list of (x, y) coordinate tuples.
+
+    Args:
+        segment_lengths_mm: Flat segment lengths between bends (n+1 segments for n bends)
+        bend_angles_deg:    Forming angle at each bend for this pass (n values)
+        start_x, start_y:  Starting coordinate (default: origin)
+
+    Returns:
+        List of (x, y) points — length = len(segment_lengths_mm) + 1
+    """
+    if not segment_lengths_mm:
+        return [(0.0, 0.0)]
+
+    pts: List[Tuple[float, float]] = [(round(start_x, 4), round(start_y, 4))]
+    x, y = start_x, start_y
+    heading_deg = 0.0  # Initially moving right (+x direction)
+
+    n_segments = len(segment_lengths_mm)
+    n_bends = len(bend_angles_deg)
+
+    for i, seg_len in enumerate(segment_lengths_mm):
+        # Walk along current heading
+        heading_rad = math.radians(heading_deg)
+        x += seg_len * math.cos(heading_rad)
+        y += seg_len * math.sin(heading_rad)
+        pts.append((round(x, 4), round(y, 4)))
+
+        # Turn at bend if one exists after this segment
+        if i < n_bends:
+            heading_deg += bend_angles_deg[i]
+
+    return pts
+
+
+def compute_3d_flower_centerline(
+    pass_plan: List[Dict[str, Any]],
+    segment_lengths_mm: Optional[List[float]] = None,
+    station_pitch_mm: float = 300.0,
+) -> List[Dict[str, Any]]:
+    """
+    Compute 3D flower wire centerlines for each forming pass.
+
+    For each pass:
+      - 2D centerline = cross-section shape at that pass (x, y coords)
+      - z = pass_index * station_pitch_mm (machine travel direction)
+
+    This gives the 3D wire path of the strip through the forming machine —
+    equivalent to the 'flower wire' view in COPRA-class software.
+
+    Args:
+        pass_plan:          List of pass dicts (from build_pass_plan)
+        segment_lengths_mm: Flat segment lengths (mm). If None, inferred from
+                            first pass bend angles with 50mm default segments.
+        station_pitch_mm:   Distance between stations (default 300mm)
+
+    Returns:
+        Updated pass_plan with 'centerline_xy' and 'centerline_xyz' added.
+    """
+    if not pass_plan:
+        return pass_plan
+
+    # Infer segment lengths if not provided
+    if not segment_lengths_mm:
+        n_bends = len(pass_plan[0].get("bend_angles_deg", []))
+        segment_lengths_mm = [50.0] * (n_bends + 1)
+
+    updated_plan = []
+    for i, pp in enumerate(pass_plan):
+        pp = dict(pp)
+        bend_angles = pp.get("bend_angles_deg", [])
+        z = round(i * station_pitch_mm, 2)
+
+        # 2D centerline for this pass
+        xy = compute_2d_centerline(segment_lengths_mm, bend_angles)
+        pp["centerline_xy"] = [[round(x, 3), round(y, 3)] for x, y in xy]
+
+        # 3D: same points with z coordinate (station position along machine axis)
+        pp["centerline_xyz"] = [[round(x, 3), round(y, 3), z] for x, y in xy]
+
+        updated_plan.append(pp)
+
+    return updated_plan
 
 VALID_SECTION_TYPES = {
     "simple_channel", "c_channel", "angle_section",
@@ -76,6 +175,21 @@ def generate_advanced_flower(
         return_bends=return_bends,
         symmetry=symmetry,
         bend_angles=raw_bends
+    )
+
+    # ── 3D Flower Wire / Transition Centerlines ──
+    # Infer segment lengths from profile data if available
+    segment_lengths = profile_result.get("segment_lengths_mm", [])
+    if not segment_lengths or not isinstance(segment_lengths, list):
+        # Default: divide section width equally across (bend_count + 1) segments
+        sec_width = float(profile_result.get("section_width_mm", 0)) or 200.0
+        n_seg = bend_count + 1
+        segment_lengths = [round(sec_width / n_seg, 2)] * n_seg
+
+    pass_plan = compute_3d_flower_centerline(
+        pass_plan=pass_plan,
+        segment_lengths_mm=segment_lengths,
+        station_pitch_mm=300.0,
     )
 
     warnings = build_warnings(

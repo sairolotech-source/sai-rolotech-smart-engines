@@ -59,6 +59,13 @@ from app.engines.roll_groove_svg_engine import generate_roll_groove_svgs
 from app.engines.bend_allowance_engine import calculate_flat_blank, flat_blank_from_profile
 from app.engines.bom_engine import generate_bom
 from app.engines.process_card_engine import generate_process_card, process_card_to_text
+from app.utils.project_persistence import (
+    save_project, load_project_raw, list_projects, list_project_versions, delete_project, pipeline_to_project,
+)
+from app.utils.tooling_library import (
+    query_tooling_library, get_tooling_entry, get_best_match, library_summary,
+)
+from app.models.engineering_data_model import RFProject
 from app.utils.material_database import MATERIAL_DB, get_material, list_materials
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
@@ -1437,4 +1444,176 @@ def endpoint_process_card(body: ManualProfileInput):
 
     except Exception as exc:
         logger.error("process-card error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROJECT PERSISTENCE ENDPOINTS (COPRA Criterion I)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/project/list")
+def endpoint_project_list():
+    """List all saved projects with summary info."""
+    try:
+        summaries = list_projects()
+        return {"status": "pass", "count": len(summaries), "projects": summaries}
+    except Exception as exc:
+        logger.error("project-list error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.post("/project/save")
+def endpoint_project_save(body: dict):
+    """
+    Save a project.
+    Body: full RFProject JSON dict or partial (will be coerced).
+    If running a pipeline, pass pipeline_result to auto-convert.
+    """
+    try:
+        pipeline = body.get("pipeline_result")
+        if pipeline:
+            project = pipeline_to_project(
+                pipeline,
+                project_name=body.get("project_name", ""),
+                project_ref=body.get("project_ref", ""),
+            )
+        else:
+            project = RFProject(**{k: v for k, v in body.items() if k != "pipeline_result"})
+
+        result = save_project(project)
+        return {"status": "pass", **result}
+    except Exception as exc:
+        logger.error("project-save error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.get("/project/load/{project_id}")
+def endpoint_project_load(project_id: str, version: int = None):
+    """Load a saved project by ID (latest version if version not specified)."""
+    try:
+        data = load_project_raw(project_id, version)
+        if data is None:
+            return {"status": "fail", "reason": f"Project {project_id!r} not found"}
+        return {"status": "pass", "project": data}
+    except Exception as exc:
+        logger.error("project-load error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.get("/project/versions/{project_id}")
+def endpoint_project_versions(project_id: str):
+    """List all saved versions for a project."""
+    try:
+        versions = list_project_versions(project_id)
+        return {"status": "pass", "project_id": project_id, "versions": versions}
+    except Exception as exc:
+        logger.error("project-versions error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.delete("/project/{project_id}")
+def endpoint_project_delete(project_id: str):
+    """Delete all versions of a project."""
+    try:
+        ok = delete_project(project_id)
+        if not ok:
+            return {"status": "fail", "reason": f"Project {project_id!r} not found"}
+        return {"status": "pass", "deleted": project_id}
+    except Exception as exc:
+        logger.error("project-delete error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOLING LIBRARY ENDPOINTS (COPRA Criterion I)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/tooling-library")
+def endpoint_tooling_library(
+    section_type: str = None,
+    material: str = None,
+    thickness_mm: float = None,
+):
+    """
+    Query the reusable roll tooling library.
+    Filters by section_type, material code, and/or thickness range.
+    """
+    try:
+        results = query_tooling_library(
+            section_type=section_type,
+            material_code=material,
+            thickness_mm=thickness_mm,
+        )
+        summary = library_summary()
+        return {
+            "status": "pass",
+            "library_summary": summary,
+            "matches": len(results),
+            "entries": results,
+        }
+    except Exception as exc:
+        logger.error("tooling-library error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.get("/tooling-library/best-match")
+def endpoint_tooling_best_match(
+    section_type: str,
+    material: str = "GI",
+    thickness_mm: float = 2.0,
+):
+    """
+    Return the single best-matching tooling library entry.
+    """
+    try:
+        entry = get_best_match(section_type, material, thickness_mm)
+        if entry is None:
+            return {"status": "fail", "reason": "No matching tooling entry found"}
+        return {"status": "pass", "entry": entry}
+    except Exception as exc:
+        logger.error("tooling-best-match error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FLOWER WIRE / 3D CENTERLINE ENDPOINT
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/flower-3d")
+def endpoint_flower_3d(body: dict):
+    """
+    Generate 3D flower wire centerlines for all forming passes.
+
+    Body:
+      profile_result, input_result — same as manual-mode pipeline
+      segment_lengths_mm (optional) — flat segment lengths for the profile
+      station_pitch_mm (optional)   — machine station pitch in mm (default 300)
+    """
+    try:
+        from app.engines.advanced_flower_engine import compute_3d_flower_centerline, build_pass_plan
+
+        profile_r = body.get("profile_result", {})
+        input_r   = body.get("input_result", {})
+        segs      = body.get("segment_lengths_mm", [])
+        pitch     = float(body.get("station_pitch_mm", 300.0))
+
+        flower_result = generate_flower(profile_r, input_r)
+        if flower_result.get("status") != "pass":
+            return {"status": "fail", "reason": "Flower engine failed"}
+
+        pass_plan = flower_result.get("pass_plan", [])
+        if segs:
+            from app.engines.advanced_flower_engine import compute_3d_flower_centerline
+            pass_plan = compute_3d_flower_centerline(pass_plan, segs, pitch)
+
+        return {
+            "status": "pass",
+            "section_type": flower_result.get("section_type"),
+            "estimated_forming_passes": flower_result.get("estimated_forming_passes"),
+            "has_3d_centerline": any("centerline_xyz" in p for p in pass_plan),
+            "station_pitch_mm": pitch,
+            "pass_plan": pass_plan,
+        }
+    except Exception as exc:
+        logger.error("flower-3d error: %s", exc, exc_info=True)
         return {"status": "fail", "reason": str(exc)}

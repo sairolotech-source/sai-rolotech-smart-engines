@@ -1,0 +1,511 @@
+You are performing a full repository audit, engineering upgrade, and proof-based benchmark against a COPRA-class roll-forming software standard.
+
+This is not a UI task.
+This is not a mock/demo task.
+This is not a summary-only task.
+This is a code audit + implementation + proof package mission.
+
+Your job:
+1. Inspect the entire repository deeply.
+2. Benchmark the application against a COPRA-class roll-forming software feature set.
+3. Identify all missing, weak, fake, partial, or unproven capabilities.
+4. Implement the highest-value missing capabilities directly in code wherever feasible.
+5. Run tests, generate outputs, and collect hard proof.
+6. Produce a final evidence-based report.
+7. Never make a claim without proof.
+
+==================================================
+MISSION GOAL
+==================================================
+
+Bring this application as close as realistically possible to a COPRA-class engineering platform and prove the result.
+
+Important:
+- Do NOT claim “full COPRA equivalent” unless the repository evidence truly supports it.
+- If some features remain incomplete, explicitly say so.
+- If no real FEA exists, say “heuristic/rule-based validation” or “DTM-like precheck”, not “full FEA”.
+- If a feature is visual only, do not count it as engineering-complete.
+- If a feature depends on manual engineer sign-off, do not call it fully automatic.
+
+==================================================
+TARGET BENCHMARK — USE THIS AS THE STANDARD
+==================================================
+
+A. Full engineering process chain
+- profile input / section definition
+- forming/station planning
+- flower design
+- roll/tool design
+- part list / BOM
+- process card / tooling production references
+- engineering report
+- CAD/export workflow
+- central data/project management
+
+B. Parametric flower workflow
+- station-by-station progression
+- profile-driven updates
+- bend distribution logic
+- overbend / springback-aware progression
+- 2D flower output
+- 3D wire/transition representation if feasible
+
+C. Technical flower / forming calculation
+- actual forming logic, not just drawing
+- pass progression
+- downhill / vertical progression control or equivalent
+- bend-angle progression
+- width progression
+- engineering calculation, not only visualization
+
+D. Automatic roll design
+- roll contour generation from profile/process data
+- station-specific upper/lower roll logic
+- minimal manual CAD dependency
+- contour-driven geometry generation
+- engineer-signoff boundary clearly documented
+
+E. Roll geometry fidelity
+- no hardcoded cylinder as final roll model
+- real contour-driven roll generation
+- proper shoulder / bore / shaft / groove logic
+- if non-axisymmetric shape is required, geometry must support r = f(x, theta)
+- if axisymmetric is sufficient, justify and prove it
+
+F. Springback / strain / force / defect / interference
+- springback correction engine
+- strain estimation
+- forming force / power / torque
+- defect detection heuristics
+- roll interference checks
+- blocking warnings where appropriate
+
+G. Manufacturing outputs
+- BOM / tooling list
+- process card
+- roll dimension table
+- station table
+- engineering report
+- file exports (DXF / STEP / JSON / CSV / PDF or supported equivalents)
+
+H. Material intelligence
+- material property database
+- yield strength
+- UTS
+- E modulus
+- elongation
+- n-value
+- r-value
+- density
+- k-factor
+- min bend radius / fracture strain where relevant
+
+I. Central engineering data model
+- coherent typed model for:
+  - materials
+  - thickness
+  - profile
+  - bends
+  - station states
+  - flower data
+  - roll/tooling data
+  - validation results
+  - outputs / reports
+- avoid scattered ad-hoc UI-only state
+- save/load/versioning if feasible
+
+J. Validation maturity
+- deterministic outputs
+- tests
+- runtime proof
+- reportable warnings/errors
+- honest limits
+- separation between:
+  - visualization
+  - calculation
+  - heuristic validation
+  - real simulation
+
+==================================================
+STRICT RULES
+==================================================
+
+1. First inspect the full repository structure.
+2. Search all relevant code paths before deciding anything.
+3. Do not trust summaries or comments; verify code.
+4. Do not count placeholders, TODOs, mock JSON, or static demo data as real features.
+5. Do not count rendering-only features as engineering-complete.
+6. Do not count an API route as a real capability unless it has real logic behind it.
+7. Do not claim automatic design if the result is mostly manual.
+8. Do not claim FEA if no real solver exists.
+9. Do not claim central project/database capability if persistence/library/versioning is absent.
+10. Every PASS must include proof.
+11. Every PARTIAL must explain what is missing.
+12. Every FAIL must include a practical upgrade proposal.
+13. If a missing capability is feasible, implement it.
+14. If a capability is too large for one pass, implement the best practical slice and document the remaining gap.
+15. Never hide missing engineering behind polished visuals.
+
+==================================================
+REPOSITORY SEARCH INSTRUCTIONS
+==================================================
+
+Search the repo thoroughly for these terms and inspect meaningful hits:
+
+flower
+forming
+station
+pass
+roll
+tool
+tooling
+contour
+profile
+cross-section
+springback
+strain
+force
+torque
+defect
+interference
+collision
+bend allowance
+flat blank
+material
+database
+project
+save
+load
+library
+report
+export
+bom
+process card
+dxf
+step
+stl
+pdf
+json
+csv
+simulation
+fea
+validation
+overbend
+downhill
+wire
+transition
+centerline
+
+==================================================
+WHAT YOU MUST VERIFY
+==================================================
+
+For each area below, determine whether it is:
+- VERIFIED PASS
+- VERIFIED PARTIAL
+- NOT VERIFIED
+
+1. Station engine
+2. Flower engine
+3. Roll contour engine
+4. Springback engine
+5. Strain engine
+6. Force/power engine
+7. Defect engine
+8. Roll interference engine
+9. BOM engine
+10. Bend allowance / flat blank engine
+11. Process card engine
+12. Material database
+13. CAD export engine
+14. Engineering report engine
+15. Save/load and project persistence
+16. Reusable tooling library
+17. Automatic roll design
+18. 3D flower / wire transition
+19. Central engineering data model
+20. Simulation / FEA / heuristic validation layer
+
+==================================================
+IMPLEMENTATION PRIORITIES
+==================================================
+
+After the audit, implement the highest-value gaps in this order:
+
+Priority 1:
+- real engineering logic missing behind visual features
+- hardcoded geometry or fake outputs
+- missing BOM / process card / report / export essentials
+- missing material properties used by calculations
+
+Priority 2:
+- automatic roll design improvements
+- stronger flower progression logic
+- bend allowance / flat blank workflow
+- validation/report integration
+
+Priority 3:
+- save/load persistence
+- reusable tooling library
+- versioned engineering data model
+- stronger project management structure
+
+Priority 4:
+- advanced 3D wire / transition flower representation
+- simulation-ready architecture improvements
+- advanced export/report polish
+
+==================================================
+MANDATORY PROOF PACKAGE
+==================================================
+
+For every claimed capability, provide ALL of the following where possible:
+
+- exact file path
+- class/function/module name
+- short description of what it does
+- sample input
+- actual runtime output
+- why it is real engineering logic, not just visualization
+- tests that cover it
+- artifact/output file path if generated
+
+Examples of acceptable proof:
+- code path
+- test path
+- CLI output
+- API response
+- generated DXF path
+- generated STEP path
+- report file path
+- BOM artifact
+- process card artifact
+- sample station progression output
+
+Unacceptable proof:
+- “I implemented it”
+- “the UI shows it”
+- “there is a route for it”
+- “the code looks ready”
+- screenshots alone without code/runtime evidence
+
+==================================================
+SPECIAL HONESTY RULES
+==================================================
+
+If real FEA does not exist:
+- label as “heuristic validation”, “kinematic precheck”, or “DTM-like precheck”
+- do not label it “full FEA”
+
+If save/load is absent:
+- mark Project Persistence as NOT VERIFIED
+
+If reusable tooling library is absent:
+- mark Tooling Library as NOT VERIFIED
+
+If 3D flower wire/transition is absent or simplified:
+- mark Flower 3D as VERIFIED PARTIAL
+
+If auto roll design still requires engineer interpretation:
+- mark Automatic Roll Design as VERIFIED PARTIAL
+
+If calculations exist but are not tested:
+- mark them PARTIAL until tested
+
+==================================================
+EXPECTED IMPLEMENTATION TASKS
+==================================================
+
+You must inspect and improve these areas where needed:
+
+1. Station engine
+- verify station count estimation logic
+- verify pass progression logic
+- verify consistency with bends/thickness/material complexity
+- add/fix tests if needed
+
+2. Flower engine
+- verify real angle progression
+- verify station-by-station updates
+- verify springback/overbend integration
+- improve if only visual
+- add 3D wire/transition representation if practical
+
+3. Roll contour engine
+- verify contour-driven generation
+- verify pass-specific roll logic
+- verify gap logic
+- verify interference clearance
+- improve if still approximate
+
+4. Springback engine
+- verify formula/model correctness
+- verify material sensitivity
+- verify corrected bend output
+
+5. Strain engine
+- verify actual engineering calculation
+- verify fracture/min radius linkage if applicable
+- add tests
+
+6. Force engine
+- verify force/power/torque formulae
+- verify units
+- cross-check at least one manual formula case
+
+7. Defect engine
+- verify defect heuristics
+- verify thresholds
+- verify blocking vs warning behavior
+
+8. Bend allowance / flat blank engine
+- verify formula method
+- verify k-factor use
+- verify weight and strip-width outputs
+- add tests
+
+9. BOM engine
+- verify real tooling part list generation
+- verify quantity/weight logic
+- verify material association
+- generate sample BOM artifact
+
+10. Process card engine
+- verify station-wise operator/setup sheet
+- verify integration of angle, springback, roll gap, width, force, strain, defect notes
+
+11. Material database
+- verify all material properties used by engineering engines
+- verify consistency and access pattern
+
+12. CAD export
+- verify real DXF generation
+- verify real STEP generation if present
+- prove files are generated and non-mock
+
+13. Report engine
+- verify structured engineering report
+- generate real report artifact
+
+14. Persistence / data model
+- inspect save/load
+- inspect reusable tooling/project structures
+- implement if feasible
+- otherwise mark clearly missing
+
+15. Tests
+- inspect current test coverage
+- add missing tests for important engineering modules
+- run full test suite
+- report exact totals
+
+==================================================
+OUTPUT FORMAT — FINAL RESPONSE MUST FOLLOW THIS EXACT STRUCTURE
+==================================================
+
+1. EXECUTIVE VERDICT
+- final verdict: VERIFIED PASS / VERIFIED PARTIAL / NOT VERIFIED
+- one paragraph summary
+
+2. REPOSITORY DISCOVERY
+- project structure summary
+- important modules found
+- important missing areas found
+
+3. CAPABILITY MATRIX
+For each of the 20 areas:
+- status
+- proof
+- key files/functions
+- gap summary
+
+4. PATCHES APPLIED
+For each change:
+- file path
+- what changed
+- why changed
+- before vs after
+
+5. RUNTIME PROOF
+Show actual outputs for major engines:
+- station
+- flower
+- springback
+- force
+- defect
+- bend allowance
+- BOM
+- CAD export
+- report
+
+6. TEST EVIDENCE
+- command run
+- number of test files
+- number of tests
+- pass/fail summary
+- new tests added
+
+7. GENERATED ARTIFACTS
+List exact file paths for:
+- audit report
+- evidence package
+- BOM artifact
+- process card artifact
+- engineering report
+- DXF export
+- STEP export
+- any other generated proof files
+
+8. HONEST LIMITS
+Clearly list:
+- what is real engineering logic
+- what is heuristic validation
+- what is visualization only
+- what is still missing
+
+9. FINAL GAP LIST TO REACH FULL COPRA-CLASS PARITY
+Rank the remaining gaps by importance.
+
+==================================================
+ACCEPTANCE GATES
+==================================================
+
+Return VERIFIED PASS only if the repository proves:
+- real engineering calculations across the core workflow
+- data-driven roll/flower/tool logic
+- manufacturing outputs exist
+- strong test-backed evidence exists
+- persistence/tooling maturity is present or convincingly implemented
+- no major core claims remain unproven
+
+Return VERIFIED PARTIAL if:
+- the app is clearly a serious engineering platform
+- many core engines are real and proven
+- but important parity gaps remain, such as:
+  - no save/load
+  - no reusable tooling library
+  - no real FEA
+  - only partial auto roll design
+  - partial 3D flower transition
+
+Return NOT VERIFIED if:
+- most features are visual, mocked, weak, or unsupported by tests and outputs
+
+==================================================
+NON-NEGOTIABLE
+==================================================
+
+Do not give me marketing language.
+Do not give me a vague summary.
+Do not tell me “done” without evidence.
+Do not inflate maturity.
+Do not mislabel heuristic validation as FEA.
+Do not mislabel manual engineering assistance as full automation.
+
+Start now:
+1. inspect the full repo
+2. benchmark all capabilities
+3. implement missing high-value features
+4. run tests
+5. generate proof artifacts
+6. return the final evidence-based report

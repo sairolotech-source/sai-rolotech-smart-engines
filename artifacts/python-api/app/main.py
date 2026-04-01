@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.api.routes import router
+from app.engines.fea.fea_routes import fea_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(fea_router)
 
 
 @app.get("/certificate", include_in_schema=False)

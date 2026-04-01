@@ -1,0 +1,439 @@
+You are auditing and upgrading this application to reach COPRA-class roll-forming software capability as closely as practically possible inside the current codebase.
+
+Mission:
+1. Inspect the entire repository.
+2. Compare the app against a COPRA-class benchmark.
+3. Identify every missing or weak capability.
+4. Implement the highest-impact missing features directly in code where feasible.
+5. Produce a proof-based final report with repo/file/function/output evidence.
+6. Do not give opinions without proof.
+
+Important:
+This is NOT a UI-only task.
+This is NOT a “make it look better” task.
+This is NOT a placeholder/mock/demo task.
+
+The software should be evaluated and improved across the full engineering workflow:
+- profile definition
+- station planning
+- flower generation
+- roll design
+- lower/upper roll geometry
+- tooling logic
+- manufacturing outputs
+- simulation or at least simulation-ready validation
+- project/tool database logic
+- reporting and exports
+- production-readiness and engineering proof
+
+==================================================
+COPRA-CLASS BENCHMARK TO USE
+==================================================
+
+Treat the following as the target benchmark dimensions:
+
+A. Full roll-forming process chain
+- calculation
+- flower design
+- roll tool design
+- part lists / BOM
+- tool production workflow
+- central database / project and tool management
+
+B. Parametric flower design
+- editable station count
+- station-by-station forming progression
+- automatic flower updates after geometry changes
+- support for open/closed sections where relevant
+- support for repeated shape families / size variants where possible
+
+C. Flower Technology calculations
+- technical forming curves
+- optimized downhill forming or equivalent strain-aware logic
+- 3D wire / centerline / transition model
+- engineering calculations, not just visuals
+
+D. Automatic roll design
+- SmartRolls-like data-driven roll design from profile cross-section
+- minimal manual CAD dependency
+- roll contour generation from section logic and process parameters
+- station-specific upper/lower roll differences
+
+E. Roll geometry fidelity
+- non-hardcoded roll models
+- actual contour-driven roll geometry
+- if the target roll is non-axisymmetric, geometry must vary with angle as well as axial position
+- no fake cylinder fallback unless explicitly labeled fallback
+- proper shaft/shoulder/groove logic
+
+F. Simulation / validation
+- FEA or simulation module if feasible
+- otherwise, implement a simulation-ready validation layer with engineering checks:
+  - bend progression consistency
+  - strain/elongation approximation
+  - interference/collision checks
+  - roll gap plausibility
+  - forming limit warnings
+  - defect heuristics such as twist, corrugation, bow, edge-wave risk
+- distinguish clearly between real simulation and heuristic validation
+
+G. Manufacturing outputs
+- BOM / part list
+- tooling list
+- roll dimensions table
+- station report
+- exportable engineering summary
+- downloadable report assets if the app supports file export
+
+H. Database / data model maturity
+- central project model
+- reusable tooling library / roll library
+- profile/project save-load versioning
+- traceable input/output data model
+- no scattered untyped ad-hoc state for core engineering data
+
+I. CAD / workflow maturity
+- DXF / STEP / STL / JSON / CSV export support where realistic
+- manufacturing-friendly data structures
+- report generation
+- reliable import/export boundaries
+- error handling, validation, units consistency
+
+J. Engineering credibility
+- tests
+- deterministic outputs
+- no silent fallbacks hiding broken calculations
+- no mock geometry presented as final engineering result
+- clear limits where physics-grade simulation is absent
+
+==================================================
+MANDATORY RULES
+==================================================
+
+1. You must inspect the full repository before making conclusions.
+2. You must search for all related code paths, including:
+   flower, forming, station, roll, tooling, contour, profile, simulation, export, report, BOM, geometry, lower roll, upper roll, database, save/load, validation, strain, defect, collision, CAD
+3. You must distinguish:
+   - UI visualization only
+   - geometry generation
+   - engineering calculation
+   - manufacturing output
+   - simulation
+4. Do NOT count these as real features:
+   - placeholders
+   - TODO stubs
+   - static demo JSON
+   - mock data
+   - hardcoded geometry
+   - fake exports with incomplete content
+5. If a feature is only visual but not calculated, mark it PARTIAL or FAIL.
+6. If code claims something without tests or outputs, mark it UNPROVEN.
+7. If missing modules can be added realistically inside this repo, implement them.
+8. If a full industrial-grade module is too large to finish, add the best practical architecture and a working minimal implementation, then document the remaining gap honestly.
+9. Never say “COPRA-level achieved” unless the evidence actually supports it.
+10. Proof is required for every claim.
+
+==================================================
+WORK PLAN
+==================================================
+
+Phase 1 — Repository discovery
+- Scan the project structure.
+- Identify the core app architecture, stack, state model, geometry engine, calculation engine, export/report modules, and tests.
+- List all candidate files for:
+  - flower logic
+  - roll generation
+  - geometry rendering
+  - contour pipeline
+  - engineering calculation
+  - export/report
+  - database/project persistence
+  - simulation/validation
+
+Phase 2 — Capability audit
+Create a capability matrix with these columns:
+- Capability
+- Status: PASS / PARTIAL / FAIL / UNPROVEN
+- Evidence
+- Files / functions
+- Why it passes or fails
+- User-visible impact
+- Engineering risk
+
+Audit all benchmark dimensions A–J.
+
+Phase 3 — Gap prioritization
+Rank missing features by:
+1. engineering importance
+2. business importance
+3. implementation feasibility
+4. user-visible impact
+
+Focus first on the smallest patch set that most increases engineering credibility.
+
+Phase 4 — Implementation
+Apply direct code changes.
+Prioritize:
+- replacing hardcoded geometry with data-driven geometry
+- adding real flower/station calculation where currently only visuals exist
+- adding roll design automation from section/process parameters
+- adding manufacturing outputs/reports
+- adding validation/simulation-ready checks
+- improving central engineering data model
+- adding test coverage
+
+Phase 5 — Verification
+Run or create:
+- unit tests
+- integration checks
+- output generation checks
+- before/after comparisons
+- screenshots or generated artifacts if available
+- sample project runs
+
+Phase 6 — Final report
+Return a proof-based report with:
+- executive verdict
+- capability matrix
+- exact patches
+- test evidence
+- output evidence
+- remaining gaps
+- next recommended milestones
+
+==================================================
+SPECIFIC TECHNICAL TASKS TO PERFORM
+==================================================
+
+1. Flower engine
+Inspect whether the app currently does real flower calculation or just draws shapes.
+If only visual:
+- implement a real station progression engine
+- represent profile progression across stations
+- compute station-by-station geometry states
+- ensure changes in profile, thickness, width, bend plan, and station count recompute the flower
+- support a 3D wire/transition representation if missing
+- keep it data-driven and deterministic
+
+2. Forming-curve / downhill / technical calculation layer
+If missing:
+- add a dedicated engineering module for technical forming calculations
+- include at minimum:
+  - station progression math
+  - bend distribution
+  - simple strain/elongation estimation
+  - downhill-style vertical progression control or equivalent
+  - warnings when inputs exceed plausible limits
+Document clearly whether this is:
+- true physics simulation
+or
+- engineering approximation
+
+3. Automatic roll design
+Inspect whether rolls are manually modeled, approximated, or automatically derived.
+If missing or weak:
+- build a roll design generator from profile cross-section and station data
+- generate station-specific upper/lower roll contours
+- separate design inputs from mesh/view code
+- avoid reliance on manual CAD sketches where possible
+- add a reusable tooling data structure
+
+4. Roll geometry
+Inspect all lower/upper roll generation.
+- Remove hardcoded cylinders where still present
+- ensure contour data actually drives geometry
+- if target shapes are non-axisymmetric, implement geometry as r = f(x, theta), not only lathe/revolve
+- otherwise document why axisymmetric geometry is sufficient
+- add tests for geometry determinism
+
+5. Validation / simulation-ready layer
+If no true FEA exists:
+- add an engineering validation module with:
+  - station continuity checks
+  - roll gap checks
+  - collision/interference checks
+  - bend severity checks
+  - edge strain risk
+  - springback placeholder hooks
+  - defect heuristics for twist, bow, corrugation, edge wave
+- expose results in UI/report
+- clearly label as heuristic validation, not FEA
+
+6. Manufacturing outputs
+Add or improve:
+- BOM / tooling list
+- station table
+- roll dimensions table
+- project summary report
+- export to JSON/CSV/PDF or equivalent supported format
+- make outputs derived from real engineering state, not mocked display data
+
+7. Central engineering data model
+Refactor if needed so the app has a coherent central model for:
+- material
+- thickness
+- profile cross-section
+- station count
+- station states
+- flower data
+- roll design data
+- tooling data
+- validation results
+- exports/report data
+Add versioning or schema safety if feasible.
+
+8. Persistence / project management
+Inspect save/load.
+If weak:
+- implement robust project serialization
+- include engineering inputs, computed outputs, and generated tooling data
+- maintain backward compatibility if feasible
+
+9. Testing
+Add meaningful automated tests for:
+- flower generation
+- station progression
+- roll contour generation
+- export content
+- validation warnings
+- geometry reproducibility
+
+==================================================
+SEARCH CHECKLIST
+==================================================
+
+Search the repo for these terms and inspect all meaningful hits:
+flower
+forming
+station
+progression
+roll
+tooling
+contour
+profile
+cross-section
+material
+thickness
+bend
+strain
+elongation
+downhill
+simulation
+fea
+validation
+collision
+interference
+twist
+corrugation
+bow
+edge wave
+report
+export
+bom
+part list
+database
+project
+save
+load
+dxf
+step
+stl
+json
+csv
+
+==================================================
+REQUIRED DELIVERABLE FORMAT
+==================================================
+
+Return the final answer in exactly this structure:
+
+1. EXECUTIVE VERDICT
+- Is the software currently COPRA-class? YES / NO / PARTIAL
+- One-paragraph reasoned verdict
+
+2. CAPABILITY MATRIX
+For each benchmark dimension A–J provide:
+- Status
+- Proof
+- Key files/functions
+- Gap summary
+
+3. PROOF OF CURRENT STATE
+- Repo structure summary
+- Important files found
+- Existing working modules
+- Existing fake/mock/partial modules
+- Screenshots/outputs/tests if any
+
+4. PATCHES APPLIED
+For every patch:
+- file path
+- function/class/component/module changed
+- what changed
+- why changed
+- before vs after
+
+5. NEW FEATURES IMPLEMENTED
+List everything newly added that materially improves engineering capability.
+
+6. TESTS AND VALIDATION
+- tests found
+- tests added
+- test results
+- manual validation scenarios
+- sample outputs generated
+
+7. REMAINING GAPS
+List what still prevents true COPRA-class status.
+
+8. NEXT PRIORITY ROADMAP
+Rank the next 5 highest-value engineering upgrades.
+
+9. HONEST LIMITS
+Clearly separate:
+- real engineering calculations
+- heuristic approximations
+- visualization-only features
+- not yet implemented features
+
+==================================================
+SCORING / VERDICT GATES
+==================================================
+
+Use these gates strictly:
+
+Return “NO” if most of the app is still visualization-heavy and lacks real engineering calculations, manufacturing outputs, and validation.
+
+Return “PARTIAL” only if:
+- there is real engineering calculation
+- data-driven roll/tool generation exists
+- exports/reports exist
+- validation exists
+- but simulation/database/automation maturity is still incomplete
+
+Return “YES” only if the repository proves:
+- end-to-end engineering workflow
+- data-driven flower and roll design
+- strong tooling/manufacturing outputs
+- central engineering data management
+- serious validation or simulation capability
+- credible tests and deterministic outputs
+
+==================================================
+IMPLEMENTATION STYLE
+==================================================
+
+- Make the smallest high-value changes first, then expand.
+- Favor correctness over UI polish.
+- Do not hide missing physics behind pretty rendering.
+- Keep all engineering logic separated from presentation.
+- Add comments only where they help explain non-obvious engineering logic.
+- If assumptions are required, document them in the final report.
+- If some modules are too large to complete fully, create clean architecture and a working minimum slice.
+
+Now start:
+1. inspect the repository thoroughly
+2. produce the capability audit
+3. implement the missing high-value features
+4. run validation/tests
+5. return the report with proof

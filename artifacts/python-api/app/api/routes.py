@@ -56,6 +56,10 @@ from app.engines.engineering_risk_engine import generate_engineering_risk_report
 from app.engines.deformation_predictor_engine import generate_deformation_prediction_report
 from app.engines.flower_svg_engine import generate_flower_svg
 from app.engines.roll_groove_svg_engine import generate_roll_groove_svgs
+from app.engines.bend_allowance_engine import calculate_flat_blank, flat_blank_from_profile
+from app.engines.bom_engine import generate_bom
+from app.engines.process_card_engine import generate_process_card, process_card_to_text
+from app.utils.material_database import MATERIAL_DB, get_material, list_materials
 
 router = APIRouter(prefix="/api", tags=["roll-forming"])
 logger = logging.getLogger("routes")
@@ -1300,4 +1304,137 @@ def endpoint_roll_svg(body: ManualProfileInput):
 
     except Exception as exc:
         logger.error("roll-svg error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── GET /api/materials ────────────────────────────────────────────────────────
+
+@router.get("/materials")
+def endpoint_material_list():
+    """
+    Return full material property database for all supported roll forming materials.
+    Each entry includes: Fy, UTS, E, elongation, n-value, r-value, k-factor, density.
+    """
+    return {
+        "status": "pass",
+        "materials": MATERIAL_DB,
+        "supported_codes": list_materials(),
+    }
+
+
+# ─── POST /api/bend-allowance ──────────────────────────────────────────────────
+
+@router.post("/bend-allowance")
+def endpoint_bend_allowance(body: dict):
+    """
+    Calculate flat blank length using DIN 6935 K-factor / neutral axis method.
+
+    Body:
+      segments_mm (list[float]):     straight segment lengths
+      bend_angles_deg (list[float]): bend angles at each junction
+      thickness_mm (float):          sheet thickness
+      bend_radius_mm (float):        inner bend radius
+      material (str):                material code (GI, MS, SS, CR, HR, AL, …)
+      include_coil_width (bool):     if true, also return coil strip width & weight/m
+
+    Returns flat_blank_mm, bend_allowances per bend, coil_strip_width_mm (optional).
+    """
+    try:
+        segments      = [float(x) for x in body.get("segments_mm", [])]
+        bend_angles   = [float(x) for x in body.get("bend_angles_deg", [])]
+        thickness_mm  = float(body.get("thickness_mm", 1.5))
+        bend_radius   = float(body.get("bend_radius_mm", 3.0))
+        material      = str(body.get("material", "GI")).upper()
+        include_coil  = bool(body.get("include_coil_width", True))
+        tolerance_mm  = float(body.get("coil_width_tolerance_mm", 1.5))
+
+        if include_coil:
+            result = flat_blank_from_profile(
+                segments, bend_angles, thickness_mm, bend_radius, material, tolerance_mm
+            )
+        else:
+            result = calculate_flat_blank(segments, bend_angles, thickness_mm, bend_radius, material)
+
+        return result
+
+    except Exception as exc:
+        logger.error("bend-allowance error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/bom ─────────────────────────────────────────────────────────────
+
+@router.post("/bom")
+def endpoint_bom(body: ManualProfileInput):
+    """
+    Generate a full Bill of Materials (BOM) for roll forming tooling.
+    Uses the standard manual pipeline to compute station, shaft, bearing, and layout data,
+    then passes these into the BOM engine.
+
+    Returns bom_lines (itemized), total_item_qty, total_tooling_weight_kg.
+    """
+    try:
+        pipeline = execute_manual_pipeline(body)
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
+
+        result = generate_bom(
+            station_result=pipeline.get("station_engine", {}),
+            shaft_result=pipeline.get("shaft_engine", {}),
+            bearing_result=pipeline.get("bearing_engine", {}),
+            machine_layout_result=pipeline.get("machine_layout_engine"),
+            simulation_result=None,
+            material=body.material,
+            include_spares=True,
+        )
+        return result
+
+    except Exception as exc:
+        logger.error("bom error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/process-card ────────────────────────────────────────────────────
+
+@router.post("/process-card")
+def endpoint_process_card(body: ManualProfileInput):
+    """
+    Generate a per-station process parameter card from the simulation engine.
+    Returns structured station_cards list and a rendered text version.
+
+    Body: same as /api/manual-mode (ManualProfileInput schema)
+    """
+    try:
+        pipeline = execute_manual_pipeline(body)
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
+
+        roll_contour = pipeline.get("roll_contour_engine", {})
+        passes = roll_contour.get("passes", [])
+        calib  = roll_contour.get("calibration_pass")
+        profile_pts = pipeline.get("profile_analysis_engine", {}).get("profile_points", [])
+
+        sim_result = run_sim_engine(
+            profile_points=profile_pts,
+            passes=passes,
+            thickness_mm=body.sheet_thickness_mm,
+            material=body.material,
+            calibration_pass=calib,
+        )
+
+        card_result = generate_process_card(
+            simulation_result=sim_result,
+            thickness_mm=body.sheet_thickness_mm,
+            material=body.material,
+            machine_name="SAI ROLOTECH Roll Forming Machine",
+            project_ref=getattr(body, "project_ref", "PRJ-AUTO"),
+        )
+
+        if card_result.get("status") == "pass":
+            card_result["process_card_text"] = process_card_to_text(card_result)
+
+        return card_result
+
+    except Exception as exc:
+        logger.error("process-card error: %s", exc, exc_info=True)
         return {"status": "fail", "reason": str(exc)}

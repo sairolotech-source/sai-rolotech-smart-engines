@@ -19,50 +19,94 @@ function buildStationCrossSection(
   group.position.z = zOffset;
 
   const segs = station.segments;
-  const points3D: THREE.Vector3[] = [];
+  const pts2D: Array<{ x: number; y: number }> = [];
 
   if (segs.length === 0) {
-    // fallback shape
     const halfW = 60;
     const depth = Math.min(40, Math.abs(station.totalAngle) * 20);
-    points3D.push(
-      new THREE.Vector3(-halfW, 0, 0),
-      new THREE.Vector3(-halfW / 3, depth, 0),
-      new THREE.Vector3(halfW / 3, depth, 0),
-      new THREE.Vector3(halfW, 0, 0),
+    pts2D.push(
+      { x: -halfW, y: 0 },
+      { x: -halfW / 3, y: depth },
+      { x: halfW / 3, y: depth },
+      { x: halfW, y: 0 },
     );
   } else {
     segs.forEach(seg => {
-      points3D.push(new THREE.Vector3(seg.startX * 0.8, seg.startY * 0.8, 0));
+      pts2D.push({ x: seg.startX * 0.8, y: seg.startY * 0.8 });
     });
     const lastSeg = segs[segs.length - 1];
-    points3D.push(new THREE.Vector3(lastSeg.endX * 0.8, lastSeg.endY * 0.8, 0));
+    pts2D.push({ x: lastSeg.endX * 0.8, y: lastSeg.endY * 0.8 });
   }
 
-  // Draw cross-section as a tube along the profile points
-  if (points3D.length >= 2) {
-    const mat = new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.1, shininess: 80 });
+  const mat = new THREE.MeshPhongMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 0.15,
+    shininess: 90,
+    transparent: true,
+    opacity: 0.92,
+    side: THREE.DoubleSide,
+  });
 
-    for (let i = 0; i < points3D.length - 1; i++) {
-      const start = points3D[i];
-      const end = points3D[i + 1];
-      const dir = new THREE.Vector3().subVectors(end, start);
-      const len = dir.length();
-      if (len < 0.01) continue;
+  // ── 1. Solid extruded strip cross-section ─────────────────────────────────
+  // Build inner (top) and outer (bottom) contours offset by material thickness
+  if (pts2D.length >= 2) {
+    const shape = new THREE.Shape();
+    // Outer edge (centerline + thickness/2 offset normal)
+    const outerPts: Array<{ x: number; y: number }> = [];
+    const innerPts: Array<{ x: number; y: number }> = [];
 
-      const geo = new THREE.CylinderGeometry(thickness * 0.5, thickness * 0.5, len, 6);
-      const mesh = new THREE.Mesh(geo, mat);
-
-      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-      mesh.position.copy(mid);
-
-      const axis = new THREE.Vector3(0, 1, 0);
-      const normalized = dir.clone().normalize();
-      const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, normalized);
-      mesh.quaternion.copy(quaternion);
-
-      group.add(mesh);
+    for (let i = 0; i < pts2D.length; i++) {
+      const prev = pts2D[i - 1] ?? pts2D[i];
+      const next = pts2D[i + 1] ?? pts2D[i];
+      const dx = next.x - prev.x;
+      const dy = next.y - prev.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny =  dx / len;
+      const halfT = thickness * 0.5;
+      outerPts.push({ x: pts2D[i].x + nx * halfT, y: pts2D[i].y + ny * halfT });
+      innerPts.push({ x: pts2D[i].x - nx * halfT, y: pts2D[i].y - ny * halfT });
     }
+
+    // Shape: outer contour forward, inner contour backward (closed loop)
+    shape.moveTo(outerPts[0].x, outerPts[0].y);
+    for (let i = 1; i < outerPts.length; i++) shape.lineTo(outerPts[i].x, outerPts[i].y);
+    for (let i = innerPts.length - 1; i >= 0; i--) shape.lineTo(innerPts[i].x, innerPts[i].y);
+    shape.closePath();
+
+    const extrudeGeo = new THREE.ExtrudeGeometry(shape, {
+      depth: thickness * 0.8,
+      bevelEnabled: false,
+    });
+    const solidMesh = new THREE.Mesh(extrudeGeo, mat);
+    group.add(solidMesh);
+  }
+
+  // ── 2. Centerline wire highlight ──────────────────────────────────────────
+  const wireMat = new THREE.MeshPhongMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 0.4,
+    shininess: 120,
+  });
+
+  const points3D = pts2D.map(p => new THREE.Vector3(p.x, p.y, 0));
+  for (let i = 0; i < points3D.length - 1; i++) {
+    const start = points3D[i];
+    const end   = points3D[i + 1];
+    const dir   = new THREE.Vector3().subVectors(end, start);
+    const len   = dir.length();
+    if (len < 0.01) continue;
+
+    const geo  = new THREE.CylinderGeometry(thickness * 0.35, thickness * 0.35, len, 6);
+    const mesh = new THREE.Mesh(geo, wireMat);
+    mesh.position.copy(new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5));
+    mesh.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      dir.clone().normalize(),
+    );
+    group.add(mesh);
   }
 
   return group;

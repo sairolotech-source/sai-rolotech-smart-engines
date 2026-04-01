@@ -1,0 +1,82 @@
+Inspect the roll-model generation logic in detail.
+
+Current bug:
+The app is generating the lower roll as a simple axisymmetric round/revolved shape.
+Because of this:
+1. 3D output is cylindrical
+2. 2D flower pattern is not appearing
+3. OD/width looks constant everywhere
+4. The lower roll shape does not change around rotation
+5. The model does not match the reference drawing/photos
+
+What to fix:
+- Do NOT use a single revolve/cylinder as the final lower-roll geometry.
+- A revolve may be used only for the rough base blank.
+- The final lower roll must be non-axisymmetric.
+- The lower roll profile must vary with angle (theta), not remain constant for 360 degrees.
+- The 2D flower pattern must not be generated from a circle; it must be generated from a spline/lobed profile.
+- The 3D model must be built from multiple angular sections or station profiles and then lofted/blended.
+
+Use the drawing values visible in the reference:
+- overall width = 97.0
+- center width = 38.5
+- left side = 28.7
+- right side = 29.7
+- total height = 136.0
+- inner straight height = 78.0
+- side draft angle = 75 degrees
+
+Required implementation changes:
+1. Find any code path that creates the lower roll using:
+   - circle
+   - cylinder
+   - revolve
+   - lathe
+   - constant OD
+   Replace it with a section-based generator.
+
+2. Create a lower-roll data model like:
+   - base dimensions
+   - angular sections
+   - axial sections
+   - variable radius/control points
+   - flower/lobed pattern parameters
+
+3. Generate 2D profile as a spline or lobe-based contour, not a circular arc.
+
+4. Generate 3D model using one of these valid methods:
+   - loft through multiple section sketches
+   - boundary surface from section curves
+   - sweep with varying guide curves
+   - angular section interpolation around the roll axis
+
+5. Ensure OD changes with rotation:
+   radius = f(theta, x)
+   not just radius = f(x)
+
+6. If there is a “flower pattern” option, verify that it changes both:
+   - 2D contour preview
+   - 3D solid/surface output
+
+7. The lower roll should visibly change shape when rotated in preview.
+   Front/side/top views should not all look like a simple round spool.
+
+8. If CAM preview is using 2.5D logic, separate modeling from machining.
+   Keep geometry generation independent from 2.5D CAM assumptions.
+   Variable roll shape likely needs true 3D machining logic.
+
+Validation checklist:
+- 2D profile matches the drawing proportions
+- flower pattern appears in 2D
+- flower pattern appears in 3D
+- lower roll is not perfectly cylindrical
+- OD is not constant through full rotation
+- rotating the model changes the silhouette
+- lower roll shape matches the reference photo more closely than the current revolve model
+
+Return:
+- root cause found
+- files/functions changed
+- exact patch
+- before/after behavior
+- any remaining assumptions

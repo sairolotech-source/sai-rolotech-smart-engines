@@ -38,6 +38,121 @@ const BED_THICKNESS_MM = 30;
 const FLOOR_Y_MM = -264;
 const PROFILE_POINTS = 16;
 
+// ── Grooved-roll geometry helpers ─────────────────────────────────────────────
+function buildGroovedRollLathePoints(
+  contour: Array<{ x: number; y: number }> | undefined,
+  shaftCenterMm: number,
+  shaftRadius: number,
+  rollWidth: number,
+  fallbackOuterR: number,
+  grooveDepth: number,
+  draftAngleDeg: number,
+): THREE.Vector2[] {
+  const halfW = rollWidth / 2;
+
+  if (contour && contour.length >= 3) {
+    const sorted = [...contour].sort((a, b) => a.x - b.x);
+    const minY = Math.min(...sorted.map(p => p.y));
+    const maxY = Math.max(...sorted.map(p => p.y));
+    const yRange = maxY - minY || 1;
+
+    // Shaft extension caps
+    const capRadius = shaftRadius;
+    const firstAxial = sorted[0].x;
+    const lastAxial  = sorted[sorted.length - 1].x;
+
+    const pts: THREE.Vector2[] = [
+      new THREE.Vector2(capRadius, firstAxial - 10),
+      new THREE.Vector2(capRadius, firstAxial),
+    ];
+
+    sorted.forEach(p => {
+      // radius = distance from roll axis to surface
+      // normalize profile_y to [0,1] then map to [shaftRadius, fallbackOuterR]
+      const norm = (p.y - minY) / yRange;
+      // higher norm_y → higher surface → roll protrudes more → for lower roll = concave (smaller radius)
+      const radius = Math.max(shaftRadius + 2, fallbackOuterR - norm * grooveDepth);
+      pts.push(new THREE.Vector2(radius, p.x));
+    });
+
+    pts.push(new THREE.Vector2(capRadius, lastAxial));
+    pts.push(new THREE.Vector2(capRadius, lastAxial + 10));
+    return pts;
+  }
+
+  // ── Fallback: parameterised grooved profile from reference dims ───────────
+  const draftRad = Math.max(0.1, (draftAngleDeg * Math.PI) / 180);
+  const draftW   = grooveDepth / Math.tan(draftRad);
+  const gcHW     = Math.max(1, (rollWidth * 0.4) / 2);
+
+  return [
+    new THREE.Vector2(shaftRadius,                  -(halfW + 10)),
+    new THREE.Vector2(shaftRadius,                  -halfW),
+    new THREE.Vector2(fallbackOuterR - grooveDepth, -halfW + 5),
+    new THREE.Vector2(fallbackOuterR - grooveDepth, -(gcHW + draftW)),
+    new THREE.Vector2(fallbackOuterR,               -gcHW),
+    new THREE.Vector2(fallbackOuterR,               gcHW),
+    new THREE.Vector2(fallbackOuterR - grooveDepth, gcHW + draftW),
+    new THREE.Vector2(fallbackOuterR - grooveDepth, halfW - 5),
+    new THREE.Vector2(shaftRadius,                  halfW),
+    new THREE.Vector2(shaftRadius,                  halfW + 10),
+  ];
+}
+
+// ProfiledRollMesh — LatheGeometry-based roll with groove profile
+function ProfiledRollMesh({
+  contour,
+  shaftCenterMm,
+  shaftRadius,
+  outerRadius,
+  rollWidth,
+  grooveDepth,
+  draftAngleDeg,
+  segments,
+  color,
+  emissiveIntensity,
+  castShadow: cs,
+}: {
+  contour?: Array<{ x: number; y: number }>;
+  shaftCenterMm: number;
+  shaftRadius: number;
+  outerRadius: number;
+  rollWidth: number;
+  grooveDepth: number;
+  draftAngleDeg: number;
+  segments: number;
+  color: string;
+  emissiveIntensity: number;
+  castShadow: boolean;
+}) {
+  const geo = useMemo(() => {
+    const pts = buildGroovedRollLathePoints(
+      contour, shaftCenterMm, shaftRadius, rollWidth,
+      outerRadius, grooveDepth, draftAngleDeg,
+    );
+    return new THREE.LatheGeometry(pts, Math.max(16, segments));
+  }, [contour, shaftCenterMm, shaftRadius, outerRadius, rollWidth, grooveDepth, draftAngleDeg, segments]);
+
+  useEffect(() => {
+    return () => { geo.dispose(); };
+  }, [geo]);
+
+  return (
+    // LatheGeometry revolves around Y; rotate [0,0,PI/2] so Y → X (horizontal roll axis)
+    <mesh rotation={[0, 0, Math.PI / 2]} castShadow={cs}>
+      <primitive object={geo} attach="geometry" />
+      <meshStandardMaterial
+        color={color}
+        roughness={0.25}
+        metalness={0.75}
+        emissive={color}
+        emissiveIntensity={emissiveIntensity}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
 function RollStation({
   rt,
   stationIndex,
@@ -53,26 +168,49 @@ function RollStation({
 }) {
   const rp = rt.rollProfile;
   if (!rp) return null;
-  const rollRadius = (rp.rollDiameter ?? 100) * 0.5;
+  const upperRadius = (rt.upperRollOD ?? rp.rollDiameter ?? 100) * 0.5;
+  const lowerRadius = (rt.lowerRollOD ?? rp.rollDiameter ?? 100) * 0.5;
+  const rollRadius  = upperRadius; // used for frame / pass-line positioning
   const shaftRadius = (rp.shaftDiameter ?? 40) * 0.5;
-  const rollWidth = rp.rollWidth ?? 80;
-  const gap = rp.gap ?? 1.5;
+  const rollWidth   = rp.rollWidth ?? (rt.upperRollWidth ?? 80);
+  const gap         = rt.rollGap ?? rp.gap ?? 1.5;
+
+  // groove depth = difference between upper and lower ODs
+  const grooveDepth = Math.max(2, upperRadius - lowerRadius);
+
+  // shaft center distances (distance from pass-line to shaft axis)
+  const upperShaftCenter = gap / 2 + upperRadius;
+  const lowerShaftCenter = gap / 2 + lowerRadius;
 
   const zPos = stationIndex * STATION_SPACING_MM;
-  const upperCenterY = rollRadius + gap * 0.5;
-  const lowerCenterY = -rollRadius - gap * 0.5;
+  const upperCenterY = upperRadius + gap * 0.5;
+  const lowerCenterY = -lowerRadius - gap * 0.5;
   const shaftLen = SHAFT_EXTENSION_MM;
 
   const emissiveIntensity = isActive ? 0.3 : 0;
   const gapColorHex = gapSeverity ? getGapHexColor(gapSeverity) : 0x22c55e;
 
+  // Tooling contour data (populated by Python pipeline via PythonDashboard bridge)
+  const topContour    = rt.tooling?.top_roll_contour;
+  const bottomContour = rt.tooling?.bottom_roll_contour;
+
   return (
     <group position={[0, 0, zPos]}>
+      {/* Upper roll — profiled LatheGeometry */}
       <group position={[0, upperCenterY, 0]}>
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow={quality.enableShadows}>
-          <cylinderGeometry args={[rollRadius, rollRadius, rollWidth, quality.cylinderSegments]} />
-          <meshStandardMaterial color={UPPER_ROLL_COLOR} roughness={0.3} metalness={0.7} emissive={UPPER_ROLL_COLOR} emissiveIntensity={emissiveIntensity} />
-        </mesh>
+        <ProfiledRollMesh
+          contour={topContour}
+          shaftCenterMm={upperShaftCenter}
+          shaftRadius={shaftRadius}
+          outerRadius={upperRadius}
+          rollWidth={rollWidth}
+          grooveDepth={grooveDepth}
+          draftAngleDeg={75}
+          segments={quality.cylinderSegments}
+          color={UPPER_ROLL_COLOR}
+          emissiveIntensity={emissiveIntensity}
+          castShadow={quality.enableShadows}
+        />
         <mesh rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[shaftRadius, shaftRadius, rollWidth + shaftLen, Math.round(quality.cylinderSegments / 2)]} />
           <meshStandardMaterial color={SHAFT_COLOR} roughness={0.5} metalness={0.8} />
@@ -83,11 +221,21 @@ function RollStation({
         </mesh>
       </group>
 
+      {/* Lower roll — profiled LatheGeometry (replaces plain cylinder) */}
       <group position={[0, lowerCenterY, 0]}>
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow={quality.enableShadows}>
-          <cylinderGeometry args={[rollRadius, rollRadius, rollWidth, quality.cylinderSegments]} />
-          <meshStandardMaterial color={LOWER_ROLL_COLOR} roughness={0.3} metalness={0.7} emissive={LOWER_ROLL_COLOR} emissiveIntensity={emissiveIntensity} />
-        </mesh>
+        <ProfiledRollMesh
+          contour={bottomContour}
+          shaftCenterMm={lowerShaftCenter}
+          shaftRadius={shaftRadius}
+          outerRadius={lowerRadius}
+          rollWidth={rollWidth}
+          grooveDepth={grooveDepth}
+          draftAngleDeg={75}
+          segments={quality.cylinderSegments}
+          color={LOWER_ROLL_COLOR}
+          emissiveIntensity={emissiveIntensity}
+          castShadow={quality.enableShadows}
+        />
         <mesh rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[shaftRadius, shaftRadius, rollWidth + shaftLen, Math.round(quality.cylinderSegments / 2)]} />
           <meshStandardMaterial color={SHAFT_COLOR} roughness={0.5} metalness={0.8} />

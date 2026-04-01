@@ -1,0 +1,63 @@
+Your summary is promising, but I need proof-based acceptance, not self-report.
+
+Do NOT give a narrative summary only.
+Return hard evidence for every claimed COPRA-class capability.
+
+Required acceptance package:
+
+1. Attach or generate the full audit report file and show its exact path.
+2. List every changed file path.
+3. For each claimed engine, provide:
+   - module/file name
+   - public API/functions/classes
+   - sample input
+   - actual output
+   - why this is engineering logic and not visualization
+4. Show proof for these specific areas:
+   - station engine
+   - flower engine
+   - roll contour engine
+   - springback engine
+   - force engine
+   - defect engine
+   - roll interference engine
+   - BOM engine
+   - bend allowance / flat blank engine
+   - process card engine
+   - material database
+   - CAD export engine
+   - report engine
+5. Provide test proof:
+   - exact test files
+   - exact command run
+   - full test result summary
+   - which tests are new vs old
+6. Provide artifact proof:
+   - one generated BOM
+   - one generated process card
+   - one generated engineering report
+   - one DXF export
+   - one STEP export
+   - one bend allowance calculation
+   - one full station progression output
+7. Prove whether automatic roll design is truly implemented:
+   - can the system generate roll design directly from profile cross-section and process parameters?
+   - or is it still partially manual?
+8. Prove whether flower technology is real calculation:
+   - forming curves
+   - downhill / vertical progression logic
+   - 3D wire / transition output
+9. Prove whether project/database management exists:
+   - save/load
+   - reusable tooling library
+   - versioned engineering data model
+10. Be honest about simulation:
+   - if no real FEA exists, label it as heuristic validation / DTM-like precheck
+   - do NOT call it full FEA simulation
+
+Final verdict format:
+- VERIFIED PASS
+- VERIFIED PARTIAL
+- NOT VERIFIED
+
+A capability cannot be marked VERIFIED PASS unless you show code path + output + test or runtime evidence.

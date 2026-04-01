@@ -76,13 +76,13 @@ router.post("/codex-engineer", async (req: Request, res: Response) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "o4-mini",
+      model: "openai/gpt-5.3-codex",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user",   content: userMsg },
       ],
       stream: true,
-      max_completion_tokens: 2048,
+      max_completion_tokens: 4096,
     });
 
     for await (const chunk of stream) {
@@ -121,12 +121,12 @@ router.post("/codex-engineer/sync", async (req: Request, res: Response) => {
 
   try {
     const res2 = await openai.chat.completions.create({
-      model: "o4-mini",
+      model: "openai/gpt-5.3-codex",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user",   content: userMsg },
       ],
-      max_completion_tokens: 2048,
+      max_completion_tokens: 4096,
     });
     res.json({ answer: res2.choices?.[0]?.message?.content ?? "" });
   } catch (err: unknown) {

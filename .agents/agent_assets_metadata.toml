@@ -29,3 +29,9 @@ id = "MFjH0whYyzD0V8CQ43A8A"
 uri = "file://artifacts/python-api/CLIENT_DEMO_PROOF.md"
 type = "text"
 title = "CLIENT_DEMO_PROOF.md"
+
+[[outputs]]
+id = "W5EySr3u9Z6tqXQgtvWg7"
+uri = "file://sai-rolotech-v2.3.0-snapshot.zip"
+type = "unspecified"
+title = "SAI Rolotech Smart Engines v2.3.0 — Source Code Snapshot"

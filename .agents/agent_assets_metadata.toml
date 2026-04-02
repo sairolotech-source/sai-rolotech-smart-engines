@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "dqWCIR3yAnBoKdcQOkJf6"
@@ -18,3 +17,15 @@ id = "CPrNYV4cMvsnhdvHKyx9f"
 uri = "file://artifacts/mockup-sandbox/public/assets/tooling-closeup.png"
 type = "image"
 title = "steel roll tooling"
+
+[[outputs]]
+id = "LoVzldZ6PW9CuBK6u82sM"
+uri = "file://artifacts/mockup-sandbox/public/assets/roll-forming-video.mp4"
+type = "video"
+title = "roll-forming-demo.mp4"
+
+[[outputs]]
+id = "MFjH0whYyzD0V8CQ43A8A"
+uri = "file://artifacts/python-api/CLIENT_DEMO_PROOF.md"
+type = "text"
+title = "CLIENT_DEMO_PROOF.md"

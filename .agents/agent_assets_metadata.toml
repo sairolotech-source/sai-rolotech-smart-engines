@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "dqWCIR3yAnBoKdcQOkJf6"
+uri = "file://artifacts/mockup-sandbox/public/assets/roll-forming-bg.png"
+type = "image"
+title = "metal strip through rollers"
+
+[[generated]]
+id = "Nax7XtiYr-EMLHC8abtmG"
+uri = "file://artifacts/mockup-sandbox/public/assets/blueprint-texture.png"
+type = "image"
+title = "blueprint texture overlay"
+
+[[generated]]
+id = "CPrNYV4cMvsnhdvHKyx9f"
+uri = "file://artifacts/mockup-sandbox/public/assets/tooling-closeup.png"
+type = "image"
+title = "steel roll tooling"

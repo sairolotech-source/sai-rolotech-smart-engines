@@ -151,6 +151,11 @@ export async function verifyLicense(): Promise<VerifyResult> {
 
   if (!token) return { active: false, reason: "No token" };
 
+  // Admin PIN bypass — no server call needed
+  if (token === "SAI-ADMIN-PIN-BYPASS") {
+    return { active: true, name: "SAI Admin" };
+  }
+
   // Client-side quick check for demo expiry (no network needed)
   if (isDemoExpiredLocally()) return { active: false, demoExpired: true, reason: "Demo 3 din pura ho gaya" };
 

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Lock, ShieldAlert } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const CORRECT_PIN = "1164";
 
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function PinGateScreen({ onUnlocked }: Props) {
+  const devLogin = useAuthStore(s => s.devLogin);
   const [pin, setPin] = useState(["", "", "", ""]);
   const [shake, setShake] = useState(false);
   const [attempts, setAttempts] = useState(0);
@@ -62,6 +64,13 @@ export function PinGateScreen({ onUnlocked }: Props) {
 
   const verifyPin = (entered: string) => {
     if (entered === CORRECT_PIN) {
+      try {
+        sessionStorage.setItem("sai_admin_ok", "1");
+        localStorage.setItem("sai_lic_token", "SAI-ADMIN-PIN-BYPASS");
+        localStorage.setItem("sai_offline_session", "true");
+        localStorage.setItem("sai_demo_login_time", String(Date.now()));
+      } catch {}
+      devLogin();
       onUnlocked();
     } else {
       const next = attempts + 1;

@@ -15,7 +15,7 @@ interface DemoScene {
   icon: React.ReactNode;
   color: string;
   duration: number;
-  render: () => React.ReactNode;
+  render: React.ComponentType;
 }
 
 function AnimatedCounter({ target, suffix = "", delay = 0.5 }: { target: number; suffix?: string; delay?: number }) {
@@ -636,7 +636,7 @@ export function DemoVideoCenter() {
               <motion.div key={scene.id} className="absolute inset-0"
                 initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
                 transition={{ duration: 0.5, ease }}>
-                {scene.render()}
+                <scene.render />
               </motion.div>
             </AnimatePresence>
           </div>

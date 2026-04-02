@@ -375,11 +375,21 @@ def compute_groove_geometry(
         upper_clip_box  = _shapely_box(-EXTENT, half_gap, EXTENT, EXTENT)
         upper_env       = upper_buffered.intersection(upper_clip_box)
 
-        lower_reflected = _shapely_scale(section_poly, yfact=-1, origin=(0, 0, 0))
-        lower_shifted   = _shapely_translate(lower_reflected, xoff=0.0, yoff=-half_gap)
-        lower_buffered  = lower_shifted.buffer(buf_amt, join_style=2)
-        lower_clip_box  = _shapely_box(-EXTENT, -EXTENT, EXTENT, -half_gap)
-        lower_env       = lower_buffered.intersection(lower_clip_box)
+        # ── Lower roll: flat cylinder, physically correct for upward-forming profiles ──
+        # FIX v2.3.0: Old code mirrored section_poly through y=0 and shifted down,
+        # creating a groove in the lower roll matching the REFLECTED section shape.
+        # This is WRONG for profiles where flanges form UPWARD (c_channel, lipped, hat):
+        #   • Flanges go UP → lower roll needs NO groove (flanges clear it)
+        #   • Lower roll contacts the web from BELOW as a flat cylinder
+        #   • Top face of lower roll is at y = −half_gap (below pass line)
+        # The flat rectangular body extends from y=−EXTENT to y=−half_gap,
+        # width = full roll disc width (roll_width_mm), centred at x=0.
+        lower_env = _shapely_box(
+            -roll_width_mm / 2.0,   # left edge (centred at x=0)
+            -EXTENT,                # roll body depth
+            roll_width_mm / 2.0,    # right edge
+            -half_gap,              # top face of lower roll (below pass line by half_gap)
+        )
 
         return {
             # ── Legacy ──────────────────────────────────────────────────────

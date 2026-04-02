@@ -685,7 +685,13 @@ def run_advanced_process_simulation(
             "target_angles_deg": [round(a, 3) for a in target_angles],
             "effective_bend_radius_mm": round(R_eff, 3),
             "strip_width_mm": strip_w,
-            "roll_gap_mm": round(thickness_mm + 0.05, 3),
+            "roll_gap_mm": round(
+                thickness_mm + (
+                    0.05 if thickness_mm < 1.0 else
+                    0.10 if thickness_mm <= 2.0 else
+                    0.15
+                ), 3
+            ),  # material+thickness-based gap clearance (matches roll_contour_engine logic)
             "forming_force_n": round(forming_force_n, 2),
             "motor_power_kw": round(power_kw, 4),
             "forming_energy_j_per_m": round(energy_j_m, 2),

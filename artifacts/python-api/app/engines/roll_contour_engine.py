@@ -147,7 +147,11 @@ def compute_groove_geometry(
         roll_width_mm             = round(width + 2 * shoulder_mm, 3)         # [MFG]
         groove_depth_mm           = round(height, 3)                          # [MFG]
         groove_radius_mm          = round(bend_radius_mm, 3)                  # [MFG]
-        upper_roll_radius_mm      = round(base_roll_od_mm / 2.0, 3)           # [HEURISTIC base OD]
+        # [MFG-GRADE] OD must grow with actual groove depth + thickness.
+        # Rule: body beyond groove = shoulder_mm on each side; OD_min ≥ 4×groove_depth
+        # so there is enough roll body. base_roll_od_mm is the absolute floor.
+        _od_from_groove   = 4.0 * height + 2.0 * shoulder_mm + thickness * 8
+        upper_roll_radius_mm      = round(max(base_roll_od_mm, _od_from_groove) / 2.0, 3)
         lower_roll_radius_mm      = round(upper_roll_radius_mm - groove_depth_mm, 3)   # [MFG]
         shaft_center_upper_mm     = round(roll_gap / 2.0 + upper_roll_radius_mm, 3)    # [MFG]
         shaft_center_lower_mm     = round(roll_gap / 2.0 + lower_roll_radius_mm, 3)    # [MFG]
@@ -990,11 +994,15 @@ def _upper_lower_roll_contour(
                                         bend_angle_deg, lip_mm=lip_mm)
         section_poly = _centerline_to_polygon(cl_tuples, thickness)
         if section_poly is not None and not section_poly.is_empty:
+            # [MFG-GRADE] Pass section-size-aware base OD so early passes
+            # (small groove depth) don't fall back to the fixed 120mm floor.
+            _section_od_floor = BASE_ROLL_OD_MM + section_height_mm + thickness * 10
             gg = compute_groove_geometry(section_poly, bend_radius_mm, gap,
                                          thickness=thickness,
                                          springback_deg=springback_deg,
                                          material=material,
-                                         profile_type=profile_type)
+                                         profile_type=profile_type,
+                                         base_roll_od_mm=_section_od_floor)
             upper_env = gg.get("groove_envelope_upper")
             lower_env = gg.get("groove_envelope_lower")
 
@@ -1076,8 +1084,15 @@ def _upper_lower_roll_contour(
             lower_profile_raw.insert(3, (-web_half + 2,  current_flange + lip_h + gap))
             lower_profile_raw.insert(4, (web_half - 2,   current_flange + lip_h + gap))
 
-        upper_roll_radius = round(BASE_ROLL_OD_MM / 2.0, 2)
-        lower_roll_radius = round(BASE_ROLL_OD_MM / 2.0 - groove_depth, 2)
+        # [MFG-HEURISTIC] OD scales with section height + thickness.
+        # OD_min = BASE_ROLL_OD_MM (floor); grows proportional to flange depth + t.
+        # This prevents the same-OD fallback regardless of section dimensions.
+        _heuristic_od = max(
+            BASE_ROLL_OD_MM + section_height_mm + thickness * 10,
+            3.0 * groove_depth + section_height_mm * 0.8 + thickness * 5.0,
+        )
+        upper_roll_radius = round(_heuristic_od / 2.0, 2)
+        lower_roll_radius = round(_heuristic_od / 2.0 - groove_depth, 2)
         roll_width        = round(section_width_mm + 2 * groove_depth + 20, 2)
         groove_depth_ret  = round(groove_depth, 2)
 

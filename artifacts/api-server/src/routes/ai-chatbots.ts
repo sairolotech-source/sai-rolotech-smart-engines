@@ -23,13 +23,18 @@ async function tryPersonalKeys(
       const res = await fetch(orUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
-        body: JSON.stringify({ model: "gpt-5.3-codex", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
-        signal: AbortSignal.timeout(30000),
+        body: JSON.stringify({
+          model: "gpt-5.3-codex",
+          messages: msgs,
+          max_tokens: 16384,
+          reasoning_effort: "high",  // o-series deep thinking (no temperature)
+        }),
+        signal: AbortSignal.timeout(90000),  // extended for deep reasoning
       });
       if (res.ok) {
         const data = await res.json() as { choices: { message: { content: string } }[] };
         const text = data.choices?.[0]?.message?.content;
-        if (text) return { text, failedKeyIds: [], provider: "gpt-5.3-codex" };
+        if (text) return { text, failedKeyIds: [], provider: "gpt-5.3-codex-deep" };
       }
     } catch { /* ignore */ }
   }
@@ -52,7 +57,7 @@ function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
         ?? process.env["OPENROUTER_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/chat/completions`,
       model: "anthropic/claude-sonnet-4.6",
-      maxTokens: 4096,
+      maxTokens: 16000,   // thinking budget (10000) + output tokens (6000)
       format: "openai",
     },
   };
@@ -90,6 +95,24 @@ async function callExternalAI(
     }
 
     const activeModel = provider === "gemini" ? "gemini-2.5-pro" : cfg.model;
+    const isClaude = activeModel.toLowerCase().includes("claude");
+
+    // Claude extended thinking: temperature MUST be 1, add thinking block
+    // Codex / other o-series: use reasoning_effort instead of temperature
+    const bodyObj: Record<string, unknown> = {
+      model: activeModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+      max_tokens: cfg.maxTokens,
+    };
+    if (isClaude) {
+      bodyObj.temperature = 1;                                      // required for thinking
+      bodyObj.thinking = { type: "enabled", budget_tokens: 10000 }; // deep thinking
+    } else {
+      bodyObj.temperature = 0.5;
+    }
 
     try {
       const response = await fetch(cfg.url, {
@@ -98,16 +121,8 @@ async function callExternalAI(
           "Content-Type": "application/json",
           Authorization: `Bearer ${cfg.key}`,
         },
-        body: JSON.stringify({
-          model: activeModel,
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-          ],
-          max_tokens: cfg.maxTokens,
-          temperature: 0.5,
-        }),
-        signal: AbortSignal.timeout(15000),
+        body: JSON.stringify(bodyObj),
+        signal: AbortSignal.timeout(90000),  // extended for deep thinking
       });
 
       if (!response.ok) return null;

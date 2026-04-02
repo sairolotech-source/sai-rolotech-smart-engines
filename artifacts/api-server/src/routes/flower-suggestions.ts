@@ -274,11 +274,12 @@ async function callCodexForSuggestions(prompt: string): Promise<string | null> {
       body: JSON.stringify({
         model: "anthropic/claude-sonnet-4.6",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 8192,
-        temperature: 0.4,
+        max_tokens: 12000,
+        temperature: 1,                                    // required for Claude extended thinking
+        thinking: { type: "enabled", budget_tokens: 4000 }, // deep thinking (smaller budget for structured output)
         response_format: { type: "json_object" },
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(90000),  // extended for deep thinking
     });
     if (!res.ok) return null;
     const data = await res.json() as { choices: { message: { content: string } }[] };

@@ -106,10 +106,15 @@ ${SAI_CONFIDENTIALITY_RULES}`;
   }
 
   try {
+    // gpt-5.3-codex is an o-series reasoning model:
+    //   reasoning_effort: "high" = deep thinking mode (max chain-of-thought depth)
+    //   no temperature param (o-series ignores it)
     const response = await openai.chat.completions.create({
       model: "gpt-5.3-codex",
       messages,
-      max_completion_tokens: 8192,
+      max_completion_tokens: 16384,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...({ reasoning_effort: "high" } as any),
     });
     return response.choices?.[0]?.message?.content ?? offlineResponse(message, style, language);
   } catch {
@@ -151,17 +156,23 @@ ${SAI_CONFIDENTIALITY_RULES}`;
       const res = await fetch(orUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
-        body: JSON.stringify({ model: "anthropic/claude-sonnet-4.6", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
-        signal: AbortSignal.timeout(30000),
+        body: JSON.stringify({
+          model: "anthropic/claude-sonnet-4.6",
+          messages: msgs,
+          max_tokens: 16000,
+          temperature: 1,                                     // required for Claude extended thinking
+          thinking: { type: "enabled", budget_tokens: 10000 }, // deep thinking mode
+        }),
+        signal: AbortSignal.timeout(90000),  // thinking can take 30–60s
       });
       if (res.ok) {
         const data = await res.json() as { choices: { message: { content: string } }[] };
         const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[AI Fallback] Responded via OpenRouter Claude Sonnet 4.6"); return { text, failedKeyIds }; }
+        if (text) { console.log("[AI Fallback] Responded via OpenRouter Claude 4.6 (deep thinking)"); return { text, failedKeyIds }; }
       } else {
-        console.log(`[AI Fallback] OpenRouter Claude 4.6 failed (${res.status})`);
+        console.log(`[AI Fallback] OpenRouter Claude 4.6 deep thinking failed (${res.status})`);
       }
-    } catch { console.log("[AI Fallback] OpenRouter Claude 4.6 error"); }
+    } catch { console.log("[AI Fallback] OpenRouter Claude 4.6 deep thinking error"); }
   }
 
   return { text: null, failedKeyIds };

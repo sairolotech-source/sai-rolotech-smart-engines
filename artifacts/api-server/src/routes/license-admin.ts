@@ -9,11 +9,28 @@ const DEMO_KEY = "SAIRDEMO2026";
 const DEMO_TRIAL_HOURS = 72; // 3 din = 72 ghante
 
 const VALID_LICENSE_KEYS = new Set([
+  // ── Full License Keys (2026) ──────────────────────────────────────────
+  "SAIRPRO2026001",   // Client 01
+  "SAIRPRO2026002",   // Client 02
+  "SAIRPRO2026003",   // Client 03
+  "SAIRPRO2026004",   // Client 04
+  "SAIRPRO2026005",   // Client 05
+  "SAIRPRO2026006",   // Client 06
+  "SAIRPRO2026007",   // Client 07
+  "SAIRPRO2026008",   // Client 08
+  "SAIRPRO2026009",   // Client 09
+  "SAIRPRO2026010",   // Client 10
+  // ── Enterprise Keys (2026) ────────────────────────────────────────────
+  "SAIRENT2026ENT1",  // Enterprise 01
+  "SAIRENT2026ENT2",  // Enterprise 02
+  "SAIRENT2026ENT3",  // Enterprise 03
+  // ── Demo / Trial Key ──────────────────────────────────────────────────
+  "SAIRDEMO2026",     // 3-din trial
+  // ── Legacy Keys (backward compatibility) ─────────────────────────────
   "SAIRFULL2026A",
   "SAIRFULL2026B",
   "SAIRFULL2026C",
   "SAIRFULL2026D",
-  "SAIRDEMO2026",
 ]);
 
 function normalizeKey(raw: string): string {

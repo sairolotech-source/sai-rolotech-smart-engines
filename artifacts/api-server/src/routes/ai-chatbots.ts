@@ -23,13 +23,13 @@ async function tryPersonalKeys(
       const res = await fetch(orUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
-        body: JSON.stringify({ model: "o4-mini", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        body: JSON.stringify({ model: "gpt-5.3-codex", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
         signal: AbortSignal.timeout(30000),
       });
       if (res.ok) {
         const data = await res.json() as { choices: { message: { content: string } }[] };
         const text = data.choices?.[0]?.message?.content;
-        if (text) return { text, failedKeyIds: [], provider: "openrouter-codex" };
+        if (text) return { text, failedKeyIds: [], provider: "gpt-5.3-codex" };
       }
     } catch { /* ignore */ }
   }
@@ -51,7 +51,7 @@ function getProviderConfigs(): Record<AIProvider, ProviderConfig> {
         ?? process.env["OPENROUTER_API_KEY_"]
         ?? process.env["OPENROUTER_API_KEY"],
       url: `${process.env["AI_INTEGRATIONS_OPENROUTER_BASE_URL"] ?? "https://openrouter.ai"}/chat/completions`,
-      model: "o4-mini",
+      model: "anthropic/claude-sonnet-4.6",
       maxTokens: 4096,
       format: "openai",
     },

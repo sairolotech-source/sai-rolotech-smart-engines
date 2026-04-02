@@ -107,7 +107,7 @@ ${SAI_CONFIDENTIALITY_RULES}`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "o4-mini",
+      model: "gpt-5.3-codex",
       messages,
       max_completion_tokens: 8192,
     });
@@ -151,17 +151,17 @@ ${SAI_CONFIDENTIALITY_RULES}`;
       const res = await fetch(orUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
-        body: JSON.stringify({ model: "o4-mini", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
+        body: JSON.stringify({ model: "anthropic/claude-sonnet-4.6", messages: msgs, max_tokens: 4096, temperature: 0.5 }),
         signal: AbortSignal.timeout(30000),
       });
       if (res.ok) {
         const data = await res.json() as { choices: { message: { content: string } }[] };
         const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[AI Fallback] Responded via OpenRouter Codex Mini"); return { text, failedKeyIds }; }
+        if (text) { console.log("[AI Fallback] Responded via OpenRouter Claude Sonnet 4.6"); return { text, failedKeyIds }; }
       } else {
-        console.log(`[AI Fallback] OpenRouter Codex Mini failed (${res.status})`);
+        console.log(`[AI Fallback] OpenRouter Claude 4.6 failed (${res.status})`);
       }
-    } catch { console.log("[AI Fallback] OpenRouter Codex Mini error"); }
+    } catch { console.log("[AI Fallback] OpenRouter Claude 4.6 error"); }
   }
 
   return { text: null, failedKeyIds };

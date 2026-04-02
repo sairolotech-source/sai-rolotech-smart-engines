@@ -272,7 +272,7 @@ async function callCodexForSuggestions(prompt: string): Promise<string | null> {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}` },
       body: JSON.stringify({
-        model: "o4-mini",
+        model: "anthropic/claude-sonnet-4.6",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 8192,
         temperature: 0.4,

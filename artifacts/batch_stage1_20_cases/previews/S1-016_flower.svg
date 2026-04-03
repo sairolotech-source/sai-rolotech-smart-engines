@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="340" viewBox="0 0 900 340">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <text x="10" y="20" fill="#f8fafc" font-size="14" font-weight="bold" font-family="sans-serif">Flower Pattern — c_channel (70×40 mm) · 8 stations · shapely-computed 2D polygons</text>
+  <path d="M 303.79 224.53 L 596.21 224.53 L 762.67 209.68 L 763.49 218.84 L 596.62 233.74 L 303.38 233.74 L 136.51 218.84 L 137.33 209.68 L 303.79 224.53 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 304.32 224.53 L 595.68 224.53 L 753.94 172.50 L 756.81 181.24 L 597.15 233.74 L 302.85 233.74 L 143.19 181.24 L 146.06 172.50 L 304.32 224.53 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 305.09 224.53 L 594.91 224.53 L 728.73 126.59 L 734.16 134.02 L 597.92 233.74 L 302.08 233.74 L 165.84 134.02 L 171.27 126.59 L 305.09 224.53 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 306.02 224.53 L 593.98 224.53 L 686.66 88.15 L 694.27 93.32 L 598.85 233.74 L 301.15 233.74 L 205.73 93.32 L 213.34 88.15 L 306.02 224.53 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 307.04 224.53 L 592.96 224.53 L 638.68 67.16 L 647.52 69.73 L 599.87 233.74 L 300.13 233.74 L 252.48 69.73 L 261.32 67.16 L 307.04 224.53 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 307.94 224.53 L 592.06 224.53 L 600.87 61.80 L 610.06 62.30 L 600.77 233.74 L 299.23 233.74 L 289.94 62.30 L 299.13 61.80 L 307.94 224.53 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 308.19 224.53 L 591.81 224.53 L 591.81 61.80 L 601.02 61.80 L 601.02 233.74 L 298.98 233.74 L 298.98 61.80 L 308.19 61.80 L 308.19 224.53 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 308.19 224.53 L 591.81 224.53 L 591.81 61.80 L 601.02 61.80 L 601.02 233.74 L 298.98 233.74 L 298.98 61.80 L 308.19 61.80 L 308.19 224.53 Z" fill="#22c55e" fill-opacity="0.85" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.9"/>
+  <line x1="108.6" y1="247.1" x2="791.4" y2="247.1" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="450.0" y="261.1" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="monospace">Flat strip = 163.2 mm</text>
+  <rect x="50" y="308" width="12" height="8" fill="#6b7280" rx="2"/>
+  <text x="66" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Flat / pre-bend</text>
+  <rect x="210" y="308" width="12" height="8" fill="#7c3aed" rx="2"/>
+  <text x="226" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Early forming</text>
+  <rect x="370" y="308" width="12" height="8" fill="#6366f1" rx="2"/>
+  <text x="386" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Mid forming</text>
+  <rect x="530" y="308" width="12" height="8" fill="#3b82f6" rx="2"/>
+  <text x="546" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Final form</text>
+  <rect x="690" y="308" width="12" height="8" fill="#22c55e" rx="2"/>
+  <text x="706" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Calibration</text>
+  <text x="50" y="62" fill="#f8fafc" font-size="11" font-family="monospace">Profile: c_channel</text>
+  <text x="185" y="62" fill="#fbbf24" font-size="11" font-family="monospace">Web = 70 mm</text>
+  <text x="320" y="62" fill="#4ade80" font-size="11" font-family="monospace">Flange = 40 mm</text>
+  <text x="455" y="62" fill="#f87171" font-size="11" font-family="monospace">t = 2.2 mm</text>
+  <text x="590" y="62" fill="#94a3b8" font-size="11" font-family="monospace">Material = PP</text>
+  <text x="725" y="62" fill="#c084fc" font-size="11" font-family="monospace">Stations = 8</text>
+</svg>

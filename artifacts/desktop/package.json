@@ -1,0 +1,107 @@
+{
+  "name": "@workspace/desktop",
+  "version": "2.2.23",
+  "description": "SAI Rolotech Smart Engines  -  Roll Forming Engineering Suite (Windows Desktop)",
+  "private": true,
+  "main": "dist/main.js",
+  "homepage": "./",
+  "author": {
+    "name": "SAI Rolotech Smart Engines",
+    "email": "support@sairolotech.com"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:5000 && electron .\"",
+    "dev:backend": "cross-env PORT=3001 tsx ../api-server/src/index.ts",
+    "dev:frontend": "cross-env PORT=5000 BASE_PATH=/ vite --config ../design-tool/vite.config.ts --host 0.0.0.0",
+    "build": "pnpm run build:frontend && pnpm run build:backend && pnpm run build:electron",
+    "build:frontend": "pnpm --filter @workspace/design-tool run build",
+    "build:backend": "pnpm --filter @workspace/api-server run build",
+    "build:electron": "tsc -p tsconfig.json",
+    "dist": "pnpm run build && electron-builder --win",
+    "dist:installer": "pnpm run build && electron-builder --win nsis",
+    "dist:portable": "pnpm run build && electron-builder --win portable",
+    "dist:all": "pnpm run build && electron-builder --win nsis portable",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^32.2.7",
+    "electron-builder": "^25.1.8",
+    "typescript": "~5.9.2",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.sai-rolotech-smart-engines.rollformingai",
+    "productName": "SAI Rolotech Smart Engines",
+    "copyright": "Copyright (c) 2026 SAI Rolotech Smart Engines",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "node_modules/electron-updater/**/*",
+      "node_modules/builder-util-runtime/**/*",
+      "node_modules/lazy-val/**/*",
+      "node_modules/semver/**/*",
+      "node_modules/lodash.isequal/**/*",
+      "node_modules/js-yaml/**/*",
+      "node_modules/argparse/**/*",
+      "node_modules/sax/**/*",
+      "node_modules/tiny-typed-emitter/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../design-tool/dist/public",
+        "to": "frontend"
+      },
+      {
+        "from": "../api-server/dist",
+        "to": "api-server"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "publisherName": "SAI Rolotech Smart Engines",
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SAI Rolotech Smart Engines",
+      "artifactName": "SAI-Rolotech-Smart-Engines-Setup-${version}.exe",
+      "include": "installers/installer.nsh",
+      "license": "installers/license.txt",
+      "language": 1033,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "SAI-Rolotech-Smart-Engines-Portable-${version}.exe"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "adminsairolotech-bit",
+      "repo": "sai-rolotech-smart-engines",
+      "releaseType": "release"
+    }
+  }
+}

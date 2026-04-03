@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="220" viewBox="0 0 280 220">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <path d="M 19.31 56.59 L 19.31 24.45 L 260.69 24.45 L 260.69 56.59 L 255.34 56.59 L 255.34 71.59 L 249.66 71.59 L 249.66 62.27 L 199.09 62.27 L 199.09 71.59 L 193.41 71.59 L 193.41 62.27 L 142.84 62.27 L 142.84 78.55 L 137.16 78.55 L 137.16 62.27 L 86.59 62.27 L 86.59 71.59 L 80.91 71.59 L 80.91 62.27 L 30.34 62.27 L 30.34 71.59 L 24.66 71.59 L 24.66 56.59 L 19.31 56.59 Z" fill="#1e3a5f" fill-opacity="0.7" stroke="#60a5fa" stroke-width="1.8"/>
+  <path d="M 260.69 78.55 L 260.69 110.69 L 19.31 110.69 L 19.31 78.55 L 24.66 78.55 L 24.66 68.70 L 30.34 68.70 L 30.34 78.02 L 80.91 78.02 L 80.91 68.70 L 86.59 68.70 L 86.59 78.02 L 137.16 78.02 L 137.16 61.73 L 142.84 61.73 L 142.84 78.02 L 193.41 78.02 L 193.41 68.70 L 199.09 68.70 L 199.09 78.02 L 249.66 78.02 L 249.66 68.70 L 255.34 68.70 L 255.34 78.55 L 260.69 78.55 Z" fill="#14532d" fill-opacity="0.5" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="18.9" y1="68.7" x2="261.1" y2="68.7" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="262.5" y1="70.1" x2="262.5" y2="67.3" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="266.5" y="68.7" fill="#f59e0b" font-size="9" font-family="monospace">gap=2.69mm</text>
+  <text x="140" y="14" text-anchor="middle" fill="#22c55e" font-size="10" font-weight="bold" font-family="monospace">Stn 22 (Calibration)</text>
+  <text x="140" y="26" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="monospace">90.0° · calibration</text>
+  <text x="6" y="172" fill="#60a5fa" font-size="9" font-family="monospace">Upper Ø 166mm (r=83.0mm)</text>
+  <text x="6" y="184" fill="#4ade80" font-size="9" font-family="monospace">Lower Ø 130mm (r=65.2mm)</text>
+  <text x="6" y="196" fill="#94a3b8" font-size="9" font-family="monospace">Roll W=228.6mm  Depth=20.0mm</text>
+</svg>

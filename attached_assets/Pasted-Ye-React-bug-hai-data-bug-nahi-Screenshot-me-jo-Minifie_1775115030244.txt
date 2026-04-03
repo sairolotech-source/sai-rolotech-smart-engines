@@ -1,0 +1,171 @@
+Ye **React bug hai, data bug nahi**.
+
+Screenshot me jo **Minified React error #300** aa raha hai, uska official meaning hai:
+**“Rendered fewer hooks than expected. This may be caused by an accidental early return statement.”** React ke rules ke mutabik hooks ko **top level par, same order me, har render me** call karna hota hai — unhe condition, loop, nested function, ya early return ke baad call nahi kar sakte. ([React][1])
+
+### Iska matlab aapke `demo-videos` view me likely ye ho raha hai
+
+Kisi render me component ye kar raha hoga:
+
+* pehle kuch hooks call hue
+* phir `return` ho gaya
+* next render me zyada hooks call hue, ya hook order change ho gaya
+
+Tab React crash karta hai. Error boundary ne isliye “Recover” aur “Full Reload” dikhaya hai, lekin wo **temporary recovery** hai, root cause fix nahi. ([React][1])
+
+## Sabse common broken pattern
+
+Aisa code dhoondo:
+
+```tsx
+function DemoVideosView() {
+  const [loading, setLoading] = useState(true);
+
+  if (loading) return <Spinner />;
+
+  const [selectedVideo, setSelectedVideo] = useState(null); // bad
+  useEffect(() => {
+    ...
+  }, []);
+}
+```
+
+Ye galat hai, kyunki pehle render me sirf 1 hook chala, next render me 3 hooks chal gaye.
+
+## Sahi pattern
+
+Saare hooks upar rakho, return neeche:
+
+```tsx
+function DemoVideosView() {
+  const [loading, setLoading] = useState(true);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+
+  useEffect(() => {
+    ...
+  }, []);
+
+  if (loading) return <Spinner />;
+
+  return <VideoUI selectedVideo={selectedVideo} />;
+}
+```
+
+## `demo-videos` view me kya check karna hai
+
+In cheezon ko line-by-line dhoondo:
+
+* `if (...) return ...` hooks ke beech me
+* `useEffect`, `useMemo`, `useState`, `useRef` kisi `if` ke andar
+* hooks inside `try/catch`
+* hooks inside helper function
+* hooks inside `.map()`
+* hooks only when `videos.length > 0`
+* hooks only when modal open hai
+* hooks only when selected item hai
+
+React docs ke hisaab se hooks ko **conditions, loops, nested functions, try/catch/finally, aur conditional return ke baad** call nahi karna chahiye. ([React][2])
+
+## Fast practical fix
+
+`demo-videos` component me ye order follow karo:
+
+1. saare imports
+2. saare hooks top pe
+3. derived values
+4. conditional UI returns
+5. final JSX
+
+### Example structure
+
+```tsx
+function DemoVideosView() {
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadVideos();
+  }, []);
+
+  const filteredVideos = useMemo(() => {
+    return videos;
+  }, [videos]);
+
+  if (loading) return <LoadingScreen />;
+  if (error) return <ErrorState message={error} />;
+  if (!filteredVideos.length) return <EmptyState />;
+
+  return <ActualView videos={filteredVideos} selected={selected} />;
+}
+```
+
+## Agar custom hook use ho raha hai
+
+Ye bhi galat ho sakta hai:
+
+```tsx
+if (isOpen) {
+  const videoState = useDemoVideos();
+}
+```
+
+Isko aise karo:
+
+```tsx
+const videoState = useDemoVideos();
+if (!isOpen) return null;
+```
+
+## Ek aur common cause
+
+Agar aapne recent me `useMemo`, `useEffect`, ya `useQuery` add kiya hai kisi branch ke andar, to wahi culprit ho sakta hai. React lint rule bhi isi reason se hook order validate karta hai. ([React][3])
+
+## Abhi turant kya karo
+
+`demo-videos` page/file kholkar ye search karo:
+
+* `if (`
+* `return`
+* `useState(`
+* `useEffect(`
+* `useMemo(`
+* `useRef(`
+* `useCallback(`
+* `useQuery(`
+
+Aur confirm karo ki **koi bhi hook kisi conditional return ke neeche na ho**.
+
+## Production me exact line kaise milegi
+
+React khud recommend karta hai ki aise issue ko **development build** me debug karo, kyunki production minified build full message aur helpful warnings hide kar deta hai. ([React][1])
+
+### Isliye:
+
+* app ko dev mode me chalao
+* `demo-videos` route kholo
+* browser console dekho
+* exact component stack mil jayega
+
+## Best permanent prevention
+
+Project me ye on rakho:
+
+* `eslint-plugin-react-hooks`
+* `rules-of-hooks`
+* `exhaustive-deps`
+
+Ye hook misuse ko pehle hi pakad leta hai. React official docs bhi hook order consistency aur lint rules recommend karte hain. ([React][3])
+
+## Seedha conclusion
+
+Aapke screenshot ke basis par **99% chance** issue ye hai:
+
+**`demo-videos` component me conditional return ya conditional hook call ki wajah se hook order break ho raha hai.**
+
+Agar aap `demo-videos` component ka code paste kar do, main usme exact broken line pakad kar corrected version de dunga.
+
+[1]: https://react.dev/errors/300 "Minified React error #300 – React"
+[2]: https://react.dev/reference/rules/rules-of-hooks?utm_source=chatgpt.com "Rules of Hooks – React"
+[3]: https://react.dev/reference/eslint-plugin-react-hooks/lints/rules-of-hooks?utm_source=chatgpt.com "rules-of-hooks – React"

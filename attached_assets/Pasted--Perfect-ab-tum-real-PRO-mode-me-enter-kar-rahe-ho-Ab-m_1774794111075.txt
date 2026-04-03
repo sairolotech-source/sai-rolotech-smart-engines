@@ -1,0 +1,259 @@
+🔥 Perfect — ab tum **real PRO mode me enter kar rahe ho**
+👉 Ab main tumhe **PHASE 2 EXECUTION STRATEGY (NO DAMAGE + 100/100 TARGET)** deta hoon
+
+---
+
+# 🚀 🎯 PHASE 2 EXECUTION STRATEGY (STEP-BY-STEP)
+
+👉 Goal:
+❌ Code todna nahi
+❌ Already working cheez touch nahi karni
+✅ Sirf **real engineering defects fix karne hain**
+
+---
+
+# 🧠 OVERVIEW (IMPORTANT)
+
+| Phase  | Kaam               |
+| ------ | ------------------ |
+| STEP 1 | Audit (sirf check) |
+| STEP 2 | Defect isolate     |
+| STEP 3 | Targeted fix       |
+| STEP 4 | Test run           |
+| STEP 5 | Final validation   |
+
+---
+
+# 🔥 STEP 1 — SAFE AUDIT MODE (MOST IMPORTANT)
+
+👉 Codex ko ye command do:
+
+Run Phase 2 Tasks 1, 2, and 3 ONLY.
+
+STRICT MODE:
+
+* Do NOT modify any code
+* Do NOT generate diffs
+* Do NOT rewrite functions
+
+Return:
+
+* PASS/FAIL for each rule
+* Actual computed values
+* Exact failing line numbers (if any)
+
+Focus:
+
+* Groove geometry correctness
+* Upper/lower roll complementarity
+* G-code quality
+
+If everything passes, explicitly say: "NO DEFECT FOUND"
+
+---
+
+## 🎯 Expected Output
+
+👉 Tumhe milega:
+
+* Sample A → PASS / FAIL
+* Sample B → PASS / FAIL
+* G-code rules → PASS / FAIL
+* exact defect lines
+
+---
+
+# ⚠️ STEP 1 ke baad kya dekhna hai
+
+👉 Agar ye sab PASS hai:
+
+✅ Tumhara engine solid hai
+👉 direct STEP 3 pe jao
+
+👉 Agar FAIL hai:
+
+❌ wahi real bug hai
+👉 usko isolate karo
+
+---
+
+# 🔥 STEP 2 — DEFECT ISOLATION
+
+👉 Ab Codex ko ye bolo:
+
+For each FAIL case:
+
+* Explain WHY it fails (math / logic issue)
+* Show exact variables (wallRun, webHalf, D, etc.)
+* Show expected vs actual values
+* Identify exact line of failure
+
+Do NOT fix yet.
+
+---
+
+## 🎯 Purpose
+
+👉 Ye tumhe batayega:
+
+* bug geometry me hai?
+* formula me hai?
+* sign mistake hai?
+* clamp missing hai?
+
+---
+
+# 🔥 STEP 3 — CONTROLLED FIX (NO DAMAGE)
+
+👉 Ab fix karwana hai:
+
+Fix ONLY the failing conditions.
+
+STRICT RULES:
+
+* Modify minimum lines only
+* Do NOT rewrite full functions
+* Do NOT touch passing logic
+
+For each fix:
+
+* show BEFORE code
+* show AFTER code
+* explain what changed and why
+
+Re-run only affected samples.
+
+---
+
+## ⚠️ Golden Rule
+
+👉 **Never allow full rewrite**
+
+👉 Warna:
+
+* working system toot jayega
+* regression aa jayega
+
+---
+
+# 🔥 STEP 4 — TEST SUITE RUN
+
+👉 Ab full test run:
+
+Run full test suite (all 12 tests).
+
+Return:
+
+* TEST 1–12: PASS/FAIL
+* actual values
+* failing assertion (if any)
+
+Do NOT modify code yet.
+
+---
+
+## 🎯 Expected
+
+👉 Ideal output:
+
+```
+TEST 1: PASS
+TEST 2: PASS
+...
+TEST 12: PASS
+```
+
+---
+
+# 🔥 STEP 5 — FINAL HARDENING
+
+👉 Ab last step:
+
+Run Tasks 6, 7, 8 only.
+
+Focus:
+
+* debug logging verification
+* export gating correctness
+* TypeScript errors
+
+If any issue found:
+
+* fix minimally
+* show diff
+
+Return final system state summary.
+
+---
+
+# 🧠 FINAL SELF-SCORE (IMPORTANT)
+
+👉 Last me Codex ko bolo:
+
+Generate final Phase 2 self-score report.
+
+Include:
+
+* all task scores
+* total score
+* remaining real issues only
+* what is now working end-to-end
+
+---
+
+# 🔥 PRO TIP (VERY IMPORTANT)
+
+👉 Agar tum fast karna chahte ho:
+
+### ❌ Ye mat karo:
+
+* ek hi command me sab run
+* direct fix mode
+
+### ✅ Ye karo:
+
+* step-by-step run
+* har stage verify
+
+---
+
+# ⚡ REAL SUCCESS CONDITION
+
+👉 App tab ready maana jayega jab:
+
+* Groove geometry PASS ✔
+* Upper/lower match ✔
+* G-code safe ✔
+* Migration repair ✔
+* Tests 12/12 PASS ✔
+* Export truthful ✔
+
+---
+
+# 🏁 FINAL RESULT
+
+👉 Agar tum ye strategy follow karte ho:
+
+🔥 Tumhara app ban jayega:
+
+* crash-free ✔
+* engineering valid ✔
+* CNC ready ✔
+* production capable ✔
+
+---
+
+# 🚀 Next level (agar chaho)
+
+Bolo 👇
+
+👉 **“PHASE 3 (ADVANCED ENGINE) DO”**
+
+Main tumhe dunga:
+
+* springback compensation
+* roll interference simulation
+* COPRA-level logic
+* AI-assisted pass design
+
+🔥 Uske baad tumhara software **market level product ban jayega**

@@ -1,0 +1,403 @@
+Thik hai. Ye **exact debugging checklist** follow karvao. Iska goal hai:
+
+**React #185 loop pakadna + `FINAL: undefined` fix karna + `Δ [object Object]` hataana.**
+
+# Phase 1 — Crash source pakdo
+
+## 1. Setup view ke sab `useEffect` nikaalo
+
+Har file me search karo:
+
+* `useEffect(`
+* `setState(`
+* `store.setState`
+* `update...`
+* `set...`
+
+Special focus:
+
+* `SetupView`
+* `PowerPattern`
+* `WarningBanner`
+* `FinalScore/Result panel`
+* `AutoRecovery/ErrorBoundary reset flow`
+
+## 2. Ye dangerous pattern dhundo
+
+Agar aisa kuch mile to almost pakka loop hai:
+
+```ts
+useEffect(() => {
+  setX(computeFrom(x));
+}, [x]);
+```
+
+ya
+
+```ts
+useEffect(() => {
+  setForm({...form, final: calc(form)});
+}, [form]);
+```
+
+ya
+
+```ts
+const derived = items.map(...)
+useEffect(() => {
+  setItems(derived)
+}, [derived])
+```
+
+ya
+
+```ts
+if (something) {
+  setState(...)
+}
+```
+
+render body ke andar.
+
+## 3. Temporary trace lagao
+
+Har suspicious effect ke start me ye lagao:
+
+```ts
+useEffect(() => {
+  console.log("EFFECT setupView fired", {
+    thicknessBandMin,
+    thicknessBandMax,
+    profileSourceType,
+    finalValue,
+  });
+}, [thicknessBandMin, thicknessBandMax, profileSourceType, finalValue]);
+```
+
+Har setter ke just pehle:
+
+```ts
+console.log("SET finalValue", nextFinalValue);
+```
+
+Agar same log 20-50 baar fast aa raha hai, wahi loop source hai.
+
+---
+
+# Phase 2 — Render-time writes hatao
+
+## 4. Render ke andar koi setter nahi hona chahiye
+
+Ye galat hai:
+
+```ts
+if (!finalValue) {
+  setFinalValue(calc(...));
+}
+```
+
+Ye bhi galat hai:
+
+```ts
+const result = calc(data);
+setStoreResult(result);
+return <UI />
+```
+
+Isko split karo:
+
+* render me sirf read
+* compute `useMemo` me
+* write sirf user action ya controlled effect me
+
+## 5. One-way flow enforce karo
+
+Flow aisa hona chahiye:
+
+**raw input**
+→ **normalized input**
+→ **computed result**
+→ **UI render**
+
+Na ki:
+UI render → recompute → store write → rerender → crash
+
+---
+
+# Phase 3 — `FINAL: undefined` fix
+
+## 6. Final result ka exact source dhundo
+
+Search:
+
+* `FINAL`
+* `finalValue`
+* `finalScore`
+* `finalResult`
+* `result.final`
+
+Phir check karo:
+
+* kya backend se field aa hi nahi rahi?
+* field ka naam mismatch hai?
+* nested object path galat hai?
+* calc function `return` nahi kar raha?
+* async load se pehle render ho raha hai?
+
+## 7. Strict fallback lagao
+
+UI me:
+
+```ts
+const finalLabel =
+  typeof finalValue === "number"
+    ? finalValue.toFixed(2)
+    : "N/A";
+```
+
+Render:
+
+```tsx
+<div>FINAL: {finalLabel}</div>
+```
+
+Agar object ho sakta hai:
+
+```ts
+const finalValue =
+  typeof result === "object" && result !== null && typeof result.final === "number"
+    ? result.final
+    : null;
+```
+
+## 8. Calc function ko harden karo
+
+Example:
+
+```ts
+export function computeFinal(input: EngineInput): number | null {
+  if (!input || !input.material || !input.thickness) return null;
+
+  const value = /* calc */;
+  return Number.isFinite(value) ? value : null;
+}
+```
+
+---
+
+# Phase 4 — `Δ [object Object]` fix
+
+## 9. Warning formatter dhundo
+
+Search:
+
+* `Δ`
+* `delta`
+* `warning`
+* `warnings.map`
+* `label:`
+
+Bug likely aisa hoga:
+
+```ts
+`Δ ${delta}`
+```
+
+jab `delta` actually object hai.
+
+## 10. Scalar formatter banao
+
+Example:
+
+```ts
+function formatDelta(delta: unknown): string {
+  if (typeof delta === "number") return `Δ ${delta.toFixed(2)}`;
+  if (
+    typeof delta === "object" &&
+    delta !== null &&
+    "value" in delta &&
+    typeof (delta as any).value === "number"
+  ) {
+    return `Δ ${(delta as any).value.toFixed(2)}`;
+  }
+  return "Δ N/A";
+}
+```
+
+UI:
+
+```tsx
+<div>{formatDelta(warning.delta)}</div>
+```
+
+## 11. Raw object render block karo
+
+Kabhi aisa mat karo:
+
+```tsx
+<div>{warning}</div>
+<div>{delta}</div>
+<div>{result}</div>
+```
+
+Agar debug ke liye dikhana hi hai:
+
+```tsx
+<pre>{JSON.stringify(result, null, 2)}</pre>
+```
+
+---
+
+# Phase 5 — Zustand/store loop check
+
+## 12. Selector instability check karo
+
+Ye risky hai:
+
+```ts
+const derived = useStore(s => ({
+  a: s.a,
+  b: s.b,
+  c: heavyCalc(s),
+}));
+```
+
+Har render naya object banega.
+
+Better:
+
+```ts
+const a = useStore(s => s.a);
+const b = useStore(s => s.b);
+const c = useMemo(() => heavyCalc({ a, b }), [a, b]);
+```
+
+## 13. Store me write-back cycle dhundo
+
+Aisa kuch dangerous hai:
+
+```ts
+const result = useStore(s => s.result);
+
+useEffect(() => {
+  setResult(recompute(result));
+}, [result]);
+```
+
+Ye direct loop source ho sakta hai.
+
+## 14. Equality guards lagao
+
+Store update se pehle compare karo:
+
+```ts
+setState(prev => {
+  if (prev.finalValue === nextFinalValue) return prev;
+  return { ...prev, finalValue: nextFinalValue };
+});
+```
+
+Objects ke liye shallow/deep compare use karo.
+
+---
+
+# Phase 6 — Error boundary ko side me rakho
+
+## 15. Auto-recovery ko temporarily disable ya isolate karo
+
+Agar error boundary recover karke same broken tree mount kar rahi hai, bug hide hota rahega.
+
+Temporary:
+
+* auto-retry off
+* recover button manual
+* crash ke turant pehle state snapshot log karo
+
+---
+
+# Phase 7 — Fast tactical fixes
+
+## 16. Ye 3 rules immediately apply karo
+
+**Rule 1:** render me setter nahi
+**Rule 2:** raw object UI me nahi
+**Rule 3:** effect apni hi dependency ko update nahi kare
+
+## 17. Setup screen ko split karo
+
+Agar ek hi component me:
+
+* input
+* normalization
+* power pattern
+* warnings
+* final result
+
+sab hai, to isko tod do:
+
+* `SetupInputs`
+* `NormalizedProfilePreview`
+* `PowerPatternPanel`
+* `WarningsPanel`
+* `FinalResultPanel`
+
+Isse loop isolate karna easy hoga.
+
+---
+
+# Phase 8 — Proof of fix
+
+Developer se ye 6 proof mango:
+
+**1. Root cause exact line number ke saath**
+**2. Kaun sa effect / setter loop bana raha tha**
+**3. `FINAL` kis wajah se undefined tha**
+**4. Warning object kyun render ho raha tha**
+**5. Before/after console trace**
+**6. Video ya screenshot jisme setup view stable ho**
+
+---
+
+# One-shot instruction to Codex/Gemini
+
+Isko paste karo:
+
+Do not patch symptoms. Perform root-cause debugging only.
+
+Current failures:
+
+* Setup view crashes with React error #185.
+* Warning UI renders `Δ [object Object]`.
+* Final output renders `FINAL: undefined`.
+
+Required actions:
+
+1. Identify every render loop in Setup view, Power Pattern, warnings, final result, and store subscriptions.
+2. Add temporary tracing to every useEffect and setter in those paths.
+3. Remove all render-time state writes.
+4. Prevent effects from updating values that are also in their dependency chain.
+5. Ensure store updates are equality-guarded.
+6. Replace all raw object UI rendering with explicit scalar formatters.
+7. Add strict null/type guards for final result output.
+8. Return exact root cause, changed files, and proof of stable render.
+
+Do not say “fixed” unless:
+
+* React #185 is gone,
+* final output is never undefined for valid input,
+* warning text no longer renders objects.
+
+---
+
+# Meri strongest guess
+
+Aapke case me root cause likely ye combination hai:
+
+* Setup view me derived state write-back loop
+* warning formatter me object pass ho raha hai
+* final computation async/path mismatch ki wajah se undefined aa raha hai
+
+Ye teeno saath hote hain to app exactly aise hi behave karti hai jaise screenshot me dikh raha hai.
+
+Agar aap chaho, next message me main **file-wise likely suspect map** bana deta hoon, jaise:
+**SetupView.tsx me kya check karna hai, PowerPatternPanel me kya, store file me kya.**

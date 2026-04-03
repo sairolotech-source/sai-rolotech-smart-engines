@@ -1,0 +1,150 @@
+Haan, screenshots dekh ke clear lag raha hai ki **App Codex ne superficial fix kiya hai, root cause fix nahi hua**.
+
+Sabse bada issue ye hai:
+
+**React error #185 = maximum update depth exceeded**
+Yani koi component baar-baar state update kar raha hai, aur app infinite render/update loop me phas rahi hai. React ki official error page bhi isi ko confirm karti hai. ([React][1])
+
+Aapke screenshots me 3 alag signals dikh rahe hain:
+
+**1. `FINAL: undefined`**
+Iska matlab final computed value set hi nahi hui, ya wrong object path read ho raha hai.
+
+**2. `Δ [object Object]` warning**
+Iska matlab UI me string ki jagah poora object directly print ho raha hai. Example:
+`"Δ " + someObject`
+to output `[object Object]` aata hai. Ye clean data formatting failure hai.
+
+**3. React #185 crash in setup view**
+Iska matlab Setup screen me koi `useEffect`, derived state, store subscription, ya computed setter loop me chal raha hai.
+
+### Iska simple matlab
+
+Aapka app abhi:
+
+* feature-rich dikh raha hai
+* but state flow unstable hai
+* computed engineering data consistent nahi aa raha
+* UI wrong type ka data render kar rahi hai
+* auto-recovery sirf screen cover kar rahi hai, bug hata nahi rahi
+
+### Most likely root causes
+
+Aapke audit aur screenshots ko mila ke, sabse possible causes ye hain:
+
+**A. `useEffect` loop**
+
+* `useEffect(() => setState(...), [thatSameState])`
+* ya derived object har render me naya ban raha hai
+* phir effect dobara chalta hai
+* phir setState
+* phir render
+* phir crash
+
+**B. Zustand/store selector unstable**
+Agar aap store se object le rahe ho aur render ke andar usko reshape karke wapas set kar rahe ho, to loop ban sakta hai.
+
+**C. Computed panel me invalid fallback**
+`finalScore`, `delta`, `powerPattern`, `warnings` jaise fields undefined/object mix ke saath render ho rahe hain.
+
+**D. Error boundary symptom hide kar rahi hai**
+“Auto Recovery” screen aa rahi hai, but actual broken component same state ke saath dobara mount ho raha hoga.
+
+### Abhi sabse pehle kya fix karna hai
+
+Is order me karo:
+
+**1. Setup view ka infinite loop pakdo**
+Har `useEffect`, `useMemo`, `setState`, store update inspect karo.
+Specially:
+
+* setup screen
+* power pattern
+* warning banner
+* final score calculation
+* auto recovery mount flow
+
+**2. `undefined` aur object rendering guard karo**
+UI me raw object kabhi direct render mat karo.
+Examples:
+
+* `FINAL: {value ?? "N/A"}`
+* `deltaLabel = typeof delta === "number" ? delta.toFixed(2) : "N/A"`
+* object ko ya to serialize karo, ya exact field show karo
+
+**3. One-way data flow banao**
+Raw input → normalized data → computed results → readonly UI
+UI render ke andar recompute + write-back mat karo.
+
+**4. Setup screen me all setter calls isolate karo**
+Render phase ke andar, conditional branch ke andar, ya unstable effect me `setState` mat chalao.
+
+**5. Warning payload sanitize karo**
+`Δ [object Object]` ka matlab warning formatter broken hai.
+Expected:
+
+* `Δ 1.24 mm`
+* `Δ angle mismatch`
+* `Δ gap unsafe`
+  Not:
+* `Δ [object Object]`
+
+### Gemini/App Codex ne kahan galti ki hogi
+
+Bahut possible hai usne:
+
+* null guard laga diye
+* try/catch laga diya
+* error boundary add kar di
+* but actual dependency loop nahi toda
+
+Isliye app “fix” bolti hai, par result aur kharab aa raha hai.
+
+### Aap Codex/Gemini ko ye exact bolo
+
+Isko paste karo:
+
+Do not apply cosmetic fixes. Root-cause fix only.
+
+Current production failures:
+
+1. Setup view crashes with React error #185 (maximum update depth exceeded).
+2. Power Pattern warning shows `Δ [object Object]`.
+3. Final computed value shows `FINAL: undefined`.
+4. Auto-recovery UI appears, but root state/render loop remains unresolved.
+
+Your task:
+
+* Find every state update loop in Setup view, Power Pattern view, warning banner logic, and final score/result calculation.
+* Inspect all useEffect, useMemo, Zustand/store subscriptions, derived selectors, and any render-time state writes.
+* Remove all render-triggered write-backs.
+* Ensure one-way flow: raw input -> normalized engineering data -> computed result -> readonly UI.
+* Never set state inside render, inside unstable memo chains, or from effects that depend on values they themselves update.
+* Fix data formatting so no raw object is ever rendered in UI.
+* Any warning label must render scalar text only, never `[object Object]`.
+* Any final value must have strict fallback handling and typed guards.
+* Add console tracing around every state setter and effect in Setup view until the loop source is proven.
+* Return:
+
+  1. exact root cause,
+  2. affected files,
+  3. before/after logic,
+  4. proof that React #185 is gone,
+  5. proof that `FINAL` is no longer undefined,
+  6. proof that warning text no longer renders objects.
+* If not fully proven, do not say “fixed”.
+
+### Meri honest reading
+
+Abhi app ki problem **bug fix ki kami** nahi hai.
+Problem hai **state architecture unstable** hai.
+
+Jab tak ye 3 fix nahi hote, output trustworthy nahi hoga:
+
+* update loop removal
+* computed data typing cleanup
+* formatting + fallback cleanup
+
+Agar aap chaho, main ab aapke liye **React #185 ko pakadne ke liye exact debugging checklist** bana deta hoon, file-by-file.
+
+[1]: https://react.dev/errors/185 "Minified React error #185 – React"

@@ -1,0 +1,421 @@
+{
+  "drawing_id": "S1-003",
+  "difficulty_tier": "hard",
+  "description": "MS door frame with return bends",
+  "timestamp_utc": "2026-04-03T21:00:28.376458+00:00",
+  "input_parameters": {
+    "bend_count": 4,
+    "section_width_mm": 95,
+    "section_height_mm": 68,
+    "thickness": 2.5,
+    "material": "MS",
+    "profile_type": "door_frame",
+    "return_bends_count": 2,
+    "lips_present": false,
+    "lip_mm": 0.0,
+    "n_stations": 14
+  },
+  "material_data": {
+    "engine": "input_engine",
+    "status": "pass",
+    "sheet_thickness_mm": 2.5,
+    "material": "MS",
+    "thickness_category": "heavy",
+    "k_factor": 0.42,
+    "springback_factor": 1.03,
+    "forming_difficulty": "moderate"
+  },
+  "cross_section_dimensions_mm": {
+    "section_width_mm": 95,
+    "section_height_mm": 68
+  },
+  "bend_data": {
+    "bend_count": 4,
+    "return_bends_count": 2,
+    "lips_present": false,
+    "lip_mm": 0.0
+  },
+  "station_planning_data": {
+    "n_stations_requested": 14,
+    "n_stations_recommended": 30,
+    "passes_generated": 13
+  },
+  "generated_geometry_output": {
+    "profile_type_resolved": "door_frame",
+    "forming_summary": {
+      "flat_strip_width_mm": 286.39,
+      "flat_strip_formula": "web(95.0)+legs(163.2)+2\u00d7BA_g(7.52)[flange]+2\u00d7BA_g(6.576)[return_lip]=286.39 [multi-group]",
+      "bend_allowance_per_bend_mm": 7.52,
+      "k_factor": 0.415,
+      "k_factor_source": "Machinery's Handbook 30th ed. Table 26-3",
+      "k_factor_rt_ratio": 1.5,
+      "neutral_axis_radius_mm": 4.787,
+      "final_section_width_mm": 95.0,
+      "total_forming_stations": 14,
+      "forming_pass_count": 13,
+      "includes_calibration": true,
+      "primary_bend_angle": 90.0,
+      "springback_compensation_deg": 2.5,
+      "springback_effective_deg": 3.0,
+      "springback_material_mult": 1.2,
+      "overformed_to_deg": 92.5,
+      "roll_gap_mm": 2.65,
+      "bend_inner_radius_mm": 3.75,
+      "has_lips": true,
+      "lip_mm_used": 13.6,
+      "profile_type": "door_frame",
+      "profile_category": "structural",
+      "angle_schedule_mode": "two_phase_lipped",
+      "bend_groups": [
+        {
+          "group_id": "flange",
+          "description": "Primary flange bends",
+          "bend_count": 2,
+          "inner_radius_mm": 3.75,
+          "k_factor": 0.415,
+          "ba_mm": 7.5202,
+          "forming_start_pass": 1,
+          "forming_end_pass": 13
+        },
+        {
+          "group_id": "return_lip",
+          "description": "Return lip bends (door frame inward lips, form after flanges)",
+          "bend_count": 2,
+          "inner_radius_mm": 3.188,
+          "k_factor": 0.3993,
+          "ba_mm": 6.5757,
+          "leg_mm": 13.6,
+          "forming_start_pass": 5,
+          "forming_end_pass": 13
+        }
+      ],
+      "remaining_weaknesses": []
+    },
+    "interference_summary": {
+      "geometry_source": "manufacturing_grade",
+      "station_checks": [
+        {
+          "status": "clear",
+          "pass_no": 1,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 1: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 2,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 2: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 3,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 3: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 4,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 4: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 5,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 5: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 6,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 6: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 7,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 7: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 8,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 8: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 9,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 9: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 10,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 10: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 11,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 11: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 12,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 12: clearance 2.650mm OK"
+        },
+        {
+          "status": "clear",
+          "pass_no": 13,
+          "clash_area_mm2": 0.0,
+          "min_clearance_mm": 2.65,
+          "blocking": false,
+          "message": "Pass 13: clearance 2.650mm OK"
+        }
+      ],
+      "any_clash": false,
+      "any_warning": false,
+      "clash_count": 0,
+      "blocking": false
+    }
+  },
+  "roll_design_output": {
+    "status": "pass",
+    "pass_count": 13,
+    "calibration_pass_present": true
+  },
+  "simulation_precheck_output": {
+    "advanced_sim_status": "pass",
+    "advanced_sim_label": "ADVANCED PROCESS SIMULATION PRECHECK \u2014 NOT FEA",
+    "advanced_sim_process_verdict": "CRITICAL",
+    "advanced_total_passes": 13,
+    "simple_sim_status": "pass",
+    "simple_quality": {
+      "score": 95,
+      "label": "EXCELLENT",
+      "high_defects": 0,
+      "med_defects": 13,
+      "unique_high_types": [],
+      "unique_med_types": [
+        "cracking_risk"
+      ]
+    },
+    "simple_total_passes": 15
+  },
+  "bom_output": {
+    "status": "pass",
+    "total_items": null,
+    "total_weight_kg_estimate": null
+  },
+  "process_card_output": {
+    "status": "pass",
+    "card_count": 15,
+    "blocking": false
+  },
+  "cad_export_output": {
+    "status": "pass",
+    "capabilities": {
+      "dxf_export_supported": true,
+      "step_export_supported": true,
+      "dwg_export_supported": false,
+      "dwg_export_note": "Native DWG writer not implemented in cad_export_engine (DXF + STEP only)."
+    },
+    "total_files": 18,
+    "session_dir": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2",
+    "file_manifest": [
+      {
+        "type": "DXF",
+        "filename": "roll_set.dxf",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_set.dxf",
+        "purpose": "Roll part drawings"
+      },
+      {
+        "type": "DXF",
+        "filename": "shaft_layout.dxf",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\shaft_layout.dxf",
+        "purpose": "Shaft + spacer layout"
+      },
+      {
+        "type": "DXF",
+        "filename": "assembly.dxf",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\assembly.dxf",
+        "purpose": "Machine assembly plan"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s01.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s01.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s02.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s02.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s03.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s03.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s04.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s04.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s05.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s05.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s06.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s06.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s07.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s07.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s08.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s08.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s09.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s09.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s10.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s10.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s11.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s11.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s12.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s12.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s13.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s13.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "roll_s30.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\roll_s30.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      },
+      {
+        "type": "STEP",
+        "filename": "shaft.stp",
+        "path": "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\python-api\\app\\engines\\..\\..\\exports\\cad\\1775250028_eafdc2\\shaft.stp",
+        "purpose": "SolidWorks / SolidCAM import"
+      }
+    ]
+  },
+  "preview_output": {
+    "flower_svg_status": "pass",
+    "roll_svg_status": "pass"
+  },
+  "engine_statuses": {
+    "profile_analysis_engine": "pass",
+    "input_engine": "pass",
+    "advanced_flower_engine": "pass",
+    "station_engine": "pass",
+    "roll_logic_engine": "pass",
+    "shaft_engine": "pass",
+    "bearing_engine": "pass",
+    "duty_engine": "pass",
+    "roll_design_calc_engine": "pass",
+    "machine_layout_engine": "pass",
+    "roll_contour_engine": "pass",
+    "cam_prep_engine": "pass",
+    "flower_svg_engine": "pass"
+  },
+  "checks": {
+    "pipeline_pass": true,
+    "cad_export_pass": true,
+    "dxf_exists": true,
+    "step_exists": true,
+    "flower_preview": true,
+    "roll_preview": true,
+    "advanced_sim_pass": true,
+    "simple_sim_pass": true
+  },
+  "runtime_seconds": 0.086,
+  "generation_status": "VERIFIED",
+  "export_status": "VERIFIED",
+  "validation_status": "VERIFIED",
+  "artifact_paths": [
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_set.dxf",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\shaft_layout.dxf",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\assembly.dxf",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s01.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s02.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s03.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s04.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s05.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s06.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s07.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s08.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s09.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s10.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s11.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s12.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s13.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\roll_s30.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\exports\\S1-003\\shaft.stp",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\previews\\S1-003_flower.svg",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\previews\\S1-003_roll_station_01.svg",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\previews\\S1-003_roll_station_last.svg",
+    "C:\\Users\\Sai Rolotech\\Downloads\\sai-rolotech-smart-engines-main\\sai-rolotech-smart-engines-main\\artifacts\\batch_stage1_20_cases\\outputs\\S1-003_process_card.txt"
+  ],
+  "notes": [],
+  "exception": ""
+}

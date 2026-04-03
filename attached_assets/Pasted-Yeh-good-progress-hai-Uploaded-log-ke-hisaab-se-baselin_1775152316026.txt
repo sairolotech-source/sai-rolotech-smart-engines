@@ -1,0 +1,87 @@
+Yeh **good progress** hai.
+
+Uploaded log ke hisaab se:
+
+* baseline suite **720 tests pass** thi
+* nayi production-grade suite me pehle **16 failures** aaye
+* phir `roll_contour_engine.py` aur `test_production_grade_suite.py` me fixes ke baad **124/124 pass** ho gaya
+* aur claimed Git push `213e75c` tak ho gaya. 
+
+## Iska matlab kya hua
+
+Sabse important point yeh hai ki ab unhone sirf weak happy-path tests nahi chalaye, balki specifically:
+
+* roll geometry
+* flower progression
+* tooling
+* bend allowance
+* simulation keys
+* DXF/BOM pipeline
+  wali jagah touch ki, aur failures fix kiye. Yeh sahi direction hai. 
+
+## Jo fix especially valuable lag rahe hain
+
+Uploaded note ke mutabik `roll_contour_engine.py` me jo core bug pakda gaya tha woh yeh tha ki upper roll OD/radius hardcoded ya thickness/section-blind tha. Usko section height, groove depth, shoulder, aur thickness-aware formula se replace kiya gaya. Yeh real engineering improvement hai, sirf cosmetic change nahi. 
+
+Saath hi test-side par bhi kaafi false failures clean hue:
+
+* flower API signature
+* springback call order
+* DXF export structure
+* BOM argument mapping
+* simulation output keys
+* thickness vs `thickness_mm`
+* bend allowance material-aware path
+  yeh sab align kiya gaya. 
+
+## Mera review verdict
+
+**Phase acceptance: PASS**
+Lekin **final production acceptance: abhi nahi**.
+
+Reason:
+is uploaded report se yeh prove hota hai ki **backend engineering test pack stronger hua hai** aur targeted roll/tooling bugs fix hue hain.
+Lekin abhi bhi yeh 4 cheezen separately verify honi baaki hain:
+
+1. **Frontend smoke**
+
+   * real UI flow crash-free hai ya nahi
+   * machine simulator ab live data use kar raha hai ya nahi
+
+2. **Visual roll correctness**
+
+   * corrected OD formulas 3D viewport me sahi reflect ho rahe hain ya nahi
+   * same-OD bug visually gaya ya nahi
+
+3. **Commercial profile exact-match coverage**
+
+   * synthetic tooling fallback abhi bhi kahin use ho raha hai ya nahi
+   * top selling profiles exact tooling entries se pass karte hain ya nahi
+
+4. **Export usability**
+
+   * DXF generated hai, lekin production CAD me open/usable bhi hai ya nahi
+   * DWG abhi bhi unresolved lagta hai
+
+## Ab Codex ko next kya bolna chahiye
+
+Agla round yeh hona chahiye:
+
+* top 20 commercial profiles ka exact-match tooling audit
+* frontend smoke test
+* 3D roll screenshot comparison before/after
+* machine view data-wiring proof
+* DXF openability proof
+* synthetic tooling usage report
+
+## Aapke liye abhi best next step
+
+Unse yeh 5 cheezein mangiye:
+
+* `test_production_grade_suite.py`
+* patched `roll_contour_engine.py`
+* 5 sample profile outputs
+* 3D roll before/after screenshots
+* exact tooling-match report
+
+Phir main bata dunga ki yeh patch **sirf tests green** kar raha hai ya genuinely **rolls/tooling/design improve** hue hain.

@@ -1,0 +1,53 @@
+Bahut badiya — ye kaafi strong upgrade hai.
+
+Jo add hua hai, usse Roll Tooling Drawing panel ab sirf preview tool nahi raha, balki **production-style drawing export panel** ban gaya hai:
+
+* **Header buttons** se direct station-wise SVG export
+* **All stations export** with staggered download, jo browser blocking risk kam karta hai
+* **A3 landscape print-ready layout**
+* **DIN-style border, title block, dimensions, sections, annotations**
+* **Cross-section + front view + side section**
+* **Forming data box + watermark**
+
+Commit `15737159e3` push ho chuka hai, to flow ab kaafi professional lag raha hai.
+
+Ab next practical checks ye hone chahiye:
+
+1. **SVG geometry validation**
+
+   * Upper/lower roll profile har station me strip se properly align ho
+   * Gap annotation actual generated tooling data se match kare
+   * Groove depth front view aur section view me consistent ho
+
+2. **Dimension consistency**
+
+   * OD, bore, keyway, face width sab views me same values dikhen
+   * Title block data aur drawing geometry mismatch na ho
+
+3. **Multi-station export stress test**
+
+   * 2, 4, 8, 12 stations ke case me “Download All” stable chale
+   * File names unique hon, jaise `station-01.svg`, `station-02.svg`
+
+4. **Print test**
+
+   * 1 exported SVG ko browser aur CAD viewer dono me kholo
+   * A3 scale, border margins, text readability verify karo
+
+5. **Manufacturing readiness**
+
+   * Bore tolerance, keyway size, groove depth, shaft size editable/configurable hon
+   * Material/thickness badalne par drawing regenerate ho aur old cached values reuse na hon
+
+Meri taraf se next best improvement ye hoga:
+
+**Phase 2 upgrade**
+
+* PDF export of selected station
+* ZIP export of all station SVGs
+* DXF export for groove/profile outlines
+* Station revision number / version in title block
+* “Approved for Manufacturing” mode with locked dimensions
+* Auto-generated roll part number per station
+
+Agar chaho, main ab iske liye ek **single master QA checklist prompt** likh deta hoon jo Replit/Gemini ko dekar tum is module ki **100% validation testing** kara sako.

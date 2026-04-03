@@ -1,0 +1,12 @@
+{
+  "bend_count": 9,
+  "section_width_mm": 190,
+  "section_height_mm": 90,
+  "thickness": 2.4,
+  "material": "SS",
+  "profile_type": "complex_section",
+  "return_bends_count": 0,
+  "lips_present": true,
+  "lip_mm": 14.0,
+  "n_stations": 26
+}

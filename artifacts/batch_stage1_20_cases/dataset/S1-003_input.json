@@ -1,0 +1,12 @@
+{
+  "bend_count": 4,
+  "section_width_mm": 95,
+  "section_height_mm": 68,
+  "thickness": 2.5,
+  "material": "MS",
+  "profile_type": "door_frame",
+  "return_bends_count": 2,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 14
+}

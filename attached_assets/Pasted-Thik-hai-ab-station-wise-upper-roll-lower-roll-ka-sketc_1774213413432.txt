@@ -1,0 +1,311 @@
+Thik hai — ab **station-wise upper roll + lower roll ka sketch logic** samajhte hain, yani har station me roll groove ko **sochna kaise hai**.
+
+Basic roll-form design fixed formula se nahi hota; Roll-Kraft ke mutabik alag designers alag approaches use kar sakte hain, aur successful profile banane ke ek se zyada tareeqe hote hain. Entry guides strip ko first pass me correct elevation aur lateral position me lane ke liye critical hote hain, aur setup/alignment mistakes twist aur quality issues ka major cause ban sakti hain. ([Roll-Kraft][1])
+
+Main yahan **simple C-channel** ka example le raha hoon:
+
+* web = 40 mm
+* flange = 20 + 20
+* thickness = 0.8 mm
+* 8 stations
+* mild steel
+
+Is explanation ka focus **conceptual roll shape** par hai, exact OD ya machining radius par nahi. Final dimensions hamesha trial, setup, springback, machine rigidity aur actual material behavior se tune hoti hain. ([Roll-Kraft][1])
+
+## Sabse pehle ek basic rule
+
+Har station me upper aur lower rolls ka kaam alag nazar aa sakta hai, lekin system milkar 3 cheeze karta hai:
+
+1. strip ko guide karta hai
+2. shape ko thoda-thoda bend karta hai
+3. final stations me angle aur width lock karta hai
+
+Roll forming incremental process hai; har station sheet ko thoda-thoda deform karta hai, isliye ek hi pass me zyada hard bend dena unstable ho sakta hai. ([Roll-Kraft][1])
+
+# Station-wise upper/lower roll logic
+
+## S1 — Entry / trap pass
+
+**Lower roll:**
+
+* almost flat support surface
+* beech me web support
+* side par halka locating shoulder / shallow groove
+
+**Upper roll:**
+
+* mostly flat ya very shallow matching land
+* purpose bend dena nahi, strip ko seat karna hai
+
+**Soch kaise rakho:**
+Yeh station “forming” se zyada **centering** ka hota hai. Entry guide aur first pass traps milkar strip ko square rakhte hain. Agar yahan strip off-center ghusi, to aage sari line me problem snowball ho sakti hai. ([Roll-Kraft][2])
+
+**Simple text sketch:**
+
+```text
+Upper:   ─────────
+Strip:   =========
+Lower:   ___----___
+```
+
+---
+
+## S2 — Light preform
+
+**Lower roll:**
+
+* web seat flat rahegi
+* dono edges par halka utha hua radius / ramp
+* flange ko 10–15° start karne ke liye side pockets
+
+**Upper roll:**
+
+* edge ke upar se light touch dene wali contour
+* poore bend ko crush nahi karegi
+* sirf strip ko “invite” karegi ki edge uthe
+
+**Design logic:**
+Is station me edge ko bas **jagao**, force mat karo. Entry ke turant baad aggressive forming wandering aur marking badha sakti hai. Proper entry guidance yahan bahut important hai. ([Roll-Kraft][2])
+
+**Sketch:**
+
+```text
+Upper:    \      /
+Strip:   =========
+Lower:   __/____\__
+```
+
+---
+
+## S3 — First real bend
+
+**Lower roll:**
+
+* beech ka web abhi bhi stable flat support par
+* side contour ab aur deep hogi
+* flange angle around 25–30° tak lane ke liye smooth radius
+
+**Upper roll:**
+
+* matching male contour jo edge ko niche se lower contour ke against guide kare
+* contact line smooth honi chahiye, point contact nahi
+
+**Design logic:**
+Yahan se actual forming start hoti hai. Upper-lower rolls ko aisa socho ki material ko **pakad ke modne** ke bajay **flow karne** de rahe ho. Incremental forming ka matlab hi yahi hai. ([Roll-Kraft][1])
+
+**Sketch:**
+
+```text
+Upper:     /----\
+Strip:    /      \
+Lower:   _/______\_
+```
+
+---
+
+## S4 — Mid forming
+
+**Lower roll:**
+
+* side walls aur clearly shape dene lagenge
+* web pocket defined hoga
+* bend radius consistent rakho
+
+**Upper roll:**
+
+* lower ke opposite support
+* edges ko bend line par support
+* web par unnecessary pressure nahi
+
+**Design logic:**
+Is stage me ek common galti hoti hai: web ko bhi unnecessarily pinch kar dena. Usse marks ya tracking issue aa sakta hai. Roll contour ka focus bend line ke around support par hona chahiye, poori strip ko dabaane par nahi. Setup/alignment mistakes twist generate kar sakti hain. ([Roll-Kraft][3])
+
+**Sketch:**
+
+```text
+Upper:      /‾‾‾‾\
+Strip:     /      \
+Lower:    /________\
+```
+
+---
+
+## S5 — Main forming
+
+**Lower roll:**
+
+* now section shape close to channel dikhegi
+* web floor fixed
+* flanges around 55–65° ke liye deeper side groove
+
+**Upper roll:**
+
+* flange outer side ko support dene wala contour
+* bend radius area me smooth wrap
+* side relief rakho taki roll-metal-roll jam na ho
+
+**Design logic:**
+Yahin se “roll fight” ya interference ka risk badhta hai. Agar successive passes ki metal line logic galat ho, ya contour mismatch ho, to strip pull, marks aur twist aane lagte hain. Machine/process quality par roll clearances aur setup ka direct effect hota hai. ([Formtek][4])
+
+**Sketch:**
+
+```text
+Upper:      |‾‾‾‾|
+Strip:     /      \
+Lower:    /________\
+```
+
+---
+
+## S6 — Pre-close pass
+
+**Lower roll:**
+
+* almost full channel support
+* web pocket exact width ke paas
+* flanges 75–82° ke around lane ke liye near-vertical contour
+
+**Upper roll:**
+
+* flange outside ko controlled push
+* top corners par relief zaroor rakho
+* yahan sharp corner collision ka check bahut zaroori
+
+**Design logic:**
+Ye station critical hai. Yahin flare, twist aur springback behavior clearly dekhne lagta hai. Tooling/mill alignment aur shaft/bearing condition bhi ab quality par strongly effect dikhate hain. ([Roll-Kraft][3])
+
+**Sketch:**
+
+```text
+Upper:      |    |
+Strip:      |    |
+Lower:    __|____|__
+```
+
+---
+
+## S7 — Close / slight overbend
+
+**Lower roll:**
+
+* final channel cavity ke very close
+* web width almost final
+* side walls final angle ke paas
+
+**Upper roll:**
+
+* matching contour jo flange ko 90° ya slight overbend 91–92° tak le ja sake
+* yahan contour crisp ho sakta hai, lekin knife-edge bilkul nahi
+
+**Design logic:**
+Springback ko dekhte hue S7 me slight overbend useful hota hai. Stronger materials me springback aur dimensional recovery zyada hoti hai, isliye final angle directly geometry se nahi, running trial se set hota hai. ([AHSS Guidelines][5])
+
+**Sketch:**
+
+```text
+Upper:      |    |
+Strip:      |    |
+Lower:      |____|
+```
+
+---
+
+## S8 — Calibration / sizing / straightening
+
+**Lower roll:**
+
+* final cavity
+* web width and corner radius lock
+* side walls support
+
+**Upper roll:**
+
+* final top restraint
+* angle hold
+* squareness correction
+* very controlled contact
+
+**Design logic:**
+Is station ko sirf “last bend” mat samjho. Ye **sizing station** hai. Yahan part ki final width, straightness, twist correction aur repeatability lock hoti hai. Roll-Kraft ke setup/alignment resources aur twist-remedy guidance ke hisab se final product stability me setup ka role bahut bada hota hai. ([Roll-Kraft][6])
+
+**Sketch:**
+
+```text
+Upper:      |    |
+Strip:      |    |
+Lower:      |____|
+(final sizing fit)
+```
+
+# Upper aur lower roll contour banate waqt 7 golden rules
+
+## 1) Web ko stable rakho
+
+Har station me web ke liye ek clear support philosophy honi chahiye.
+Agar web kabhi flat, kabhi floating, kabhi pinch me aa gaya, to strip tracking aur marks dono badhenge. Improper entry aur setup defects aage multiply hote hain. ([Roll-Kraft][2])
+
+## 2) Bend line ke paas support do, random pressure mat do
+
+Forming ka target bend zone hai.
+Poore strip ko crush karne se quality improve nahi hoti. Incremental forming controlled local deformation ka process hai. ([Roll-Kraft][1])
+
+## 3) Side relief zaroor do
+
+Jab flange close hota hai, upper-lower roll shoulders ke paas mechanical collision ka risk hota hai.
+CAD overlay me station-wise minimum clearance check karo. Machine running condition me shaft/bearing play bhi dhyan me rakho. Setup and machine condition quality ko affect karte hain. ([Formtek][4])
+
+## 4) Early stations me soft contour, late stations me tighter contour
+
+S2–S3 me profile ko gently start karo.
+S6–S8 me contour closer aur more controlling ho sakta hai. Yehi smooth progression defects kam karta hai. ([Roll-Kraft][1])
+
+## 5) S7 aur S8 ko alag kaam do
+
+S7 = close / overbend
+S8 = size / calibrate
+Dono ko ek hi hard pass me combine karne se repeatability kharab ho sakti hai. Final straightness aur twist correction setup-sensitive hoti hai. ([Roll-Kraft][3])
+
+## 6) Entry guides ko ignore mat karo
+
+Agar entry guide weak hai to best rolls bhi stable product nahi denge. Roll-Kraft specifically kehta hai ki proper roll forming ki shuruaat entry guide se hoti hai. ([Roll-Kraft][2])
+
+## 7) Mill alignment check karo
+
+Base level, shaft parallelism, shoulder alignment, entry table aur side units ki alignment saari quality par effect dalti hai. Misalignment se twist, poor tracking aur repeated setup issues aate hain. ([Roll-Kraft][7])
+
+# Practical CAD workflow
+
+AutoCAD ya CAD me upper/lower roll logic banate waqt:
+
+1. final profile banao
+2. flower progression nikalo
+3. har station ka intermediate section banao
+4. us section ke hisab se lower roll cavity socho
+5. upper roll ko mating support contour do
+6. side relief aur non-contact zones mark karo
+7. station overlay karke interference check karo
+
+Yehi practical route hai jisse roll contour “draw” se “machinable tooling” me jata hai. Roll-Kraft tooling setup package aur design overview dono is baat ko reinforce karte hain ki engineering drawings ke saath setup information bhi critical hoti hai. ([Roll-Kraft][6])
+
+# Sabse badi practical mistake
+
+Sabse common galti ye hoti hai ki designer **final profile ko hi har station me copy karke bas thoda-thoda close** kar deta hai.
+Sahi approach ye hai:
+
+* metal line socho
+* support zones socho
+* non-contact zones socho
+* relief socho
+* springback socho
+
+Warna roll ban jayega, lekin line stable nahi chalegi. Setup issues often tooling fault lagte hain, jabki root cause alignment ya guiding bhi ho sakta hai. ([Roll-Kraft][3])
+
+Agar aap chaho, next message me main isi ka **AutoCAD me 2D roll sketch banane ka exact step-by-step method** bata deta hoon — line, arc, offset, relief, centerline aur gap ke saath.
+
+[1]: https://www.roll-kraft.com/roll-tooling/roll-form-products-roll-forming-tube-roll-forming-pipe/roll-form-design-roll-forming-design?utm_source=chatgpt.com "Basic Roll Form Design - An Overview"
+[2]: https://www.roll-kraft.com/technical-resources/entry-guides-where-proper-roll-forming-begins?utm_source=chatgpt.com "Entry Guides – Where Proper Roll Forming Begins"
+[3]: https://www.roll-kraft.com/technical-resources/roll-form-tooling-possible-twist-causes-and-remedies?utm_source=chatgpt.com "Roll Form Tooling Possible Twist Causes and Remedies"
+[4]: https://www.formtekgroup.com/supermill/advanced-roll-forming-what-to-know-about-roll-formers/?utm_source=chatgpt.com "Advanced Roll Forming: What to Know About Roll Formers"
+[5]: https://ahssinsights.org/tag/elastic-modulus/?utm_source=chatgpt.com "Elastic Modulus Archives - AHSS Guidelines"
+[6]: https://www.roll-kraft.com/roll-tooling/roll-form-products-roll-forming-tube-roll-forming-pipe/roll-kraft-roll-form-tooling-setup-package?utm_source=chatgpt.com "Roll Form Tooling Setup Package"
+[7]: https://www.roll-kraft.com/technical-resources/profit-pointer-for-tube-mill-alignment?utm_source=chatgpt.com "Profit Pointer for Tube Mill Alignment"

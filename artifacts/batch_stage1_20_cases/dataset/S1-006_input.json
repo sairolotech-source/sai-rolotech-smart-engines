@@ -1,0 +1,12 @@
+{
+  "bend_count": 2,
+  "section_width_mm": 80,
+  "section_height_mm": 70,
+  "thickness": 2.0,
+  "material": "CR",
+  "profile_type": "c_channel",
+  "return_bends_count": 0,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 10
+}

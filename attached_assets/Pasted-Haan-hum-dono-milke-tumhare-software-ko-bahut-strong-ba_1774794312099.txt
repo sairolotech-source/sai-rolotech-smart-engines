@@ -1,0 +1,209 @@
+Haan, **hum dono milke tumhare software ko bahut strong bana sakte hain**, lekin ek baat bilkul clear rakhni hogi:
+
+**100% “kabhi bhi koi error nahi”** practical software me promise nahi kiya ja sakta.
+Lekin **100% error-handling coverage, strict validation, crash protection, test coverage, and truthful output** target kiya ja sakta hai. Yehi sahi professional goal hota hai. ([OpenAI Developers][1])
+
+## Best setup kya hoga
+
+**Main (ChatGPT)**:
+
+* architecture
+* logic rules
+* engineering checks
+* prompts
+* defect analysis
+
+**Codex**:
+
+* repo read karega
+* code likhega
+* tests run karega
+* fixes implement karega
+* diffs dega
+
+**Replit**:
+
+* run
+* preview
+* build
+* deploy
+* quick manual verification
+
+OpenAI ke official docs ke mutabik Codex web, CLI, IDE extension, aur app me use ho sakta hai, aur difficult tasks ke liye plan-first approach best practice mani gayi hai. ([OpenAI Developers][2])
+
+## Tumhare software ke liye exact target
+
+Tum “error-free” ke bajay ye target rakho:
+
+1. **No silent failure**
+2. **No fake completion**
+3. **No crash on partial data**
+4. **Every station gets truthful status**
+5. **Every export obeys gating**
+6. **Every engine has tests**
+7. **Every old saved project gets repair path**
+8. **Every failure shows exact reason**
+
+Ye target industrial software ke liye zyada sahi hai.
+
+## Codex ko kaise use karna hai
+
+OpenAI ke best-practices me difficult tasks ke liye **Plan mode / plan-first workflow** recommend kiya gaya hai. Aur PLANS.md jaisi planning approach long problems ke liye useful batayi gayi hai. ([OpenAI Developers][1])
+
+Tumhare case me workflow ye hona chahiye:
+
+### Phase A — Plan
+
+Main tumhare liye exact engineering plan banaunga.
+
+### Phase B — Codex audit
+
+Codex sirf audit kare:
+
+* kya bana
+* kya missing
+* kya fail
+* exact line number
+
+### Phase C — Minimal patch
+
+Codex sirf failing logic fix kare, full rewrite nahi.
+
+### Phase D — Tests
+
+Codex tests add kare aur run kare.
+
+### Phase E — Replit verification
+
+Manual sample profiles se verify karo.
+
+## “Without error” ke liye real strategy
+
+Ye 8 layers lagani hongi:
+
+### 1. Guard layer
+
+* `?.`
+* `if (!rp) return`
+* safe defaults
+
+### 2. Repair layer
+
+* stale localStorage repair
+* missing rollProfile synthesis
+* missing gcode regeneration
+
+### 3. Validation layer
+
+* `VALID`
+* `BASIC`
+* `MISSING_PROFILE`
+* `INVALID_GEOMETRY`
+
+### 4. Export gating
+
+* VALID = full export
+* BASIC = geometry only
+* MISSING = blocked
+
+### 5. Test layer
+
+* unit tests
+* scenario tests
+* migration tests
+* export tests
+
+### 6. Debug layer
+
+* per-station debug summary
+* exact diagnostics
+* warn on skips
+
+### 7. Mechanical audit layer
+
+* groove width
+* wallRun
+* pass line
+* complementarity
+* interference
+
+### 8. CNC safety layer
+
+* safe retract
+* spindle stop
+* home reference
+* no empty programs
+
+## Ab tumhe kya karna chahiye
+
+Ye **single master instruction** Codex ko do:
+
+You are not allowed to optimize for speed or cosmetic cleanup.
+Optimize for correctness, validation, and non-crashing behavior.
+
+Primary goal:
+Make the roll forming software truthfully reliable.
+
+Rules:
+
+1. Never mark incomplete engineering output as complete.
+2. Never allow empty geometry arrays to pass as valid.
+3. Never allow empty G-code strings to pass as valid.
+4. Never rewrite working modules without a proven defect.
+5. Always audit first, fix second, test third.
+6. Every fix must include:
+
+   * exact failing line
+   * failing condition
+   * minimal diff
+   * rerun result
+7. Every station must end in one of:
+
+   * VALID
+   * BASIC
+   * MISSING_PROFILE
+   * INVALID_GEOMETRY
+8. BASIC and MISSING states must never crash the app.
+9. All exports must reflect true capability.
+10. Report only genuine engineering issues.
+
+Execution order:
+A. Audit
+B. Isolate failures
+C. Minimal fix
+D. Run tests
+E. Print final proof report
+
+## Mera role + Codex ka role
+
+Sabse best combo ye hai:
+
+* **Main**: logic, architecture, prompts, review
+* **Codex**: implementation, test, patch
+* **Tum**: Replit par live verify
+
+Codex app aur GPT-5.3-Codex specifically coding aur long-running tasks ke liye bana hai, aur OpenAI ke mutabik ye hard development tasks ke liye capable model hai. ([OpenAI][3])
+
+## Final sach
+
+**Haan**, main aur Codex milke tumhare software ko:
+
+* stable
+* truthful
+* test-covered
+* crash-resistant
+* production-leaning
+
+bana sakte hain.
+
+**Nahi**, “kabhi koi error hi nahi aayegi” wala promise sahi nahi hoga.
+
+Sahi promise ye hai:
+
+**“Har logic controlled hoga, har defect detect hoga, har incomplete state visible hogi, aur fake completion nahi hogi.”**
+
+Agar chaho, main ab tumhare liye **FULL NO-FAKE-COMPLETION MASTER SYSTEM PROMPT** bana deta hoon jo seedha Codex me chal sake.
+
+[1]: https://developers.openai.com/codex/learn/best-practices/?utm_source=chatgpt.com "Best practices – Codex"
+[2]: https://developers.openai.com/codex/?utm_source=chatgpt.com "Codex | OpenAI Developers"
+[3]: https://openai.com/index/introducing-gpt-5-3-codex/?utm_source=chatgpt.com "Introducing GPT-5.3-Codex"

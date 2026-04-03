@@ -1,0 +1,34 @@
+==============================================================================================================
+  PROCESS CARD — S1-017  |  Machine: Roll Forming Machine
+  Material: High-Strength Low-Alloy Steel (HSLA)  |  Thickness: 3.2 mm  |  Fy: 420 MPa  |  Bend Radius: 3.2 mm
+  Stations: 23  |  Peak Force: 249.83 kN  |  Peak Power: 83.28 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  3.300mm   390.4mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  2.6°   0.1°  3.350mm   390.4mm  249.83kN  83.28kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend              9.2°   0.2°  3.350mm   383.9mm  245.66kN  81.89kW   33.33% MEDIUM  
+  3     Station 3                    initial_bend             18.4°   0.4°  3.350mm   377.3mm  241.49kN  80.50kW   33.33% MEDIUM  
+  4     Station 4                    initial_bend             28.6°   0.6°  3.350mm   370.8mm  237.32kN  79.11kW   33.33% MEDIUM  
+  5     Station 5                    initial_bend             38.4°   0.8°  3.350mm   364.3mm  233.15kN  77.72kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      46.1°   1.0°  3.350mm   357.8mm  228.97kN  76.32kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      50.3°   1.1°  3.350mm   351.2mm  224.80kN  74.93kW   33.33% MEDIUM  
+  8     Station 8                    progressive_forming      50.9°   1.1°  3.350mm   344.7mm  220.63kN  73.54kW   33.33% MEDIUM  
+  9     Station 9                    progressive_forming      52.3°   1.2°  3.350mm   338.2mm  216.46kN  72.15kW   33.33% MEDIUM  
+  10    Station 10                   progressive_forming      54.7°   1.2°  3.350mm   331.7mm  212.29kN  70.76kW   33.33% MEDIUM  
+  11    Station 11                   progressive_forming      57.9°   1.3°  3.350mm   325.2mm  208.12kN  69.37kW   33.33% MEDIUM  
+  12    Station 12                   progressive_forming      61.7°   1.4°  3.350mm   318.7mm  203.94kN  67.98kW   33.33% MEDIUM  
+  13    Station 13                   progressive_forming      66.0°   1.5°  3.350mm   312.1mm  199.78kN  66.59kW   33.33% MEDIUM  
+  14    Station 14                   progressive_forming      70.5°   1.6°  3.350mm   305.6mm  195.60kN  65.20kW   33.33% MEDIUM  
+  15    Station 15                   progressive_forming      75.0°   1.7°  3.350mm   299.1mm  191.43kN  63.81kW   33.33% MEDIUM  
+  16    Station 16                   progressive_forming      79.4°   1.8°  3.350mm   292.6mm  187.26kN  62.42kW   33.33% MEDIUM  
+  17    Station 17                   progressive_forming      83.4°   1.9°  3.350mm   286.1mm  183.09kN  61.03kW   33.33% MEDIUM  
+  18    Station 18                   progressive_forming      86.9°   1.9°  3.350mm   279.6mm  178.91kN  59.64kW   33.33% MEDIUM  
+  19    Station 19                   progressive_forming      89.6°   2.0°  3.350mm   273.0mm  174.75kN  58.25kW   33.33% MEDIUM  
+  20    Station 20                   lip_forming              91.4°   2.0°  3.350mm   266.5mm  170.57kN  56.86kW   33.33% MEDIUM  
+  21    Station 21                   lip_forming              92.0°   2.0°  3.350mm   260.0mm  166.40kN  55.47kW   33.33% MEDIUM  
+  22    Station 22 (Calibration)     calibration              90.0°   0.0°  3.200mm   260.0mm   66.56kN  22.19kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+==============================================================================================================

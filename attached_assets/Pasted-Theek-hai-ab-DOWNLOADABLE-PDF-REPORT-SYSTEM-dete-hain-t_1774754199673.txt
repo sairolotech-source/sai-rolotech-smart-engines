@@ -1,0 +1,332 @@
+Theek hai — ab **DOWNLOADABLE PDF REPORT SYSTEM** dete hain, taaki app final engineering report ko **PDF file** me export kar sake.
+
+Isse aapko milega:
+
+* downloadable PDF report
+* readable engineering format
+* company/client share karne layak output
+* warnings + assumptions included
+
+---
+
+# Step 1: `requirements.txt` me add karo
+
+```txt
+reportlab
+```
+
+Agar aap HTML se PDF banana chahte ho to later aur options hain, lekin Replit ke liye **ReportLab** stable rehta hai.
+
+---
+
+# Step 2: Naya file `app/engines/pdf_export_engine.py`
+
+```python
+from typing import Dict, Any, List
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+import os
+import uuid
+
+
+EXPORT_DIR = "exports"
+
+
+def ensure_export_dir():
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+
+
+def safe_text(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def draw_multiline(c: canvas.Canvas, lines: List[str], x: float, y: float, line_height: float = 6.0):
+    current_y = y
+    for line in lines:
+        c.drawString(x, current_y, safe_text(line))
+        current_y -= line_height * mm
+        if current_y < 20 * mm:
+            c.showPage()
+            c.setFont("Helvetica", 10)
+            current_y = 280 * mm
+    return current_y
+
+
+def build_pdf_lines(report_result: Dict[str, Any]) -> List[str]:
+    summary = report_result.get("engineering_summary", {})
+    readable_report = report_result.get("readable_report", "")
+
+    lines: List[str] = []
+
+    lines.append("ROLL FORMING PRELIMINARY ENGINEERING REPORT")
+    lines.append("")
+
+    if summary:
+        lines.append("ENGINEERING SUMMARY")
+        lines.append(f"Project Type: {summary.get('project_type')}")
+        lines.append(f"Profile Type: {summary.get('profile_type')}")
+        lines.append(f"Section Width (mm): {summary.get('section_width_mm')}")
+        lines.append(f"Section Height (mm): {summary.get('section_height_mm')}")
+        lines.append(f"Bend Count: {summary.get('bend_count')}")
+        lines.append(f"Return Bends Count: {summary.get('return_bends_count')}")
+        lines.append(f"Material: {summary.get('material')}")
+        lines.append(f"Sheet Thickness (mm): {summary.get('sheet_thickness_mm')}")
+        lines.append(f"Forming Complexity Class: {summary.get('forming_complexity_class')}")
+        lines.append(f"Estimated Forming Passes: {summary.get('estimated_forming_passes')}")
+        lines.append(f"Recommended Station Count: {summary.get('recommended_station_count')}")
+        lines.append(f"Shaft Diameter (mm): {summary.get('shaft_diameter_mm')}")
+        lines.append(f"Bearing Type: {summary.get('bearing_type')}")
+        lines.append(f"Machine Duty Class: {summary.get('machine_duty_class')}")
+        lines.append(f"Estimated Roll OD (mm): {summary.get('estimated_roll_od_mm')}")
+        lines.append(f"Estimated Line Length (mm): {summary.get('estimated_line_length_mm')}")
+        lines.append("")
+
+    if readable_report:
+        lines.append("DETAILED READABLE REPORT")
+        lines.append("")
+        lines.extend(readable_report.splitlines())
+
+    return lines
+
+
+def export_report_pdf(report_result: Dict[str, Any], file_prefix: str = "roll_forming_report") -> Dict[str, Any]:
+    if not report_result:
+        return {
+            "engine": "pdf_export_engine",
+            "status": "fail",
+            "reason": "Report result missing"
+        }
+
+    ensure_export_dir()
+
+    file_id = str(uuid.uuid4())[:8]
+    filename = f"{file_prefix}_{file_id}.pdf"
+    file_path = os.path.join(EXPORT_DIR, filename)
+
+    try:
+        c = canvas.Canvas(file_path, pagesize=A4)
+        width, height = A4
+
+        c.setTitle("Roll Forming Preliminary Engineering Report")
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(20 * mm, 285 * mm, "Roll Forming Preliminary Engineering Report")
+
+        c.setFont("Helvetica", 10)
+
+        lines = build_pdf_lines(report_result)
+        draw_multiline(c, lines, 20 * mm, 275 * mm, line_height=5)
+
+        c.save()
+
+        return {
+            "engine": "pdf_export_engine",
+            "status": "pass",
+            "file_path": file_path,
+            "filename": filename,
+            "notes": [
+                "PDF export created successfully",
+                "This is a preliminary engineering report"
+            ]
+        }
+
+    except Exception as e:
+        return {
+            "engine": "pdf_export_engine",
+            "status": "fail",
+            "reason": f"PDF export failed: {str(e)}"
+        }
+```
+
+---
+
+# Step 3: `routes.py` me PDF export route add karo
+
+Import add karo:
+
+```python
+from app.engines.pdf_export_engine import export_report_pdf
+from fastapi.responses import FileResponse
+```
+
+---
+
+## Manual mode ke liye PDF export endpoint
+
+```python
+@router.post("/manual-mode-export-pdf")
+def run_manual_mode_export_pdf(data: ManualProfileInput):
+    result = execute_manual_pipeline(data)
+
+    if result.get("status") != "pass":
+        return result
+
+    report_result = result.get("report_engine")
+    if not report_result or report_result.get("status") != "pass":
+        return {
+            "status": "fail",
+            "failed_stage": "report_engine",
+            "reason": "Report generation failed"
+        }
+
+    pdf_result = export_report_pdf(report_result)
+
+    return {
+        "status": pdf_result.get("status"),
+        "report_engine": report_result,
+        "pdf_export_engine": pdf_result
+    }
+```
+
+---
+
+## Direct PDF file download endpoint
+
+```python
+@router.post("/manual-mode-download-pdf")
+def run_manual_mode_download_pdf(data: ManualProfileInput):
+    result = execute_manual_pipeline(data)
+
+    if result.get("status") != "pass":
+        return result
+
+    report_result = result.get("report_engine")
+    if not report_result or report_result.get("status") != "pass":
+        return {
+            "status": "fail",
+            "failed_stage": "report_engine",
+            "reason": "Report generation failed"
+        }
+
+    pdf_result = export_report_pdf(report_result)
+
+    if pdf_result.get("status") != "pass":
+        return pdf_result
+
+    file_path = pdf_result["file_path"]
+    filename = pdf_result["filename"]
+
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type="application/pdf"
+    )
+```
+
+---
+
+# Auto mode ke liye bhi same logic
+
+Agar auto pipeline function alag bana lo, to uske liye bhi same type ka route bana sakte ho:
+
+```python
+@router.post("/auto-mode-export-pdf")
+def run_auto_mode_export_pdf(data: AutoModeInput):
+    result = execute_auto_pipeline(data)
+
+    if result.get("status") != "pass":
+        return result
+
+    report_result = result.get("report_engine")
+    if not report_result or report_result.get("status") != "pass":
+        return {
+            "status": "fail",
+            "failed_stage": "report_engine",
+            "reason": "Report generation failed"
+        }
+
+    pdf_result = export_report_pdf(report_result)
+
+    return {
+        "status": pdf_result.get("status"),
+        "report_engine": report_result,
+        "pdf_export_engine": pdf_result
+    }
+```
+
+---
+
+# Step 4: Better approach — pipeline helper banao
+
+Jaise manual mode ke liye `execute_manual_pipeline(data)` banaya tha, waise hi auto mode ke liye bhi `execute_auto_pipeline(data)` banao.
+Phir:
+
+* normal API
+* debug API
+* export PDF API
+
+sab same pipeline reuse karenge.
+
+---
+
+# Example response
+
+```json
+{
+  "status": "pass",
+  "pdf_export_engine": {
+    "engine": "pdf_export_engine",
+    "status": "pass",
+    "file_path": "exports/roll_forming_report_a1b2c3d4.pdf",
+    "filename": "roll_forming_report_a1b2c3d4.pdf",
+    "notes": [
+      "PDF export created successfully",
+      "This is a preliminary engineering report"
+    ]
+  }
+}
+```
+
+---
+
+# Replit ko exact command
+
+```text
+Add a new pdf_export_engine using reportlab.
+Take the output of report_engine and generate a downloadable PDF report.
+Create:
+1. export_report_pdf(report_result)
+2. POST /api/manual-mode-export-pdf
+3. POST /api/manual-mode-download-pdf
+
+The PDF must include:
+- engineering summary
+- detailed readable report
+- warnings
+- assumptions
+- preliminary engineering note
+
+Do not claim the PDF is a final approved tooling document.
+Label it clearly as a preliminary engineering report.
+Store PDFs in an exports folder.
+```
+
+---
+
+# Important improvement
+
+Agar readable report bahut lamba ho, to ReportLab me:
+
+* auto page break
+* section headings bold
+* table formatting
+
+bhi add ki ja sakti hai.
+
+Abhi maine stable base diya hai.
+
+---
+
+# Ab next best step
+
+Ab 2 strong options bachte hain:
+
+**1. DOCX export system**
+taaki Word report bhi ban sake
+
+**2. Frontend debug dashboard**
+taaki UI me sab engines ka pass/fail dikh sake
+
+Agar chaho, next me main **frontend debug dashboard structure** de deta hoon.

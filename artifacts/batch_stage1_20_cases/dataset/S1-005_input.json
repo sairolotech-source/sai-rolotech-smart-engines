@@ -1,0 +1,12 @@
+{
+  "bend_count": 6,
+  "section_width_mm": 140,
+  "section_height_mm": 60,
+  "thickness": 3.0,
+  "material": "HR",
+  "profile_type": "lipped_channel",
+  "return_bends_count": 0,
+  "lips_present": true,
+  "lip_mm": 20.0,
+  "n_stations": 22
+}

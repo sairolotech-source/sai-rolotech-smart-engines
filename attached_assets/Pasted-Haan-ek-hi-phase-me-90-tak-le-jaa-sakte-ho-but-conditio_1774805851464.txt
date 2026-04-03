@@ -1,0 +1,329 @@
+Haan, **ek hi phase me 90% tak le jaa sakte ho** — but condition ye hai ki phase **cosmetic nahi**, **full integration phase** hona chahiye.
+
+Abhi sabse bada problem ye nahi hai ki features kam hain.
+Sabse bada problem hai ki **built cheezein connected nahi hain**.
+
+Isliye ek single **“Phase: Production Integration Lock”** chalao.
+
+# Ek hi phase ka target
+
+**Goal:** 63 → **90+ Production Readiness**
+
+Is phase me sirf woh kaam hoga jo score ko fastest aur hardest push de.
+
+---
+
+# PHASE: Production Integration Lock
+
+## 1) Flower + Roll tooling payload ko complete wire karo
+
+Abhi sabse bada score killer yehi hai.
+
+UI/store me jo fields hain:
+
+* `thicknessBandMin`
+* `thicknessBandMax`
+* `profileSourceType`
+
+ye sab actual API payload me jane chahiye.
+
+### Karna kya hai
+
+* flower generation API payload update
+* roll tooling API payload update
+* backend schema update
+* backend calculation layer update
+* response metadata update
+
+### Result
+
+Band cosmetic nahi rahega.
+Roll gap, pass planning, conservative tooling logic me use hoga.
+
+### Expected score jump
+
+Bahut bada. Yeh single fix hi major bucket recover karega.
+
+---
+
+## 2) Profile source offset ko geometry pipeline me actual apply karo
+
+Abhi selector hai, but geometry unchanged hai.
+Yani feature aadha hai.
+
+### Rules
+
+* `centerline` → no offset
+* `inner_face` → outward offset by thickness
+* `outer_face` → inward offset by thickness
+* agar closed/open contour logic alag hai to deterministic side handling ho
+
+### Karna kya hai
+
+* profile normalization layer banao
+* source-type resolved geometry banao
+* flower generator ko raw geometry nahi, normalized geometry do
+* preview me before/after show karo
+
+### Result
+
+Source selector real effect dega.
+
+### Expected score jump
+
+Strong P0 recovery.
+
+---
+
+## 3) Python API routing ko fully fix karo
+
+`/health` 404 production trust tod deta hai.
+
+### Karna kya hai
+
+* router prefix normalize karo
+* `/api/v1/health` aur expected route paths align karo
+* frontend se ek real health probe add karo
+* startup pe Python availability status show karo
+* fail ho to silent success na do
+
+### Minimum success condition
+
+* health route 200 return करे
+* at least 1 engineering path Node → Python → response verified ho
+
+### Result
+
+“Python exists but used nahi ho raha” wala doubt khatam.
+
+---
+
+## 4) RollLifecycleView se fake data hatao
+
+`Math.random()` wala module score ko neeche kheench raha hai.
+
+### Karna kya hai
+
+Use real sources:
+
+* `stations`
+* `tooling generated timestamp`
+* manual maintenance entries
+* persisted hours / wear / regrind count
+
+### Fastest implementation
+
+Agar backend time lag raha ho to:
+
+* `localStorage` persistence
+* station keyed maintenance records
+* manual edit + auto accumulated runtime
+* fake seeded records delete
+
+### Result
+
+Module trustworthy banega.
+
+---
+
+## 5) Export preflight ko hard gate banao
+
+Abhi gate hai, par incomplete hai.
+
+### Export tabhi allowed ho jab:
+
+* tooling generated
+* geometry normalized
+* thickness band valid
+* springback computed
+* material selected
+* profile source resolved
+* critical dimensions not missing
+* interference critical fail na ho
+
+### Result
+
+Unsafe export rukega.
+
+---
+
+## 6) Success/error messaging cleanup
+
+`setError("✅ ...")` jaisi cheezein trust ko damage karti hain.
+
+### Karna kya hai
+
+3 channels banao:
+
+* success
+* warning
+* error
+
+Aur har async action me same response contract use karo.
+
+### Result
+
+User ko clear state milegi.
+
+---
+
+## 7) Formula-level tests mandatory
+
+Zero tests ka score bahut hurt kar raha hai.
+
+### Ek hi phase me minimum test pack banao
+
+#### Unit tests:
+
+* K-factor constants
+* springback formula
+* roll gap formula
+* profile source classifier
+* geometry offset transform
+* thickness band payload mapping
+
+#### Contract tests:
+
+* flower API request shape
+* roll tooling API request shape
+* Python health route
+* tooling-not-generated export block
+
+### Result
+
+Regression pakde jayenge.
+
+---
+
+# Is single phase ka implementation order
+
+Yahi order follow karo:
+
+## Step 1 — Data contract freeze
+
+Ek central type/schema define karo:
+
+* material
+* thickness
+* thicknessBandMin
+* thicknessBandMax
+* profileSourceType
+* profile geometry
+* normalized geometry
+* station count / tooling params
+
+Sab UI, store, API, backend isi contract ko follow kare.
+
+## Step 2 — Geometry normalization layer
+
+Raw imported profile ke baad:
+
+* detect source
+* apply offset
+* normalized geometry store
+* preview update
+
+## Step 3 — Flower engine rewiring
+
+Flower generation ko normalized geometry + thickness band do.
+
+## Step 4 — Roll tooling rewiring
+
+Roll tooling ko same resolved payload do.
+
+## Step 5 — Python route fix + health probe
+
+Backend route alignment + frontend status.
+
+## Step 6 — Lifecycle module detox
+
+All fake seeded rows remove, persisted real records use.
+
+## Step 7 — Export hard gates
+
+Preflight validator central function me lao.
+
+## Step 8 — Test pack
+
+At least 15–25 meaningful tests.
+
+---
+
+# Ek phase me kya nahi karna
+
+90 tak pahunchna hai to ye cheezein abhi avoid karo:
+
+* fancy animations
+* extra dashboard widgets
+* new modules
+* AI auto-repair gimmicks
+* heavy 3D simulation expansion
+* enterprise auth rewrite
+* deep reporting
+
+Abhi **score-recovery work** karo, feature-add work nahi.
+
+---
+
+# Ek hi phase ka exact deliverable kya hona chahiye
+
+## Deliverable A — Real engineering pipeline
+
+UI input → normalized geometry → flower → roll tooling → preflight → export
+
+## Deliverable B — Real integration proof
+
+* Python health OK
+* one engineering call OK
+* no silent fail
+
+## Deliverable C — No fake maintenance data
+
+* persisted records only
+
+## Deliverable D — Minimum regression shield
+
+* formula tests
+* payload tests
+* validator tests
+
+---
+
+# Realistically 90 kaise milega
+
+Agar aap ek phase me ye 7 kaam kar dete ho:
+
+* payload wiring
+* profile offset application
+* Python routing
+* lifecycle cleanup
+* export hard gating
+* message cleanup
+* core tests
+
+to score roughly:
+
+* 63 se **86–91** tak ja sakta hai
+
+Agar tests strong hue aur lifecycle fake data fully hata diya to **90 cross** possible hai.
+
+---
+
+# Sabse important baat
+
+**90 lane ke liye new feature nahi chahiye.**
+**Existing features ko real banana chahiye.**
+
+Aapke app me problem “kami” nahi hai.
+Problem hai **“half-connected power”**.
+
+---
+
+# One-line execution command
+
+**Single phase objective:**
+“Convert all partial engineering features into end-to-end wired, validated, test-backed, non-fake production flows.”
+
+---
+
+Main ab isi ke basis par aapke liye **ek ultra-pro single master prompt** likh sakta hoon jo Replit/Gemini ko dekar aap ek hi phase me ye 90% push kara sako.

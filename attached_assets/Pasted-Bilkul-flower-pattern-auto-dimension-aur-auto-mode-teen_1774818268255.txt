@@ -1,0 +1,148 @@
+Bilkul — **flower pattern, auto dimension, aur auto mode teenon ko alag-alag verify karna zaroori hai**.
+Neeche ek **practical checklist + test method** de raha hoon jo aap Codex se run karwa sakte ho aur khud bhi UI me verify kar sakte ho.
+
+---
+
+# 🌸 1) Flower Pattern — kya check karna hai
+
+![Image](https://www.researchgate.net/publication/332100955/figure/fig3/AS%3A742282202460162%401553985276873/Roll-forming-split-flower-diagram-13.ppm)
+
+![Image](https://www.researchgate.net/publication/226012190/figure/fig12/AS%3A668556303806466%401536407652036/Typical-bending-types-applied-to-progressive-die-design.png)
+
+![Image](https://www.researchgate.net/publication/372704978/figure/fig4/AS%3A11431281255151463%401719410314353/Schematic-representing-the-four-main-stages-of-florogenesis-proposed-for-use-in-flowering.tif)
+
+![Image](https://www.researchgate.net/profile/Marie-Laure-Martin-2/publication/51920953/figure/fig1/AS%3A305795628584967%401449918768019/Rose-flower-development-stages-A-a-to-f-Morphology-of-the-floral-transition-in.png)
+
+## ✅ MUST checks
+
+* **Per-station 2D geometry** (sirf angles nahi)
+* **Same thickness** har stage me
+* **Angles monotonic increase** (no jump/rollback)
+* **Final overbend = springback compensated** (e.g., 90° → ~91–92° for GI)
+* **No self-intersection** (polygon clean hai)
+* **Edge length consistency** (web/flange length stable)
+
+## 🔧 Quick tests
+
+* Station 1–N me **profile overlay** karo → smooth progression dikhe
+* Random station pick karke **angle measure** karo → expected ke close ho
+* **Area check**: strip area ~constant (thoda variation ok, par drastic change nahi)
+
+---
+
+# 📐 2) Auto Dimension — kya check karna hai
+
+![Image](https://www.tflex.com/help/eng/T-FLEX%20CAD/15/clip2111_zoom71.jpg)
+
+![Image](https://industrialmetalsupply.com/images/updated%20product%20example%20images/6061%20channel.png)
+
+![Image](https://imgv2-2-f.scribdassets.com/img/document/568480342/original/0567a83423/1?v=1)
+
+![Image](https://www.design-technology.info/IndProd/_wp_generated/ppd792398c.png)
+
+## ✅ MUST checks
+
+* Web, flange, thickness, inner radius **auto annotate**
+* **Bend angle** har corner par show ho
+* **Strip width** correct (BA formula se)
+* **Units consistent** (mm)
+* **Dimension snapping** edges/arc centers par sahi
+
+## 🔧 Quick tests
+
+* Known profile (60–40–40, t=1.5) load karo → numbers match?
+* DXF vs manual input → **same dimensions** aani chahiye
+* Edge case: **lip/return** → extra dims show ho?
+
+---
+
+# ⚙️ 3) Auto Mode — kaise kaam karna chahiye
+
+![Image](https://www.iqsdirectory.com/articles/roll-forming/rolling-forming-process.jpg)
+
+![Image](https://www.researchgate.net/publication/275157769/figure/fig1/AS%3A464946178859008%401487863215668/Flow-of-CAD-CAM-from-design-to-production.png)
+
+![Image](https://media.licdn.com/dms/image/v2/C5112AQHrwfiFko8_iA/article-cover_image-shrink_600_2000/article-cover_image-shrink_600_2000/0/1520182847012?e=2147483647\&t=tnjW31VQBFZBU6cUDjjkKnvR6Qa5BW6IaTsqsqJW5l0\&v=beta)
+
+![Image](https://www.researchgate.net/publication/292616562/figure/fig4/AS%3A668873548378112%401536483289027/Pipeline-profile-details-effect-of-pipeline-operating-pressure.png)
+
+## 🎯 Expected pipeline
+
+```text
+Input (DXF / Manual)
+ → Geometry detect
+ → Auto dimensions
+ → Station engine (min/rec/premium)
+ → Flower (per-station polygons)
+ → Roll groove (upper/lower)
+ → 3D simulation (same geometry)
+ → Export (CSV/PDF/SVG)
+```
+
+## ✅ MUST checks
+
+* **Single geometry source** (profile_points same everywhere)
+* Auto mode me **koi manual dependency na ho**
+* **Deterministic output** (same input → same result)
+* **Error gating**:
+
+  * missing data → block with reason (fake 0.000 nahi)
+* **UI sync**:
+
+  * Python output → LeftPanel → RollToolingView → Simulation (same station count)
+
+---
+
+# 🧪 Codex se kaise verify karvao
+
+Is prompt ko use karo:
+
+Run validation for flower pattern, auto dimensions, and auto mode pipeline.
+
+1. Flower pattern:
+
+* verify per-station 2D polygons exist
+* check monotonic angle progression
+* detect self-intersections
+* confirm thickness consistency
+* output SVGs for all stations
+
+2. Auto dimensions:
+
+* verify web, flange, thickness, radius, angles
+* validate strip width using bend allowance formula
+* compare DXF vs manual input consistency
+
+3. Auto mode:
+
+* run full pipeline end-to-end
+* confirm single geometry source is used
+* verify station count matches across all panels
+* ensure no fake defaults (0.000) are shown
+* reload test: results remain stable
+
+Return:
+
+* pass/fail for each check
+* screenshots/SVG artifacts
+* mismatches with exact values
+* what is still heuristic vs engineering-grade
+
+---
+
+# 🚦 Pass/Fail criteria (simple)
+
+* **Flower**: per-station shapes + smooth progression ✔
+* **Dimensions**: all key dims auto + correct BA ✔
+* **Auto mode**: one-click → same data everywhere ✔
+
+👉 Agar teenon pass ho gaye → **engine 8.5–9/10 zone me aa jayegi**
+👉 Agar kisi me fail → wahi next fix priority
+
+---
+
+# 💬 One-line
+
+**“Angles se nahi, geometry + dimensions + end-to-end consistency se trust banta hai.”**
+
+Agar chaho, main aapke specific profile par **live expected values (angles, BA, stations)** calculate karke de deta hoon, jisse aap direct compare kar sako.

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="340" viewBox="0 0 900 340">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <text x="10" y="20" fill="#f8fafc" font-size="14" font-weight="bold" font-family="sans-serif">Flower Pattern — z_section (120×45 mm) · 9 stations · shapely-computed 2D polygons</text>
+  <path d="M 231.35 225.26 L 668.50 225.26 L 831.50 208.41 L 831.80 211.31 L 668.65 228.17 L 231.50 228.17 L 68.50 245.01 L 68.20 242.11 L 231.35 225.26 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 231.18 225.26 L 668.34 225.26 L 823.30 172.50 L 824.24 175.26 L 668.82 228.17 L 231.66 228.17 L 76.70 280.92 L 75.76 278.16 L 231.18 225.26 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 230.96 225.26 L 668.12 225.26 L 802.03 131.49 L 803.70 133.88 L 669.04 228.17 L 231.88 228.17 L 97.97 321.93 L 96.30 319.55 L 230.96 225.26 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 230.71 225.26 L 667.86 225.26 L 767.68 96.11 L 769.98 97.89 L 669.29 228.17 L 232.14 228.17 L 132.32 357.31 L 130.02 355.53 L 230.71 225.26 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 230.43 225.26 L 667.59 225.26 L 727.84 73.86 L 730.55 74.93 L 669.57 228.17 L 232.41 228.17 L 172.16 379.57 L 169.45 378.49 L 230.43 225.26 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 230.17 225.26 L 667.33 225.26 L 691.94 64.44 L 694.82 64.88 L 669.83 228.17 L 232.67 228.17 L 208.06 388.98 L 205.18 388.54 L 230.17 225.26 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 229.98 225.26 L 667.14 225.26 L 668.84 62.77 L 671.75 62.80 L 670.02 228.17 L 232.86 228.17 L 231.16 390.65 L 228.25 390.62 L 229.98 225.26 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 229.96 225.26 L 667.12 225.26 L 667.12 62.78 L 670.04 62.78 L 670.04 228.17 L 232.88 228.17 L 232.88 390.65 L 229.96 390.65 L 229.96 225.26 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 229.96 225.26 L 667.12 225.26 L 667.12 62.78 L 670.04 62.78 L 670.04 228.17 L 232.88 228.17 L 232.88 390.65 L 229.96 390.65 L 229.96 225.26 Z" fill="#22c55e" fill-opacity="0.85" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.9"/>
+  <line x1="61.3" y1="244.7" x2="838.7" y2="244.7" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="450.0" y="258.7" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="monospace">Flat strip = 213.4 mm</text>
+  <rect x="50" y="308" width="12" height="8" fill="#6b7280" rx="2"/>
+  <text x="66" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Flat / pre-bend</text>
+  <rect x="210" y="308" width="12" height="8" fill="#7c3aed" rx="2"/>
+  <text x="226" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Early forming</text>
+  <rect x="370" y="308" width="12" height="8" fill="#6366f1" rx="2"/>
+  <text x="386" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Mid forming</text>
+  <rect x="530" y="308" width="12" height="8" fill="#3b82f6" rx="2"/>
+  <text x="546" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Final form</text>
+  <rect x="690" y="308" width="12" height="8" fill="#22c55e" rx="2"/>
+  <text x="706" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Calibration</text>
+  <text x="50" y="62" fill="#f8fafc" font-size="11" font-family="monospace">Profile: z_section</text>
+  <text x="185" y="62" fill="#fbbf24" font-size="11" font-family="monospace">Web = 120 mm</text>
+  <text x="320" y="62" fill="#4ade80" font-size="11" font-family="monospace">Flange = 45 mm</text>
+  <text x="455" y="62" fill="#f87171" font-size="11" font-family="monospace">t = 0.8 mm</text>
+  <text x="590" y="62" fill="#94a3b8" font-size="11" font-family="monospace">Material = AL</text>
+  <text x="725" y="62" fill="#c084fc" font-size="11" font-family="monospace">Stations = 9</text>
+</svg>

@@ -1,0 +1,169 @@
+name: Build Windows Installer
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v2.2.0)"
+        required: false
+        default: "v2.2.0"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: write
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Node.js + pnpm ───────────────────────────────────────────────────
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      # ── 3. Install all workspace packages ──────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      # ── 4. Create app icon (PNG → ICO) ─────────────────────────────────────
+      - name: Create icon files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "artifacts/desktop/assets" | Out-Null
+
+          # Copy PNG icon
+          Copy-Item "artifacts/design-tool/public/icon-192.png" `
+            -Destination "artifacts/desktop/assets/icon.png" -Force
+
+          # Convert PNG → ICO using .NET System.Drawing
+          Add-Type -AssemblyName System.Drawing
+
+          $pngPath = (Resolve-Path "artifacts/desktop/assets/icon.png").Path
+          $icoPath = "artifacts/desktop/assets/icon.ico"
+
+          $bitmap = [System.Drawing.Bitmap]::new($pngPath)
+          $resized = [System.Drawing.Bitmap]::new($bitmap, [System.Drawing.Size]::new(256, 256))
+          $icon   = [System.Drawing.Icon]::FromHandle($resized.GetHicon())
+
+          $stream = [System.IO.FileStream]::new($icoPath, [System.IO.FileMode]::Create)
+          $icon.Save($stream)
+          $stream.Close()
+
+          $icon.Dispose()
+          $resized.Dispose()
+          $bitmap.Dispose()
+
+          # Also copy as tray.ico (same icon for system tray)
+          Copy-Item $icoPath -Destination "artifacts/desktop/assets/tray.ico" -Force
+
+          Write-Host "Icon created: $icoPath"
+          Write-Host "Tray icon created: artifacts/desktop/assets/tray.ico"
+
+      # ── 5. Build frontend (React + Vite) ────────────────────────────────────
+      - name: Build frontend
+        run: pnpm --filter @workspace/design-tool run build
+        env:
+          BASE_PATH: /
+          NODE_ENV: production
+
+      # ── 6. Build API server (esbuild → index.cjs) ───────────────────────────
+      - name: Build API server
+        run: pnpm --filter @workspace/api-server run build
+        env:
+          NODE_ENV: production
+
+      # ── 7. Install native modules for Electron (systeminformation) ────────
+      - name: Install systeminformation for Electron
+        working-directory: artifacts/api-server/dist
+        shell: pwsh
+        run: |
+          npm init -y
+          npm install systeminformation@5.25.11 --omit=dev
+          Write-Host "systeminformation installed for Electron bundling"
+          Get-ChildItem node_modules/systeminformation -Recurse -Include "*.node" |
+            Select-Object FullName, @{N='Size(KB)';E={[math]::Round($_.Length/1KB,1)}}
+
+      # ── 8. Compile Electron main process (TypeScript) ───────────────────────
+      - name: Build Electron main process
+        working-directory: artifacts/desktop
+        run: npx tsc -p tsconfig.json
+
+      # ── 9. Package with electron-builder ───────────────────────────────────
+      - name: Package Windows installer + portable
+        working-directory: artifacts/desktop
+        run: npx electron-builder --win nsis portable --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 10. List build output ────────────────────────────────────────────────
+      - name: List release files
+        shell: pwsh
+        run: |
+          Write-Host "=== Release files ==="
+          Get-ChildItem -Path "artifacts/desktop/release" -Recurse -Include "*.exe" |
+            Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,1)}}
+
+      # ── 11. Upload as workflow artifact (always available) ───────────────────
+      - name: Upload installer as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SAI-Rolotech-Smart-Engines-v2.2.21-Windows
+          path: |
+            artifacts/desktop/release/*.exe
+          retention-days: 30
+
+      # ── 12. Create GitHub Release (only on version tags) ────────────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "SAI Rolotech Smart Engines ${{ github.ref_name }}"
+          body: |
+            ## SAI Rolotech Smart Engines ${{ github.ref_name }}
+
+            ### Windows Installer
+            Download **SAI-Rolotech-Smart-Engines-Setup.exe** — full installer with desktop shortcut and Start Menu entry.
+
+            ### Windows Portable
+            Download **SAI-Rolotech-Smart-Engines-Portable.exe** — no installation needed, run directly.
+
+            ### What's New in v2.2.21
+            - **Integrated Flower + Roll Design View** — Pass schedule chart, per-station cross-sections, OD progression, machine spec, camber/crown compensation
+            - **Electric Motor Capacity Calculator** — IEC frame selection, gearbox ratio, VFD recommendation, drive efficiency
+            - **Camber & Crown Compensation Panel** — Material-specific crown %, springback overbend, per-station springback table
+            - **1-Minute Software Demo Video** — 10-scene animated showcase on home page
+
+            ### All Features
+            - Flower Pattern Design & Springback Compensation
+            - Roll Tooling Designer (DXF export, G-Code)
+            - TurnAxis CNC G-Code Generator
+            - AI Defect Diagnosis (fully offline — 1625 patterns)
+            - Digital Twin Simulation
+            - Auto-backup & Offline mode
+
+            ### System Requirements
+            - Windows 10 / 11 (64-bit)
+            - No internet required after install
+            - No additional software needed
+          files: |
+            artifacts/desktop/release/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

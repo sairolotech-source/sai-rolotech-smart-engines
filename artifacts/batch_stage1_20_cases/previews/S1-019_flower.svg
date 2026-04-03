@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="340" viewBox="0 0 900 340">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <text x="10" y="20" fill="#f8fafc" font-size="14" font-weight="bold" font-family="sans-serif">Flower Pattern — door_frame (100×75 mm) · 16 stations · shapely-computed 2D polygons</text>
+  <path d="M 143.51 214.97 L 326.27 230.32 L 573.73 230.32 L 756.49 214.97 L 752.79 170.92 L 757.24 170.55 L 761.31 219.04 L 573.91 234.78 L 326.09 234.78 L 138.69 219.04 L 142.76 170.55 L 147.21 170.92 L 143.51 214.97 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 150.68 178.90 L 326.50 230.32 L 573.50 230.32 L 749.32 178.90 L 736.92 136.48 L 741.19 135.23 L 754.85 181.93 L 574.14 234.78 L 325.86 234.78 L 145.15 181.93 L 158.81 135.23 L 163.08 136.48 L 150.68 178.90 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 169.20 137.49 L 326.79 230.32 L 573.21 230.32 L 730.80 137.49 L 708.37 99.40 L 712.21 97.14 L 736.90 139.07 L 574.43 234.78 L 325.57 234.78 L 163.10 139.07 L 187.79 97.14 L 191.63 99.40 L 169.20 137.49 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 193.72 105.54 L 327.06 230.32 L 572.94 230.32 L 706.28 105.54 L 676.08 73.26 L 679.34 70.22 L 712.58 105.75 L 574.70 234.78 L 325.30 234.78 L 187.42 105.75 L 220.66 70.22 L 223.92 73.26 L 193.72 105.54 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 209.93 90.54 L 327.22 230.32 L 572.78 230.32 L 690.07 90.54 L 656.20 62.13 L 659.07 58.72 L 696.35 89.99 L 574.86 234.78 L 325.14 234.78 L 203.65 89.99 L 240.93 58.72 L 243.80 62.13 L 209.93 90.54 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 212.43 88.54 L 327.24 230.32 L 572.76 230.32 L 687.57 88.54 L 653.22 60.72 L 656.02 57.25 L 693.84 87.88 L 574.88 234.78 L 325.12 234.78 L 206.16 87.88 L 243.98 57.25 L 246.78 60.72 L 212.43 88.54 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 219.60 83.15 L 327.31 230.32 L 572.69 230.32 L 680.40 83.15 L 644.73 57.04 L 647.36 53.45 L 686.63 82.19 L 574.95 234.78 L 325.05 234.78 L 213.37 82.19 L 252.64 53.45 L 255.27 57.04 L 219.60 83.15 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 231.65 75.25 L 327.42 230.32 L 572.58 230.32 L 668.35 75.25 L 630.74 52.02 L 633.08 48.23 L 674.48 73.80 L 575.06 234.78 L 324.94 234.78 L 225.52 73.80 L 266.92 48.23 L 269.26 52.02 L 231.65 75.25 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 247.45 66.78 L 327.57 230.32 L 572.43 230.32 L 652.55 66.78 L 612.85 47.33 L 614.81 43.33 L 658.51 64.73 L 575.21 234.78 L 324.79 234.78 L 241.49 64.73 L 285.19 43.33 L 287.15 47.33 L 247.45 66.78 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 265.81 59.24 L 327.74 230.32 L 572.26 230.32 L 634.19 59.24 L 592.62 44.20 L 594.14 40.01 L 639.89 56.57 L 575.38 234.78 L 324.62 234.78 L 260.11 56.57 L 305.86 40.01 L 307.38 44.20 L 265.81 59.24 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 285.20 53.67 L 327.93 230.32 L 572.07 230.32 L 614.80 53.67 L 571.84 43.27 L 572.89 38.94 L 620.18 50.38 L 575.57 234.78 L 324.43 234.78 L 279.82 50.38 L 327.11 38.94 L 328.16 43.27 L 285.20 53.67 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 303.48 50.44 L 328.12 230.32 L 571.88 230.32 L 596.52 50.44 L 552.72 44.44 L 553.33 40.02 L 601.54 46.63 L 575.77 234.78 L 324.23 234.78 L 298.46 46.63 L 346.67 40.02 L 347.28 44.44 L 303.48 50.44 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 318.80 49.18 L 328.29 230.32 L 571.71 230.32 L 581.20 49.18 L 537.06 46.87 L 537.29 42.41 L 585.88 44.96 L 575.94 234.78 L 324.06 234.78 L 314.12 44.96 L 362.71 42.41 L 362.94 46.87 L 318.80 49.18 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 328.41 49.04 L 328.41 230.32 L 571.59 230.32 L 571.59 49.04 L 527.39 49.04 L 527.39 44.59 L 576.05 44.59 L 576.05 234.78 L 323.95 234.78 L 323.95 44.59 L 372.61 44.59 L 372.61 49.04 L 328.41 49.04 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 328.41 49.04 L 328.41 230.32 L 571.59 230.32 L 571.59 49.04 L 527.39 49.04 L 527.39 44.59 L 576.05 44.59 L 576.05 234.78 L 323.95 234.78 L 323.95 44.59 L 372.61 44.59 L 372.61 49.04 L 328.41 49.04 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 328.41 49.04 L 328.41 230.32 L 571.59 230.32 L 571.59 49.04 L 527.39 49.04 L 527.39 44.59 L 576.05 44.59 L 576.05 234.78 L 323.95 234.78 L 323.95 44.59 L 372.61 44.59 L 372.61 49.04 L 328.41 49.04 Z" fill="#22c55e" fill-opacity="0.85" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.9"/>
+  <line x1="85.1" y1="250.5" x2="814.9" y2="250.5" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="450.0" y="264.5" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="monospace">Flat strip = 294.7 mm</text>
+  <rect x="50" y="308" width="12" height="8" fill="#6b7280" rx="2"/>
+  <text x="66" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Flat / pre-bend</text>
+  <rect x="210" y="308" width="12" height="8" fill="#7c3aed" rx="2"/>
+  <text x="226" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Early forming</text>
+  <rect x="370" y="308" width="12" height="8" fill="#6366f1" rx="2"/>
+  <text x="386" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Mid forming</text>
+  <rect x="530" y="308" width="12" height="8" fill="#3b82f6" rx="2"/>
+  <text x="546" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Final form</text>
+  <rect x="690" y="308" width="12" height="8" fill="#22c55e" rx="2"/>
+  <text x="706" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Calibration</text>
+  <text x="50" y="62" fill="#f8fafc" font-size="11" font-family="monospace">Profile: door_frame</text>
+  <text x="185" y="62" fill="#fbbf24" font-size="11" font-family="monospace">Web = 100 mm</text>
+  <text x="320" y="62" fill="#4ade80" font-size="11" font-family="monospace">Flange = 75 mm</text>
+  <text x="455" y="62" fill="#f87171" font-size="11" font-family="monospace">t = 1.8 mm</text>
+  <text x="590" y="62" fill="#94a3b8" font-size="11" font-family="monospace">Material = GI</text>
+  <text x="725" y="62" fill="#c084fc" font-size="11" font-family="monospace">Stations = 16</text>
+</svg>

@@ -1,0 +1,36 @@
+==============================================================================================================
+  PROCESS CARD — S1-012  |  Machine: Roll Forming Machine
+  Material: Mild Steel (MS)  |  Thickness: 4.0 mm  |  Fy: 250 MPa  |  Bend Radius: 4.0 mm
+  Stations: 25  |  Peak Force: 360.384 kN  |  Peak Power: 120.13 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  4.100mm   450.5mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  2.2°   0.1°  4.150mm   450.5mm  360.38kN 120.13kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend              7.9°   0.2°  4.150mm   436.8mm  349.46kN 116.49kW   33.33% MEDIUM  
+  3     Station 3                    initial_bend             15.9°   0.4°  4.150mm   423.2mm  338.54kN 112.85kW   33.33% MEDIUM  
+  4     Station 4                    initial_bend             25.2°   0.7°  4.150mm   409.5mm  327.61kN 109.20kW   33.33% MEDIUM  
+  5     Station 5                    initial_bend             34.5°   1.0°  4.150mm   395.9mm  316.68kN 105.56kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      42.7°   1.2°  4.150mm   382.2mm  305.75kN 101.92kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      48.5°   1.4°  4.150mm   368.5mm  294.82kN  98.27kW   33.33% MEDIUM  
+  8     Station 8                    progressive_forming      50.9°   1.4°  4.150mm   354.9mm  283.90kN  94.63kW   33.33% MEDIUM  
+  9     Station 9                    progressive_forming      51.4°   1.4°  4.150mm   341.2mm  272.98kN  90.99kW   33.33% MEDIUM  
+  10    Station 10                   progressive_forming      52.8°   1.5°  4.150mm   327.6mm  262.05kN  87.35kW   33.33% MEDIUM  
+  11    Station 11                   progressive_forming      55.1°   1.5°  4.150mm   313.9mm  251.12kN  83.71kW   33.33% MEDIUM  
+  12    Station 12                   progressive_forming      58.1°   1.6°  4.150mm   300.2mm  240.19kN  80.06kW   33.33% MEDIUM  
+  13    Station 13                   progressive_forming      61.5°   1.7°  4.150mm   286.6mm  229.26kN  76.42kW   33.33% MEDIUM  
+  14    Station 14                   progressive_forming      65.4°   1.8°  4.150mm   272.9mm  218.34kN  72.78kW   33.33% MEDIUM  
+  15    Station 15                   progressive_forming      69.5°   1.9°  4.150mm   259.3mm  207.42kN  69.14kW   33.33% MEDIUM  
+  16    Station 16                   progressive_forming      73.7°   2.0°  4.150mm   245.6mm  196.49kN  65.50kW   33.33% MEDIUM  
+  17    Station 17                   progressive_forming      77.8°   2.2°  4.150mm   231.9mm  185.56kN  61.85kW   33.33% MEDIUM  
+  18    Station 18                   progressive_forming      81.6°   2.3°  4.150mm   218.3mm  174.63kN  58.21kW   33.33% MEDIUM  
+  19    Station 19                   progressive_forming      85.2°   2.4°  4.150mm   204.6mm  163.70kN  54.57kW   33.33% MEDIUM  
+  20    Station 20                   progressive_forming      88.1°   2.5°  4.150mm   191.0mm  152.78kN  50.93kW   33.33% MEDIUM  
+  21    Station 21                   progressive_forming      90.5°   2.5°  4.150mm   177.3mm  141.86kN  47.29kW   33.33% MEDIUM  
+  22    Station 22                   lip_forming              92.0°   2.6°  4.150mm   163.7mm  130.93kN  43.64kW   33.33% MEDIUM  
+  23    Station 23                   lip_forming              92.5°   2.6°  4.150mm   150.0mm  120.00kN  40.00kW   33.33% MEDIUM  
+  24    Station 24 (Calibration)     calibration              90.0°   0.0°  4.000mm   150.0mm   48.00kN  16.00kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+==============================================================================================================

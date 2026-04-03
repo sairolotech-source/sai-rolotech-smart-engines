@@ -1,0 +1,235 @@
+Ye lo, **AUTO SAFE ENGINE SYSTEM** prompt. Isse Replit ko bolo ki poore project me crash-guard system laga de:
+
+```text
+You are now implementing a GLOBAL SAFE ENGINE SYSTEM for the Sai Rolotech software.
+
+Goal:
+Prevent all runtime crashes caused by undefined, null, wrong types, empty arrays, partial payloads, and stale state.
+
+Main known crash patterns:
+- Cannot read properties of undefined (reading 'forEach')
+- Cannot read properties of undefined (reading 'reduce')
+
+These crashes are blocking:
+- dimension generation
+- angle calculation
+- profile summary
+- station config flow
+- flower/power pattern generation
+
+==================================================
+PHASE 1 — CREATE GLOBAL SAFE HELPERS
+==================================================
+
+Create shared utility helpers such as:
+
+safeArray(value)
+- return value if Array.isArray(value)
+- otherwise return []
+
+safeObject(value)
+- return value if it is a non-null object
+- otherwise return {}
+
+safeNumber(value, fallback = 0)
+- return finite number
+- otherwise fallback
+
+safeString(value, fallback = "")
+- return string if valid
+- otherwise fallback
+
+safeReduce(array, reducer, initialValue)
+- internally use safeArray(array).reduce(...)
+
+safeMap(array, mapper)
+- internally use safeArray(array).map(...)
+
+safeForEach(array, callback)
+- internally use safeArray(array).forEach(...)
+
+safeFilter(array, callback)
+- internally use safeArray(array).filter(...)
+
+==================================================
+PHASE 2 — CREATE NORMALIZATION LAYER
+==================================================
+
+Create normalization functions for all major flows.
+
+Example:
+normalizeProfileData(raw)
+normalizeCalculationResult(raw)
+normalizeFlowerInput(raw)
+normalizeDimensionInput(raw)
+
+Each normalization function must guarantee stable output shapes like:
+
+{
+  segments: [],
+  bends: [],
+  dimensions: [],
+  angles: [],
+  warnings: [],
+  errors: [],
+  profileSegments: [],
+  thickness: 0,
+  minThickness: 0,
+  maxThickness: 0,
+  material: null,
+  sourceType: "unknown"
+}
+
+No UI component should directly consume raw parser or raw calculation output.
+
+==================================================
+PHASE 3 — PATCH ALL UNSAFE OPERATIONS
+==================================================
+
+Search entire codebase for:
+- .forEach(
+- .map(
+- .filter(
+- .reduce(
+- .length
+- direct object.property usage without checks
+
+Patch them using safe helpers or guards.
+
+Examples:
+
+Before:
+segments.reduce(...)
+
+After:
+safeReduce(segments, ...)
+
+Before:
+dimensions.map(...)
+
+After:
+safeMap(dimensions, ...)
+
+Before:
+profile.material.name
+
+After:
+safeObject(profile.material).name || ""
+
+==================================================
+PHASE 4 — SAFE RENDER SYSTEM
+==================================================
+
+For every critical screen:
+- dimension confirm
+- DXF result
+- center line conversion result
+- station config
+- flower/power pattern
+- roll tooling
+- summary panels
+
+Add render guards:
+- if critical data missing, do not crash
+- show user-friendly message instead
+
+Examples:
+- "Profile data incomplete"
+- "Dimensions not generated yet"
+- "Thickness required"
+- "Power Pattern prerequisites not complete"
+
+==================================================
+PHASE 5 — ERROR BOUNDARY
+==================================================
+
+Add or improve a global error boundary so no raw React crash screen appears.
+
+If a component fails:
+- show fallback UI
+- show retry button
+- show reload button
+- log component name and payload snapshot
+
+==================================================
+PHASE 6 — LOGGING
+==================================================
+
+Add structured logs for critical modules:
+
+- DXF parser output
+- center line conversion output
+- dimension engine input/output
+- flower engine input/output
+- station config state
+- power pattern trigger payload
+
+If required arrays are missing, log exact field name.
+
+==================================================
+PHASE 7 — STATE SAFETY
+==================================================
+
+Audit localStorage/sessionStorage/react state.
+
+Ensure:
+- stale saved state does not break app
+- missing persisted values get defaults
+- navigation cannot happen with partial payload
+
+==================================================
+PHASE 8 — TESTING
+==================================================
+
+Retest these flows:
+
+1. DXF upload
+2. center line detect
+3. thickness set
+4. center line to sheet conversion
+5. dimension generation
+6. station config open
+7. power pattern generation
+
+Test with:
+- undefined arrays
+- null objects
+- missing thickness
+- missing bends
+- empty segments
+- reload after conversion
+- partial saved state
+
+==================================================
+PHASE 9 — OUTPUT FORMAT
+==================================================
+
+Return:
+1. helper files created
+2. changed files
+3. crash points fixed
+4. normalization functions added
+5. remaining risky areas
+6. test results
+
+STRICT RULES:
+- Do not apply only local fixes.
+- Build a reusable global safe system.
+- Preserve engineering logic.
+- No critical screen should crash from undefined/null/type mismatch.
+- Patch code directly.
+
+Start by creating the shared safe utility module first, then refactor all critical flows to use it.
+```
+
+Uske baad ye chhota action prompt bhi do:
+
+```text
+Now apply the Global Safe Engine System directly in code.
+Refactor the failing modules first:
+- dimension confirm
+- profile summary
+- station config
+- flower/power pattern
+Then retest the exact failing flow and confirm whether the reduce/forEach crashes are gone.
+```

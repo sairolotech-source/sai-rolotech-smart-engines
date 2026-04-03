@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="220" viewBox="0 0 280 220">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <path d="M -148.87 53.56 L -148.87 -18.80 L 428.87 -18.80 L 428.87 53.56 L 413.37 53.56 L -133.37 53.56 L -148.87 53.56 Z M 37.68 104.87 L 242.32 104.87 L 405.11 93.78 L 402.42 54.31 L 413.37 53.56 L 416.81 103.98 L 242.70 115.85 L 37.30 115.85 L -136.81 103.98 L -133.37 53.56 L -122.42 54.31 L -125.11 93.78 L 37.68 104.87 Z" fill="#1e3a5f" fill-opacity="0.7" stroke="#60a5fa" stroke-width="1.8"/>
+  <path d="M 428.87 115.85 L 428.87 188.21 L -148.87 188.21 L -148.87 115.85 L -123.68 115.85 L 37.30 104.87 L 242.70 104.87 L 403.68 115.85 L 428.87 115.85 Z" fill="#14532d" fill-opacity="0.5" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="18.2" y1="107.5" x2="261.8" y2="107.5" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="252.51135073779795" y1="110.4" x2="252.51135073779795" y2="104.7" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="256.51135073779795" y="107.5" fill="#f59e0b" font-size="9" font-family="monospace">gap=2.35mm</text>
+  <text x="140" y="14" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold" font-family="monospace">Stn 1</text>
+  <text x="140" y="26" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="monospace">3.9° · pre_bend</text>
+  <text x="6" y="172" fill="#60a5fa" font-size="9" font-family="monospace">Upper Ø 212mm (r=106.0mm)</text>
+  <text x="6" y="184" fill="#4ade80" font-size="9" font-family="monospace">Lower Ø 172mm (r=86.1mm)</text>
+  <text x="6" y="196" fill="#94a3b8" font-size="9" font-family="monospace">Roll W=243.0mm  Depth=4.1mm</text>
+</svg>

@@ -1,0 +1,446 @@
+Theek. Ab **25 ultra-hard profiles** dete hain, priority:
+
+* **Shutter patti / shutter channel**
+* **False ceiling / drywall channel**
+
+Ye dataset aapke app ko **stress test** karega.
+Isme easy profile nahi, balki **real-production style difficult cases** hain.
+
+# 25 Ultra-Hard Profile Dataset
+
+## A. Shutter Family — 13 profiles
+
+### SHT-01 — Deep Curved Slat
+
+* Category: shutter_slat
+* Thickness: 0.70 mm
+* Material: GI
+* Effective width: 82 mm
+* Crown height: 16 mm
+* Side return: 8 mm
+* Inner radius set: 2.0 / 2.5 mm
+* Bend count: 6
+* Curved segments: yes
+* Difficulty: 84/100
+* Risk:
+
+  * arc continuity fail
+  * thin-sheet distortion
+  * wrong contact strip placement
+
+### SHT-02 — Narrow Interlock Slat
+
+* Thickness: 0.65 mm
+* Effective width: 75 mm
+* Top hook: 7 mm
+* Bottom lock: 9 mm
+* Crown: 11 mm
+* Bend count: 8
+* Curved segments: yes
+* Difficulty: 88/100
+* Risk:
+
+  * lock geometry mismatch
+  * pinch at hook root
+  * too few stations
+
+### SHT-03 — Wide Heavy Slat
+
+* Thickness: 0.90 mm
+* Effective width: 95 mm
+* Crown: 18 mm
+* Return lips: 10 mm both sides
+* Radius: 3 mm
+* Bend count: 8
+* Difficulty: 82/100
+* Risk:
+
+  * roll width underestimation
+  * springback on wide crown
+
+### SHT-04 — Double Return Slat
+
+* Thickness: 0.80 mm
+* Width: 90 mm
+* Crown: 14 mm
+* Side 1 double return: 6 + 5 mm
+* Side 2 single return: 8 mm
+* Bend count: 10
+* Difficulty: 93/100
+* Risk:
+
+  * return-bend collapse
+  * incorrect classifier
+  * pinch cluster near returns
+
+### SHT-05 — Ventilated Slat Style Section
+
+* Thickness: 0.75 mm
+* Width: 85 mm
+* Crown: 13 mm
+* Lock zones: top 8 mm, bottom 8 mm
+* Vent support flats: 6 mm each side
+* Bend count: 9
+* Difficulty: 90/100
+* Risk:
+
+  * wrong flat/curve segmentation
+  * contact strips too simplistic
+
+### SHT-06 — Flat-Top Security Slat
+
+* Thickness: 1.00 mm
+* Width: 80 mm
+* Flat top: 34 mm
+* Side walls: 15 mm
+* Hooks: 7 mm
+* Bend count: 8
+* Difficulty: 80/100
+* Risk:
+
+  * over-pinch at shoulder
+  * flat crown support missing
+
+### SHT-07 — Mini Slat Tight Radius
+
+* Thickness: 0.60 mm
+* Width: 52 mm
+* Crown: 8 mm
+* Hook depth: 5 mm
+* Radius: 1.2 mm
+* Bend count: 8
+* Difficulty: 91/100
+* Risk:
+
+  * tiny radii handling fail
+  * excessive thinning
+  * contour noise
+
+### SHT-08 — Asymmetric Hook Slat
+
+* Thickness: 0.75 mm
+* Width: 78 mm
+* Left hook: 6 mm
+* Right hook: 10 mm
+* Crown: 12 mm
+* Bend count: 8
+* Symmetry: asymmetric
+* Difficulty: 89/100
+* Risk:
+
+  * wrong symmetry assumption
+  * flower progression imbalance
+
+### SHT-09 — Deep Profile Rolling Door Slat
+
+* Thickness: 0.95 mm
+* Width: 100 mm
+* Crown: 22 mm
+* Side returns: 9 mm
+* Radius: 3.5 mm
+* Bend count: 8
+* Difficulty: 85/100
+* Risk:
+
+  * roll clash
+  * wide face width miscalc
+
+### SHT-10 — Ribbed Slat Section
+
+* Thickness: 0.80 mm
+* Width: 88 mm
+* Crown: 14 mm
+* Side lock: 8 mm
+* Center reinforcement rib: 5 mm rise
+* Bend count: 10
+* Difficulty: 95/100
+* Risk:
+
+  * classifier confusion
+  * rib not treated as real bend chain
+
+### SHT-11 — Bottom Slat Reinforced
+
+* Thickness: 1.20 mm
+* Width: 95 mm
+* Main body height: 20 mm
+* Lower reinforcing return: 12 mm
+* Upper lock: 8 mm
+* Bend count: 9
+* Difficulty: 87/100
+* Risk:
+
+  * heavy gauge overbend mismatch
+  * tooling width oversimplified
+
+### SHT-12 — Narrow Guide-Compatible Slat
+
+* Thickness: 0.70 mm
+* Width: 68 mm
+* Crown: 10 mm
+* Tight side edges: 4.5 mm
+* Bend count: 7
+* Difficulty: 86/100
+* Risk:
+
+  * fit tolerance issue
+  * exit radius wrong
+
+### SHT-13 — Mixed Radius Slat
+
+* Thickness: 0.80 mm
+* Width: 84 mm
+* Crown: 15 mm
+* Left radius chain: 1.5 → 2.5 mm
+* Right radius chain: 2.0 → 3.0 mm
+* Bend count: 8
+* Difficulty: 96/100
+* Risk:
+
+  * one-radius assumption fail
+  * contact strips wrong on variable arc
+
+---
+
+## B. False Ceiling / Drywall Family — 12 profiles
+
+### FCL-01 — Standard Intermediate Channel with Lips
+
+* Category: false_ceiling_channel
+* Thickness: 0.50 mm
+* Web: 45 mm
+* Side walls: 15 mm
+* Lips: 7 mm inward
+* Bend count: 4
+* Difficulty: 68/100
+* Risk:
+
+  * lip missing
+  * thin-sheet springback
+
+### FCL-02 — Deep Ceiling Channel
+
+* Thickness: 0.55 mm
+* Web: 50 mm
+* Side walls: 22 mm
+* Lips: 8 mm
+* Bend count: 4
+* Difficulty: 72/100
+* Risk:
+
+  * flange support too small
+  * wrong face width
+
+### FCL-03 — Sharp-Lip Main Channel
+
+* Thickness: 0.80 mm
+* Web: 38 mm
+* Depth: 24 mm
+* Lips: 10 mm
+* Small radius: 1.0 mm
+* Bend count: 4
+* Difficulty: 79/100
+* Risk:
+
+  * sharp corner pinch
+  * return lip instability
+
+### FCL-04 — Omega False Ceiling Section
+
+* Thickness: 0.60 mm
+* Top flat: 28 mm
+* Side drops: 18 mm
+* Bottom returns: 10 mm
+* Bend count: 6
+* Difficulty: 88/100
+* Risk:
+
+  * omega misclassification
+  * opposite bends mishandled
+
+### FCL-05 — Hat Channel Narrow Crown
+
+* Thickness: 0.75 mm
+* Crown: 20 mm
+* Legs: 25 mm
+* Feet: 14 mm
+* Bend count: 4
+* Difficulty: 77/100
+* Risk:
+
+  * support surfaces not balanced
+  * station recommendation weak
+
+### FCL-06 — Furring Channel Deep Return
+
+* Thickness: 0.70 mm
+* Web: 32 mm
+* Sides: 27 mm
+* Outward returns: 9 mm
+* Bend count: 6
+* Difficulty: 84/100
+* Risk:
+
+  * return bend wrong side
+  * edge relief misuse
+
+### FCL-07 — Wall Angle Section
+
+* Thickness: 0.50 mm
+* Leg 1: 25 mm
+* Leg 2: 25 mm
+* Safety lip on one side: 5 mm
+* Bend count: 2
+* Difficulty: 63/100
+* Risk:
+
+  * asymmetry ignored
+  * simple but tolerance-critical
+
+### FCL-08 — Double-Lip Ceiling Channel
+
+* Thickness: 0.55 mm
+* Web: 48 mm
+* Side wall: 16 mm
+* Inner lip: 7 mm
+* Outer safety lip: 4 mm
+* Bend count: 6
+* Difficulty: 87/100
+* Risk:
+
+  * dual-lip sequencing fail
+  * pinch crowding
+
+### FCL-09 — Deep Drywall Stud-Type Open Section
+
+* Thickness: 0.65 mm
+* Web: 50 mm
+* Flanges: 35 mm
+* Lips: 10 mm
+* Bend count: 4
+* Difficulty: 75/100
+* Risk:
+
+  * flange distortion
+  * wide section springback
+
+### FCL-10 — Narrow Track with Returns
+
+* Thickness: 0.60 mm
+* Base: 30 mm
+* Legs: 22 mm
+* Small returns: 5 mm
+* Bend count: 4
+* Difficulty: 78/100
+* Risk:
+
+  * small throat tooling issue
+  * return contact strip mismatch
+
+### FCL-11 — Asymmetric Support Channel
+
+* Thickness: 0.70 mm
+* Web: 42 mm
+* Left wall: 18 mm
+* Right wall: 24 mm
+* Left lip: 6 mm
+* Right lip: 9 mm
+* Bend count: 6
+* Difficulty: 90/100
+* Risk:
+
+  * symmetry assumptions fail
+  * tool width breakdown incorrect
+
+### FCL-12 — Mixed Bend Ceiling Carrier
+
+* Thickness: 0.80 mm
+* Crown: 34 mm
+* Drop 1: 12 mm
+* Return 1: 8 mm
+* Drop 2: 20 mm
+* Return 2: 6 mm
+* Bend count: 8
+* Difficulty: 94/100
+* Risk:
+
+  * category confusion
+  * flower jump near opposite bends
+  * pinch severity underreported
+
+# Sabse pehle kin 10 profiles par test karna chahiye
+
+Main recommend karunga ye first batch run karo:
+
+* SHT-02
+* SHT-04
+* SHT-07
+* SHT-08
+* SHT-10
+* SHT-13
+* FCL-04
+* FCL-06
+* FCL-08
+* FCL-12
+
+Ye batch aapke engine ki asli weakness nikaalega.
+
+# Har profile ke liye app ko kya output dena chahiye
+
+Har case me ye fields compulsory honi chahiye:
+
+```text
+profile_type
+difficulty_score
+bend_count_detected
+curved_segments_detected
+return_bends_detected
+symmetry_type
+station_count_recommended
+flower_quality_score
+contact_strips_count
+pinch_zones_count
+roll_width_breakdown
+entry_radius_mm
+exit_radius_mm
+edge_relief_width_mm
+edge_relief_depth_mm
+warnings[]
+```
+
+# Replit / AI ke liye direct prompt
+
+```text
+Run engineering validation on these 25 difficult profiles with priority on shutter and false ceiling families.
+
+For each profile:
+- classify profile type
+- detect bends, returns, curved segments, symmetry
+- validate centerline-to-sheet behavior
+- generate flower progression
+- generate contact strips and pinch zones
+- generate tooling-grade groove geometry
+- report warnings and weak assumptions
+- score each profile out of 100
+- do not claim success without field-level proof
+
+Focus on difficult cases first:
+SHT-02, SHT-04, SHT-07, SHT-08, SHT-10, SHT-13, FCL-04, FCL-06, FCL-08, FCL-12
+
+Maintain compatibility with:
+- ProfileAnnotationPanel
+- RollToolingView
+- DigitalTwinView
+- pipeline API
+```
+
+# Practical next step
+
+Ab best move ye hai:
+
+**Step 1:** in 25 profiles ko JSON dataset me badlo
+**Step 2:** first 10 difficult profiles run karao
+**Step 3:** failure areas file-by-file nikalo
+**Step 4:** phir classifier + flower + pinch logic improve karao
+
+Agar chaho, agle message me main isi 25-profile pack ko **clean JSON format** me bana deta hoon, jo seedha app me feed ho sake.

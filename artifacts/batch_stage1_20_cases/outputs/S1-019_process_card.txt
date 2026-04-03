@@ -1,0 +1,28 @@
+==============================================================================================================
+  PROCESS CARD — S1-019  |  Machine: Roll Forming Machine
+  Material: Hot-Dip Galvanized (GI)  |  Thickness: 1.8 mm  |  Fy: 250 MPa  |  Bend Radius: 1.8 mm
+  Stations: 17  |  Peak Force: 101.412 kN  |  Peak Power: 33.8 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  1.900mm   281.7mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  4.8°   0.1°  1.900mm   281.7mm  101.41kN  33.80kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend             16.3°   0.3°  1.900mm   268.7mm   96.74kN  32.25kW   33.33% MEDIUM  
+  3     Station 3                    initial_bend             30.5°   0.5°  1.900mm   255.7mm   92.07kN  30.69kW   33.33% MEDIUM  
+  4     Station 4                    progressive_forming      43.1°   0.7°  1.900mm   242.8mm   87.39kN  29.13kW   33.33% MEDIUM  
+  5     Station 5                    progressive_forming      50.0°   0.8°  1.900mm   229.8mm   82.72kN  27.57kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      51.0°   0.8°  1.900mm   216.8mm   78.05kN  26.02kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      53.8°   0.9°  1.900mm   203.8mm   73.38kN  24.46kW   33.33% MEDIUM  
+  8     Station 8                    progressive_forming      58.3°   1.0°  1.900mm   190.8mm   68.71kN  22.90kW   33.33% MEDIUM  
+  9     Station 9                    progressive_forming      63.9°   1.1°  1.900mm   177.9mm   64.03kN  21.34kW   33.33% MEDIUM  
+  10    Station 10                   progressive_forming      70.1°   1.2°  1.900mm   164.9mm   59.36kN  19.79kW   33.33% MEDIUM  
+  11    Station 11                   progressive_forming      76.4°   1.3°  1.900mm   151.9mm   54.69kN  18.23kW   33.33% MEDIUM  
+  12    Station 12                   progressive_forming      82.2°   1.4°  1.900mm   138.9mm   50.02kN  16.67kW   33.33% MEDIUM  
+  13    Station 13                   progressive_forming      87.0°   1.4°  1.900mm   126.0mm   45.35kN  15.12kW   33.33% MEDIUM  
+  14    Station 14                   lip_forming              90.3°   1.5°  1.900mm   113.0mm   40.67kN  13.56kW   33.33% MEDIUM  
+  15    Station 15                   lip_forming              91.5°   1.5°  1.900mm   100.0mm   36.00kN  12.00kW   33.33% MEDIUM  
+  16    Station 16 (Calibration)     calibration              90.0°   0.0°  1.800mm   100.0mm   14.40kN   4.80kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+==============================================================================================================

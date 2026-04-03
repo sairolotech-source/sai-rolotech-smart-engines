@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="220" viewBox="0 0 280 220">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <path d="M 39.08 1.61 L 39.08 -40.66 L 240.92 -40.66 L 240.92 1.61 L 233.88 1.61 L 233.88 82.57 L 46.12 82.57 L 46.12 1.61 L 39.08 1.61 Z" fill="#1e3a5f" fill-opacity="0.7" stroke="#60a5fa" stroke-width="1.8"/>
+  <path d="M 240.92 82.57 L 240.92 124.83 L 233.88 124.83 L 233.88 158.93 L 229.27 158.93 L 229.27 124.83 L 50.73 124.83 L 50.73 158.93 L 46.12 158.93 L 46.12 124.83 L 39.08 124.83 L 39.08 82.57 L 46.12 82.57 L 46.12 77.96 L 233.88 77.96 L 233.88 82.57 L 240.92 82.57 Z" fill="#14532d" fill-opacity="0.5" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="37.2" y1="79.1" x2="242.8" y2="79.1" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="241.57509157509156" y1="80.3" x2="241.57509157509156" y2="77.9" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="245.57509157509156" y="79.1" fill="#f59e0b" font-size="9" font-family="monospace">gap=1.67mm</text>
+  <text x="140" y="14" text-anchor="middle" fill="#22c55e" font-size="10" font-weight="bold" font-family="monospace">Stn 16 (Calibration)</text>
+  <text x="140" y="26" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="monospace">90.0° · calibration</text>
+  <text x="6" y="172" fill="#60a5fa" font-size="9" font-family="monospace">Upper Ø 255mm (r=127.6mm)</text>
+  <text x="6" y="184" fill="#4ade80" font-size="9" font-family="monospace">Lower Ø 142mm (r=71.0mm)</text>
+  <text x="6" y="196" fill="#94a3b8" font-size="9" font-family="monospace">Roll W=158.8mm  Depth=55.0mm</text>
+</svg>

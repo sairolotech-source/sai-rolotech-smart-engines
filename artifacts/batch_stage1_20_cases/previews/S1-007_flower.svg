@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="340" viewBox="0 0 900 340">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <text x="10" y="20" fill="#f8fafc" font-size="14" font-weight="bold" font-family="sans-serif">Flower Pattern — hat_section (240×35 mm) · 14 stations · shapely-computed 2D polygons</text>
+  <path d="M 151.23 205.80 L 748.77 205.80 L 835.33 196.39 L 835.76 200.36 L 748.99 209.78 L 151.01 209.78 L 64.24 200.36 L 64.67 196.39 L 151.23 205.80 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 151.48 205.80 L 748.52 205.80 L 829.83 175.39 L 831.23 179.13 L 749.24 209.78 L 150.76 209.78 L 68.77 179.13 L 70.17 175.39 L 151.48 205.80 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 151.78 205.80 L 748.22 205.80 L 817.68 154.22 L 820.05 157.41 L 749.54 209.78 L 150.46 209.78 L 79.95 157.41 L 82.32 154.22 L 151.78 205.80 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.01 205.80 L 747.99 205.80 L 805.73 141.67 L 808.69 144.34 L 749.77 209.78 L 150.23 209.78 L 91.31 144.34 L 94.27 141.67 L 152.01 205.80 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.06 205.80 L 747.94 205.80 L 802.91 139.35 L 805.98 141.89 L 749.82 209.78 L 150.18 209.78 L 94.02 141.89 L 97.09 139.35 L 152.06 205.80 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.12 205.80 L 747.88 205.80 L 799.38 136.71 L 802.57 139.09 L 749.88 209.78 L 150.12 209.78 L 97.43 139.09 L 100.62 136.71 L 152.12 205.80 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.23 205.80 L 747.77 205.80 L 792.86 132.50 L 796.25 134.59 L 749.99 209.78 L 150.01 209.78 L 103.75 134.59 L 107.14 132.50 L 152.23 205.80 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.39 205.80 L 747.61 205.80 L 783.91 127.94 L 787.53 129.63 L 750.15 209.78 L 149.85 209.78 L 112.47 129.63 L 116.09 127.94 L 152.39 205.80 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.57 205.80 L 747.43 205.80 L 773.63 124.18 L 777.42 125.40 L 750.33 209.78 L 149.67 209.78 L 122.58 125.40 L 126.37 124.18 L 152.57 205.80 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.77 205.80 L 747.23 205.80 L 763.26 121.79 L 767.17 122.53 L 750.53 209.78 L 149.47 209.78 L 132.83 122.53 L 136.74 121.79 L 152.77 205.80 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 152.95 205.80 L 747.05 205.80 L 754.19 120.76 L 758.16 121.09 L 750.71 209.78 L 149.29 209.78 L 141.84 121.09 L 145.81 120.76 L 152.95 205.80 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 153.09 205.80 L 746.91 205.80 L 747.80 120.60 L 751.78 120.64 L 750.85 209.78 L 149.15 209.78 L 148.22 120.64 L 152.20 120.60 L 153.09 205.80 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 153.11 205.80 L 746.89 205.80 L 746.89 120.62 L 750.87 120.62 L 750.87 209.78 L 149.13 209.78 L 149.13 120.62 L 153.11 120.62 L 153.11 205.80 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 153.11 205.80 L 746.89 205.80 L 746.89 120.62 L 750.87 120.62 L 750.87 209.78 L 149.13 209.78 L 149.13 120.62 L 153.11 120.62 L 153.11 205.80 Z" fill="#22c55e" fill-opacity="0.85" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.9"/>
+  <line x1="30.5" y1="225.8" x2="869.5" y2="225.8" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="450.0" y="239.8" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="monospace">Flat strip = 336.8 mm</text>
+  <rect x="50" y="308" width="12" height="8" fill="#6b7280" rx="2"/>
+  <text x="66" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Flat / pre-bend</text>
+  <rect x="210" y="308" width="12" height="8" fill="#7c3aed" rx="2"/>
+  <text x="226" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Early forming</text>
+  <rect x="370" y="308" width="12" height="8" fill="#6366f1" rx="2"/>
+  <text x="386" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Mid forming</text>
+  <rect x="530" y="308" width="12" height="8" fill="#3b82f6" rx="2"/>
+  <text x="546" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Final form</text>
+  <rect x="690" y="308" width="12" height="8" fill="#22c55e" rx="2"/>
+  <text x="706" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Calibration</text>
+  <text x="50" y="62" fill="#f8fafc" font-size="11" font-family="monospace">Profile: hat_section</text>
+  <text x="185" y="62" fill="#fbbf24" font-size="11" font-family="monospace">Web = 240 mm</text>
+  <text x="320" y="62" fill="#4ade80" font-size="11" font-family="monospace">Flange = 35 mm</text>
+  <text x="455" y="62" fill="#f87171" font-size="11" font-family="monospace">t = 1.6 mm</text>
+  <text x="590" y="62" fill="#94a3b8" font-size="11" font-family="monospace">Material = AL</text>
+  <text x="725" y="62" fill="#c084fc" font-size="11" font-family="monospace">Stations = 14</text>
+</svg>

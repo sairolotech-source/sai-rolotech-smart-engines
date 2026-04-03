@@ -1,0 +1,596 @@
+Bilkul. Neeche **ADVANCE ROLL ENGINE + EXPORT ENGINE** ka strong blueprint de raha hoon, taaki Replit/developer seedha implement kar sake.
+
+# 1. Advance Roll Engine ka goal
+
+Basic roll engine sirf rough pass profiles banata hai.
+Advance engine ko ye karna chahiye:
+
+* bend-wise progressive forming
+* corner radius handling
+* lip-specific pass control
+* return bend clearance
+* upper/lower roll contour split
+* interference check
+* pass-wise calibration logic
+* manufacturable output for DWG/STEP export
+
+# 2. New backend files
+
+```text
+app/engines/
+├─ advanced_roll_engine.py
+├─ roll_interference_engine.py
+├─ roll_dimension_engine.py
+├─ export_dxf_engine.py
+├─ export_step_engine.py
+└─ export_pack_engine.py
+```
+
+# 3. `advanced_roll_engine.py`
+
+```python
+from typing import Dict, Any, List, Tuple
+from app.utils.response import pass_response, fail_response
+import math
+
+Point = Tuple[float, float]
+
+
+def generate_advanced_rolls(
+    profile_result: Dict[str, Any],
+    input_result: Dict[str, Any],
+    flower_result: Dict[str, Any],
+    station_result: Dict[str, Any],
+) -> Dict[str, Any]:
+    if not profile_result:
+        return fail_response("advanced_roll_engine", "Profile result missing")
+    if not input_result:
+        return fail_response("advanced_roll_engine", "Input result missing")
+    if not flower_result:
+        return fail_response("advanced_roll_engine", "Flower result missing")
+    if not station_result:
+        return fail_response("advanced_roll_engine", "Station result missing")
+
+    thickness = float(input_result.get("sheet_thickness_mm", 0))
+    material = str(input_result.get("material", "")).upper()
+    section_width = float(profile_result.get("section_width_mm", 0))
+    section_height = float(profile_result.get("section_height_mm", 0))
+    bend_count = int(profile_result.get("bend_count", 0))
+    return_bends = int(profile_result.get("return_bends_count", 0))
+    profile_type = str(profile_result.get("profile_type", "custom"))
+    station_count = int(station_result.get("recommended_station_count", 0))
+    section_features = profile_result.get("section_features", {}) or {}
+
+    if thickness <= 0:
+        return fail_response("advanced_roll_engine", "Invalid thickness")
+    if section_width <= 0 and section_height <= 0:
+        return fail_response("advanced_roll_engine", "Invalid profile dimensions")
+    if station_count <= 0:
+        return fail_response("advanced_roll_engine", "Invalid station count")
+
+    springback_deg = get_springback(material)
+    forming_gap = calculate_gap(thickness)
+    final_profile = build_final_profile(profile_result, section_features)
+
+    stand_data = []
+    pass_ratios = build_pass_ratios(station_count, profile_type, return_bends)
+
+    for idx, ratio in enumerate(pass_ratios, start=1):
+        pass_profile = morph_profile(final_profile, ratio)
+        pass_profile = apply_radius_logic(pass_profile, thickness, ratio)
+        pass_profile = apply_lip_logic(pass_profile, profile_type, ratio)
+        pass_profile = apply_return_bend_clearance(pass_profile, return_bends, thickness, ratio)
+
+        upper_profile, lower_profile = split_upper_lower(pass_profile, forming_gap)
+
+        stand_data.append({
+            "stand_no": idx,
+            "pass_ratio": round(ratio, 4),
+            "target_gap_mm": round(forming_gap, 4),
+            "springback_deg": springback_deg,
+            "upper_profile": upper_profile,
+            "lower_profile": lower_profile,
+            "profile_notes": build_stand_notes(idx, station_count, profile_type, return_bends)
+        })
+
+    warnings = []
+    if return_bends > 0:
+        warnings.append("Return bends require manual clearance verification")
+    if profile_type in {"complex_profile", "complex_section", "shutter_profile"}:
+        warnings.append("Complex contour requires expert tooling verification")
+    if material == "SS":
+        warnings.append("SS requires tighter springback review")
+
+    return pass_response("advanced_roll_engine", {
+        "profile_type": profile_type,
+        "station_count": station_count,
+        "forming_gap_mm": forming_gap,
+        "springback_deg": springback_deg,
+        "stand_data": stand_data,
+        "confidence": "medium" if profile_type in {"complex_profile", "complex_section", "shutter_profile"} else "high",
+        "blocking": False,
+        "warnings": warnings,
+        "assumptions": [
+            "Rule-based roll contour generation used",
+            "Final production roll contour requires tooling approval"
+        ]
+    })
+
+
+def get_springback(material: str) -> float:
+    if material == "GI":
+        return 1.5
+    if material in {"MS", "CR"}:
+        return 2.5
+    if material == "SS":
+        return 4.0
+    if material == "HR":
+        return 3.0
+    return 2.0
+
+
+def calculate_gap(thickness: float) -> float:
+    if thickness < 1.0:
+        return thickness + 0.05
+    if thickness < 2.0:
+        return thickness + 0.10
+    return thickness + 0.15
+
+
+def build_final_profile(profile_result: Dict[str, Any], section_features: Dict[str, Any]) -> List[Point]:
+    width = float(profile_result.get("section_width_mm", 100))
+    height = float(profile_result.get("section_height_mm", 50))
+    profile_type = str(profile_result.get("profile_type", "simple_channel"))
+
+    if profile_type == "simple_channel":
+        return [(0, 0), (0, height), (width, height), (width, 0)]
+
+    if profile_type == "lipped_channel":
+        lip = min(10.0, width * 0.1)
+        return [(0, 0), (0, lip), (0, height), (width, height), (width, lip), (width, 0)]
+
+    if profile_type == "shutter_profile":
+        mid = width / 2
+        return [(0, 0), (0, height * 0.5), (mid * 0.5, height), (mid, height * 0.7), (width, height * 0.5), (width, 0)]
+
+    return [(0, 0), (0, height), (width * 0.5, height), (width, height), (width, 0)]
+
+
+def build_pass_ratios(station_count: int, profile_type: str, return_bends: int) -> List[float]:
+    ratios = []
+    for i in range(1, station_count + 1):
+        r = i / station_count
+        if profile_type in {"complex_profile", "complex_section", "shutter_profile"}:
+            r = r ** 1.15
+        if return_bends > 0:
+            r = min(1.0, r * 0.98 + 0.02)
+        ratios.append(r)
+    return ratios
+
+
+def morph_profile(final_profile: List[Point], ratio: float) -> List[Point]:
+    return [(round(x, 4), round(y * ratio, 4)) for x, y in final_profile]
+
+
+def apply_radius_logic(profile: List[Point], thickness: float, ratio: float) -> List[Point]:
+    smooth_factor = min(1.0, ratio + thickness * 0.05)
+    out = []
+    for x, y in profile:
+        out.append((round(x, 4), round(y * smooth_factor, 4)))
+    return out
+
+
+def apply_lip_logic(profile: List[Point], profile_type: str, ratio: float) -> List[Point]:
+    if profile_type != "lipped_channel":
+        return profile
+    if len(profile) < 6:
+        return profile
+
+    adjusted = list(profile)
+    if ratio < 0.5:
+        adjusted[1] = (adjusted[1][0], round(adjusted[1][1] * 0.6, 4))
+        adjusted[-2] = (adjusted[-2][0], round(adjusted[-2][1] * 0.6, 4))
+    return adjusted
+
+
+def apply_return_bend_clearance(profile: List[Point], return_bends: int, thickness: float, ratio: float) -> List[Point]:
+    if return_bends <= 0:
+        return profile
+    clearance = thickness * 0.15 * ratio
+    return [(round(x, 4), round(y + clearance, 4)) for x, y in profile]
+
+
+def split_upper_lower(profile: List[Point], gap: float) -> Tuple[List[Point], List[Point]]:
+    upper = [(round(x, 4), round(y + gap / 2, 4)) for x, y in profile]
+    lower = [(round(x, 4), round(y - gap / 2, 4)) for x, y in profile]
+    return upper, lower
+
+
+def build_stand_notes(stand_no: int, station_count: int, profile_type: str, return_bends: int) -> List[str]:
+    notes = []
+    if stand_no <= 2:
+        notes.append("Entry/pre-form stage")
+    elif stand_no >= station_count - 1:
+        notes.append("Calibration stage")
+    else:
+        notes.append("Intermediate forming stage")
+
+    if profile_type == "lipped_channel":
+        notes.append("Lip control required")
+    if return_bends > 0:
+        notes.append("Return bend clearance check required")
+    return notes
+```
+
+# 4. `roll_interference_engine.py`
+
+```python
+from typing import Dict, Any, List
+from app.utils.response import pass_response, fail_response
+
+
+def check_roll_interference(advanced_roll_result: Dict[str, Any]) -> Dict[str, Any]:
+    if not advanced_roll_result or advanced_roll_result.get("status") != "pass":
+        return fail_response("roll_interference_engine", "Advanced roll result missing or invalid")
+
+    issues: List[Dict[str, Any]] = []
+    stand_data = advanced_roll_result.get("stand_data", [])
+
+    for stand in stand_data:
+        upper = stand.get("upper_profile", [])
+        lower = stand.get("lower_profile", [])
+        min_len = min(len(upper), len(lower))
+
+        for i in range(min_len):
+            uy = upper[i][1]
+            ly = lower[i][1]
+            if uy <= ly:
+                issues.append({
+                    "stand_no": stand.get("stand_no"),
+                    "point_index": i,
+                    "reason": "Upper and lower roll overlap or touch"
+                })
+
+    return pass_response("roll_interference_engine", {
+        "issue_count": len(issues),
+        "issues": issues,
+        "confidence": "high" if len(issues) == 0 else "low",
+        "blocking": len(issues) > 0,
+        "warnings": ["Roll interference detected"] if issues else []
+    })
+```
+
+# 5. `roll_dimension_engine.py`
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+
+
+def generate_roll_dimensions(
+    profile_result: Dict[str, Any],
+    input_result: Dict[str, Any],
+    shaft_result: Dict[str, Any]
+) -> Dict[str, Any]:
+    if not profile_result:
+        return fail_response("roll_dimension_engine", "Profile result missing")
+
+    width = float(profile_result.get("section_width_mm", 0))
+    thickness = float(input_result.get("sheet_thickness_mm", 0))
+    shaft_dia = float(shaft_result.get("suggested_shaft_diameter_mm", 50))
+
+    if width <= 0:
+        return fail_response("roll_dimension_engine", "Invalid profile width")
+
+    roll_od = max(80.0, width * 1.2)
+    if thickness >= 0.8:
+        roll_od += 10
+    if thickness >= 1.2:
+        roll_od += 10
+
+    face_width = width + 20
+    bore_dia = shaft_dia
+    keyway = 12 if shaft_dia <= 50 else 16
+
+    return pass_response("roll_dimension_engine", {
+        "estimated_roll_od_mm": round(roll_od, 3),
+        "face_width_mm": round(face_width, 3),
+        "bore_dia_mm": round(bore_dia, 3),
+        "keyway_mm": keyway,
+        "confidence": "medium",
+        "blocking": False
+    })
+```
+
+# 6. `export_dxf_engine.py`
+
+```python
+from typing import Dict, Any, List, Tuple
+from app.utils.response import pass_response, fail_response
+import ezdxf
+import os
+import uuid
+
+Point = Tuple[float, float]
+EXPORT_DIR = "exports"
+
+
+def export_rolls_dxf(
+    advanced_roll_result: Dict[str, Any],
+    roll_dimension_result: Dict[str, Any],
+    filename_prefix: str = "roll_set"
+) -> Dict[str, Any]:
+    if not advanced_roll_result or advanced_roll_result.get("status") != "pass":
+        return fail_response("export_dxf_engine", "Advanced roll result invalid")
+
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+    file_id = str(uuid.uuid4())[:8]
+    filepath = os.path.join(EXPORT_DIR, f"{filename_prefix}_{file_id}.dxf")
+
+    try:
+        doc = ezdxf.new()
+        msp = doc.modelspace()
+        y_offset = 0
+
+        stand_data = advanced_roll_result.get("stand_data", [])
+        roll_od = roll_dimension_result.get("estimated_roll_od_mm", 100)
+        face_width = roll_dimension_result.get("face_width_mm", 120)
+
+        for stand in stand_data:
+            stand_no = stand.get("stand_no")
+            upper = shift_points(stand.get("upper_profile", []), 0, y_offset)
+            lower = shift_points(stand.get("lower_profile", []), 0, y_offset)
+
+            draw_polyline(msp, upper)
+            draw_polyline(msp, lower)
+
+            msp.add_text(f"Stand {stand_no}", dxfattribs={"height": 5}).set_placement((0, y_offset + 30))
+            msp.add_text(f"OD={roll_od}  FACE={face_width}", dxfattribs={"height": 3}).set_placement((0, y_offset + 20))
+
+            y_offset += 80
+
+        doc.saveas(filepath)
+
+        return pass_response("export_dxf_engine", {
+            "file_path": filepath,
+            "filename": os.path.basename(filepath),
+            "confidence": "high",
+            "blocking": False
+        })
+    except Exception as e:
+        return fail_response("export_dxf_engine", f"DXF export failed: {str(e)}")
+
+
+def shift_points(points: List[Point], dx: float, dy: float) -> List[Point]:
+    return [(x + dx, y + dy) for x, y in points]
+
+
+def draw_polyline(msp, points: List[Point]):
+    if len(points) >= 2:
+        msp.add_lwpolyline(points)
+```
+
+# 7. `export_step_engine.py`
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+import os
+import uuid
+import cadquery as cq
+
+EXPORT_DIR = "exports"
+
+
+def export_roll_step(
+    roll_dimension_result: Dict[str, Any],
+    filename_prefix: str = "roll_solid"
+) -> Dict[str, Any]:
+    if not roll_dimension_result or roll_dimension_result.get("status") != "pass":
+        return fail_response("export_step_engine", "Roll dimension result invalid")
+
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+    file_id = str(uuid.uuid4())[:8]
+    filepath = os.path.join(EXPORT_DIR, f"{filename_prefix}_{file_id}.step")
+
+    try:
+        od = float(roll_dimension_result.get("estimated_roll_od_mm", 100))
+        face_width = float(roll_dimension_result.get("face_width_mm", 120))
+        bore = float(roll_dimension_result.get("bore_dia_mm", 50))
+
+        solid = (
+            cq.Workplane("XY")
+            .circle(od / 2.0)
+            .circle(bore / 2.0)
+            .extrude(face_width)
+        )
+
+        cq.exporters.export(solid, filepath)
+
+        return pass_response("export_step_engine", {
+            "file_path": filepath,
+            "filename": os.path.basename(filepath),
+            "confidence": "medium",
+            "blocking": False,
+            "warnings": ["STEP export is generic solid form; final contour machining review required"]
+        })
+    except Exception as e:
+        return fail_response("export_step_engine", f"STEP export failed: {str(e)}")
+```
+
+# 8. `export_pack_engine.py`
+
+```python
+from typing import Dict, Any
+from app.utils.response import pass_response, fail_response
+
+
+def build_export_pack(
+    dxf_result: Dict[str, Any],
+    step_result: Dict[str, Any],
+    pdf_result: Dict[str, Any] | None = None
+) -> Dict[str, Any]:
+    if not dxf_result or dxf_result.get("status") != "pass":
+        return fail_response("export_pack_engine", "DXF export missing")
+    if not step_result or step_result.get("status") != "pass":
+        return fail_response("export_pack_engine", "STEP export missing")
+
+    files = [
+        {
+            "type": "DXF",
+            "filename": dxf_result.get("filename"),
+            "file_path": dxf_result.get("file_path"),
+        },
+        {
+            "type": "STEP",
+            "filename": step_result.get("filename"),
+            "file_path": step_result.get("file_path"),
+        },
+    ]
+
+    if pdf_result and pdf_result.get("status") == "pass":
+        files.append({
+            "type": "PDF",
+            "filename": pdf_result.get("filename"),
+            "file_path": pdf_result.get("file_path"),
+        })
+
+    return pass_response("export_pack_engine", {
+        "files": files,
+        "confidence": "medium",
+        "blocking": False,
+        "warnings": [
+            "Export pack is preliminary unless final tooling verification is complete"
+        ]
+    })
+```
+
+# 9. `routes.py` me integration
+
+Imports add karo:
+
+```python
+from app.engines.advanced_roll_engine import generate_advanced_rolls
+from app.engines.roll_interference_engine import check_roll_interference
+from app.engines.roll_dimension_engine import generate_roll_dimensions
+from app.engines.export_dxf_engine import export_rolls_dxf
+from app.engines.export_step_engine import export_roll_step
+from app.engines.export_pack_engine import build_export_pack
+```
+
+Pipeline me add karo, `shaft_result` ke baad:
+
+```python
+advanced_roll_result = generate_advanced_rolls(
+    profile_result=profile_result,
+    input_result=input_result,
+    flower_result=flower_result,
+    station_result=station_result
+)
+
+roll_interference_result = check_roll_interference(advanced_roll_result)
+
+roll_dimension_result = generate_roll_dimensions(
+    profile_result=profile_result,
+    input_result=input_result,
+    shaft_result=shaft_result
+)
+```
+
+Final return me add karo:
+
+```python
+"advanced_roll_engine": advanced_roll_result,
+"roll_interference_engine": roll_interference_result,
+"roll_dimension_engine": roll_dimension_result,
+```
+
+# 10. Export route
+
+```python
+@router.post("/manual-mode-export-cad-pack")
+def run_manual_mode_export_cad_pack(data: ManualProfileInput):
+    result = execute_manual_pipeline(data)
+
+    if result.get("status") != "pass":
+        return result
+
+    advanced_roll_result = generate_advanced_rolls(
+        profile_result=result["profile_analysis_engine"],
+        input_result=result["input_engine"],
+        flower_result=result["flower_engine"],
+        station_result=result["station_engine"]
+    )
+
+    roll_dimension_result = generate_roll_dimensions(
+        profile_result=result["profile_analysis_engine"],
+        input_result=result["input_engine"],
+        shaft_result=result["shaft_engine"]
+    )
+
+    dxf_result = export_rolls_dxf(advanced_roll_result, roll_dimension_result)
+    step_result = export_roll_step(roll_dimension_result)
+    pdf_result = export_report_pdf(result.get("report_engine"))
+
+    export_pack_result = build_export_pack(dxf_result, step_result, pdf_result)
+
+    return {
+        "status": "pass",
+        "advanced_roll_engine": advanced_roll_result,
+        "roll_dimension_engine": roll_dimension_result,
+        "export_dxf_engine": dxf_result,
+        "export_step_engine": step_result,
+        "pdf_export_engine": pdf_result,
+        "export_pack_engine": export_pack_result
+    }
+```
+
+# 11. Replit ko exact command
+
+```text
+Add an advanced_roll_engine and export engines.
+
+advanced_roll_engine must:
+- generate pass-wise upper/lower roll profiles
+- use thickness, material, profile type, station count, and return bends
+- apply springback logic
+- apply gap logic
+- apply lip handling
+- apply return bend clearance
+- output stand-wise roll contour data
+
+Also add:
+- roll_interference_engine
+- roll_dimension_engine
+- export_dxf_engine
+- export_step_engine
+- export_pack_engine
+
+DXF export must create a 2D roll drawing pack.
+STEP export must create a generic roll solid for CAD handoff.
+Export pack must bundle DXF + STEP + PDF.
+
+Do not label exports as production-approved.
+Label them as preliminary CAD/CAM handoff files pending tooling verification.
+```
+
+# 12. Important sach
+
+Is system se aapko mil jayega:
+
+* advanced pass-wise roll contours
+* DXF drawing export
+* STEP solid export
+* CAD/CAM handoff pack
+
+Lekin abhi bhi final production se pehle ye manual checks compulsory rahenge:
+
+* springback tuning
+* lip closure check
+* return bend clearance
+* upper/lower interference
+* final contour matching
+* SolidCAM simulation
+* trial run validation
+
+Agar aap chaho, next message me main **frontend me CAD Export Dashboard + download buttons + export status UI** bhi bana deta hoon.

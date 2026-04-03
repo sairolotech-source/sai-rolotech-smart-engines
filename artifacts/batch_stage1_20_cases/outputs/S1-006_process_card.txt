@@ -1,0 +1,22 @@
+==============================================================================================================
+  PROCESS CARD — S1-006  |  Machine: Roll Forming Machine
+  Material: Cold Rolled Steel (CR)  |  Thickness: 2.0 mm  |  Fy: 280 MPa  |  Bend Radius: 2.0 mm
+  Stations: 11  |  Peak Force: 95.043 kN  |  Peak Power: 31.68 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  2.100mm   212.2mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  3.2°   0.1°  2.100mm   212.2mm   95.04kN  31.68kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend             11.6°   0.3°  2.100mm   195.6mm   87.64kN  29.21kW   33.33% MEDIUM  
+  3     Station 3                    progressive_forming      23.9°   0.5°  2.100mm   179.1mm   80.24kN  26.75kW   33.33% MEDIUM  
+  4     Station 4                    progressive_forming      38.4°   0.8°  2.100mm   162.6mm   72.84kN  24.28kW   33.33% MEDIUM  
+  5     Station 5                    progressive_forming      53.6°   1.2°  2.100mm   146.1mm   65.44kN  21.81kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      68.1°   1.5°  2.100mm   129.6mm   58.04kN  19.35kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      80.4°   1.8°  2.100mm   113.0mm   50.64kN  16.88kW   33.33% MEDIUM  
+  8     Station 8                    lip_forming              88.8°   2.0°  2.100mm    96.5mm   43.24kN  14.41kW   33.33% MEDIUM  
+  9     Station 9                    lip_forming              92.0°   2.0°  2.100mm    80.0mm   35.84kN  11.95kW   33.33% MEDIUM  
+  10    Station 10 (Calibration)     calibration              90.0°   0.0°  2.000mm    80.0mm   14.34kN   4.78kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+==============================================================================================================

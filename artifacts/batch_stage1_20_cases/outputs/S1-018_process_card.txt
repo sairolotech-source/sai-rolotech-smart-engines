@@ -1,0 +1,28 @@
+==============================================================================================================
+  PROCESS CARD — S1-018  |  Machine: Roll Forming Machine
+  Material: Cold Rolled Steel (CR)  |  Thickness: 1.6 mm  |  Fy: 280 MPa  |  Bend Radius: 1.6 mm
+  Stations: 17  |  Peak Force: 100.814 kN  |  Peak Power: 33.6 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  1.700mm   281.3mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  4.8°   0.1°  1.700mm   281.3mm  100.81kN  33.60kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend             16.4°   0.4°  1.700mm   270.5mm   96.94kN  32.31kW   33.33% MEDIUM  
+  3     Station 3                    initial_bend             30.7°   0.7°  1.700mm   259.7mm   93.07kN  31.02kW   33.33% MEDIUM  
+  4     Station 4                    progressive_forming      43.4°   1.0°  1.700mm   248.9mm   89.19kN  29.73kW   33.33% MEDIUM  
+  5     Station 5                    progressive_forming      50.3°   1.1°  1.700mm   238.1mm   85.32kN  28.44kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      51.3°   1.1°  1.700mm   227.3mm   81.45kN  27.15kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      54.1°   1.2°  1.700mm   216.4mm   77.58kN  25.86kW   33.33% MEDIUM  
+  8     Station 8                    progressive_forming      58.6°   1.3°  1.700mm   205.7mm   73.70kN  24.57kW   33.33% MEDIUM  
+  9     Station 9                    progressive_forming      64.3°   1.4°  1.700mm   194.8mm   69.83kN  23.28kW   33.33% MEDIUM  
+  10    Station 10                   progressive_forming      70.5°   1.6°  1.700mm   184.0mm   65.96kN  21.99kW   33.33% MEDIUM  
+  11    Station 11                   progressive_forming      76.8°   1.7°  1.700mm   173.2mm   62.09kN  20.70kW   33.33% MEDIUM  
+  12    Station 12                   progressive_forming      82.7°   1.8°  1.700mm   162.4mm   58.21kN  19.40kW   33.33% MEDIUM  
+  13    Station 13                   progressive_forming      87.5°   1.9°  1.700mm   151.6mm   54.34kN  18.11kW   33.33% MEDIUM  
+  14    Station 14                   lip_forming              90.8°   2.0°  1.700mm   140.8mm   50.47kN  16.82kW   33.33% MEDIUM  
+  15    Station 15                   lip_forming              92.0°   2.0°  1.700mm   130.0mm   46.59kN  15.53kW   33.33% MEDIUM  
+  16    Station 16 (Calibration)     calibration              90.0°   0.0°  1.600mm   130.0mm   18.64kN   6.21kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+==============================================================================================================

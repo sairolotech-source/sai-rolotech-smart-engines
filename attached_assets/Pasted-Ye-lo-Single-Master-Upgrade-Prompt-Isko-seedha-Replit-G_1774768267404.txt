@@ -1,0 +1,409 @@
+Ye lo — **Single Master Upgrade Prompt**
+👉 Isko seedha Replit / Gemini ko de do — ye tumhara drawing system **next level (easy + smart + production-ready)** bana dega.
+
+# MASTER UPGRADE PROMPT
+
+## Drawing Understanding + Flower Pattern + Smart Roll Visualization System
+
+## Roll Tooling Software — UX + Engineering Intelligence Upgrade
+
+You are a senior roll forming engineer, CAD visualization expert, UX designer for engineering tools, and manufacturing system architect.
+
+Your task is to upgrade the existing Roll Tooling Drawing system so that:
+
+* drawings are easy to understand
+* flower pattern becomes visually clear
+* roll design logic becomes transparent
+* user confusion is reduced
+* system becomes semi-intelligent (guidance + warnings)
+
+This is not a cosmetic UI update.
+This is a **core usability + engineering clarity upgrade**.
+
+---
+
+# PRIMARY OBJECTIVE
+
+Transform the system from:
+👉 “technical drawing generator”
+
+into:
+👉 “visual roll forming understanding + intelligent design assistant”
+
+---
+
+# CORE UPGRADE FEATURES
+
+---
+
+## FEATURE 1 — MULTI VIEW MODES (VERY IMPORTANT)
+
+Split drawing into 3 modes:
+
+### MODE 1: BASIC (Operator Mode)
+
+* show only:
+
+  * profile
+  * station number
+  * bend angle
+  * strip path
+* minimal dimensions
+* clean and simple
+* large readable visuals
+
+### MODE 2: ENGINEERING (Designer Mode)
+
+* full dimensions
+* gap, depth, OD, bore
+* section view
+* roll contours
+* annotations
+
+### MODE 3: MANUFACTURING
+
+* full roll drawing
+* tolerances
+* material
+* keyway
+* shaft
+* title block
+* revision
+
+### RULE:
+
+User must be able to switch modes instantly without rerunning pipeline.
+
+---
+
+## FEATURE 2 — ANIMATED FLOWER PATTERN
+
+Add a button:
+
+👉 **“Play Flower Pattern”**
+
+### Behavior:
+
+* animate stations sequentially:
+  Station 1 → 2 → 3 → ... → final
+* current station = bold color
+* previous stations = faded grey
+* final profile = red dashed
+
+### Show:
+
+* % completion
+* current bend angle
+* movement direction
+
+### Controls:
+
+* play / pause
+* speed control
+* manual slider
+
+---
+
+## FEATURE 3 — PROFILE → FLOWER → ROLL LINKED FLOW
+
+Create a visual pipeline:
+
+👉 Profile → Developed Strip → Flower Pattern → Station Geometry → Roll Shape
+
+### RULE:
+
+All stages must be linked.
+
+When user selects station:
+
+* flower pattern updates
+* roll geometry updates
+* drawing updates
+
+User should understand:
+👉 “ye roll shape kis step se bani hai”
+
+---
+
+## FEATURE 4 — CONTACT POINT VISUALIZATION
+
+Highlight where strip touches rolls.
+
+### Show:
+
+* contact points = red dots
+* pressure zones = shaded area
+* non-contact zones = light outline
+
+### Must:
+
+* dynamically update per station
+* reflect gap and depth
+
+---
+
+## FEATURE 5 — AUTO EXPLANATION SYSTEM
+
+For each station generate explanation:
+
+Example:
+
+* “Station 1: edge pre-forming”
+* “Station 2: flange lifting”
+* “Station 3: web stabilization”
+* “Station 4: near final shaping”
+* “Station 5: calibration pass”
+
+### Also explain:
+
+* what changed from previous station
+* why this station is needed
+
+---
+
+## FEATURE 6 — STATION LOGIC ENGINE (ADVANCED)
+
+Add button:
+👉 **“Explain This Station”**
+
+System must output:
+
+* purpose of station
+* bend progression logic
+* risk if removed
+* merge possibility (e.g. 12 → 8 stations)
+
+---
+
+## FEATURE 7 — COLOR STANDARDIZATION
+
+Use fixed colors:
+
+* strip = gold
+* upper roll = blue
+* lower roll = green
+* current stage = orange
+* final profile = red dashed
+* centerline = grey dashed
+* dimensions = black
+
+---
+
+## FEATURE 8 — 3D VISUAL PREVIEW (LIGHTWEIGHT)
+
+Add simple 3D preview:
+
+* upper roll
+* lower roll
+* strip passing through
+* rotate / zoom
+
+No need for heavy CAD — just visual clarity.
+
+---
+
+## FEATURE 9 — DESIGN WARNING ENGINE
+
+Detect issues:
+
+### Show warnings:
+
+* roll clash
+* excessive depth in one pass
+* too tight radius
+* unrealistic gap
+* strip pinching
+* impossible machining geometry
+
+### Behavior:
+
+* show warning icon
+* show reason
+* suggest fix if possible
+
+---
+
+## FEATURE 10 — CENTERLINE → SHEET VISUALIZER
+
+Show:
+
+* center line
+* thickness offset
+* inside profile
+* outside profile
+* developed strip
+
+### Modes:
+
+* center offset
+* inside fixed
+* outside fixed
+
+---
+
+## FEATURE 11 — FLOWER PATTERN DIMENSION OVERLAY
+
+Show per station:
+
+* angle
+* height
+* flange movement
+* width change
+
+---
+
+## FEATURE 12 — ONE-CLICK PRODUCTION SET
+
+Add button:
+👉 “Download Full Production Set”
+
+Generate:
+
+* final profile sheet
+* full flower pattern sheet
+* station drawings
+* summary sheet
+
+---
+
+## FEATURE 13 — OPERATOR VS DESIGNER MODE
+
+### Operator:
+
+* simple
+* visual
+* step guidance
+
+### Designer:
+
+* detailed
+* editable
+* full control
+
+---
+
+## FEATURE 14 — SMART DESIGN ASSISTANT (HIGH VALUE)
+
+System should suggest:
+
+* recommended station count
+* bend distribution
+* risky stations
+* suggested OD
+* suggested face width
+* suggested gap
+
+---
+
+# IMPLEMENTATION RULES
+
+* DO NOT break existing SVG export
+* DO NOT remove current features
+* build as layered upgrades
+* keep performance optimized
+* no heavy re-renders
+* modular code structure
+
+---
+
+# DATA FLOW REQUIREMENT
+
+All visual components must use unified data:
+
+* station data
+* geometry data
+* roll parameters
+* bend progression
+
+No duplicated calculations.
+
+---
+
+# UI REQUIREMENTS
+
+Add:
+
+* mode switch (Basic / Engineering / Manufacturing)
+* play animation button
+* explain station button
+* warning panel
+* 3D toggle
+* production set export
+
+UI must remain clean and usable.
+
+---
+
+# VALIDATION CHECKS
+
+After implementation verify:
+
+* animation smooth
+* station sync correct
+* no stale data
+* no mismatch between views
+* warnings accurate
+* explanation logical
+* performance stable
+
+---
+
+# OUTPUT FORMAT REQUIRED
+
+## 1. Architecture Plan
+
+## 2. New Components
+
+## 3. Data Flow
+
+## 4. Implementation Steps
+
+## 5. Risk Areas
+
+## 6. Minimal Version
+
+## 7. Full Version
+
+## 8. Code Changes
+
+## 9. Testing Checklist
+
+## 10. Final Status
+
+---
+
+# FINAL INSTRUCTION
+
+Focus on clarity over complexity.
+
+Goal:
+👉 Even a new operator should understand the roll forming process visually.
+
+👉 Even an expert should trust the engineering output.
+
+Do not give only UI ideas.
+Implement real working logic.
+
+---
+
+# Simple samajh lo 👇
+
+Ab tumhara software ban sakta hai:
+
+👉 Drawing tool ❌
+👉 Smart roll design system ✅
+
+👉 Confusing sheet ❌
+👉 Step-by-step visual process ✅
+
+👉 Sirf output ❌
+👉 Understanding + decision tool ✅
+
+---
+
+Agar tum chaho to next step me main tumhare liye bana sakta hoon:
+
+👉 **“AUTO ROLL DESIGN ENGINE PROMPT”**
+(jisme system khud decide kare — kitne stations, kya gap, kya OD, kya sequence)
+
+Ye tumhare software ko **COPRA se bhi ek level upar le ja sakta hai** 🚀

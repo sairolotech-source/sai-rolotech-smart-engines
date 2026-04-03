@@ -1,0 +1,12 @@
+{
+  "bend_count": 4,
+  "section_width_mm": 85,
+  "section_height_mm": 70,
+  "thickness": 2.2,
+  "material": "SS",
+  "profile_type": "door_frame",
+  "return_bends_count": 2,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 18
+}

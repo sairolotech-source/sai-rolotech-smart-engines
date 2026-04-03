@@ -1,0 +1,20 @@
+==============================================================================================================
+  PROCESS CARD — S1-016  |  Machine: Roll Forming Machine
+  Material: Polypropylene (PP) / Polymer Sheet  |  Thickness: 2.2 mm  |  Fy: 25 MPa  |  Bend Radius: 2.2 mm
+  Stations: 9  |  Peak Force: 65.965 kN  |  Peak Power: 21.99 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  2.300mm   149.9mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  5.1°   0.1°  2.350mm   149.9mm   65.97kN  21.99kW   33.33% MEDIUM  
+  2     Station 2                    progressive_forming      18.2°   0.4°  2.350mm   136.6mm   60.10kN  20.03kW   33.33% MEDIUM  
+  3     Station 3                    progressive_forming      36.2°   0.8°  2.350mm   123.3mm   54.24kN  18.08kW   33.33% MEDIUM  
+  4     Station 4                    progressive_forming      55.8°   1.2°  2.350mm   110.0mm   48.38kN  16.13kW   33.33% MEDIUM  
+  5     Station 5                    progressive_forming      73.8°   1.6°  2.350mm    96.6mm   42.52kN  14.17kW   33.33% MEDIUM  
+  6     Station 6                    lip_forming              86.9°   1.9°  2.350mm    83.3mm   36.66kN  12.22kW   33.33% MEDIUM  
+  7     Station 7                    lip_forming              92.0°   2.0°  2.350mm    70.0mm   30.80kN  10.27kW   33.33% MEDIUM  
+  8     Station 8 (Calibration)      calibration              90.0°   0.0°  2.200mm    70.0mm   12.32kN   4.11kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7]
+==============================================================================================================

@@ -1,0 +1,8 @@
+{
+  "language": "english",
+  "responseStyle": "detailed",
+  "accuracyMode": "high",
+  "memoryEnabled": true,
+  "forceOffline": false,
+  "backupIntervalSeconds": 30
+}

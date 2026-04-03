@@ -1,0 +1,167 @@
+Haan — **target 97% rakhte hain**.
+
+Lekin **fake score nahi**, **proof-based 97%**.
+Yani software tabhi **97%** maana jayega jab ye 4 cheezein ek saath pass hongi:
+
+## 97% score formula
+
+### 1. CNC + post compatibility
+
+* uploaded `gpp / vmid / real TAP` style follow ho
+* geometry-driven G-code ho
+* simulation me safe path ho
+* manual operator sheet nikle
+
+### 2. Roll forming core
+
+* DXF import
+* centerline to sheet
+* dimensions
+* flower pattern
+* station optimization
+* upper/lower roll complementarity
+* interference warnings
+
+### 3. Production output
+
+* roll drawings
+* setup sheets
+* PDF
+* DXF export
+* CAM sheet
+* operator sheet
+
+### 4. Reliability
+
+* no fake completion
+* no silent export
+* no crash on partial data
+* tests pass
+* truthful VALID/BASIC/MISSING
+
+---
+
+# 97% ke liye exact score blocks
+
+## Block A — Reliability + Phase 2 hardening
+
+**Target: 97/100**
+
+* vitest + tests
+* grooveDepth fix
+* wallRun guard
+* export gating
+* threshold unify
+* debug object
+* complementarity
+* interference check
+* geometry-driven G-code
+
+## Block B — CNC/SolidCAM parity
+
+**Target: 97/100**
+
+* Geometry / Tool / Levels / Technology / Rough / Finish / Strategies tabs
+* toolkit/tool library
+* post-aware G-code
+* stock removal simulation
+* operator setup sheet
+
+## Block C — Roll forming intelligence
+
+**Target: 97/100**
+
+* DXF import
+* sheet conversion
+* dimensions
+* flower pattern
+* station reduction impact
+* special roll design
+
+## Block D — Production suite
+
+**Target: 97/100**
+
+* production drawings
+* DXF/PDF output
+* manual machinist sheet
+* CAM setup sheet
+* machine notes
+
+---
+
+# Ab final command strategy
+
+## STEP 1
+
+**Phase 2 ko 95+ tak le jao**
+
+## STEP 2
+
+**SolidCAM feature parity audit**
+
+## STEP 3
+
+**CNC post + manual operator mode build**
+
+## STEP 4
+
+**DXF + sheet convert + flower pattern**
+
+## STEP 5
+
+**production drawing + export pack**
+
+---
+
+# Codex ko ab ye exact command do
+
+MASTER GOAL: Drive this software to a verified score of 97%.
+
+Rules:
+
+1. No fake score.
+2. No fake completion.
+3. Score only from proven output, passing tests, and working workflows.
+4. Audit first, patch second, test third.
+5. Every phase must end with:
+
+   * actual score
+   * real pass items
+   * real fail items
+   * exact files touched
+
+Score target:
+
+* Phase 2 reliability: 95+ minimum
+* CNC/SolidCAM parity: 97 target
+* Roll forming workflow: 97 target
+* Production output workflow: 97 target
+
+Immediate next mission:
+
+1. Lock Phase 2 to 95+
+2. Audit SolidCAM turning feature parity from uploaded screenshots and real machine/post files
+3. Build editable turning workflow + manual operator mode
+4. Keep output truthful and machine-aware
+
+Return:
+
+* current phase score
+* path to 97
+* exact files/modules to build next
+
+---
+
+# Mera promise
+
+Main tumhe **97% tak pahunchane ka roadmap, commands, review, scoring, aur defect filtering** dunga.
+Lekin **bina proof ke 97 nahi bolunga**.
+
+## Ab target line:
+
+**Phase 2 = 95+**
+uske baad
+**CNC/SolidCAM block = 97 target**
+
+Agar chaho, next message me main **“97% master scoreboard”** bana deta hoon jisme har module ka score aur required completion condition hoga.

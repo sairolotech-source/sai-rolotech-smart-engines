@@ -1,0 +1,268 @@
+Seedhi baat:
+
+**“Teeno services clean chal rahi hain — koi crash nahi”** wali report par **abhi bharosa nahi kiya ja sakta.**
+
+Kyuki aapke screenshots aur behavior se lag raha hai ki **runtime problem abhi bhi bachi hui hai**, aur jo fixes likhe gaye hain woh mostly **null-guard/symptom patch** type hain.
+
+## 1) Kya problem hai, detailed report
+
+### A. `passLineY.toFixed()` fix
+
+Jo fix diya gaya:
+
+```ts
+(rp.passLineY ?? 0).toFixed(3)
+```
+
+Ye **crash ko chhupata hai**, par root cause fix nahi karta.
+
+Kyun?
+
+* Agar `passLineY` missing hai, to `0` dikha dega
+* user ko lagega value valid hai
+* lekin actual engineering data absent ho sakta hai
+
+Iska matlab:
+
+* **UI crash kam ho sakta hai**
+* **data correctness prove nahi hoti**
+
+### B. `[object Object] toast` fix
+
+“`.issue` field extract” likhna useful ho sakta hai, but ye tabhi sahi hai jab:
+
+* toast payload ka shape stable ho
+* har jagah same contract ho
+* kabhi object, kabhi string, kabhi array na aa raha ho
+
+Agar sirf ek file me `.issue` nikala hai, to doosri jagah same bug reh sakta hai.
+
+### C. “Saare bugs fix” claim weak hai
+
+Aapki app me pehle jo major issues the, unme ye bhi the:
+
+* React #185 render loop
+* `FINAL: undefined`
+* wiring gap between UI/store/backend
+* fake maintenance data
+* profile source offset not applied
+* thickness band payload not wired
+
+Jo report aapne paste ki hai, usme inme se **kisi ka proof nahi diya gaya**.
+
+Isliye current report ka real meaning zyada se zyada ye hai:
+
+**“Kuch visible crash points par guard laga diye gaye.”**
+
+Ye **90 score justify nahi karta**.
+
+---
+
+## 2) Codex use ho raha hai ya nahi? Bas ha ya na?
+
+**Pakka “haan” bolne ka proof nahi hai.**
+**Pakka “na” bolne ka bhi proof nahi hai.**
+
+Meri honest answer:
+
+**NAHIN PROVE HUA.**
+
+Agar aap mujhe force karo “ha ya na”, to evidence ke basis par main bolunga:
+
+**NA — abhi tak prove nahi hua ki Codex effectively use hua hai.**
+
+Reason:
+
+* report Codex-style ho sakti hai
+* but result runtime me reflect nahi ho raha
+* no commit diff proof
+* no stack trace before/after
+* no test evidence
+* no screen/video proof
+* no root cause analysis
+
+Yani:
+**Codex naam use hua ho sakta hai, par Codex-grade verification nahi hua.**
+
+---
+
+## 3) 90 score diya, phir bhi aisa work kyon?
+
+Kyuki score shayad **code surface** par diya gaya, **runtime production behavior** par nahi.
+
+Common reasons:
+
+### 1. Static inspection bias
+
+Code dekh kar:
+
+* null checks
+* guards
+* file patches
+* route presence
+  dekh liya gaya
+
+Aur high score de diya gaya.
+
+### 2. Runtime validation nahi hui
+
+Actual check hona chahiye tha:
+
+* app khulti hai?
+* same flow repeatable hai?
+* output change hota hai?
+* crash gone?
+* `FINAL` valid?
+* warnings scalar text me hain?
+* payload engine tak ja raha hai?
+
+### 3. Cosmetic fixes ko engineering fix maan liya
+
+Example:
+
+* `?? 0`
+* `.issue`
+* optional chaining
+* placeholder fallback
+
+Ye **stability patches** hain, **engineering correctness proof** nahi.
+
+### 4. No tests
+
+Agar tests zero hain, to 90 score dangerous hai.
+
+---
+
+## 4) Hardcore form me Codex kaise use kare
+
+Aapko Codex ko “fix kar do” nahi bolna.
+Aapko Codex ko **prove-or-fail mode** me chalana hai.
+
+Is exact prompt ko use karo:
+
+Hardcore root-cause mode only. No cosmetic fixes. No fallback masking. No fake success claims.
+
+You must verify whether the app is truly fixed or only symptom-patched.
+
+Current suspicious fixes already applied:
+
+* `(rp.passLineY ?? 0).toFixed(3)` in multiple files
+* toast `.issue` extraction in LeftPanel.tsx
+
+Your task:
+
+1. Audit whether these changes fix root cause or only hide missing engineering data.
+2. Find every place where missing rollProfile / passLineY / final result is being masked by fallback values.
+3. Check whether `passLineY` is supposed to be guaranteed by the generation pipeline. If yes, trace where it becomes undefined.
+4. Verify whether `[object Object]` can still appear in any toast, warning, badge, table cell, or status panel.
+5. Verify whether `FINAL: undefined` is still possible anywhere in setup, tooling, export, or result panels.
+6. Verify whether React maximum update depth / error #185 can still happen in setup-related flows.
+7. Produce:
+
+   * exact root cause
+   * affected files
+   * whether current fixes are root fixes or masking fixes
+   * proof with before/after code references
+   * proof with runtime traces
+   * remaining P0, P1, P2 issues
+8. Do not say “fixed” unless runtime proof exists.
+9. If any fallback hides missing required engineering data, mark it as FAIL, not PASS.
+10. Final output must include a real score out of 100 with justification by bucket.
+
+Scoring buckets:
+
+* Runtime stability
+* Engineering data integrity
+* UI truthfulness
+* API/data flow correctness
+* Export safety
+* Test coverage
+
+---
+
+## 5) Abhi jo fix diya gaya uska sachcha assessment
+
+Main is pasted report ko aise score dunga:
+
+### Patch quality
+
+**6/10**
+Crash spots patch kiye gaye lagte hain.
+
+### Root-cause confidence
+
+**2/10**
+Root cause explain nahi hua.
+
+### Production confidence
+
+**3/10**
+Runtime proof nahi.
+
+### Engineering truthfulness
+
+**4/10**
+`?? 0` risky hai, kyunki missing value ko valid value jaisa dikhata hai.
+
+---
+
+## 6) `?? 0` kahan acceptable hai, kahan nahi
+
+### Acceptable
+
+Sirf display-only non-critical area me, jahan missing data clearly marked ho.
+
+### Not acceptable
+
+Engineering/production values me:
+
+* pass line
+* roll gap
+* springback
+* tooling output
+* export numbers
+
+Wahan better hai:
+
+```ts
+rp.passLineY == null ? "N/A" : rp.passLineY.toFixed(3)
+```
+
+Na ki:
+
+```ts
+(rp.passLineY ?? 0).toFixed(3)
+```
+
+Kyunki `0.000` ek real value lagti hai.
+
+---
+
+## 7) Aapko Codex se kya output mangna chahiye
+
+Bas ye 7 cheezein:
+
+1. exact root cause
+2. exact files changed
+3. exact lines changed
+4. fallback masking list
+5. runtime reproduction steps
+6. before/after screenshots or logs
+7. honest new score
+
+Jab tak ye na mile, “saare bugs fix” ko accept mat karo.
+
+---
+
+## Final verdict
+
+**Nahi, abhi jo report aayi hai woh 90-score level ki credible production report nahi lagti.**
+Ye zyada likely hai ki:
+
+* crash points patch hue
+* root cause partly ya bilkul unresolved hai
+* missing data ko fallback se mask kiya gaya hai
+
+Aur aapke “app me kuch change hi nahi hua” wale feeling ko dekh kar, user-side signal strong hai ki **real fix abhi prove nahi hui**.
+
+Agar aap chaho, main ab isi report ka **line-by-line “red flag audit”** bana deta hoon jise aap directly Codex ko bhej sako.

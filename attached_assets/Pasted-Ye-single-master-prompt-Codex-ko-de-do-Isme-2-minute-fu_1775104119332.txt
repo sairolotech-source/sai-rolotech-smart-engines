@@ -1,0 +1,315 @@
+Ye **single master prompt** Codex ko de do. Isme 2-minute **full demo video + voice over + proof** sab included hai.
+
+```text
+You are creating a polished 2-minute client demo video for this app.
+
+Goal:
+Create a single finished demo video that I can show to clients so I do not need to repeatedly open and operate the app live.
+
+Output must be:
+- 1 final MP4 video
+- with voice over
+- with captions/subtitles burned in or as separate .srt
+- showing the app working from start to finish
+- showing all major features and simulations clearly
+- with proof that the demo is real and based on the working app, not fake slides or static mockups
+
+==================================================
+MAIN REQUIREMENT
+==================================================
+
+Create a 2-minute end-to-end demo video with professional voice over.
+
+The video must:
+1. start from app opening
+2. show the main workflow from input to output
+3. show all important engineering features
+4. show simulations running
+5. show generated outputs/reports/exports
+6. end with a strong final summary screen
+7. be usable directly for client demo/sales presentation
+
+Do NOT make a fake promo.
+Do NOT use only screenshots.
+Do NOT use static slides pretending to be software.
+Do NOT skip proof.
+Do NOT hide slow or broken steps.
+If something must be preloaded for smooth demo, document it honestly.
+
+==================================================
+VIDEO STYLE
+==================================================
+
+Style:
+- professional industrial software demo
+- clean, premium, engineering-focused
+- no flashy cheap effects
+- smooth zooms/callouts
+- readable text
+- dark/light UI whichever looks best
+- clear mouse movement
+- no unnecessary waiting time
+
+Video length:
+- target 1 minute 50 seconds to 2 minutes 10 seconds
+- ideal around 2:00
+
+Aspect:
+- 1920x1080 landscape MP4
+- also save a compressed version if possible
+
+Audio:
+- clear English voice over
+- neutral professional tone
+- not robotic if avoidable
+- if TTS is used, choose the best natural voice available
+- background music optional and only very light
+- narration must sync with on-screen actions
+
+==================================================
+MUST SHOW IN THE VIDEO
+==================================================
+
+Show these features in a logical flow:
+
+1. App launch / dashboard / home
+2. Material selection
+3. Profile / section definition
+4. Station planning / station engine result
+5. Flower progression
+6. 3D flower / centerline / pass progression if available
+7. Roll contour / tooling generation
+8. Springback correction
+9. Force / power / torque
+10. Defect detection / risk
+11. Bend allowance / flat blank
+12. BOM generation
+13. Process card generation
+14. Tooling library / saved projects / persistence
+15. CAD export (DXF / STEP)
+16. Engineering report / certificate / evidence / final outputs
+17. Advanced process simulation precheck
+18. Final concluding screen with key counts and capabilities
+
+If some pages are separate endpoints, navigate between them cleanly.
+If there are APIs behind the UI, show the UI result first and optionally a quick proof panel / console / generated artifact view.
+
+==================================================
+STRICT DEMO FLOW
+==================================================
+
+Use this structure:
+
+PART 1 — Opening (0:00 to 0:12)
+- logo / app title / quick intro
+- “Near COPRA-class roll-forming engineering platform” style message
+- show main dashboard
+
+PART 2 — Input Setup (0:12 to 0:30)
+- select a realistic material
+- load a realistic sample profile
+- show thickness / bends / dimensions
+- show saved project or sample project load if available
+
+PART 3 — Engineering Core (0:30 to 1:05)
+- run station calculation
+- show flower progression
+- show 3D centerline / progressive passes
+- show roll contour / upper-lower roll logic
+- show springback correction and force numbers
+- briefly show defect and interference checks
+
+PART 4 — Manufacturing Outputs (1:05 to 1:35)
+- bend allowance / flat blank result
+- BOM
+- process card
+- tooling library
+- saved project
+- export DXF / STEP
+- report generation
+
+PART 5 — Advanced Simulation + Proof (1:35 to 1:52)
+- show advanced process simulation precheck
+- show pass-by-pass results
+- show stress/strain/contact/springback style outputs if available
+- clearly label “Advanced Precheck, Not Full FEA” if that is the honest state
+
+PART 6 — Closing (1:52 to 2:00)
+- final capability summary
+- key proof stats:
+  - total tests passing
+  - number of modules
+  - endpoints
+  - material models
+  - exports
+- final brand screen
+
+==================================================
+PROOF REQUIREMENT
+==================================================
+
+You must prove that the video is based on the real app.
+
+Required proof package:
+1. exact app URL used
+2. exact routes/screens visited
+3. exact sample project/data used
+4. exact files/artifacts generated during recording
+5. screenshots from key timestamps
+6. voiceover script used
+7. subtitle file
+8. final MP4 path
+9. checksum or file size of final MP4
+10. list of commands/tools used to capture and render
+
+Also provide:
+- proof that endpoints were live
+- proof that exports existed
+- proof that the shown outputs match actual app results
+
+Do NOT just say “video created”.
+Return evidence.
+
+==================================================
+TECHNICAL EXECUTION
+==================================================
+
+Preferred approach:
+- use browser automation to drive the app cleanly
+- record screen in high quality
+- generate voiceover from script
+- combine narration + video with ffmpeg
+- add captions
+- export final mp4
+
+If browser automation is available, use it.
+If not, create the best reproducible capture workflow possible.
+
+Possible tools:
+- Playwright or browser automation
+- ffmpeg
+- local TTS or best available voice generator
+- subtitle generation from final script
+- simple zoom/callout overlays if needed
+
+Mouse movement should be slow and intentional.
+Avoid jerky cursor motion.
+Avoid long loading pauses.
+Use preloaded sample data if needed to keep the demo within 2 minutes.
+
+==================================================
+CONTENT QUALITY RULES
+==================================================
+
+1. The video must look like a real finished product demo.
+2. Every visible number or output must come from the app, not from manually edited overlays unless clearly labeled.
+3. Use one clean sample case from start to finish.
+4. Make sure text is readable at normal playback speed.
+5. Add short callouts for the most important features.
+6. Do not overcrowd the screen.
+7. Highlight the most commercially valuable features:
+   - station planning
+   - flower progression
+   - roll contour generation
+   - springback
+   - force/defect checks
+   - BOM/process card
+   - exports
+   - project persistence
+   - tooling library
+   - advanced simulation precheck
+
+==================================================
+VOICEOVER REQUIREMENT
+==================================================
+
+Write and use a full professional voiceover script.
+
+Voiceover should:
+- be simple, confident, engineering-focused
+- explain what the client is seeing
+- avoid overclaiming
+- clearly say:
+  “advanced process simulation precheck”
+  and not falsely say “full FEA” unless truly available
+- end with a strong business message
+
+Also generate:
+- full script text
+- subtitle file
+- timestamped narration segments
+
+==================================================
+MANDATORY FINAL DELIVERABLES
+==================================================
+
+Return all of these:
+
+1. Final video file path
+2. Backup/compressed video file path if created
+3. Voiceover audio file path
+4. Subtitle file path
+5. Full narration script
+6. Storyboard / shot list with timestamps
+7. Proof package file path
+8. List of generated screenshots / key frames
+9. Commands run to create the video
+10. Known limitations, if any
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+The task is successful only if:
+- the final MP4 exists
+- the video is around 2 minutes
+- voiceover is included
+- all major features are shown
+- the workflow is coherent from start to finish
+- the proof package confirms it is based on the real app
+- the video is good enough to show directly to a client
+
+==================================================
+IMPORTANT HONESTY RULE
+==================================================
+
+If a feature cannot be shown live in the video:
+- say so clearly in the proof report
+- use an artifact/output generated by the app
+- do not fake it
+
+If a simulation is only a precheck:
+- label it exactly as “Advanced Process Simulation Precheck”
+- do not label it “Full FEA”
+
+Now do the full task:
+1. inspect the live app and routes
+2. choose the best demo flow
+3. prepare the script
+4. record the workflow
+5. generate voiceover
+6. sync audio and captions
+7. render final MP4
+8. produce proof package
+9. return all file paths and evidence
+```
+
+### Codex se aur kya mangna hai
+
+Prompt ke baad ye 1 line aur bhej dena:
+
+```text
+Use the live app, not static mocks. I need a client-ready deliverable video, not just a script or storyboard.
+```
+
+### Best result ke liye
+
+Codex se final output me ye files zaroor mangna:
+
+* `client_demo_full.mp4`
+* `client_demo_voiceover.wav` ya `.mp3`
+* `client_demo_subtitles.srt`
+* `CLIENT_DEMO_PROOF.md`
+* `client_demo_storyboard.md`
+
+Agar chaho, main isi ke saath **2-minute exact voiceover script** bhi likh deta hoon jo video me use ho sake.

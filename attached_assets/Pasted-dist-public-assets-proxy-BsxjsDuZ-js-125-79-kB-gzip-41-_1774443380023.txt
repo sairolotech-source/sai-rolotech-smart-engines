@@ -1,0 +1,34 @@
+dist/public/assets/proxy-BsxjsDuZ.js                         125.79 kB │ gzip:    41.29 kB
+dist/public/assets/UltraDashboard--JGGoglB.js                146.26 kB │ gzip:    50.46 kB
+dist/public/assets/index.es-DeBuKAy_.js                      158.93 kB │ gzip:    53.09 kB
+dist/public/assets/GizmoViewport-DElfcgnj.js                 194.90 kB │ gzip:    61.63 kB
+dist/public/assets/html2canvas.esm-DXEQVQnt.js               201.04 kB │ gzip:    47.43 kB
+dist/public/assets/RollToolingView-D-DJkaqr.js               213.69 kB │ gzip:    52.75 kB
+dist/public/assets/Studio3DView-DHLMuVby.js                  228.23 kB │ gzip:    57.24 kB
+dist/public/assets/ReactKonvaCore-BEw-cSE_.js                310.23 kB │ gzip:    94.94 kB
+dist/public/assets/index-BZk52XnI.js                         337.21 kB │ gzip:   108.37 kB
+dist/public/assets/jspdf.es.min-CbOS4T-0.js                  386.10 kB │ gzip:   126.37 kB
+dist/public/assets/AccuracyMonitor-D8F5m0qK.js               403.66 kB │ gzip:   111.04 kB
+dist/public/assets/vendor-3d-JgDXC1dZ.js                     724.76 kB │ gzip:   187.54 kB
+dist/public/assets/index-DFLBea7M.js                       6,013.53 kB │ gzip: 2,138.60 kB
+
+(!) Some chunks are larger than 2000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 16.23s
+
+C:\Windows\System32\sai-rolotech-smart-engines>cd artifacts\api-server && pnpm run build && cd ..\..
+
+> @workspace/api-server@0.0.0 build C:\Windows\System32\sai-rolotech-smart-engines\artifacts\api-server
+> tsx --tsconfig tsconfig.json build.ts
+
+building server...
+
+  dist\index.cjs  2.0mb
+
+Done in 361ms
+copying frontend to dist/public...
+frontend copied successfully.
+
+C:\Windows\System32\sai-rolotech-smart-engines>cd artifacts\desktop && npx tsc -p tsconfig.json && npx electron-builder --win nsis portable

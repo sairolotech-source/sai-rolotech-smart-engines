@@ -1,0 +1,1 @@
+python artifacts/python-api/scripts/stage1_generate_20_cases.py --output-root "C:\Users\Sai Rolotech\Downloads\sai-rolotech-smart-engines-main\sai-rolotech-smart-engines-main\artifacts\batch_stage1_20_cases"

@@ -1,0 +1,150 @@
+Haan, **ab reference aur clear ho gaya**.
+
+Maine tumhare **real `.TAP.nc` programs** dekhe:
+[TOOL NO 2 program](sandbox:/mnt/data/TOOL;%20NO%202%20CROSS%2076%20MM%20TR_contour.TAP.nc), [TOOL NO 4 program](sandbox:/mnt/data/D5NEW%20TOOL%20NO%204TR_contour.TAP.nc), [TOOL NO 8 program](sandbox:/mnt/data/D5NEW%20TOOL%20NO%208TR_contour.TAP.nc)
+
+Aur ye cheezein clear ho gayi:
+
+## Tumhari CNC ka actual program style
+
+Real programs me pattern ye hai:
+
+* program start: `O5000`
+* header comment with file/date
+* tool comment: `( T02 )`, `( T04 )`, `( T08 )`
+* startup:
+
+  * `G0`
+  * `G53`
+  * `G28 U0.`
+  * `G28 W0.`
+  * `M1`
+* tool call:
+
+  * `N2 / N4 / N8`
+  * `T0202 / T0404 / T0808`
+* spindle limit:
+
+  * `G92 S500`
+* cutting mode:
+
+  * `G96 S200 M4`
+* absolute mode:
+
+  * `G90`
+* safe start:
+
+  * `G0 Z50.`
+* cutting:
+
+  * repeated `G0` approach + `G1` contour passes
+  * arcs with `G3 ... R0.8`
+* end style should stay consistent with your post and machine-home logic
+
+Ye generic lathe output nahi hai.
+Ye **tumhari machine/operator habit ke hisaab ka real proven format** hai.
+
+## Sabse important engineering meaning
+
+Ab software ko:
+
+### 1. Isi style me G-code dena hoga
+
+Ab `generateLatheGcode()` ko:
+
+* `O####`
+* `G53`
+* `G28 U0.`
+* `G28 W0.`
+* `M1`
+* `Txxxx`
+* `G92 S...`
+* `G96 S... M4`
+* `G90`
+* contour `G1/G3`
+* same home-return style
+
+follow karna hoga.
+
+### 2. X/Z convention match karna hoga
+
+Tumhare real files se lag raha hai:
+
+* **X diameter programming** use ho raha hai
+* Z negative into part ja raha hai
+* contour turning repeated step passes me ho raha hai
+
+### 3. Toolpath ko actual contour se drive karna hoga
+
+Ab audit me jo fail tha, wo aur clear ho gaya:
+
+* software me G-code alag se math se nahi banana chahiye
+* **same groove geometry/segments se hi path nikalna chahiye**
+* tabhi real machine result aur on-screen geometry match karega
+
+## VMID/logs se jo support milta hai
+
+Tumhare machine-definition logs me machine simulation, machine preview, arc behavior, controller/machine definition evolution ka evidence hai. Iska matlab machine-aware output aur simulation banana sahi direction hai.  
+
+# Ab exact kya change karna hai
+
+## Immediate lock rules
+
+Codex ko ab ye enforce karna chahiye:
+
+* output extension: `.TAP` / machine-compatible output
+* spindle direction: `M4` if your real program style uses that
+* `G92 S500` support
+* `G96 S200 M4` style
+* `G53 + G28 U0. + G28 W0.` startup/home style
+* tool block format: `T0202`, `T0404`, `T0808`
+* repeated rough contour passes like your real samples
+
+## Ab next build
+
+1. **postProfileEngine**
+2. **realProgramAdapter**
+3. **segment-to-toolpath engine**
+4. **machine-safe turning simulation**
+
+# Honest final line
+
+**Haan, ye real programs bahut important reference hain.**
+Ab tumhari CNC ka output generic nahi rahega — **real machine-style post ke hisaab se lock kiya ja sakta hai**.
+
+Next Codex command ye hona chahiye:
+
+Use the uploaded real TAP programs as the CNC source of truth.
+
+Reference programs:
+
+* TOOL NO 2 CROSS 76 MM TR_contour.TAP.nc
+* D5NEW TOOL NO 4TR_contour.TAP.nc
+* D5NEW TOOL NO 8TR_contour.TAP.nc
+
+Mission:
+Refactor the current lathe G-code generator so its emitted output matches the real program family style.
+
+Tasks:
+
+1. Extract the real conventions from the uploaded TAP programs:
+
+   * program number format
+   * startup blocks
+   * tool call format
+   * spindle limit format
+   * cutting mode format
+   * X/Z output convention
+   * arc formatting
+   * home return format
+2. Build a post adapter that emits this exact family style.
+3. Ensure geometry segments drive the toolpath directly.
+4. Do not use independent dummy math for G-code contour.
+5. Return:
+
+   * exact conventions extracted
+   * files changed
+   * before/after G-code comparison
+   * one sample emitted program matching the uploaded style
+
+Agar chaho, main ab **tumhare in real TAP files ke base par exact G-code template** line-by-line likh deta hoon.

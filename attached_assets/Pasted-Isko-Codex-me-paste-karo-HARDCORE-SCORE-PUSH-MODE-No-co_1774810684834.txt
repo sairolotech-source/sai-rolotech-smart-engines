@@ -1,0 +1,149 @@
+Isko Codex me paste karo:
+
+HARDCORE SCORE PUSH MODE. No cosmetic fixes. No guard-only patches. No fake success claims.
+
+Current honest score: 68/100.
+Target: push to 85+ with real engineering truth, runtime stability, and proof.
+
+Non-negotiable rules:
+
+1. Do not hide missing required engineering data with fallback values like `?? 0`.
+2. Do not say “fixed” unless runtime proof exists.
+3. Any crash suppression without root-cause removal counts as FAIL.
+4. Any `[object Object]` rendering anywhere in UI counts as FAIL.
+5. Any `undefined` final engineering output for valid input counts as FAIL.
+6. If data is optional, show `N/A`. If data is required, block downstream flow and report exact cause.
+7. No patch is complete without tests or reproducible runtime verification.
+
+Main objective:
+Raise the app from 68/100 to 85+ by fixing the highest-scoring production blockers only.
+
+Priority P0 tasks:
+A. Runtime stability audit
+
+* Find any remaining React render/update loops.
+* Inspect Setup view, LeftPanel, RollToolingView, DigitalTwinView, export panels, warning/toast system, store subscriptions, recovery flow.
+* Trace all `useEffect`, `setState`, Zustand updates, and render-time write-backs.
+* Remove all cyclic updates.
+* Add temporary tracing where needed, then remove noisy debug logs after proving stability.
+
+B. Final engineering output integrity
+
+* Search all uses of `FINAL`, `finalValue`, `finalResult`, `result.final`, and equivalent paths.
+* Prove final outputs cannot render `undefined` for valid inputs.
+* Add strict type guards and block invalid downstream exports when final engineering values are missing.
+* Distinguish required vs optional computed values.
+
+C. Object-rendering truth sweep
+
+* Search the entire UI for any place raw objects can render:
+
+  * toast
+  * warnings
+  * badges
+  * tables
+  * status chips
+  * side panels
+  * export summaries
+* Replace all direct object rendering with explicit scalar formatters.
+* Search patterns including:
+
+  * template strings with object interpolations
+  * JSX expressions rendering unknown values
+  * `String(x)` / implicit concatenation on non-scalars
+
+D. Stale state + localStorage recovery
+
+* Reproduce app startup with stale cached records and older localStorage structures.
+* Verify repair/synthesis code handles missing `passLineY`, missing rollProfile fields, and outdated store shapes.
+* If migration is needed, implement versioned localStorage migration.
+* Prove reopen/reload flow is stable.
+
+E. Export truthfulness and safety
+
+* Audit CSV/XML/CompletePackage export paths.
+* Ensure no fake engineering values are exported.
+* Missing required values must block export with a clear reason.
+* Optional values may export as `N/A`.
+* Add central export preflight validation.
+
+F. Integration proof
+
+* Verify complete flow:
+
+  1. import/open profile
+  2. generate tooling
+  3. render LeftPanel / RollToolingView
+  4. open DigitalTwinView
+  5. export package
+  6. reload app with cached state
+* Produce proof for each stage.
+
+Priority P1 tasks:
+G. Data flow verification
+
+* Trace engineering data origin for:
+
+  * passLineY / passLineHeight
+  * roll gap
+  * springback
+  * thickness band
+  * profile source type
+* Mark any field as one of:
+
+  * guaranteed
+  * optional
+  * stale-risk
+  * not wired
+* Report any UI field that still exists cosmetically without affecting engineering output.
+
+H. Test push
+
+* Add focused unit tests for:
+
+  * formatter safety
+  * repair/synthesis logic
+  * final result guards
+  * export preflight
+  * localStorage migration
+* Add at least a minimal integration smoke test for the main tooling flow.
+
+Hard fail conditions:
+
+* `?? 0` or equivalent used to mask missing required engineering data
+* any remaining `[object Object]`
+* any valid-flow `FINAL: undefined`
+* crashes still reproducible after reload or stale cache
+* exports containing fake engineering defaults
+
+Required deliverables:
+
+1. Exact root causes found
+2. Exact files changed
+3. Why each change is root-fix vs masking-fix
+4. Before/after behavior
+5. Remaining risks
+6. Updated honest score out of 100 by bucket:
+
+   * Runtime stability
+   * Engineering data integrity
+   * UI truthfulness
+   * API/data flow correctness
+   * Export safety
+   * Test coverage
+7. Explicit answer:
+
+   * “Can this app honestly be scored above 85 now?” yes or no
+8. If no, state the exact blockers preventing 85+
+
+Do not optimize for appearance.
+Optimize for production truth.
+Do not stop after patching one crash.
+Do not say “all bugs fixed”.
+Return only an honest engineering report with proof.
+
+Ye short booster line bhi saath me de sakte ho:
+
+Important: static code inspection is not enough. Reproduce the flows, prove the runtime behavior, and downgrade any masking fix to FAIL.
+
+Isse Codex ko “hardcore verification mode” me dhakel sakte ho.

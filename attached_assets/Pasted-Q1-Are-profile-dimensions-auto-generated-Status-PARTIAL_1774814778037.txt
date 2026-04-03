@@ -1,0 +1,122 @@
+Q1 — Are profile dimensions auto-generated?
+Status: PARTIAL
+
+Unsupported image
+
+What works automatically:
+
+Web = 60mm ✓ (from section_width_mm input)
+Flange = 40mm ✓ (from section_height_mm input)
+Thickness = 1.5mm ✓ (from input)
+Inner radius Ri = 1.5mm ✓ (from BEND_RADIUS_FACTOR["GI"] × t = 1.0 × 1.5)
+Bend angle = 90° ✓ (fixed assumption, correct for standard profiles)
+Two real bugs found:
+
+Bug 1 — Flat strip formula wrong (roll_contour_engine.py line 81):
+
+flat_strip_width = section_width + bend_count × arc_per_bend
+= 60 + 2 × 2.945 = 65.24mm   ← WRONG
+Correct formula: web + 2×flange + 2×bend_allowance = 60 + 80 + 7.07 = 147.07mm
+Engine is 56% of the true value — missing 2×flange entirely.
+
+Bug 2 — flange_web_lip_engine broken in manual mode (flange_web_lip_engine.py):
+The engine receives bends=[] in manual mode (no DXF geometry). It checks n_bends = len(bends) = 0, so the heuristic threshold if n_bends >= 2: flange_count = 2 never fires. A 60×40 GI C-section is reported as section_type=angle_section, flange_count=0, flange_lengths=[]. Every field is wrong.
+
+Controlling files: flange_web_lip_engine.py · roll_contour_engine.py
+
+Q2 — How is the flower pattern generated?
+Status: PARTIAL
+
+Unsupported image
+
+What the engine actually generates:
+
+roll_contour_engine.py uses a cubic-ease angle schedule — this is a real calculation:
+
+Stn1=3.1°  Stn2=11.5°  Stn3=23.7°  Stn4=38.2°  Stn5=53.3°
+Stn6=67.8°  Stn7=80.0°  Stn8=88.4°  Stn9=91.5°  Stn10=90°(cal)
+The 9-pass progressive overforming to 91.5° (90° + 1.5° GI springback) is real engineering logic.
+
+What advanced_flower_engine.py actually returns (confirmed from live API call):
+
+Pass 1: "edge pickup"             angles=[30°, 30°]   pct=20%
+Pass 2: "initial leg pre-form"    angles=[60°, 60°]   pct=40%
+Pass 3: "asymmetric progression"  angles=[90°, 90°]   pct=60%
+Pass 4: "web stabilization"       angles=[91.8°]       pct=80%
+Pass 5: "main flange progression" angles=[91.8°]       pct=100%
+These are text labels and angle numbers only — no 2D cross-section coordinates are generated. The 2D profile drawings in the visual above were computed here directly from the angle data, not from engine output. FlowerPatternView.tsx must do its own geometry calculation from these angles.
+
+Controlling files: roll_contour_engine.py (angle schedule — real) · advanced_flower_engine.py (labels only, no coords)
+
+Q3 — What is the actual roll shape?
+Status: HEURISTIC — not tooling-grade
+
+Unsupported image
+
+The upper (blue filled) and lower (green dashed) profiles shown above are the actual polygon data returned by the API. They are real XY coordinates — the rendering in RollContourPanel.tsx via MiniContourSvg correctly plots them as SVG paths.
+
+But the geometry model is a simplified trapezoid (roll_contour_engine.py lines 111–128):
+
+upper = [(-web/2-5, 0), (-web/2, 0),
+         (-web/2+2, -depth),   # depth = section_height × (pass_idx/total)
+         (web/2-2,  -depth),
+         (web/2, 0), (web/2+5, 0)]
+6 fixed points, symmetric trapezoid
+Depth progression is linear fraction of section_height — not computed from actual bend radius or tooling geometry
+upper_roll_radius = None — not calculated anywhere
+roll_width_mm = None — not calculated anywhere
+No groove radius, no interference calculation, no flange runout
+This is an approximation that shows the right visual shape for planning purposes, but is not usable for actual roll tooling fabrication.
+
+Controlling files: roll_contour_engine.py _upper_lower_roll_contour() · RollContourPanel.tsx (renders real data)
+
+Q4 — What does the roll simulation actually show?
+Status: PARTIAL — real UI rendering, heuristic data
+
+RollFormingSimulator.tsx (1317 lines) is not a placeholder. Confirmed from source:
+
+Real SVG rendering with grid background
+Per-pass animation cycling through stations (animate logic is wired to passes[] array)
+Circle markers drawn at actual upper_roll_profile XY coordinates from the API
+Springback angle display (corrected_angle_deg from calibration pass)
+Station-by-station navigation showing angle, gap, strip width
+Calibration pass detection and reporting
+Optimizer corrections panel
+Cannot screenshot without PIN authentication — the simulator lives behind the login screen. The component source confirms the rendering is real.
+
+The limitation: what it renders is the heuristic 6-point trapezoid data described in Q3, not real tooling geometry. So the simulation looks correct and is fully functional as a UI — the underlying data model is the constraint.
+
+Controlling file: artifacts/design-tool/src/components/python-dashboard/RollFormingSimulator.tsx
+
+Q5 — Can this data be trusted?
+Status: 7 match · 2 bugs · 3 partial
+
+Unsupported image
+
+Parameter	Input/Expected	Engine Output	Status
+Web width	60.0mm	60.0mm ✓	MATCH
+Flange height	40.0mm	40.0mm ✓	MATCH
+Thickness	1.5mm	1.5mm ✓	MATCH
+Inner bend Ri	1.5mm (1.0×t)	1.5mm ✓	MATCH
+Roll gap	1.6mm (t+0.1)	1.6mm ✓	MATCH
+Springback	1.5° (GI)	1.5° ✓	MATCH
+Final angle	91.5°	91.5° ✓	MATCH
+Flat strip	147.1mm	65.24mm	MISMATCH
+Flange count	2	0	BUG
+Section type	c_channel	angle_section	BUG
+Roll radius	needed	None	PARTIAL
+Roll width	needed	None	PARTIAL
+Flower 2D coords	per-station polygons	labels + angles	PARTIAL
+Summary — No Score Inflation
+Feature	Status	Usable for...
+Web/flange/thickness annotations	WORKING	Engineering reference ✓
+Flat strip width	BROKEN — 65mm vs 147mm	Not usable without fix
+Flange detection (manual mode)	BROKEN — always 0 flanges	Not usable without fix
+Forming angle schedule (9 passes)	REAL — cubic ease + springback	Tooling planning ✓
+Flower 2D cross-sections	NOT GENERATED by engine	React must compute from angles
+Roll contour XY data	HEURISTIC — 6-pt trapezoid	Visual planning only, not tooling fabrication
+Roll radius/width fields	NOT CALCULATED — None	Cannot use for tooling design
+RollFormingSimulator UI	REAL rendering, wired to API	UI is functional ✓
+Consistency (7/13 parameters)	PASS	Basic geometry trustworthy ✓
+The three items that need real engineering fixes before this data can be used for manufacturing decisions: the flat strip width formula, the flange detection in manual mode, and the roll groove radius/width calculation.
+

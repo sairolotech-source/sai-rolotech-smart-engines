@@ -1,0 +1,27 @@
+{
+  "_comment": "SAI Rolotech AI Review Config",
+
+  "replit": {
+    "serverUrl": "https://51d51c3f-e983-43d4-8f93-d536a92fa3bb-00-16yloz1xq2tow.picard.replit.dev",
+    "token": "sai-precheck-2026",
+    "_comment": "Replit server pe Gemini already setup hai — koi key nahi chahiye"
+  },
+
+  "gemini": {
+    "apiKey": "",
+    "model": "gemini-2.5-pro",
+    "_comment": "Optional: apni key daalo — warna Replit server use hoga"
+  },
+
+  "deepseek": {
+    "apiKey": "",
+    "model": "deepseek-chat",
+    "_comment": "Optional: https://platform.deepseek.com se free key lo"
+  },
+
+  "review": {
+    "maxFileSizeKB": 50,
+    "skipOnAllFail": true,
+    "_comment": "skipOnAllFail: sab fail ho to bhi build chalne do"
+  }
+}

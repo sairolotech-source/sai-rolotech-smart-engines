@@ -1,0 +1,12 @@
+{
+  "bend_count": 5,
+  "section_width_mm": 130,
+  "section_height_mm": 55,
+  "thickness": 1.6,
+  "material": "CR",
+  "profile_type": "lipped_channel",
+  "return_bends_count": 0,
+  "lips_present": true,
+  "lip_mm": 12.0,
+  "n_stations": 16
+}

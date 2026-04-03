@@ -1,0 +1,34 @@
+==============================================================================================================
+  PROCESS CARD — S1-002  |  Machine: Roll Forming Machine
+  Material: Hot-Dip Galvanized (GI)  |  Thickness: 1.4 mm  |  Fy: 250 MPa  |  Bend Radius: 1.4 mm
+  Stations: 23  |  Peak Force: 102.225 kN  |  Peak Power: 34.08 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  1.500mm   365.1mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  3.3°   0.1°  1.500mm   365.1mm  102.22kN  34.08kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend              6.5°   0.1°  1.500mm   359.8mm  100.75kN  33.59kW   33.33% MEDIUM  
+  3     Station 3                    initial_bend              9.8°   0.2°  1.500mm   354.6mm   99.28kN  33.09kW   33.33% MEDIUM  
+  4     Station 4                    initial_bend             13.1°   0.2°  1.500mm   349.3mm   97.81kN  32.60kW   33.33% MEDIUM  
+  5     Station 5                    initial_bend             16.3°   0.3°  1.500mm   344.1mm   96.34kN  32.11kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      19.6°   0.3°  1.500mm   338.8mm   94.87kN  31.62kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      22.9°   0.4°  1.500mm   333.6mm   93.40kN  31.13kW   33.33% MEDIUM  
+  8     Station 8                    progressive_forming      26.1°   0.4°  1.500mm   328.3mm   91.93kN  30.64kW   33.33% MEDIUM  
+  9     Station 9                    progressive_forming      27.9°   0.5°  1.500mm   323.1mm   90.46kN  30.15kW   33.33% MEDIUM  
+  10    Station 10                   progressive_forming      30.3°   0.5°  1.500mm   317.8mm   88.98kN  29.66kW   33.33% MEDIUM  
+  11    Station 11                   progressive_forming      34.5°   0.6°  1.500mm   312.6mm   87.51kN  29.17kW   33.33% MEDIUM  
+  12    Station 12                   progressive_forming      40.1°   0.7°  1.500mm   307.3mm   86.04kN  28.68kW   33.33% MEDIUM  
+  13    Station 13                   progressive_forming      46.8°   0.8°  1.500mm   302.0mm   84.57kN  28.19kW   33.33% MEDIUM  
+  14    Station 14                   progressive_forming      54.2°   0.9°  1.500mm   296.8mm   83.10kN  27.70kW   33.33% MEDIUM  
+  15    Station 15                   progressive_forming      61.8°   1.0°  1.500mm   291.5mm   81.63kN  27.21kW   33.33% MEDIUM  
+  16    Station 16                   progressive_forming      69.2°   1.1°  1.500mm   286.3mm   80.16kN  26.72kW   33.33% MEDIUM  
+  17    Station 17                   progressive_forming      76.2°   1.3°  1.500mm   281.0mm   78.69kN  26.23kW   33.33% MEDIUM  
+  18    Station 18                   progressive_forming      82.3°   1.4°  1.500mm   275.8mm   77.21kN  25.74kW   33.33% MEDIUM  
+  19    Station 19                   progressive_forming      87.2°   1.4°  1.500mm   270.5mm   75.74kN  25.25kW   33.33% MEDIUM  
+  20    Station 20                   lip_forming              90.4°   1.5°  1.500mm   265.2mm   74.27kN  24.76kW   33.33% MEDIUM  
+  21    Station 21                   lip_forming              91.5°   1.5°  1.500mm   260.0mm   72.80kN  24.27kW   33.33% MEDIUM  
+  22    Station 22 (Calibration)     calibration              90.0°   0.0°  1.400mm   260.0mm   29.12kN   9.71kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+==============================================================================================================

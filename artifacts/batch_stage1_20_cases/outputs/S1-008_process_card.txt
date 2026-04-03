@@ -1,0 +1,24 @@
+==============================================================================================================
+  PROCESS CARD — S1-008  |  Machine: Roll Forming Machine
+  Material: High-Strength Low-Alloy Steel (HSLA)  |  Thickness: 2.8 mm  |  Fy: 420 MPa  |  Bend Radius: 2.8 mm
+  Stations: 13  |  Peak Force: 117.774 kN  |  Peak Power: 39.26 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  2.900mm   210.3mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  3.5°   0.1°  2.950mm   210.3mm  117.77kN  39.26kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend             11.3°   0.2°  2.950mm   198.8mm  111.32kN  37.11kW   33.33% MEDIUM  
+  3     Station 3                    progressive_forming      21.8°   0.5°  2.950mm   187.2mm  104.86kN  34.95kW   33.33% MEDIUM  
+  4     Station 4                    progressive_forming      33.8°   0.8°  2.950mm   175.7mm   98.40kN  32.80kW   33.33% MEDIUM  
+  5     Station 5                    progressive_forming      46.5°   1.0°  2.950mm   164.2mm   91.95kN  30.65kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      59.0°   1.3°  2.950mm   152.7mm   85.49kN  28.50kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      70.4°   1.6°  2.950mm   141.1mm   79.03kN  26.34kW   33.33% MEDIUM  
+  8     Station 8                    progressive_forming      80.1°   1.8°  2.950mm   129.6mm   72.57kN  24.19kW   33.33% MEDIUM  
+  9     Station 9                    progressive_forming      87.4°   1.9°  2.950mm   118.1mm   66.11kN  22.04kW   33.33% MEDIUM  
+  10    Station 10                   lip_forming              91.6°   2.0°  2.950mm   106.5mm   59.66kN  19.89kW   33.33% MEDIUM  
+  11    Station 11                   lip_forming              92.0°   2.0°  2.950mm    95.0mm   53.20kN  17.73kW   33.33% MEDIUM  
+  12    Station 12 (Calibration)     calibration              90.0°   0.0°  2.800mm    95.0mm   21.28kN   7.09kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+==============================================================================================================

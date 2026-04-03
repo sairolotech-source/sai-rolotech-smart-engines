@@ -1,0 +1,439 @@
+MASTER PROMPT — ROLL FORMING AUTO DESIGN APP FIX & REBUILD
+
+You are a senior mechanical software architect, roll forming design logic engineer, CAD/CAM workflow engineer, and full-stack debugging expert.
+
+Your task is to FIX, REBUILD, and STABILIZE my Replit app.
+
+APP GOAL
+This app should do the following in a reliable engineering workflow:
+
+1. Import drawing/profile file
+2. Read geometry and dimensions automatically
+3. Ask for sheet thickness
+4. Ask for raw material type
+5. Convert the section into a flower pattern
+6. Estimate required forming stations
+7. Generate preliminary roll design logic
+8. Suggest shaft diameter / shaft thickness
+9. Suggest bearing type
+10. Produce a structured engineering summary
+
+IMPORTANT:
+Right now the auto mode is not working properly.
+Do NOT fake output.
+Do NOT assume success.
+Do NOT generate placeholder engineering results.
+If any stage fails, clearly detect, log, and report the exact reason.
+
+==================================================
+SECTION 1 — CORE DEVELOPMENT RULES
+==================================================
+
+1. Use deterministic engineering workflow, not fake AI guessing.
+2. Every stage must validate its input before moving to the next stage.
+3. Every stage must return:
+   - status: pass/fail
+   - input data
+   - output data
+   - validation notes
+   - error reason if failed
+4. Never continue to the next stage if the previous stage failed.
+5. Add full debug logs visible in the UI and backend console.
+6. Add Manual Mode and Auto Mode.
+7. Auto Mode must execute every stage in sequence.
+8. If Auto Mode fails, Manual Mode must still allow engineering workflow to continue.
+9. No silent failures.
+10. No fake “completed successfully” message unless actual result exists.
+
+==================================================
+SECTION 2 — APP MODULE ARCHITECTURE
+==================================================
+
+Split the app into the following modules:
+
+A. IMPORT ENGINE
+- import DXF / SVG / JSON / supported drawing formats
+- detect entities: line, arc, polyline
+- detect unit system
+- detect scale mismatch
+- verify profile completeness
+- detect open vs closed geometry
+- normalize coordinate data
+
+B. GEOMETRY ENGINE
+- extract profile edges
+- calculate dimensions
+- detect bends
+- detect flange lengths
+- detect web depth
+- detect radii if available
+- calculate overall width and height
+- convert centerline to profile if required
+- validate section geometry
+
+C. INPUT ENGINE
+- ask for sheet thickness
+- ask for raw material
+- validate thickness range
+- validate supported materials
+- store confirmed input in structured form
+
+D. FLOWER PATTERN ENGINE
+- segment bends into passes
+- distribute forming sequence
+- calculate progressive bend development
+- generate stage-wise forming logic
+- detect simple / medium / complex profile category
+
+E. STATION ESTIMATION ENGINE
+- estimate required no. of forming stations
+- use complexity rules
+- use thickness/material corrections
+- use bend count and section depth
+- return min and recommended station count
+
+F. ROLL DESIGN LOGIC ENGINE
+- generate preliminary roll forming logic
+- estimate pass breakdown
+- estimate roll groups / forming progression
+- assign rough roll sequence
+- log all assumptions
+
+G. MECHANICAL SELECTION ENGINE
+- estimate shaft diameter
+- suggest shaft thickness / strength class
+- suggest bearing type based on shaft size and load category
+- assign light / medium / heavy duty classification
+- note safety factors and assumptions
+
+H. REPORT ENGINE
+- produce structured JSON
+- produce readable engineering summary
+- show warnings
+- show missing-data alerts
+- allow export later
+
+==================================================
+SECTION 3 — DEBUG-FIRST MODE
+==================================================
+
+Before trying to make the app “smart”, make it debuggable.
+
+Create a DEBUG PANEL that shows:
+
+STEP 1: File import status
+STEP 2: Entity extraction status
+STEP 3: Geometry cleaning status
+STEP 4: Dimension extraction status
+STEP 5: Thickness input status
+STEP 6: Material input status
+STEP 7: Bend detection status
+STEP 8: Flower pattern status
+STEP 9: Station estimation status
+STEP 10: Roll logic status
+STEP 11: Shaft calculation status
+STEP 12: Bearing selection status
+STEP 13: Final report status
+
+Each step must show PASS or FAIL.
+If FAIL, show exact reason.
+
+Example:
+- Import failed: unsupported entity type
+- Geometry failed: open polyline detected
+- Thickness failed: no valid numeric input
+- Flower pattern failed: bend sequence not derivable
+- Bearing failed: shaft result missing
+
+==================================================
+SECTION 4 — VALIDATION RULES
+==================================================
+
+Validate at each stage:
+
+IMPORT VALIDATION
+- file exists
+- file readable
+- supported format
+- non-empty geometry
+
+GEOMETRY VALIDATION
+- profile detected
+- coordinates valid
+- no corrupted geometry
+- no impossible overlaps
+- open/closed profile detection
+- units consistent
+
+INPUT VALIDATION
+- thickness must be numeric
+- thickness must be within supported range
+- material must be from allowed list
+
+FLOWER VALIDATION
+- bend count detected
+- forming sequence derivable
+- profile complexity classified
+
+STATION VALIDATION
+- result must be rule-based
+- complexity and thickness correction applied
+
+MECHANICAL VALIDATION
+- shaft result cannot be blank
+- bearing suggestion must depend on shaft/load category
+- no hardcoded fake universal answer
+
+==================================================
+SECTION 5 — SUPPORTED MATERIALS
+==================================================
+
+At minimum support:
+- GI
+- GP
+- CR
+- HR
+- MS
+- SS
+- Aluminium
+
+For each material maintain config values:
+- strength category
+- springback tendency
+- forming difficulty factor
+- correction factor for station estimate
+
+==================================================
+SECTION 6 — THICKNESS HANDLING
+==================================================
+
+Thickness must affect:
+- forming difficulty
+- station estimate
+- shaft recommendation category
+- bearing recommendation category
+
+Supported example thickness ranges:
+- 0.3 to 0.8 mm
+- 0.8 to 1.2 mm
+- 1.2 to 2.0 mm
+- 2.0 mm+
+
+==================================================
+SECTION 7 — ENGINEERING RULES (PRELIMINARY)
+==================================================
+
+Use preliminary engineering logic tables, not random LLM text.
+
+1. Profile complexity classification
+- SIMPLE
+- MEDIUM
+- COMPLEX
+
+2. Bend count influence
+- low bends = fewer stations
+- more bends = more stations
+
+3. Material influence
+- harder material = more caution / more stations
+
+4. Thickness influence
+- thicker sheet = stronger shaft / stronger support / possible more stations
+
+5. Narrow lips / return bends / tight geometry increase complexity
+
+6. Final result must include “assumptions used”
+
+Do not claim exact production-ready roll dimensions unless actual formulas and full profile logic are available.
+Instead clearly label:
+- preliminary estimate
+- recommended review required
+- assumptions applied
+
+==================================================
+SECTION 8 — REQUIRED OUTPUT FORMAT
+==================================================
+
+Return structured JSON like this:
+
+{
+  "import_engine": {
+    "status": "pass",
+    "notes": []
+  },
+  "geometry_engine": {
+    "status": "pass",
+    "profile_type": "channel",
+    "section_width_mm": 100,
+    "section_height_mm": 50,
+    "bend_count": 4,
+    "notes": []
+  },
+  "input_engine": {
+    "status": "pass",
+    "sheet_thickness_mm": 0.8,
+    "material": "GI"
+  },
+  "flower_pattern_engine": {
+    "status": "pass",
+    "complexity": "medium",
+    "estimated_forming_passes": 8
+  },
+  "station_engine": {
+    "status": "pass",
+    "recommended_station_count": 8,
+    "minimum_station_count": 6
+  },
+  "roll_logic_engine": {
+    "status": "pass",
+    "roll_design_stage": "preliminary",
+    "notes": ["stage-wise forming logic generated"]
+  },
+  "mechanical_engine": {
+    "status": "pass",
+    "duty_class": "medium",
+    "suggested_shaft_diameter_mm": 50,
+    "suggested_bearing_type": "6210"
+  },
+  "final_summary": {
+    "status": "pass",
+    "warnings": [],
+    "assumptions": [
+      "Preliminary engineering logic used",
+      "Final roll dimensions require expert review"
+    ]
+  }
+}
+
+If something fails, return fail with reason, for example:
+{
+  "flower_pattern_engine": {
+    "status": "fail",
+    "reason": "bend sequence could not be generated from extracted geometry"
+  }
+}
+
+==================================================
+SECTION 9 — UI REQUIREMENTS
+==================================================
+
+Improve the UI to include:
+
+1. File upload area
+2. Drawing preview area
+3. Geometry summary panel
+4. Thickness input
+5. Material dropdown
+6. Run Auto Mode button
+7. Run Manual Mode button
+8. Debug panel
+9. Final engineering summary panel
+10. Error panel with exact issue
+
+UI rules:
+- clean industrial engineering interface
+- easy to read
+- no fake loading loops
+- show exact progress stage
+- allow retry from failed stage
+- preserve user input after failure
+
+==================================================
+SECTION 10 — FAILURE HANDLING
+==================================================
+
+When a failure happens:
+- stop next stages
+- highlight failed stage
+- show reason
+- show possible fix
+- keep previous valid data stored
+- allow user to correct input and rerun
+
+Examples:
+- open profile -> ask user to repair geometry
+- unsupported file -> ask for supported format
+- invalid thickness -> ask for valid numeric value
+- missing material -> block next stage until selected
+
+==================================================
+SECTION 11 — TEST CASES (MANDATORY)
+==================================================
+
+Create and run these test cases:
+
+TEST CASE 1 — SIMPLE CHANNEL
+- simple U channel
+- known width, depth, thickness, GI
+
+TEST CASE 2 — LIPPED CHANNEL
+- add return/lip bends
+- verify complexity/station increase
+
+TEST CASE 3 — SHUTTER PROFILE
+- more bends
+- verify multi-stage logic
+
+TEST CASE 4 — INVALID OPEN PROFILE
+- should fail clearly with reason
+
+TEST CASE 5 — INVALID THICKNESS INPUT
+- should fail clearly with reason
+
+For each test case show:
+- input
+- expected result
+- actual result
+- pass/fail
+
+==================================================
+SECTION 12 — CODE QUALITY RULES
+==================================================
+
+1. Refactor messy code
+2. Separate logic from UI
+3. Use modular functions
+4. Add comments for engineering logic
+5. Add error handling everywhere
+6. Remove dead code
+7. Remove fake placeholder values
+8. Remove hardcoded success states
+9. Log every critical calculation step
+10. Make code maintainable
+
+==================================================
+SECTION 13 — NON-NEGOTIABLE RULES
+==================================================
+
+- Do not pretend engineering calculation is complete if it is not
+- Do not use vague wording like “probably done”
+- Do not output fake shaft/bearing values without rule basis
+- Do not continue after a failed stage
+- Do not hide errors
+- Do not overwrite good data with null values
+- Do not mix UI logic and engineering logic chaotically
+
+==================================================
+SECTION 14 — FINAL TASK TO EXECUTE NOW
+==================================================
+
+Perform the following immediately:
+
+1. Audit the current project structure
+2. Find why auto mode is failing
+3. List broken functions/modules
+4. Refactor app into the modules defined above
+5. Add debug panel
+6. Add validation layer
+7. Repair workflow chaining
+8. Create structured JSON output
+9. Run mandatory test cases
+10. Produce a final fix report
+
+FINAL REPORT MUST INCLUDE:
+- what was broken
+- what was fixed
+- what still needs expert engineering input
+- which modules now pass
+- which test cases pass/fail
+- exact next steps

@@ -1,0 +1,5 @@
+data/ai-memory*.json
+data/ai-memory-backup*.json
+data/backups/ai-memory*.json
+data/backups/
+node_modules/

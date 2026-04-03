@@ -1,0 +1,28 @@
+==============================================================================================================
+  PROCESS CARD — S1-004  |  Machine: Roll Forming Machine
+  Material: Stainless Steel Austenitic (SS)  |  Thickness: 1.0 mm  |  Fy: 310 MPa  |  Bend Radius: 1.0 mm
+  Stations: 17  |  Peak Force: 67.23 kN  |  Peak Power: 22.41 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  1.100mm   271.1mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  4.9°   0.2°  1.100mm   271.1mm   67.23kN  22.41kW   33.33% HIGH    
+  2     Station 2                    initial_bend             16.8°   0.8°  1.100mm   260.3mm   64.55kN  21.52kW   33.33% HIGH    
+  3     Station 3                    initial_bend             31.4°   1.4°  1.100mm   249.5mm   61.88kN  20.63kW   33.33% HIGH    
+  4     Station 4                    progressive_forming      44.3°   2.0°  1.100mm   238.7mm   59.20kN  19.73kW   33.33% HIGH    
+  5     Station 5                    progressive_forming      51.4°   2.3°  1.100mm   227.9mm   56.52kN  18.84kW   33.33% HIGH    
+  6     Station 6                    progressive_forming      52.4°   2.3°  1.100mm   217.1mm   53.85kN  17.95kW   33.33% HIGH    
+  7     Station 7                    progressive_forming      55.3°   2.5°  1.100mm   206.3mm   51.17kN  17.06kW   33.33% HIGH    
+  8     Station 8                    progressive_forming      59.9°   2.7°  1.100mm   195.6mm   48.50kN  16.17kW   33.33% HIGH    
+  9     Station 9                    progressive_forming      65.7°   2.9°  1.100mm   184.8mm   45.82kN  15.27kW   33.33% HIGH    
+  10    Station 10                   progressive_forming      72.0°   3.2°  1.100mm   174.0mm   43.14kN  14.38kW   33.33% HIGH    
+  11    Station 11                   progressive_forming      78.5°   3.5°  1.100mm   163.2mm   40.47kN  13.49kW   33.33% HIGH    
+  12    Station 12                   progressive_forming      84.5°   3.8°  1.100mm   152.4mm   37.79kN  12.60kW   33.33% HIGH    
+  13    Station 13                   progressive_forming      89.4°   4.0°  1.100mm   141.6mm   35.11kN  11.70kW   33.33% HIGH    
+  14    Station 14                   lip_forming              92.8°   4.1°  1.100mm   130.8mm   32.44kN  10.81kW   33.33% HIGH    
+  15    Station 15                   lip_forming              94.0°   4.2°  1.100mm   120.0mm   29.76kN   9.92kW   33.33% HIGH    
+  16    Station 16 (Calibration)     calibration              90.0°   0.0°  1.000mm   120.0mm   11.90kN   3.97kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: GOOD (score 80/100)  |  HIGH risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]  |  MEDIUM risk: []
+==============================================================================================================

@@ -1,0 +1,22 @@
+==============================================================================================================
+  PROCESS CARD — S1-010  |  Machine: Roll Forming Machine
+  Material: Copper (CU)  |  Thickness: 1.2 mm  |  Fy: 70 MPa  |  Bend Radius: 1.2 mm
+  Stations: 11  |  Peak Force: 66.074 kN  |  Peak Power: 22.02 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  1.300mm   275.3mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  3.2°   0.1°  1.300mm   275.3mm   66.07kN  22.02kW   33.33% MEDIUM  
+  2     Station 2                    initial_bend             11.6°   0.3°  1.300mm   263.4mm   63.21kN  21.07kW   33.33% MEDIUM  
+  3     Station 3                    progressive_forming      23.9°   0.5°  1.300mm   251.5mm   60.35kN  20.12kW   33.33% MEDIUM  
+  4     Station 4                    progressive_forming      38.4°   0.8°  1.300mm   239.6mm   57.50kN  19.17kW   33.33% MEDIUM  
+  5     Station 5                    progressive_forming      53.6°   1.2°  1.300mm   227.7mm   54.64kN  18.21kW   33.33% MEDIUM  
+  6     Station 6                    progressive_forming      68.1°   1.5°  1.300mm   215.7mm   51.78kN  17.26kW   33.33% MEDIUM  
+  7     Station 7                    progressive_forming      80.4°   1.8°  1.300mm   203.8mm   48.92kN  16.31kW   33.33% MEDIUM  
+  8     Station 8                    lip_forming              88.8°   2.0°  1.300mm   191.9mm   46.06kN  15.35kW   33.33% MEDIUM  
+  9     Station 9                    lip_forming              92.0°   2.0°  1.300mm   180.0mm   43.20kN  14.40kW   33.33% MEDIUM  
+  10    Station 10 (Calibration)     calibration              90.0°   0.0°  1.200mm   180.0mm   17.28kN   5.76kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: EXCELLENT (score 95/100)  |  HIGH risk: []  |  MEDIUM risk: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+==============================================================================================================

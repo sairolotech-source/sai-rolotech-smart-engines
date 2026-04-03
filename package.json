@@ -1,0 +1,24 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pnpm --filter @workspace/api-server run dev & pnpm --filter @workspace/design-tool run dev",
+    "preinstall": "node -e \"['package-lock.json','yarn.lock'].forEach(f=>{try{require('fs').unlinkSync(f)}catch(e){}});if(process.env.npm_config_user_agent&&!process.env.npm_config_user_agent.startsWith('pnpm/')){console.error('Use pnpm instead');process.exit(1)}\"",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "integrity:generate": "node tools/integrity-generate.mjs",
+    "integrity:verify": "node tools/integrity-verify.mjs",
+    "integrity:repair": "node tools/integrity-verify.mjs --repair",
+    "check:imports": "node tools/import-check.mjs"
+  },
+  "private": true,
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "@replit/connectors-sdk": "^0.3.0"
+  }
+}

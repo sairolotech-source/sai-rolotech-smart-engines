@@ -1,0 +1,89 @@
+1
+00:00:00,000 --> 00:00:06,000
+SAI Rolotech Smart Engines —
+a near COPRA-class roll-forming engineering platform.
+
+2
+00:00:06,000 --> 00:00:12,000
+Designed for precision. Built for production.
+
+3
+00:00:12,000 --> 00:00:18,000
+Start by selecting your material —
+Galvanised Steel DX51D —
+and defining the section profile.
+
+4
+00:00:18,000 --> 00:00:24,000
+A lipped channel, 2 millimetre thick,
+120 millimetres wide.
+
+5
+00:00:24,000 --> 00:00:30,000
+Load a saved project or enter parameters directly.
+
+6
+00:00:30,000 --> 00:00:38,000
+The station engine calculates 13 forming passes,
+distributing bend angle incrementally across each station.
+
+7
+00:00:38,000 --> 00:00:48,000
+Watch the flower progression unfold —
+each pass bringing the flat strip closer to the final profile.
+
+8
+00:00:48,000 --> 00:00:56,000
+Roll contour is generated automatically —
+upper and lower rolls matched to the strip geometry.
+
+9
+00:00:56,000 --> 00:01:05,000
+Springback correction applied per pass.
+Force, power and torque calculated at each station.
+
+10
+00:01:05,000 --> 00:01:10,000
+Bend allowance and flat blank width — calculated instantly.
+
+11
+00:01:10,000 --> 00:01:17,000
+Bill of Materials generated with shaft,
+bearing and roll specifications.
+
+12
+00:01:17,000 --> 00:01:22,000
+Process card ready for the shop floor.
+
+13
+00:01:22,000 --> 00:01:28,000
+Tooling library saves your roll sets for reuse.
+
+14
+00:01:28,000 --> 00:01:35,000
+Export to DXF, STEP, or a full CAD pack — one click.
+
+15
+00:01:35,000 --> 00:01:43,000
+Advanced Process Simulation Precheck —
+pass-by-pass stress, strain and contact analysis.
+
+16
+00:01:43,000 --> 00:01:50,000
+Defect probability, fracture risk, wrinkling
+and edge wave flags — all instant.
+
+17
+00:01:50,000 --> 00:01:52,000
+FEA-ready solver decks generated
+for CalculiX and Abaqus when you need full simulation.
+
+18
+00:01:52,000 --> 00:01:56,000
+720 automated tests. 29 engine modules.
+45 live API endpoints.
+
+19
+00:01:56,000 --> 00:02:00,000
+SAI Rolotech Smart Engines —
+engineering-grade precision, from input to export.

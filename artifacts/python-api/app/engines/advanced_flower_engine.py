@@ -1,0 +1,525 @@
+import math
+from typing import Dict, Any, List, Optional, Tuple
+from app.utils.response import pass_response, fail_response
+
+
+# ─── 3D FLOWER / WIRE TRANSITION ─────────────────────────────────────────────
+
+def compute_2d_centerline(
+    segment_lengths_mm: List[float],
+    bend_angles_deg: List[float],
+    start_x: float = 0.0,
+    start_y: float = 0.0,
+) -> List[Tuple[float, float]]:
+    """
+    Compute the 2D cross-section centerline of the strip at a given forming pass.
+
+    Algorithm:
+      Walk along the strip from left edge to right edge.
+      At each interior point (bend zone), turn by bend_angle_deg.
+      Return list of (x, y) coordinate tuples.
+
+    Args:
+        segment_lengths_mm: Flat segment lengths between bends (n+1 segments for n bends)
+        bend_angles_deg:    Forming angle at each bend for this pass (n values)
+        start_x, start_y:  Starting coordinate (default: origin)
+
+    Returns:
+        List of (x, y) points — length = len(segment_lengths_mm) + 1
+    """
+    if not segment_lengths_mm:
+        return [(0.0, 0.0)]
+
+    pts: List[Tuple[float, float]] = [(round(start_x, 4), round(start_y, 4))]
+    x, y = start_x, start_y
+    heading_deg = 0.0  # Initially moving right (+x direction)
+
+    n_segments = len(segment_lengths_mm)
+    n_bends = len(bend_angles_deg)
+
+    for i, seg_len in enumerate(segment_lengths_mm):
+        # Walk along current heading
+        heading_rad = math.radians(heading_deg)
+        x += seg_len * math.cos(heading_rad)
+        y += seg_len * math.sin(heading_rad)
+        pts.append((round(x, 4), round(y, 4)))
+
+        # Turn at bend if one exists after this segment
+        if i < n_bends:
+            heading_deg += bend_angles_deg[i]
+
+    return pts
+
+
+def compute_3d_flower_centerline(
+    pass_plan: List[Dict[str, Any]],
+    segment_lengths_mm: Optional[List[float]] = None,
+    station_pitch_mm: float = 300.0,
+) -> List[Dict[str, Any]]:
+    """
+    Compute 3D flower wire centerlines for each forming pass.
+
+    For each pass:
+      - 2D centerline = cross-section shape at that pass (x, y coords)
+      - z = pass_index * station_pitch_mm (machine travel direction)
+
+    This gives the 3D wire path of the strip through the forming machine —
+    equivalent to the 'flower wire' view in COPRA-class software.
+
+    Args:
+        pass_plan:          List of pass dicts (from build_pass_plan)
+        segment_lengths_mm: Flat segment lengths (mm). If None, inferred from
+                            first pass bend angles with 50mm default segments.
+        station_pitch_mm:   Distance between stations (default 300mm)
+
+    Returns:
+        Updated pass_plan with 'centerline_xy' and 'centerline_xyz' added.
+    """
+    if not pass_plan:
+        return pass_plan
+
+    # Infer segment lengths if not provided
+    if not segment_lengths_mm:
+        n_bends = len(pass_plan[0].get("bend_angles_deg", []))
+        segment_lengths_mm = [50.0] * (n_bends + 1)
+
+    updated_plan = []
+    for i, pp in enumerate(pass_plan):
+        pp = dict(pp)
+        bend_angles = pp.get("bend_angles_deg", [])
+        z = round(i * station_pitch_mm, 2)
+
+        # 2D centerline for this pass
+        xy = compute_2d_centerline(segment_lengths_mm, bend_angles)
+        pp["centerline_xy"] = [[round(x, 3), round(y, 3)] for x, y in xy]
+
+        # 3D: same points with z coordinate (station position along machine axis)
+        pp["centerline_xyz"] = [[round(x, 3), round(y, 3), z] for x, y in xy]
+
+        updated_plan.append(pp)
+
+    return updated_plan
+
+VALID_SECTION_TYPES = {
+    "simple_channel",
+    "c_channel",
+    "u_channel",
+    "angle_section",
+    "simple_angle",
+    "lipped_channel",
+    "z_section",
+    "z_purlin",
+    "hat_section",
+    "box_section",
+    "complex_section",
+    "complex_profile",
+    "shutter_profile",
+    "shutter_slat",
+    "door_frame",
+}
+
+SECTION_TYPE_ALIASES = {
+    "z_purlin": "z_section",
+    "complex_profile": "complex_section",
+}
+
+
+def normalize_section_type(section_type: str) -> str:
+    st = str(section_type or "").strip().lower()
+    return SECTION_TYPE_ALIASES.get(st, st)
+
+
+def generate_advanced_flower(
+    profile_result: Dict[str, Any],
+    input_result: Dict[str, Any]
+) -> Dict[str, Any]:
+    if not profile_result:
+        return fail_response("advanced_flower_engine", "Profile result missing")
+
+    if not input_result:
+        return fail_response("advanced_flower_engine", "Input result missing")
+
+    bend_count = int(profile_result.get("bend_count", 0))
+    return_bends = int(profile_result.get("return_bends_count", 0))
+    section_features = profile_result.get("section_features", {})
+    section_payload = section_features if isinstance(section_features, dict) else {}
+
+    raw_section_type = extract_section_type(section_payload, profile_result)
+    section_type = normalize_section_type(raw_section_type)
+    if section_type not in VALID_SECTION_TYPES:
+        return fail_response(
+            "advanced_flower_engine",
+            f"Unsupported section_type '{raw_section_type}'. Explicit mapping required.",
+        )
+
+    symmetry = extract_symmetry(section_payload)
+    flanges = extract_flanges(section_payload)
+    lips = extract_lips(section_payload)
+    flange_count = len(flanges)
+    lip_count = len(lips)
+    web_length = extract_web_length(section_payload)
+
+    thickness = float(input_result.get("sheet_thickness_mm", 0))
+    material = str(input_result.get("material", "")).upper()
+
+    if bend_count <= 0:
+        return fail_response("advanced_flower_engine", "Bend count not detected")
+
+    # Extract actual bend angles from profile or infer from section type
+    raw_bends = profile_result.get("bend_angles_deg", [])
+    if not raw_bends or not isinstance(raw_bends, list):
+        raw_bends = _infer_bend_angles(section_type, bend_count, flanges, lips)
+
+    complexity_score = calculate_complexity_score(
+        bend_count=bend_count,
+        return_bends=return_bends,
+        flange_count=flange_count,
+        lip_count=lip_count,
+        symmetry=symmetry,
+        thickness=thickness,
+        material=material,
+        web_length=web_length,
+        section_type=section_type
+    )
+
+    complexity_class = classify_complexity(complexity_score)
+    estimated_passes = estimate_passes(
+        bend_count=bend_count,
+        return_bends=return_bends,
+        lip_count=lip_count,
+        thickness=thickness,
+        material=material,
+        complexity_class=complexity_class,
+        section_type=section_type
+    )
+
+    pass_plan = build_pass_plan(
+        section_type=section_type,
+        complexity_class=complexity_class,
+        estimated_passes=estimated_passes,
+        lip_count=lip_count,
+        return_bends=return_bends,
+        symmetry=symmetry,
+        bend_angles=raw_bends
+    )
+
+    # ── 3D Flower Wire / Transition Centerlines ──
+    # Infer segment lengths from profile data if available
+    segment_lengths = profile_result.get("segment_lengths_mm", [])
+    if not segment_lengths or not isinstance(segment_lengths, list):
+        # Default: divide section width equally across (bend_count + 1) segments
+        sec_width = float(profile_result.get("section_width_mm", 0)) or 200.0
+        n_seg = bend_count + 1
+        segment_lengths = [round(sec_width / n_seg, 2)] * n_seg
+
+    pass_plan = compute_3d_flower_centerline(
+        pass_plan=pass_plan,
+        segment_lengths_mm=segment_lengths,
+        station_pitch_mm=300.0,
+    )
+
+    warnings = build_warnings(
+        section_type=section_type,
+        complexity_class=complexity_class,
+        thickness=thickness,
+        material=material,
+        return_bends=return_bends
+    )
+
+    return pass_response("advanced_flower_engine", {
+        "section_type": section_type,
+        "complexity_score": complexity_score,
+        "forming_complexity_class": complexity_class,
+        "estimated_forming_passes": estimated_passes,
+        "pass_distribution_logic": [p["label"] for p in pass_plan],
+        "pass_plan": pass_plan,
+        "warnings": warnings,
+        "assumptions": [
+            "Per-bend angle arrays are fractional progressions toward target angles",
+            "Calibration passes include 2% springback overbend compensation",
+            "Final pass design still needs expert review for production tooling"
+        ]
+    })
+
+
+def calculate_complexity_score(
+    bend_count: int,
+    return_bends: int,
+    flange_count: int,
+    lip_count: int,
+    symmetry: str,
+    thickness: float,
+    material: str,
+    web_length: float,
+    section_type: str
+) -> int:
+    score = bend_count
+
+    score += return_bends * 2
+    score += lip_count
+
+    if flange_count > 2:
+        score += 2
+
+    if symmetry == "asymmetric":
+        score += 2
+
+    if thickness > 2.0:
+        score += 3
+    elif thickness > 1.2:
+        score += 2
+    elif thickness >= 0.8:
+        score += 1
+
+    if material in {"SS", "HR"}:
+        score += 2
+    elif material in {"MS", "CR"}:
+        score += 1
+
+    if web_length > 150:
+        score += 1
+
+    if section_type == "lipped_channel":
+        score += 1
+    elif section_type == "complex_section":
+        score += 3
+    elif section_type == "shutter_profile":
+        score += 4
+
+    return score
+
+
+def classify_complexity(score: int) -> str:
+    if score <= 4:
+        return "simple"
+    if score <= 8:
+        return "medium"
+    if score <= 13:
+        return "complex"
+    return "very_complex"
+
+
+def estimate_passes(
+    bend_count: int,
+    return_bends: int,
+    lip_count: int,
+    thickness: float,
+    material: str,
+    complexity_class: str,
+    section_type: str
+) -> int:
+    passes = bend_count
+
+    if complexity_class == "simple":
+        passes += 2
+    elif complexity_class == "medium":
+        passes += 3
+    elif complexity_class == "complex":
+        passes += 5
+    else:
+        passes += 7
+
+    passes += return_bends
+    passes += min(lip_count, 2)
+
+    if thickness >= 1.2:
+        passes += 1
+    if thickness >= 2.0:
+        passes += 1
+
+    if material in {"SS", "HR"}:
+        passes += 1
+
+    if section_type in {"complex_section", "shutter_profile"}:
+        passes += 2
+
+    return max(passes, bend_count + 2)
+
+
+def _infer_bend_angles(
+    section_type: str,
+    bend_count: int,
+    flanges: list,
+    lips: list
+) -> List[float]:
+    """Return inferred target angles (deg) for each bend when DXF data is unavailable."""
+    if section_type in {"simple_channel", "c_channel", "angle_section",
+                        "lipped_channel", "z_purlin"}:
+        flange_angles = [90.0] * min(len(flanges) or 2, bend_count)
+        lip_angles = [90.0] * min(len(lips), bend_count - len(flange_angles))
+        result = flange_angles + lip_angles
+    elif section_type == "hat_section":
+        result = [90.0] * min(4, bend_count)
+    elif section_type in {"box_section", "complex_section"}:
+        result = [90.0] * bend_count
+    else:
+        result = [90.0] * bend_count
+    # Pad or trim to bend_count
+    while len(result) < bend_count:
+        result.append(90.0)
+    return result[:bend_count]
+
+
+def _compute_pass_angle_progression(
+    bend_angles: List[float],
+    num_passes: int,
+    final_pass_offset: int = 2
+) -> List[List[float]]:
+    """
+    For each forming pass (excluding calibration), compute fractional angle targets.
+    Calibration passes use overbend (angle * 1.02) to compensate springback.
+    Returns a list of per-pass angle arrays.
+    """
+    forming_passes = max(1, num_passes - final_pass_offset)
+    result: List[List[float]] = []
+    for p in range(num_passes):
+        if p < forming_passes:
+            pct = (p + 1) / forming_passes
+            pass_angles = [round(a * pct, 2) for a in bend_angles]
+        else:
+            # calibration: target final angle + springback overbend
+            pass_angles = [round(a * 1.02, 2) for a in bend_angles]
+        result.append(pass_angles)
+    return result
+
+
+def build_pass_plan(
+    section_type: str,
+    complexity_class: str,
+    estimated_passes: int,
+    lip_count: int,
+    return_bends: int,
+    symmetry: str,
+    bend_angles: List[float] = None
+) -> List[Dict[str, Any]]:
+    """
+    Build a structured pass plan with per-bend numeric angle targets.
+    Returns List[{pass, label, bend_angles_deg, progression_pct, is_calibration}]
+    """
+    if bend_angles is None:
+        bend_angles = []
+
+    labels: List[str] = []
+    labels.append("edge pickup")
+    labels.append("initial leg pre-form")
+
+    if symmetry == "symmetric":
+        labels.append("balanced two-side progression")
+    else:
+        labels.append("asymmetric side-controlled progression")
+
+    if section_type in {"simple_channel", "c_channel", "angle_section", "lipped_channel"}:
+        labels.append("web stabilization")
+        labels.append("main flange angle progression")
+
+    if lip_count > 0:
+        labels.append("lip initiation")
+        labels.append("lip angle progression")
+
+    if return_bends > 0:
+        labels.append("return bend controlled forming")
+
+    if complexity_class in {"complex", "very_complex"}:
+        labels.append("intermediate shape stabilization")
+        labels.append("progressive closure control")
+
+    if section_type in {"complex_section", "shutter_profile"}:
+        labels.append("multi-feature sequential forming")
+
+    labels.append("pre-calibration")
+    labels.append("final calibration")
+
+    # Compress/expand labels to match estimated_passes
+    labels = _compress_labels_to_target(labels, estimated_passes)
+    n = len(labels)
+
+    # Compute per-pass angle arrays
+    calibration_passes = 2 if n >= 4 else 1
+    angle_progressions = _compute_pass_angle_progression(bend_angles, n, calibration_passes)
+
+    plan: List[Dict[str, Any]] = []
+    for i, (label, angles) in enumerate(zip(labels, angle_progressions)):
+        is_cal = i >= (n - calibration_passes)
+        pct = round(100 * (i + 1) / n, 1)
+        plan.append({
+            "pass": i + 1,
+            "label": label,
+            "bend_angles_deg": angles,
+            "progression_pct": pct,
+            "is_calibration": is_cal,
+        })
+
+    return plan
+
+
+def _compress_labels_to_target(labels: List[str], target: int) -> List[str]:
+    if len(labels) == target:
+        return labels
+    if len(labels) < target:
+        out = list(labels)
+        idx = 1
+        while len(out) < target:
+            out.insert(-2, f"intermediate forming stage {idx}")
+            idx += 1
+        return out
+    seen: set = set()
+    essential: List[str] = []
+    for item in labels:
+        if item not in seen:
+            essential.append(item)
+            seen.add(item)
+    return essential[:target]
+
+
+def build_warnings(
+    section_type: str,
+    complexity_class: str,
+    thickness: float,
+    material: str,
+    return_bends: int
+) -> List[str]:
+    warnings: List[str] = []
+
+    if return_bends > 0:
+        warnings.append("Return bends may require more careful progressive forming")
+
+    if material == "SS":
+        warnings.append("SS material may increase springback risk")
+
+    if thickness > 1.2:
+        warnings.append("Higher thickness may require stronger station support")
+
+    if complexity_class in {"complex", "very_complex"}:
+        warnings.append("Complex profile should be manually reviewed before production")
+
+    if section_type == "shutter_profile":
+        warnings.append("Shutter-like profiles usually need tighter sequence control")
+
+    return warnings
+
+
+def extract_section_type(section_payload: Dict[str, Any], profile_result: Dict[str, Any]) -> str:
+    if "section_type" in section_payload:
+        return str(section_payload["section_type"])
+    return str(profile_result.get("profile_type", "custom"))
+
+
+def extract_symmetry(section_payload: Dict[str, Any]) -> str:
+    return str(section_payload.get("symmetry", "unknown"))
+
+
+def extract_flanges(section_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    flanges = section_payload.get("flanges", [])
+    return flanges if isinstance(flanges, list) else []
+
+
+def extract_lips(section_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    lips = section_payload.get("lips", [])
+    return lips if isinstance(lips, list) else []
+
+
+def extract_web_length(section_payload: Dict[str, Any]) -> float:
+    web = section_payload.get("web", {})
+    if isinstance(web, dict):
+        return float(web.get("length", 0) or 0)
+    return 0.0

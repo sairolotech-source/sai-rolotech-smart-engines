@@ -1,0 +1,256 @@
+You are upgrading this roll-forming application to match COPRA-class behavior as closely as practically possible, with a special focus on the parts that are currently still wrong:
+- roll design is not correct yet
+- roll geometry is not matching the intended forming logic
+- simulation must be upgraded
+- the demo video must include the corrected roll design and simulation workflow
+
+This is a code audit + implementation + proof + demo-video update mission.
+
+==================================================
+PRIMARY OBJECTIVE
+==================================================
+
+Make the application behave as close as possible to a COPRA-class roll design and roll forming simulation system.
+
+Critical requirement:
+The rolls currently are NOT correct.
+You must inspect the entire roll design path and fix it so the generated rolls are engineering-consistent, visually correct, data-driven, and suitable for simulation/precheck.
+
+Then update the client demo video so the corrected roll workflow is shown clearly from start to finish.
+
+==================================================
+TARGET BENCHMARK
+==================================================
+
+Use these COPRA-style expectations as the benchmark:
+
+1. Parametric profile-driven workflow
+- profile/cross-section drives downstream design
+- changes propagate through stations/flower/rolls automatically
+
+2. Flower design workflow
+- station-by-station progression
+- automatic bend angle updates
+- springback-aware overbend where needed
+- 2D and, if feasible, 3D progression view
+
+3. Roll design workflow
+- roll design derived from profile cross-section and process parameters
+- station-specific roll contours
+- upper/lower roll logic
+- contour-driven roll geometry
+- engineer sign-off clearly separated from automation
+- no fake cylinder or generic placeholder roll as final result
+
+4. Simulation / validation workflow
+- pass-by-pass progression
+- springback-aware validation
+- strain/force/defect/interference checks
+- advanced process simulation precheck
+- if no true FEA solver exists, clearly label it as precheck, not full FEA
+
+5. Manufacturing workflow
+- process card
+- BOM
+- CAD export
+- engineering report
+- project persistence
+- tooling library
+
+==================================================
+TOP PRIORITY BUG TO FIX
+==================================================
+
+The rolls are still not right.
+
+You must inspect all code paths related to:
+- roll design
+- roll contour generation
+- roll geometry mesh generation
+- upper/lower roll pairing
+- pass/station-specific tooling
+- center groove / shoulders / shafts / bores
+- flower-to-roll transitions
+- simulation inputs that depend on roll geometry
+
+Search for and inspect all meaningful hits for:
+roll
+contour
+tooling
+upperRoll
+lowerRoll
+lathe
+cylinder
+groove
+shaft
+bore
+flower
+station
+simulation
+interference
+tool library
+DXF
+STEP
+demo video
+
+==================================================
+STRICT ROLL DESIGN REQUIREMENTS
+==================================================
+
+1. No hardcoded final roll geometry
+- no simple cylinder as final result
+- no cosmetic-only groove
+- no same OD logic where station/profile requires differences
+
+2. Roll generation must be data-driven
+- roll contour must derive from profile/station/process data
+- each station should be able to produce different roll geometry
+
+3. Upper/lower roll logic must be correct
+- do not mirror blindly
+- use forming logic, gap, springback allowance, material thickness, and pass target
+
+4. If the roll should be non-axisymmetric, support that explicitly
+- geometry must support r = f(x, theta)
+- do not rely only on revolve/lathe if that is not enough
+
+5. If axisymmetric is actually correct for a given pass, prove why
+- document the assumption
+- use it only where valid
+
+6. Tooling library must store meaningful roll definitions
+- contour inputs
+- shaft/bore
+- material
+- station mapping
+- revision/version if applicable
+
+==================================================
+SIMULATION UPGRADE REQUIREMENTS
+==================================================
+
+Upgrade the simulation stack to use the corrected roll design.
+
+Required:
+- pass-by-pass logic must use actual station tooling inputs
+- springback correction must feed into station targets
+- force / strain / contact / residual / defect precheck must be consistent with the new roll geometry
+- if full FEA is not possible in this environment, keep “advanced process simulation precheck” honest and separate
+- do not overclaim solver capability
+
+==================================================
+DEMO VIDEO UPDATE REQUIREMENTS
+==================================================
+
+Update the 2-minute client demo video so it includes the corrected roll design and corrected simulation flow.
+
+The updated video must show:
+1. app opening
+2. sample profile/material selection
+3. station planning
+4. flower progression
+5. corrected roll design generation
+6. correct upper/lower roll views
+7. tooling library/project persistence
+8. springback / force / defect checks
+9. advanced process simulation precheck
+10. BOM / process card / CAD export / report
+11. final capability summary
+
+The video must reflect the real app, not fake slides.
+
+==================================================
+MANDATORY PROOF
+==================================================
+
+For every major claim, provide proof.
+
+Required evidence:
+1. exact files changed
+2. exact functions/classes changed
+3. before vs after explanation
+4. runtime outputs from the corrected roll generation
+5. screenshots of corrected roll geometry from multiple views
+6. proof that station-specific rolls differ where expected
+7. proof that simulation uses the corrected roll/tooling inputs
+8. updated demo video file path
+9. voiceover script path
+10. subtitles path
+11. proof package path
+12. test results
+13. generated DXF/STEP/report/BOM artifacts
+14. honest limitations
+
+Do not say “fixed” unless you show:
+- code path
+- runtime result
+- artifact or screenshot
+- tests or verification
+
+==================================================
+WORK PLAN
+==================================================
+
+Phase 1 — Repo inspection
+- inspect full repo
+- map current roll design pipeline
+- map simulation pipeline
+- map demo video pipeline/assets
+
+Phase 2 — Roll design audit
+- identify why rolls are wrong
+- list every mismatch between intended forming logic and actual roll output
+- identify placeholder geometry, generic assumptions, incorrect mirroring, invalid lathe usage, or missing contour data
+
+Phase 3 — Roll design implementation
+- fix roll contour calculation
+- fix roll geometry generation
+- fix upper/lower roll logic
+- fix tooling library mapping
+- ensure station-specific correctness
+
+Phase 4 — Simulation integration
+- update simulation/precheck to use corrected roll/tool geometry
+- verify outputs remain consistent and physically plausible
+
+Phase 5 — Demo video update
+- regenerate demo sequence with corrected roll design and simulation included
+- create final MP4 with voiceover and captions
+
+Phase 6 — Proof package
+- generate final report with artifacts, screenshots, outputs, and tests
+
+==================================================
+VERDICT RULES
+==================================================
+
+Return only one of these:
+- VERIFIED PASS
+- VERIFIED PARTIAL
+- NOT VERIFIED
+
+VERIFIED PASS only if:
+- corrected roll design is visibly and numerically improved
+- station-specific roll logic is proven
+- simulation uses corrected roll data
+- updated demo video is generated
+- proof package exists
+
+If full COPRA parity is still not reached, say so honestly.
+Do not use marketing language.
+Do not inflate maturity.
+Do not call precheck “full FEA” unless a true solver is actually integrated.
+
+==================================================
+FINAL RESPONSE FORMAT
+==================================================
+
+1. Executive verdict
+2. Root cause of wrong roll design
+3. Files/functions changed
+4. Corrected roll design proof
+5. Simulation proof
+6. Updated demo video proof
+7. Test evidence
+8. Generated artifacts
+9. Honest remaining gaps

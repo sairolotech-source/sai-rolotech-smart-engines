@@ -1,0 +1,1778 @@
+"""
+routes.py — FastAPI route definitions.
+
+Modes:
+  POST /api/auto-mode              — full pipeline from entity list
+  POST /api/dxf-upload             — DXF file upload → full pipeline
+  POST /api/manual-mode            — pipeline from manual profile dimensions
+  POST /api/auto-mode-export-pdf   — auto pipeline + PDF report (JSON response)
+  POST /api/manual-mode-export-pdf — manual pipeline + PDF report (JSON response)
+  POST /api/manual-mode-download-pdf — manual pipeline → download PDF file
+  GET  /api/health                 — server health check
+"""
+import logging
+from typing import Any, Dict
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse
+
+from app.api.schemas import AutoModeInput, ManualProfileInput
+from app.engines.import_engine import parse_entities, parse_dxf_bytes
+from app.engines.geometry_engine import clean_geometry
+from app.engines.profile_analysis_engine import analyze_profile
+from app.engines.input_engine import validate_inputs
+from app.engines.advanced_flower_engine import generate_advanced_flower as generate_flower
+from app.engines.station_engine import estimate as estimate_station
+from app.engines.roll_logic_engine import generate as generate_roll_logic
+from app.engines.shaft_engine import select_shaft
+from app.engines.bearing_engine import select_bearing
+from app.engines.duty_engine import classify as classify_duty
+from app.engines.roll_design_calc_engine import generate_roll_design_calc
+from app.engines.report_engine import generate_report
+from app.engines.pdf_export_engine import export_report_pdf
+from app.engines.consistency_engine import validate_consistency
+from app.engines.final_decision_engine import make_final_decision
+from app.engines.flange_web_lip_engine import detect_flange_web_lip
+from app.engines.machine_layout_engine import generate_machine_layout
+from app.engines.debug_test_engine import extract_stage_debug
+from app.engines.test_runner_engine import run_all_tests as _run_all_tests
+from app.engines.roll_contour_engine import generate_roll_contour
+from app.engines.cad_export_engine import generate_cad_export
+from app.engines.cam_prep_engine import generate_cam_prep
+from app.engines.advanced_roll_engine import generate_advanced_rolls
+from app.engines.roll_interference_engine import check_roll_interference, check_contour_interference
+from app.engines.roll_dimension_engine import generate_roll_dimensions
+from app.engines.export_dxf_engine import export_rolls_dxf
+from app.engines.export_step_engine import export_roll_step
+from app.engines.export_pack_engine import build_export_pack
+from app.engines.centerline_sheet_converter_arc_engine import (
+    convert_centerline_to_sheet_arc_aware,
+    is_centerline_geometry,
+)
+from app.engines.simulation_engine import run_simulation as run_sim_engine
+from app.engines.ai_optimizer_engine import optimize_roll_forming_plan
+from app.engines.simulation_decision_engine import decide_simulation_status
+from app.engines.engineering_risk_engine import generate_engineering_risk_report
+from app.engines.deformation_predictor_engine import generate_deformation_prediction_report
+from app.engines.flower_svg_engine import generate_flower_svg
+from app.engines.roll_groove_svg_engine import generate_roll_groove_svgs
+from app.engines.oss_cad_stack_engine import (
+    detect_oss_cad_stack_status,
+    get_cad_stack_architecture_map,
+)
+from app.engines.bend_allowance_engine import calculate_flat_blank, flat_blank_from_profile
+from app.engines.bom_engine import generate_bom
+from app.engines.process_card_engine import generate_process_card, process_card_to_text
+from app.utils.project_persistence import (
+    save_project, load_project_raw, list_projects, list_project_versions, delete_project, pipeline_to_project,
+)
+from app.utils.tooling_library import (
+    query_tooling_library, get_tooling_entry, get_best_match, library_summary,
+)
+from app.models.engineering_data_model import RFProject
+from app.utils.material_database import MATERIAL_DB, get_material, list_materials
+
+router = APIRouter(prefix="/api", tags=["roll-forming"])
+logger = logging.getLogger("routes")
+
+
+def is_fail(result: Dict[str, Any]) -> bool:
+    return result.get("status") == "fail"
+
+
+def fail_at(stage: str, result: Dict[str, Any]) -> Dict[str, Any]:
+    logger.warning("Pipeline stopped at stage '%s': %s", stage, result.get("reason", ""))
+    return {
+        "status": "fail",
+        "failed_stage": stage,
+        "result": result,
+    }
+
+
+def _run_core_engines(
+    profile_result: Dict[str, Any],
+    input_result: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Shared downstream engines:
+    flange_web_lip → flower → stations → shaft/bearing/duty/roll
+    → machine_layout → roll_contour → cam_prep
+    """
+    flange_result = detect_flange_web_lip(profile_result)
+
+    flower_result = generate_flower(profile_result, input_result)
+    if is_fail(flower_result):
+        return fail_at("flower_pattern_engine", flower_result)
+
+    station_result  = estimate_station(profile_result, input_result, flower_result)
+    shaft_result    = select_shaft(profile_result, input_result, station_result)
+    bearing_result  = select_bearing(shaft_result, input_result)
+    duty_result     = classify_duty(profile_result, input_result, station_result, shaft_result)
+    roll_logic_result = generate_roll_logic(profile_result, flower_result, station_result)
+    roll_calc_result = generate_roll_design_calc(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+    )
+    layout_result = generate_machine_layout(
+        profile_result=profile_result,
+        input_result=input_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+        bearing_result=bearing_result,
+        roll_calc_result=roll_calc_result,
+        duty_result=duty_result,
+    )
+
+    for stage_name, stage_result in (
+        ("station_engine", station_result),
+        ("shaft_engine", shaft_result),
+        ("bearing_engine", bearing_result),
+        ("duty_engine", duty_result),
+        ("roll_logic_engine", roll_logic_result),
+        ("roll_design_calc_engine", roll_calc_result),
+        ("machine_layout_engine", layout_result),
+    ):
+        if is_fail(stage_result):
+            return fail_at(stage_name, stage_result)
+
+    # ── Roll Contour Engine ────────────────────────────────────────────────
+    roll_contour_result = generate_roll_contour(
+        profile_result=profile_result,
+        input_result=input_result,
+        station_result=station_result,
+        flower_result=flower_result,
+        flange_result=flange_result,
+    )
+    if is_fail(roll_contour_result):
+        return fail_at("roll_contour_engine", roll_contour_result)
+
+    # ── CAM Prep Engine ────────────────────────────────────────────────────
+    cam_prep_result = generate_cam_prep(
+        roll_contour_result=roll_contour_result,
+        shaft_result=shaft_result,
+        roll_calc_result=roll_calc_result,
+        input_result=input_result,
+        station_result=station_result,
+    )
+    if is_fail(cam_prep_result):
+        return fail_at("cam_prep_engine", cam_prep_result)
+
+    # ── Advanced Roll Engine ───────────────────────────────────────────────
+    advanced_roll_result = generate_advanced_rolls(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+    )
+
+    # ── Flower SVG Engine (per-station polygon data) ───────────────────────
+    # generate_flower_svg returns station_polygons[], profile_dimensions, validation{}
+    flower_svg_result = generate_flower_svg(
+        profile_result=profile_result,
+        input_result=input_result,
+        roll_contour_result=roll_contour_result,
+        station_result=station_result,
+    )
+
+    # ── Roll Interference Engine ───────────────────────────────────────────
+    # heuristic y-compare on advanced_roll stand_data
+    roll_interference_result = check_roll_interference(advanced_roll_result)
+    # shapely-based check on roll_contour passes (manufacturing-grade)
+    roll_contour_interference = check_contour_interference(roll_contour_result)
+
+    # ── Roll Dimension Engine ──────────────────────────────────────────────
+    roll_dimension_result = generate_roll_dimensions(
+        profile_result=profile_result,
+        input_result=input_result,
+        shaft_result=shaft_result,
+    )
+
+    return {
+        "status": "pass",
+        "flange_web_lip_engine":        flange_result,
+        "advanced_flower_engine":       flower_result,
+        "flower_svg_engine":            flower_svg_result,    # per-station polygons + validation
+        "station_engine":               station_result,
+        "roll_logic_engine":            roll_logic_result,
+        "shaft_engine":                 shaft_result,
+        "bearing_engine":               bearing_result,
+        "duty_engine":                  duty_result,
+        "roll_design_calc_engine":      roll_calc_result,
+        "machine_layout_engine":        layout_result,
+        "roll_contour_engine":          roll_contour_result,
+        "cam_prep_engine":              cam_prep_result,
+        "advanced_roll_engine":         advanced_roll_result,
+        "roll_interference_engine":     roll_interference_result,     # heuristic
+        "roll_contour_interference":    roll_contour_interference,    # shapely-grade
+        "roll_dimension_engine":        roll_dimension_result,
+    }
+
+
+def _run_accuracy_engines(
+    import_result: Dict[str, Any],
+    geometry_result: Dict[str, Any],
+    profile_result: Dict[str, Any],
+    input_result: Dict[str, Any],
+    flower_result: Dict[str, Any],
+    station_result: Dict[str, Any],
+    shaft_result: Dict[str, Any],
+    bearing_result: Dict[str, Any],
+    roll_calc_result: Dict[str, Any],
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Run consistency_engine + final_decision_engine and return both results."""
+    consistency_result = validate_consistency(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+        bearing_result=bearing_result,
+        roll_calc_result=roll_calc_result,
+    )
+    decision_result = make_final_decision(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+        shaft_result=shaft_result,
+        bearing_result=bearing_result,
+        roll_calc_result=roll_calc_result,
+        consistency_result=consistency_result,
+    )
+    return consistency_result, decision_result
+
+
+_EMPTY = {"status": "pass", "engine": "not_applicable"}
+
+
+def execute_auto_pipeline(data: AutoModeInput) -> Dict[str, Any]:
+    """Full auto-mode pipeline — returns complete pipeline dict."""
+    import_result = parse_entities(data.entities or [])
+    if is_fail(import_result):
+        return fail_at("file_import_engine", import_result)
+
+    geometry_result = clean_geometry(import_result["geometry"])
+    if is_fail(geometry_result):
+        return fail_at("geometry_engine", geometry_result)
+
+    # ── Centerline Sheet Converter (Arc-Aware) ─────────────────────────────
+    raw_entities = import_result.get("geometry") or []
+    if isinstance(raw_entities, dict):
+        raw_entities = raw_entities.get("entities", [])
+    _is_centerline = is_centerline_geometry(raw_entities)
+    centerline_result = _EMPTY
+    if _is_centerline and data.thickness and data.thickness > 0:
+        centerline_result = convert_centerline_to_sheet_arc_aware(
+            geometry=raw_entities,
+            thickness=data.thickness,
+            mode="both",
+            arc_segments=24,
+        )
+        if centerline_result.get("blocking"):
+            logger.warning(
+                "[centerline] Blocking self-intersection detected — "
+                "results included but manual review required"
+            )
+    # ── End Centerline ─────────────────────────────────────────────────────
+
+    profile_result = analyze_profile(geometry_result)
+    if is_fail(profile_result):
+        return fail_at("profile_analysis_engine", profile_result)
+
+    input_result = validate_inputs(data.thickness, data.material)
+    if is_fail(input_result):
+        return fail_at("input_engine", input_result)
+
+    core = _run_core_engines(profile_result, input_result)
+    if is_fail(core):
+        return core
+
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
+    pipeline = {
+        "status": "pass",
+        "file_import_engine":                 import_result,
+        "geometry_engine":                    geometry_result,
+        "centerline_sheet_converter_arc_engine": centerline_result,
+        "profile_analysis_engine":            profile_result,
+        "input_engine":                       input_result,
+        **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine":                 consistency_result,
+        "final_decision_engine":              decision_result,
+    }
+
+    report_result = generate_report(pipeline)
+    pipeline["report_engine"] = report_result
+    return pipeline
+
+
+def execute_manual_pipeline(data: ManualProfileInput) -> Dict[str, Any]:
+    """Full manual-mode pipeline — returns complete pipeline dict."""
+    from app.utils.engineering_rules import classify_complexity, COMPLEXITY_LABELS
+    from app.engines.profile_analysis_engine import classify_profile as _classify_profile
+
+    input_result = validate_inputs(data.thickness, data.material)
+    if is_fail(input_result):
+        return fail_at("input_engine", input_result)
+
+    complexity = classify_complexity(data.bend_count)
+
+    # Auto-classify when caller leaves profile_type as "custom" (the default).
+    # Explicit overrides (e.g. "z_section", "hat_section") are passed through unchanged.
+    explicit_type = (data.profile_type or "").strip().lower()
+    if explicit_type in ("", "custom"):
+        resolved_profile_type = _classify_profile(
+            bend_count=data.bend_count,
+            width=data.section_width_mm,
+            height=data.section_height_mm,
+            has_lips=data.lips_present or bool(data.lip_mm),
+            return_bends=data.return_bends_count,
+            lip_mm=data.lip_mm or 0.0,
+        )
+        auto_classified = True
+    else:
+        resolved_profile_type = explicit_type
+        auto_classified = False
+
+    # Resolve effective lip length: use input if given, else estimate from section_height
+    effective_lip_mm = float(data.lip_mm) if data.lip_mm else round(data.section_height_mm * 0.2, 1)
+
+    profile_result = {
+        "status": "pass",
+        "engine": "profile_analysis_engine",
+        "bend_count": data.bend_count,
+        "bends": [],
+        "section_width_mm": data.section_width_mm,
+        "section_height_mm": data.section_height_mm,
+        "profile_type": resolved_profile_type,
+        "auto_classified": auto_classified,
+        "complexity_tier": complexity,
+        "profile_open": True,
+        "return_bends_count": data.return_bends_count,
+        "lips_present": data.lips_present or resolved_profile_type in ("lipped_channel", "shutter_profile"),
+        "lip_mm": effective_lip_mm,
+        "symmetry_status": "unknown",
+        "n_stations_override": data.n_stations,
+    }
+
+    core = _run_core_engines(profile_result, input_result)
+    if is_fail(core):
+        return core
+
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=_EMPTY,
+        geometry_result=_EMPTY,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
+    pipeline = {
+        "status": "pass",
+        "profile_analysis_engine": profile_result,
+        "input_engine": input_result,
+        **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine": consistency_result,
+        "final_decision_engine": decision_result,
+    }
+
+    report_result = generate_report(pipeline)
+    pipeline["report_engine"] = report_result
+    return pipeline
+
+
+# ─── GET /api/health ──────────────────────────────────────────────────────────
+
+@router.get("/health")
+def health():
+    return {
+        "status": "pass",
+        "service": "python-fastapi",
+        "version": "2.3.0",
+        "engines": [
+            "file_import", "geometry", "profile_analysis", "input",
+            "flange_web_lip", "advanced_flower", "station", "roll_logic",
+            "shaft", "bearing", "duty", "roll_design_calc", "machine_layout",
+            "consistency", "final_decision",
+            "report", "pdf_export",
+            "debug_test", "test_runner",
+            "roll_contour", "cam_prep", "cad_export",
+            "advanced_roll", "roll_interference", "roll_dimension",
+            "export_dxf", "export_step", "export_pack",
+            "centerline_sheet_converter_arc",
+            "oss_cad_stack",
+        ],
+        "total_engines": 30,
+        "endpoints": [
+            "GET  /api/health",
+            "GET  /api/cad-stack/status",
+            "GET  /api/cad-stack/architecture",
+            "POST /api/manual-mode",
+            "POST /api/manual-mode-debug",
+            "POST /api/manual-mode-export-pdf",
+            "POST /api/manual-mode-download-pdf",
+            "POST /api/semi-auto-confirm",
+            "POST /api/auto-mode",
+            "POST /api/dxf-upload  (alias: /api/auto-mode-dxf)",
+            "POST /api/preview-dxf",
+            "GET  /api/run-manual-tests",
+            "POST /api/cad-export",
+            "GET  /api/download-file",
+            "POST /api/manual-mode-export-cad-pack",
+            "POST /api/preview-centerline-conversion",
+        ],
+    }
+
+
+# ─── POST /api/auto-mode ─────────────────────────────────────────────────────
+
+# GET /api/cad-stack/status
+@router.get("/cad-stack/status")
+def get_cad_stack_status():
+    """Runtime proof endpoint for open-source CAD stack availability."""
+    return detect_oss_cad_stack_status()
+
+
+# GET /api/cad-stack/architecture
+@router.get("/cad-stack/architecture")
+def get_cad_stack_architecture():
+    """Engineering architecture map for Flower -> Contour -> Solid -> Export -> Preview -> Validation."""
+    return {
+        "status": "pass",
+        "engine": "oss_cad_stack_engine",
+        "architecture": get_cad_stack_architecture_map(),
+    }
+
+
+@router.post("/auto-mode")
+def run_auto_mode(data: AutoModeInput):
+    logger.info(
+        "[auto-mode] thickness=%.2f material=%s entities=%d",
+        data.thickness, data.material, len(data.entities or []),
+    )
+    return execute_auto_pipeline(data)
+
+
+# ─── POST /api/dxf-upload ────────────────────────────────────────────────────
+
+@router.post("/dxf-upload")
+async def dxf_upload(
+    thickness: float,
+    material: str,
+    file: UploadFile = File(...),
+):
+    if not file.filename or not file.filename.lower().endswith(".dxf"):
+        raise HTTPException(status_code=400, detail="Only .dxf files accepted")
+
+    dxf_bytes = await file.read()
+    logger.info("[dxf-upload] file=%s size=%d thickness=%.2f material=%s",
+                file.filename, len(dxf_bytes), thickness, material)
+
+    import_result = parse_dxf_bytes(dxf_bytes)
+    if is_fail(import_result):
+        return fail_at("file_import_engine", import_result)
+
+    geometry_result = clean_geometry(import_result["geometry"])
+    if is_fail(geometry_result):
+        return fail_at("geometry_engine", geometry_result)
+
+    profile_result = analyze_profile(geometry_result)
+    if is_fail(profile_result):
+        return fail_at("profile_analysis_engine", profile_result)
+
+    input_result = validate_inputs(thickness, material)
+    if is_fail(input_result):
+        return fail_at("input_engine", input_result)
+
+    core = _run_core_engines(profile_result, input_result)
+    if is_fail(core):
+        return core
+
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
+    pipeline = {
+        "status": "pass",
+        "source_file": file.filename,
+        "file_import_engine": import_result,
+        "geometry_engine": geometry_result,
+        "profile_analysis_engine": profile_result,
+        "input_engine": input_result,
+        **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine": consistency_result,
+        "final_decision_engine": decision_result,
+    }
+
+    pipeline["report_engine"] = generate_report(pipeline)
+    return pipeline
+
+
+# ─── POST /api/manual-mode ───────────────────────────────────────────────────
+
+@router.post("/manual-mode")
+def run_manual_mode(data: ManualProfileInput):
+    logger.info(
+        "[manual-mode] bends=%d w=%.1f h=%.1f thickness=%.2f material=%s",
+        data.bend_count, data.section_width_mm, data.section_height_mm,
+        data.thickness, data.material,
+    )
+    return execute_manual_pipeline(data)
+
+
+# ─── GET /api/run-tests ──────────────────────────────────────────────────────
+
+@router.get("/run-tests")
+@router.get("/run-manual-tests")
+def run_tests():
+    """
+    Run 8 standard test cases via test_runner_engine.
+    TC-01: simple channel | TC-02: lipped channel | TC-03: shutter profile
+    TC-04: invalid thickness | TC-05: empty DXF | TC-06: unsupported entities
+    TC-07: contradiction case | TC-08: heavy duty mismatch
+    """
+    from app.api.schemas import ManualProfileInput as MPI, AutoModeInput as AMI
+    return _run_all_tests(
+        execute_manual_pipeline=execute_manual_pipeline,
+        execute_auto_pipeline=execute_auto_pipeline,
+        ManualProfileInput=MPI,
+        AutoModeInput=AMI,
+    )
+
+
+# ─── POST /api/manual-mode-debug ─────────────────────────────────────────────
+
+@router.post("/manual-mode-debug")
+def run_manual_mode_debug(data: ManualProfileInput):
+    """Manual mode pipeline with per-engine stage debug breakdown (via debug_test_engine)."""
+    logger.info("[manual-mode-debug] bends=%d material=%s", data.bend_count, data.material)
+    pipeline = execute_manual_pipeline(data)
+    debug = extract_stage_debug(pipeline)
+    return {
+        "status": pipeline.get("status"),
+        "pipeline_result": pipeline,
+        "debug_result": debug,
+    }
+
+
+# ─── POST /api/auto-mode-export-pdf ──────────────────────────────────────────
+
+@router.post("/auto-mode-export-pdf")
+def run_auto_mode_export_pdf(data: AutoModeInput):
+    logger.info("[auto-mode-export-pdf] thickness=%.2f material=%s", data.thickness, data.material)
+    result = execute_auto_pipeline(data)
+    if is_fail(result):
+        return result
+
+    report_result = result.get("report_engine", {})
+    if is_fail(report_result):
+        return fail_at("report_engine", report_result)
+
+    pdf_result = export_report_pdf(report_result)
+    return {
+        "status": pdf_result.get("status"),
+        "report_engine": report_result,
+        "pdf_export_engine": pdf_result,
+    }
+
+
+# ─── POST /api/manual-mode-export-pdf ────────────────────────────────────────
+
+@router.post("/manual-mode-export-pdf")
+def run_manual_mode_export_pdf(data: ManualProfileInput):
+    logger.info("[manual-mode-export-pdf] bends=%d material=%s", data.bend_count, data.material)
+    result = execute_manual_pipeline(data)
+    if is_fail(result):
+        return result
+
+    report_result = result.get("report_engine", {})
+    if is_fail(report_result):
+        return fail_at("report_engine", report_result)
+
+    pdf_result = export_report_pdf(report_result)
+    return {
+        "status": pdf_result.get("status"),
+        "report_engine": report_result,
+        "pdf_export_engine": pdf_result,
+    }
+
+
+# ─── POST /api/manual-mode-download-pdf ──────────────────────────────────────
+
+@router.post("/manual-mode-download-pdf")
+def run_manual_mode_download_pdf(data: ManualProfileInput):
+    logger.info("[manual-mode-download-pdf] bends=%d material=%s", data.bend_count, data.material)
+    result = execute_manual_pipeline(data)
+    if is_fail(result):
+        return result
+
+    report_result = result.get("report_engine", {})
+    if is_fail(report_result):
+        return fail_at("report_engine", report_result)
+
+    pdf_result = export_report_pdf(report_result)
+    if pdf_result.get("status") != "pass":
+        return pdf_result
+
+    return FileResponse(
+        path=pdf_result["file_path"],
+        filename=pdf_result["filename"],
+        media_type="application/pdf",
+    )
+
+
+# ─── POST /api/auto-mode-dxf (alias for /api/dxf-upload) ─────────────────────
+
+@router.post("/auto-mode-dxf")
+async def auto_mode_dxf(
+    thickness: float,
+    material: str,
+    file: UploadFile = File(...),
+):
+    """Alias for /api/dxf-upload — canonical blueprint name."""
+    if not file.filename or not file.filename.lower().endswith(".dxf"):
+        raise HTTPException(status_code=400, detail="Only .dxf files accepted")
+
+    dxf_bytes = await file.read()
+    logger.info("[auto-mode-dxf] file=%s size=%d thickness=%.2f material=%s",
+                file.filename, len(dxf_bytes), thickness, material)
+
+    import_result = parse_dxf_bytes(dxf_bytes)
+    if is_fail(import_result):
+        return fail_at("file_import_engine", import_result)
+
+    geometry_result = clean_geometry(import_result["geometry"])
+    if is_fail(geometry_result):
+        return fail_at("geometry_engine", geometry_result)
+
+    # ── Centerline Sheet Converter (Arc-Aware) ─────────────────────────────
+    raw_entities = import_result.get("geometry") or []
+    if isinstance(raw_entities, dict):
+        raw_entities = raw_entities.get("entities", [])
+    _is_centerline = is_centerline_geometry(raw_entities)
+    centerline_result = _EMPTY
+    if _is_centerline and thickness and thickness > 0:
+        centerline_result = convert_centerline_to_sheet_arc_aware(
+            geometry=raw_entities,
+            thickness=thickness,
+            mode="both",
+            arc_segments=24,
+        )
+        if centerline_result.get("blocking"):
+            logger.warning(
+                "[centerline/dxf] Blocking self-intersection — manual review required"
+            )
+    # ── End Centerline ─────────────────────────────────────────────────────
+
+    profile_result = analyze_profile(geometry_result)
+    if is_fail(profile_result):
+        return fail_at("profile_analysis_engine", profile_result)
+
+    input_result = validate_inputs(thickness, material)
+    if is_fail(input_result):
+        return fail_at("input_engine", input_result)
+
+    core = _run_core_engines(profile_result, input_result)
+    if is_fail(core):
+        return core
+
+    consistency_result, decision_result = _run_accuracy_engines(
+        import_result=import_result,
+        geometry_result=geometry_result,
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=core["advanced_flower_engine"],
+        station_result=core["station_engine"],
+        shaft_result=core["shaft_engine"],
+        bearing_result=core["bearing_engine"],
+        roll_calc_result=core["roll_design_calc_engine"],
+    )
+
+    pipeline = {
+        "status": "pass",
+        "source_file": file.filename,
+        "file_import_engine": import_result,
+        "geometry_engine": geometry_result,
+        "centerline_sheet_converter_arc_engine": centerline_result,
+        "profile_analysis_engine": profile_result,
+        "input_engine": input_result,
+        **{k: v for k, v in core.items() if k != "status"},
+        "consistency_engine": consistency_result,
+        "final_decision_engine": decision_result,
+    }
+
+    pipeline["report_engine"] = generate_report(pipeline)
+    return pipeline
+
+
+# ─── POST /api/preview-dxf ────────────────────────────────────────────────────
+
+@router.post("/preview-dxf")
+async def preview_dxf(
+    file: UploadFile = File(...),
+):
+    """
+    Lightweight DXF preview — runs import + geometry + profile_analysis only.
+    Returns geometry stats without full pipeline or accuracy engines.
+    Useful for confirming DXF is readable before committing to full pipeline run.
+    """
+    if not file.filename or not file.filename.lower().endswith(".dxf"):
+        raise HTTPException(status_code=400, detail="Only .dxf files accepted")
+
+    dxf_bytes = await file.read()
+    logger.info("[preview-dxf] file=%s size=%d bytes", file.filename, len(dxf_bytes))
+
+    import_result = parse_dxf_bytes(dxf_bytes)
+    if is_fail(import_result):
+        return {
+            "status": "fail",
+            "stage": "file_import_engine",
+            "preview_available": False,
+            "file_import_engine": import_result,
+        }
+
+    geometry_result = clean_geometry(import_result["geometry"])
+    if is_fail(geometry_result):
+        return {
+            "status": "fail",
+            "stage": "geometry_engine",
+            "preview_available": False,
+            "file_import_engine": import_result,
+            "geometry_engine": geometry_result,
+        }
+
+    profile_result = analyze_profile(geometry_result)
+
+    raw_geo = import_result.get("geometry") or []
+    if isinstance(raw_geo, dict):
+        raw_geo = raw_geo.get("entities", [])
+    entity_counts = {
+        "total_entities": len(raw_geo),
+        "lines":     sum(1 for e in raw_geo if e.get("type","").upper() in {"LINE"}),
+        "arcs":      sum(1 for e in raw_geo if e.get("type","").upper() in {"ARC"}),
+        "polylines": sum(1 for e in raw_geo if e.get("type","").upper() in {"LWPOLYLINE", "POLYLINE"}),
+    }
+
+    return {
+        "status": "pass",
+        "preview_available": True,
+        "source_file": file.filename,
+        "file_size_bytes": len(dxf_bytes),
+        "entity_summary": entity_counts,
+        "geometry_engine": {
+            "status": geometry_result.get("status"),
+            "entity_count": geometry_result.get("cleaned_entity_count", geometry_result.get("entity_count")),
+            "bounding_box": geometry_result.get("bounding_box"),
+            "warnings": geometry_result.get("warnings", []),
+        },
+        "profile_preview": {
+            "status": profile_result.get("status"),
+            "section_width_mm": profile_result.get("section_width_mm"),
+            "section_height_mm": profile_result.get("section_height_mm"),
+            "bend_count": profile_result.get("bend_count"),
+            "profile_type": profile_result.get("profile_type"),
+            "return_bends_count": profile_result.get("return_bends_count"),
+            "warnings": profile_result.get("warnings", []),
+        },
+        "ready_for_full_pipeline": profile_result.get("status") == "pass",
+        "note": "This is a preview only — run /api/auto-mode-dxf for full engineering analysis.",
+    }
+
+
+# ─── POST /api/preview-centerline-conversion ─────────────────────────────────
+
+@router.post("/preview-centerline-conversion")
+async def preview_centerline_conversion(
+    file: UploadFile = File(...),
+    thickness: float = Form(...),
+):
+    """
+    Standalone centerline-to-sheet conversion preview.
+    Parses the DXF, runs the arc-aware centerline converter, and returns the
+    full profile output (centerline, outer, inner, sheet) for SVG rendering.
+    """
+    if not file.filename or not file.filename.lower().endswith(".dxf"):
+        raise HTTPException(status_code=400, detail="Only .dxf files accepted")
+    if thickness <= 0:
+        raise HTTPException(status_code=422, detail="thickness must be > 0")
+
+    dxf_bytes = await file.read()
+    logger.info(
+        "[preview-centerline-conversion] file=%s size=%d bytes thickness=%.3f",
+        file.filename, len(dxf_bytes), thickness,
+    )
+
+    import_result = parse_dxf_bytes(dxf_bytes)
+    if is_fail(import_result):
+        return {
+            "status": "fail",
+            "failed_stage": "file_import_engine",
+            "result": import_result,
+        }
+
+    raw_entities = import_result.get("geometry") or []
+    if isinstance(raw_entities, dict):
+        raw_entities = raw_entities.get("entities", [])
+
+    if not is_centerline_geometry(raw_entities):
+        return {
+            "status": "fail",
+            "failed_stage": "centerline_detection",
+            "result": {
+                "reason": "DXF does not appear to be a centerline drawing. "
+                          "Expected mostly LINE/ARC entities without HATCH/SOLID.",
+                "entity_count": len(raw_entities),
+            },
+        }
+
+    conversion_result = convert_centerline_to_sheet_arc_aware(
+        geometry=raw_entities,
+        thickness=thickness,
+        mode="both",
+        arc_segments=24,
+    )
+
+    if is_fail(conversion_result):
+        return {
+            "status": "fail",
+            "failed_stage": "centerline_sheet_converter_arc_engine",
+            "result": conversion_result,
+        }
+
+    return {
+        "status": "pass",
+        "source_file": file.filename,
+        "file_size_bytes": len(dxf_bytes),
+        "entity_count": len(raw_entities),
+        "centerline_converter_engine": conversion_result,
+    }
+
+
+# ─── POST /api/semi-auto-confirm ─────────────────────────────────────────────
+
+@router.post("/semi-auto-confirm")
+def semi_auto_confirm(data: Dict[str, Any]):
+    """
+    Semi-auto confirmation — takes user-confirmed values (corrected from detected),
+    re-runs full manual pipeline, and marks result as semi_auto_confirmed.
+    Expects:
+      confirmed: { bend_count, section_width_mm, section_height_mm, thickness,
+                   material, profile_type, return_bends_count?, station_count? }
+      original:  { ...detected values for audit trail }
+    """
+    confirmed = data.get("confirmed", {})
+    original  = data.get("original", {})
+
+    if not confirmed:
+        raise HTTPException(status_code=400, detail="'confirmed' block is required")
+
+    required_fields = ["bend_count", "section_width_mm", "section_height_mm", "thickness", "material"]
+    missing = [f for f in required_fields if f not in confirmed]
+    if missing:
+        raise HTTPException(status_code=422, detail=f"Missing required confirmed fields: {missing}")
+
+    try:
+        manual_input = ManualProfileInput(
+            bend_count=int(confirmed["bend_count"]),
+            section_width_mm=float(confirmed["section_width_mm"]),
+            section_height_mm=float(confirmed["section_height_mm"]),
+            thickness=float(confirmed["thickness"]),
+            material=str(confirmed["material"]),
+            profile_type=confirmed.get("profile_type", "custom"),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Invalid confirmed values: {e}")
+
+    logger.info(
+        "[semi-auto-confirm] confirmed bends=%d w=%.1f h=%.1f thickness=%.2f material=%s",
+        manual_input.bend_count, manual_input.section_width_mm,
+        manual_input.section_height_mm, manual_input.thickness, manual_input.material,
+    )
+
+    result = execute_manual_pipeline(manual_input)
+
+    # Override mode to semi_auto_confirmed regardless of final decision
+    if result.get("final_decision_engine"):
+        result["final_decision_engine"]["selected_mode"] = "semi_auto_confirmed"
+        result["final_decision_engine"]["semi_auto_note"] = (
+            "Values confirmed by engineer — pipeline re-run with user-corrected inputs"
+        )
+
+    result["semi_auto_metadata"] = {
+        "mode": "semi_auto_confirmed",
+        "confirmed_by": "user",
+        "confirmed_values": confirmed,
+        "original_detected_values": original,
+        "fields_changed": [
+            k for k in confirmed
+            if str(confirmed.get(k)) != str(original.get(k))
+        ],
+    }
+
+    return result
+
+
+# ─── POST /api/cad-export ─────────────────────────────────────────────────────
+
+@router.post("/cad-export")
+def run_cad_export(data: ManualProfileInput):
+    """
+    Run full manual pipeline + generate CAD export pack.
+    Returns file manifest with paths for roll_set.dxf, shaft_layout.dxf,
+    assembly.dxf, and per-roll STEP files.
+    Native DWG export is not implemented in this route.
+    """
+    logger.info("[cad-export] bends=%d material=%s", data.bend_count, data.material)
+    pipeline = execute_manual_pipeline(data)
+    if is_fail(pipeline):
+        return pipeline
+
+    cad_result = generate_cad_export(
+        roll_contour_result   = pipeline.get("roll_contour_engine", {}),
+        cam_prep_result       = pipeline.get("cam_prep_engine", {}),
+        shaft_result          = pipeline.get("shaft_engine", {}),
+        bearing_result        = pipeline.get("bearing_engine", {}),
+        roll_calc_result      = pipeline.get("roll_design_calc_engine", {}),
+        station_result        = pipeline.get("station_engine", {}),
+        profile_result        = pipeline.get("profile_analysis_engine", {}),
+        machine_layout_result = pipeline.get("machine_layout_engine", {}),
+    )
+
+    return {
+        "status":          pipeline.get("status"),
+        "cad_export":      cad_result,
+        "roll_contour":    pipeline.get("roll_contour_engine", {}),
+        "cam_prep":        pipeline.get("cam_prep_engine", {}),
+        "engineering_summary": pipeline.get("report_engine", {}).get("engineering_summary", {}),
+    }
+
+
+# ─── GET /api/download-file ───────────────────────────────────────────────────
+
+@router.get("/download-file")
+def download_file(path: str):
+    """
+    Download a generated file by its absolute path (from cad_export file_manifest).
+    Supports .dxf, .stp, .pdf files in the exports directory.
+    """
+    import os as _os
+    from app.engines.cad_export_engine import EXPORTS_DIR as _EXPORTS_DIR
+    from app.engines.pdf_export_engine import EXPORTS_DIR as _PDF_DIR
+
+    # Security: only serve files inside known export directories
+    safe_roots = [
+        _os.path.realpath(_EXPORTS_DIR),
+        _os.path.realpath(_PDF_DIR),
+    ]
+    real_path = _os.path.realpath(path)
+    allowed = any(real_path.startswith(root) for root in safe_roots)
+
+    if not allowed or not _os.path.isfile(real_path):
+        raise HTTPException(status_code=404, detail="File not found or not accessible")
+
+    ext = _os.path.splitext(real_path)[1].lower()
+    media_map = {
+        ".dxf":  "application/dxf",
+        ".stp":  "application/step",
+        ".step": "application/step",
+        ".pdf":  "application/pdf",
+    }
+    media_type = media_map.get(ext, "application/octet-stream")
+    return FileResponse(real_path, media_type=media_type,
+                        filename=_os.path.basename(real_path))
+
+
+# ─── POST /api/manual-mode-export-cad-pack ───────────────────────────────────
+
+@router.post("/manual-mode-export-cad-pack")
+def run_manual_mode_export_cad_pack(data: ManualProfileInput):
+    """
+    Run full manual pipeline → generate advanced roll profiles → DXF + STEP export pack.
+
+    Returns:
+      • advanced_roll_engine   — pass-wise upper/lower roll profiles per stand
+      • roll_interference_engine — interference check result
+      • roll_dimension_engine  — roll OD, face width, bore, keyway
+      • export_dxf_engine      — 2D roll drawing pack (DXF)
+      • export_step_engine     — 3D roll solid (STEP AP203)
+      • export_pack_engine     — bundled file manifest (DXF + STEP + PDF)
+      • pdf_export_engine      — engineering report PDF
+
+    PRELIMINARY CAD/CAM HANDOFF — pending tooling verification.
+    """
+    logger.info(
+        "[manual-mode-export-cad-pack] bends=%d material=%s",
+        data.bend_count, data.material,
+    )
+
+    pipeline = execute_manual_pipeline(data)
+    if is_fail(pipeline):
+        return pipeline
+
+    profile_result  = pipeline.get("profile_analysis_engine", {})
+    input_result    = pipeline.get("input_engine", {})
+    flower_result   = pipeline.get("advanced_flower_engine", {})
+    station_result  = pipeline.get("station_engine", {})
+    shaft_result    = pipeline.get("shaft_engine", {})
+    report_result   = pipeline.get("report_engine", {})
+
+    # Advanced roll engines
+    advanced_roll_result = generate_advanced_rolls(
+        profile_result=profile_result,
+        input_result=input_result,
+        flower_result=flower_result,
+        station_result=station_result,
+    )
+    roll_interference_result = check_roll_interference(advanced_roll_result)
+    roll_dimension_result = generate_roll_dimensions(
+        profile_result=profile_result,
+        input_result=input_result,
+        shaft_result=shaft_result,
+    )
+
+    # Generate a shared session ID so DXF and STEP land in the same folder
+    import uuid as _uuid
+    import time as _time
+    session_id = f"{int(_time.time())}_{_uuid.uuid4().hex[:6]}"
+
+    dxf_result  = export_rolls_dxf(advanced_roll_result, roll_dimension_result, session_id=session_id)
+    step_result = export_roll_step(roll_dimension_result, session_id=session_id)
+    pdf_result  = export_report_pdf(report_result)
+
+    export_pack_result = build_export_pack(dxf_result, step_result, pdf_result)
+
+    return {
+        "status": "pass",
+        "session_id":               session_id,
+        "advanced_roll_engine":     advanced_roll_result,
+        "roll_interference_engine": roll_interference_result,
+        "roll_dimension_engine":    roll_dimension_result,
+        "export_dxf_engine":        dxf_result,
+        "export_step_engine":       step_result,
+        "pdf_export_engine":        pdf_result,
+        "export_pack_engine":       export_pack_result,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# POST /api/simulate
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/simulate")
+async def simulate_roll_forming(
+    file: UploadFile = File(...),
+    thickness: float = Form(1.5),
+    material: str   = Form("GI"),
+    bend_radius: float = Form(1.5),
+    strip_speed: float = Form(15.0),
+):
+    """
+    Run a full roll-forming simulation from a DXF file.
+
+    Steps:
+      1. Parse DXF → geometry
+      2. Profile analysis → get segment dimensions
+      3. Roll contour engine → per-station pass data
+      4. Simulation engine → per-pass deformation, strain, force, defects
+
+    Returns: simulation_engine result with all passes.
+    """
+    raw = await file.read()
+
+    # ── Import ──────────────────────────────────────────────────
+    import_result = parse_dxf_bytes(raw)
+    if import_result.get("status") != "pass":
+        return {"status": "fail", "reason": "DXF import failed", "import_engine": import_result}
+
+    raw_geo = import_result.get("geometry") or []
+    if isinstance(raw_geo, dict):
+        raw_geo = raw_geo.get("entities", [])
+
+    # ── Clean geometry ───────────────────────────────────────────
+    geometry_result = clean_geometry(raw_geo)
+    if is_fail(geometry_result):
+        return fail_at("geometry_engine", geometry_result)
+    cleaned_entities = geometry_result.get("entities") or []
+
+    # ── Profile analysis ─────────────────────────────────────────
+    profile_result = analyze_profile(geometry_result)
+    if is_fail(profile_result):
+        return fail_at("profile_analysis_engine", profile_result)
+
+    # ── Validate inputs ──────────────────────────────────────────
+    input_result = validate_inputs(thickness, material)
+    if is_fail(input_result):
+        return fail_at("input_engine", input_result)
+
+    # ── Core engines (flower → station → shaft → roll contour) ───
+    core = _run_core_engines(profile_result, input_result)
+    if is_fail(core):
+        return core
+    roll_contour_result = core.get("roll_contour_engine", {})
+    if is_fail(roll_contour_result):
+        return fail_at("roll_contour_engine", roll_contour_result)
+
+    passes = roll_contour_result.get("passes", [])
+    calib  = roll_contour_result.get("calibration_pass")
+    if not isinstance(passes, list) or not passes:
+        return {
+            "status": "fail",
+            "failed_stage": "roll_contour_engine",
+            "reason": "Simulation blocked: no forming passes generated by roll_contour_engine.",
+            "roll_contour_engine": roll_contour_result,
+        }
+
+    # ── Build DXF profile points ─────────────────────────────────
+    # Use actual DXF entities as profile points (centred, Y-up)
+    profile_points: list = []
+    if cleaned_entities:
+        # Build polyline from line entities
+        pts_map: dict = {}
+        for e in cleaned_entities:
+            if e.get("type", "").lower() == "line":
+                s = e.get("start") or {}
+                en = e.get("end") or {}
+                key_s = (round(s.get("x", 0), 3), round(s.get("y", 0), 3))
+                key_e = (round(en.get("x", 0), 3), round(en.get("y", 0), 3))
+                pts_map[key_s] = key_e
+
+        # Walk the chain
+        if pts_map:
+            start = min(pts_map.keys(), key=lambda k: k[0])
+            chain = [start]
+            visited = {start}
+            cur = start
+            for _ in range(len(pts_map)):
+                nxt = pts_map.get(cur)
+                if nxt is None or nxt in visited:
+                    break
+                chain.append(nxt)
+                visited.add(nxt)
+                cur = nxt
+            profile_points = [{"x": p[0], "y": p[1]} for p in chain]
+
+    # Fallback: derive from profile dimensions
+    if len(profile_points) < 3:
+        w = profile_result.get("section_width_mm", 156)
+        h = profile_result.get("section_height_mm", 50)
+        bend_details = profile_result.get("bend_details", [])
+        if bend_details and len(bend_details) >= 4:
+            # Use bend_details at_points to reconstruct
+            pts = [(0.0, 0.0)]
+            for bd in bend_details:
+                ap = bd.get("at_point", [0, 0])
+                pts.append((float(ap[0]), float(ap[1])))
+            # final tip
+            last_bd = bend_details[-1].get("at_point", [w, 0])
+            pts.append((float(last_bd[0]) + (w - float(last_bd[0])), float(last_bd[1])))
+            profile_points = [{"x": p[0], "y": p[1]} for p in pts]
+        else:
+            profile_points = [
+                {"x": 0.0,   "y": 0.0},
+                {"x": w,     "y": 0.0},
+            ]
+
+    # ── Run simulation ────────────────────────────────────────────
+    simulation_result = run_sim_engine(
+        profile_points=profile_points,
+        passes=passes,
+        thickness_mm=thickness,
+        material=material,
+        bend_radius_mm=bend_radius,
+        calibration_pass=calib,
+        strip_speed_mpm=strip_speed,
+    )
+    if is_fail(simulation_result):
+        return fail_at("simulation_engine", simulation_result)
+
+    # ── AI Optimizer ─────────────────────────────────────────────
+    station_result = core.get("station_engine", {})
+    optimizer_result = optimize_roll_forming_plan(
+        simulation_result=simulation_result,
+        station_result=station_result,
+        profile_result=profile_result,
+        input_result=input_result,
+    )
+
+    # ── Decision Engine ───────────────────────────────────────────
+    decision_result = decide_simulation_status(
+        simulation_result=simulation_result,
+        optimizer_result=optimizer_result,
+        quality=simulation_result.get("quality"),
+    )
+
+    # Truth label: /simulate executes engineering precheck runtime only.
+    # Full solver-backed FEA proof must come from /api/fea/run.
+    fea_solver_status = {
+        "calculix_available": False,
+        "abaqus_available": False,
+        "solver_runtime_available": False,
+    }
+    try:
+        from app.engines.fea.fea_pipeline import detect_solver
+
+        ccx_avail, _, _ = detect_solver("calculix")
+        abq_avail, _, _ = detect_solver("abaqus")
+        fea_solver_status = {
+            "calculix_available": bool(ccx_avail),
+            "abaqus_available": bool(abq_avail),
+            "solver_runtime_available": bool(ccx_avail or abq_avail),
+        }
+    except Exception:
+        pass
+
+    return {
+        "status": "pass",
+        "simulation_mode": "engineering_precheck_runtime",
+        "simulation_mode_note": "Precheck runtime executed. This is not full solver-backed FEA.",
+        "verification": {
+            "precheck_runtime_executed": True,
+            "solver_backed_fea_verified": False,
+            "solver_status": fea_solver_status,
+            "claim_ceiling": "NOT VERIFIED for full FEA unless /api/fea/run solver artifacts are present",
+        },
+        "profile_analysis_engine":    profile_result,
+        "roll_contour_engine":        roll_contour_result,
+        "simulation_engine":          simulation_result,
+        "ai_optimizer_engine":        optimizer_result,
+        "simulation_decision_engine": decision_result,
+    }
+
+
+# ─── Engineering Risk Analysis Endpoint ───────────────────────────────────────
+
+@router.post("/deformation-predict")
+async def run_deformation_predict(payload: dict):
+    """
+    POST /api/deformation-predict
+
+    Predict forming deformation tendencies (bow/camber, edge wave, wrinkling)
+    and generate per-station aggressiveness heatmap.
+
+    All values are empirical approximations — NOT FEA.
+    Method labels: [Formula]/[Rule]/[Estimate]/[Table].
+    """
+    try:
+        passes            = payload.get("passes", [])
+        material          = payload.get("material", "MS")
+        thickness_mm      = float(payload.get("thickness_mm", 2.0))
+        section_w         = float(payload.get("section_width_mm", 100.0))
+        section_h         = float(payload.get("section_height_mm", 50.0))
+        is_symmetric      = bool(payload.get("is_symmetric", True))
+        bend_r            = payload.get("bend_radius_mm")
+        bend_radius_mm    = float(bend_r) if bend_r else None
+        strip_speed       = float(payload.get("strip_speed_mpm", 15.0))
+
+        report = generate_deformation_prediction_report(
+            passes=passes,
+            material=material,
+            thickness_mm=thickness_mm,
+            section_width_mm=section_w,
+            section_height_mm=section_h,
+            is_symmetric=is_symmetric,
+            bend_radius_mm=bend_radius_mm,
+            strip_speed_mpm=strip_speed,
+        )
+        return {"status": "pass", "deformation_predictor": report}
+
+    except Exception as exc:
+        logger.error("deformation-predict error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.post("/engineering-risk")
+async def run_engineering_risk(payload: dict):
+    """
+    POST /api/engineering-risk
+
+    Run full engineering risk analysis on a forming sequence.
+    Returns per-pass severity, edge buckling, twist risk, calibration need,
+    deformation confidence, and aggregated recommendations.
+
+    All values are empirical approximations — not FEA. Labels indicate method.
+    """
+    try:
+        passes           = payload.get("passes", [])
+        material         = payload.get("material", "MS")
+        thickness_mm     = float(payload.get("thickness_mm", 2.0))
+        section_h        = float(payload.get("section_height_mm", 50.0))
+        section_w        = float(payload.get("section_width_mm", 100.0))
+        is_symmetric     = bool(payload.get("is_symmetric", True))
+        has_cal          = bool(payload.get("has_calibration_pass", True))
+        bend_r           = payload.get("bend_radius_mm")
+        bend_radius_mm   = float(bend_r) if bend_r else None
+
+        report = generate_engineering_risk_report(
+            passes=passes,
+            material=material,
+            thickness_mm=thickness_mm,
+            section_height_mm=section_h,
+            section_width_mm=section_w,
+            is_symmetric=is_symmetric,
+            has_calibration_pass=has_cal,
+            bend_radius_mm=bend_radius_mm,
+        )
+        return {"status": "pass", "engineering_risk_engine": report}
+
+    except Exception as exc:
+        logger.error("engineering-risk error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/flower-svg ───────────────────────────────────────────────────────
+
+@router.post("/flower-svg")
+def endpoint_flower_svg(body: ManualProfileInput):
+    """
+    Generate shapely-computed flower pattern SVG.
+    Accepts the same schema as /api/manual-mode-debug (bend_count defaults to 2).
+    Returns: { status, svg_string, station_count, flat_strip_mm, profile_type, shapely_used }
+    """
+    try:
+        pipeline = execute_manual_pipeline(body)
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
+
+        result = generate_flower_svg(
+            profile_result=pipeline.get("profile_analysis_engine", {}),
+            input_result=pipeline.get("input_engine", {}),
+            roll_contour_result=pipeline.get("roll_contour_engine", {}),
+            station_result=pipeline.get("station_engine", {}),
+        )
+        return result
+
+    except Exception as exc:
+        logger.error("flower-svg error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/roll-svg ─────────────────────────────────────────────────────────
+
+@router.post("/roll-svg")
+def endpoint_roll_svg(body: ManualProfileInput):
+    """
+    Generate per-station shapely-computed roll groove SVG strings.
+    Accepts the same schema as /api/manual-mode-debug (bend_count defaults to 2).
+    Returns: { status, svg_string, station_svgs: [...], total_stations, shapely_used }
+    Top-level svg_string = first station SVG for quick preview.
+    """
+    try:
+        pipeline = execute_manual_pipeline(body)
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
+
+        result = generate_roll_groove_svgs(
+            profile_result=pipeline.get("profile_analysis_engine", {}),
+            input_result=pipeline.get("input_engine", {}),
+            roll_contour_result=pipeline.get("roll_contour_engine", {}),
+        )
+        # Top-level svg_string (first station) required by task spec
+        first_svg = (result.get("station_svgs") or [{}])[0].get("svg_string", "")
+        result["svg_string"] = first_svg
+        return result
+
+    except Exception as exc:
+        logger.error("roll-svg error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── GET /api/materials ────────────────────────────────────────────────────────
+
+@router.get("/materials")
+def endpoint_material_list():
+    """
+    Return full material property database for all supported roll forming materials.
+    Each entry includes: Fy, UTS, E, elongation, n-value, r-value, k-factor, density.
+    """
+    return {
+        "status": "pass",
+        "materials": MATERIAL_DB,
+        "supported_codes": list_materials(),
+    }
+
+
+# ─── POST /api/bend-allowance ──────────────────────────────────────────────────
+
+@router.post("/bend-allowance")
+def endpoint_bend_allowance(body: dict):
+    """
+    Calculate flat blank length using DIN 6935 K-factor / neutral axis method.
+
+    Body:
+      segments_mm (list[float]):     straight segment lengths
+      bend_angles_deg (list[float]): bend angles at each junction
+      thickness_mm (float):          sheet thickness
+      bend_radius_mm (float):        inner bend radius
+      material (str):                material code (GI, MS, SS, CR, HR, AL, …)
+      include_coil_width (bool):     if true, also return coil strip width & weight/m
+
+    Returns flat_blank_mm, bend_allowances per bend, coil_strip_width_mm (optional).
+    """
+    try:
+        segments      = [float(x) for x in body.get("segments_mm", [])]
+        bend_angles   = [float(x) for x in body.get("bend_angles_deg", [])]
+        thickness_mm  = float(body.get("thickness_mm", 1.5))
+        bend_radius   = float(body.get("bend_radius_mm", 3.0))
+        material      = str(body.get("material", "GI")).upper()
+        include_coil  = bool(body.get("include_coil_width", True))
+        tolerance_mm  = float(body.get("coil_width_tolerance_mm", 1.5))
+
+        if include_coil:
+            result = flat_blank_from_profile(
+                segments, bend_angles, thickness_mm, bend_radius, material, tolerance_mm
+            )
+        else:
+            result = calculate_flat_blank(segments, bend_angles, thickness_mm, bend_radius, material)
+
+        return result
+
+    except Exception as exc:
+        logger.error("bend-allowance error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/bom ─────────────────────────────────────────────────────────────
+
+@router.post("/bom")
+def endpoint_bom(body: ManualProfileInput):
+    """
+    Generate a full Bill of Materials (BOM) for roll forming tooling.
+    Uses the standard manual pipeline to compute station, shaft, bearing, and layout data,
+    then passes these into the BOM engine.
+
+    Returns bom_lines (itemized), total_item_qty, total_tooling_weight_kg.
+    """
+    try:
+        pipeline = execute_manual_pipeline(body)
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
+
+        result = generate_bom(
+            station_result=pipeline.get("station_engine", {}),
+            shaft_result=pipeline.get("shaft_engine", {}),
+            bearing_result=pipeline.get("bearing_engine", {}),
+            machine_layout_result=pipeline.get("machine_layout_engine"),
+            simulation_result=None,
+            material=body.material,
+            include_spares=True,
+        )
+        return result
+
+    except Exception as exc:
+        logger.error("bom error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/process-card ────────────────────────────────────────────────────
+
+@router.post("/process-card")
+def endpoint_process_card(body: ManualProfileInput):
+    """
+    Generate a per-station process parameter card from the simulation engine.
+    Returns structured station_cards list and a rendered text version.
+
+    Body: same as /api/manual-mode (ManualProfileInput schema)
+    """
+    try:
+        pipeline = execute_manual_pipeline(body)
+        if is_fail(pipeline):
+            return {"status": "fail", "reason": pipeline.get("reason", "Pipeline failed")}
+
+        roll_contour = pipeline.get("roll_contour_engine", {})
+        passes = roll_contour.get("passes", [])
+        calib  = roll_contour.get("calibration_pass")
+        profile_pts = pipeline.get("profile_analysis_engine", {}).get("profile_points", [])
+
+        sim_result = run_sim_engine(
+            profile_points=profile_pts,
+            passes=passes,
+            thickness_mm=body.sheet_thickness_mm,
+            material=body.material,
+            calibration_pass=calib,
+        )
+
+        card_result = generate_process_card(
+            simulation_result=sim_result,
+            thickness_mm=body.sheet_thickness_mm,
+            material=body.material,
+            machine_name="SAI ROLOTECH Roll Forming Machine",
+            project_ref=getattr(body, "project_ref", "PRJ-AUTO"),
+        )
+
+        if card_result.get("status") == "pass":
+            card_result["process_card_text"] = process_card_to_text(card_result)
+
+        return card_result
+
+    except Exception as exc:
+        logger.error("process-card error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROJECT PERSISTENCE ENDPOINTS (COPRA Criterion I)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/project/list")
+def endpoint_project_list():
+    """List all saved projects with summary info."""
+    try:
+        summaries = list_projects()
+        return {"status": "pass", "count": len(summaries), "projects": summaries}
+    except Exception as exc:
+        logger.error("project-list error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.post("/project/save")
+def endpoint_project_save(body: dict):
+    """
+    Save a project.
+    Body: full RFProject JSON dict or partial (will be coerced).
+    If running a pipeline, pass pipeline_result to auto-convert.
+    """
+    try:
+        pipeline = body.get("pipeline_result")
+        if pipeline:
+            project = pipeline_to_project(
+                pipeline,
+                project_name=body.get("project_name", ""),
+                project_ref=body.get("project_ref", ""),
+            )
+        else:
+            project = RFProject(**{k: v for k, v in body.items() if k != "pipeline_result"})
+
+        result = save_project(project)
+        return {"status": "pass", **result}
+    except Exception as exc:
+        logger.error("project-save error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.get("/project/load/{project_id}")
+def endpoint_project_load(project_id: str, version: int = None):
+    """Load a saved project by ID (latest version if version not specified)."""
+    try:
+        data = load_project_raw(project_id, version)
+        if data is None:
+            return {"status": "fail", "reason": f"Project {project_id!r} not found"}
+        return {"status": "pass", "project": data}
+    except Exception as exc:
+        logger.error("project-load error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.get("/project/versions/{project_id}")
+def endpoint_project_versions(project_id: str):
+    """List all saved versions for a project."""
+    try:
+        versions = list_project_versions(project_id)
+        return {"status": "pass", "project_id": project_id, "versions": versions}
+    except Exception as exc:
+        logger.error("project-versions error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.delete("/project/{project_id}")
+def endpoint_project_delete(project_id: str):
+    """Delete all versions of a project."""
+    try:
+        ok = delete_project(project_id)
+        if not ok:
+            return {"status": "fail", "reason": f"Project {project_id!r} not found"}
+        return {"status": "pass", "deleted": project_id}
+    except Exception as exc:
+        logger.error("project-delete error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOLING LIBRARY ENDPOINTS (COPRA Criterion I)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/tooling-library")
+def endpoint_tooling_library(
+    section_type: str = None,
+    material: str = None,
+    thickness_mm: float = None,
+):
+    """
+    Query the reusable roll tooling library.
+    Filters by section_type, material code, and/or thickness range.
+    """
+    try:
+        results = query_tooling_library(
+            section_type=section_type,
+            material_code=material,
+            thickness_mm=thickness_mm,
+        )
+        summary = library_summary()
+        return {
+            "status": "pass",
+            "library_summary": summary,
+            "matches": len(results),
+            "entries": results,
+        }
+    except Exception as exc:
+        logger.error("tooling-library error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+@router.get("/tooling-library/best-match")
+def endpoint_tooling_best_match(
+    section_type: str,
+    material: str = "GI",
+    thickness_mm: float = 2.0,
+):
+    """
+    Return the single best-matching tooling library entry.
+    """
+    try:
+        entry = get_best_match(section_type, material, thickness_mm)
+        if entry is None:
+            return {"status": "fail", "reason": "No matching tooling entry found"}
+        return {"status": "pass", "entry": entry}
+    except Exception as exc:
+        logger.error("tooling-best-match error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FLOWER WIRE / 3D CENTERLINE ENDPOINT
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/flower-3d")
+def endpoint_flower_3d(body: dict):
+    """
+    Generate 3D flower wire centerlines for all forming passes.
+
+    Body:
+      profile_result, input_result — same as manual-mode pipeline
+      segment_lengths_mm (optional) — flat segment lengths for the profile
+      station_pitch_mm (optional)   — machine station pitch in mm (default 300)
+    """
+    try:
+        from app.engines.advanced_flower_engine import compute_3d_flower_centerline, build_pass_plan
+
+        profile_r = body.get("profile_result", {})
+        input_r   = body.get("input_result", {})
+        segs      = body.get("segment_lengths_mm", [])
+        pitch     = float(body.get("station_pitch_mm", 300.0))
+
+        flower_result = generate_flower(profile_r, input_r)
+        if flower_result.get("status") != "pass":
+            return {"status": "fail", "reason": "Flower engine failed"}
+
+        pass_plan = flower_result.get("pass_plan", [])
+        if segs:
+            from app.engines.advanced_flower_engine import compute_3d_flower_centerline
+            pass_plan = compute_3d_flower_centerline(pass_plan, segs, pitch)
+
+        return {
+            "status": "pass",
+            "section_type": flower_result.get("section_type"),
+            "estimated_forming_passes": flower_result.get("estimated_forming_passes"),
+            "has_3d_centerline": any("centerline_xyz" in p for p in pass_plan),
+            "station_pitch_mm": pitch,
+            "pass_plan": pass_plan,
+        }
+    except Exception as exc:
+        logger.error("flower-3d error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── POST /api/advanced-simulation ───────────────────────────────────────────
+
+@router.post("/advanced-simulation")
+def endpoint_advanced_simulation(body: dict):
+    """
+    Run pass-by-pass Advanced Process Simulation Precheck.
+
+    NOT FEA. Uses incremental mechanics:
+      - Swift isotropic hardening (Ramberg-Osgood plasticity)
+      - Pass-by-pass cumulative plastic strain propagation
+      - Residual stress tracking via moment-curvature elastic unloading
+      - Hertzian contact pressure estimation (cylinder-on-flat)
+      - Graduated defect probability scores (0–1, physics-based margins)
+
+    Body:
+      profile_result   — from profile/input engines
+      input_result     — {'sheet_thickness_mm': float, 'material': str, ...}
+      roll_od_mm       — forming roll outer diameter mm (default 180)
+      face_width_mm    — roll face width mm (default 100)
+      station_pitch_mm — machine station pitch mm (default 300)
+      strip_speed_mpm  — strip speed m/min (default 12)
+    """
+    try:
+        from app.engines.advanced_process_simulation import run_advanced_process_simulation
+
+        profile_r      = body.get("profile_result", {})
+        input_r        = body.get("input_result", {})
+        roll_od        = float(body.get("roll_od_mm", 180.0))
+        face_w         = float(body.get("face_width_mm", 100.0))
+        station_pitch  = float(body.get("station_pitch_mm", 300.0))
+        strip_speed    = float(body.get("strip_speed_mpm", 12.0))
+
+        flower_r = generate_flower(profile_r, input_r)
+        if flower_r.get("status") != "pass":
+            return {"status": "fail", "reason": "Flower engine failed — cannot simulate"}
+
+        result = run_advanced_process_simulation(
+            flower_result=flower_r,
+            input_result=input_r,
+            profile_result=profile_r,
+            roll_od_mm=roll_od,
+            face_width_mm=face_w,
+            station_pitch_mm=station_pitch,
+            strip_speed_mpm=strip_speed,
+        )
+        return result
+
+    except Exception as exc:
+        logger.error("advanced-simulation error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}
+
+
+# ─── GET /api/material-model/{code} ──────────────────────────────────────────
+
+@router.get("/material-model/{code}")
+def endpoint_material_model(code: str):
+    """
+    Return full Swift/Ramberg-Osgood plasticity material model for a material code.
+    Includes stress-strain curve points for plotting.
+
+    Materials: GI, MS, SS, CR, HR, AL, HSLA, CU, TI, PP
+    """
+    try:
+        from app.engines.advanced_process_simulation import get_material_model
+        return get_material_model(code)
+    except Exception as exc:
+        logger.error("material-model error: %s", exc, exc_info=True)
+        return {"status": "fail", "reason": str(exc)}

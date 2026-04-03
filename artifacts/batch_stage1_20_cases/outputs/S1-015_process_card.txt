@@ -1,0 +1,21 @@
+==============================================================================================================
+  PROCESS CARD — S1-015  |  Machine: Roll Forming Machine
+  Material: Aluminium Alloy (AL)  |  Thickness: 0.8 mm  |  Fy: 160 MPa  |  Bend Radius: 0.8 mm
+  Stations: 10  |  Peak Force: 20.658 kN  |  Peak Power: 6.89 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  0.900mm   201.7mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  5.9°   0.2°  0.850mm   201.7mm   20.66kN   6.89kW   33.33% HIGH    
+  2     Station 2                    initial_bend             18.8°   0.7°  0.850mm   190.1mm   19.46kN   6.49kW   33.33% HIGH    
+  3     Station 3                    progressive_forming      35.0°   1.4°  0.850mm   178.4mm   18.27kN   6.09kW   33.33% HIGH    
+  4     Station 4                    progressive_forming      52.3°   2.0°  0.850mm   166.7mm   17.07kN   5.69kW   33.33% HIGH    
+  5     Station 5                    progressive_forming      68.3°   2.7°  0.850mm   155.0mm   15.88kN   5.29kW   33.33% HIGH    
+  6     Station 6                    progressive_forming      81.3°   3.2°  0.850mm   143.3mm   14.68kN   4.89kW   33.33% HIGH    
+  7     Station 7                    lip_forming              89.4°   3.5°  0.850mm   131.7mm   13.48kN   4.49kW   33.33% HIGH    
+  8     Station 8                    lip_forming              91.0°   3.5°  0.850mm   120.0mm   12.29kN   4.10kW   33.33% HIGH    
+  9     Station 9 (Calibration)      calibration              90.0°   0.0°  0.800mm   120.0mm    4.92kN   1.64kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: GOOD (score 85/100)  |  HIGH risk: [1, 2, 3, 4, 5, 6, 7, 8]  |  MEDIUM risk: []
+==============================================================================================================

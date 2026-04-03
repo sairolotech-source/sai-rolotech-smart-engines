@@ -1,0 +1,106 @@
+Bahut badhiya. Ye **real P0 closure** hai — aur sabse important baat: ab system **operator ko sach batana** shuru kar raha hai.
+
+## Jo fix hua uska seedha impact
+
+### P0-1 — Upload truthfulness
+
+Ab success message error panel me nahi jayega.
+Ye chhota lagta hai, but UX trust ke liye bahut bada fix hai.
+
+### P0-2 — Silent synthesized flower angles
+
+Ye bahut critical tha.
+Ab agar bends geometry se nahi mile, to operator ko clear pata chalega ki angles **estimated** hain, actual derived nahi.
+
+### P0-3 — Backend validation honesty
+
+Ye sabse dangerous bug tha.
+`success: true` with input errors bahut misleading hota.
+Ab frontend proper fail state dikhayega.
+
+### P0-4 — accuracyScore correction
+
+Ab score cosmetic nahi, actual hoga.
+0 pass hua to 0 hi aayega — ye engineering software ke liye sahi behavior hai.
+
+---
+
+# Mera updated verdict
+
+Ab tumhara system:
+
+* fake success aur kam ho gaya
+* backend/frontend truth sync better ho gaya
+* upload aur flower pipeline more honest ho gayi
+* operator mislead hone ka risk aur kam hua
+
+## Updated score
+
+| Area                         | Score      |
+| ---------------------------- | ---------- |
+| Backend / Logic              | **90–93%** |
+| Frontend Reliability         | **85–88%** |
+| Overall Production Readiness | **86–89%** |
+
+Ab tum **90 ke gate ke bahut paas** ho, but 97% abhi bhi tab milega jab ye next items close honge:
+
+## Ab next sabse zaroori 4 tasks
+
+### 1. Export Preflight Modal
+
+Har export se pehle:
+
+* complete / incomplete / blocked / no-profile count
+* station-wise reason
+* export allow/block decision
+
+### 2. Regenerate Missing / Incomplete Stations
+
+Buttons:
+
+* regenerate selected
+* regenerate all incomplete
+
+### 3. Collision / interference overlay
+
+Visual red markers:
+
+* roll clash
+* strip overlap
+* min gap warning
+* shaft clearance issue
+
+### 4. CNC readiness validator
+
+Generated G-code aur safe G-code ko alag karo.
+
+---
+
+# Ab Codex ko next exact command ye dena chahiye
+
+```text
+Good. The first 4 real P0 honesty fixes are complete.
+
+Now continue with the next production-critical P0 implementation batch:
+
+1. Add Export Preflight Modal before ZIP/CSV/XML/DXF export
+2. Add Regenerate Selected Stations and Regenerate All Incomplete Stations
+3. Add per-station root-cause details in the station summary and station cards
+4. Add collision/interference visualization overlay in RollToolingView and DigitalTwinView
+5. Add CNC readiness validator that distinguishes generated G-code from safe runnable output
+
+Requirements:
+- no fake success states
+- no silent fallback
+- no export without explicit validation
+- all station badges must be backed by real data
+- all warnings/errors must surface in UI and API responses
+- return changed files, exact patch summary, test cases, and score delta
+```
+
+## Honest status
+
+Abhi project **strong engineering tool** zone me aa gaya hai.
+97% ke liye ab focus **validation + visualization + safe export + CNC gating** par hona chahiye.
+
+Agar chaho, main ab is latest progress ko **Codex Execution Pack** me update karke next batch checklist bhi structured form me daal deta hoon.

@@ -1,0 +1,200 @@
+You are a senior CNC + Roll Forming + TypeScript system engineer.
+
+You are working on a production-grade roll forming + CNC tooling app.
+
+========================
+🎯 CORE PROBLEM
+===============
+
+The system shows stations as BASIC instead of VALID.
+
+Reasons:
+
+* rollProfile exists but:
+
+  * upperRoll[] is empty
+  * lowerRoll[] is empty
+  * upperLatheGcode is ""
+  * lowerLatheGcode is ""
+
+UI guards are already implemented. Do NOT touch UI.
+
+This is NOT a UI bug.
+This is a TOOLING ENGINE FAILURE.
+
+========================
+🎯 FINAL GOAL
+=============
+
+Make every station VALID when geometry is available.
+
+A station is VALID only if:
+
+* upperRoll has >1 coordinate
+* lowerRoll has >1 coordinate
+* upperLatheGcode is non-empty (>20 chars)
+* lowerLatheGcode is non-empty (>20 chars)
+
+========================
+🧠 TASKS (MANDATORY)
+====================
+
+1. BUILD TOOLING ENGINE (NEW FILE)
+   Create:
+
+* toolingEngine.ts
+
+Functions required:
+
+* synthesizeGroove()
+* buildStationRollProfile()
+
+Logic:
+
+* Input: section profile + thickness
+* Output:
+
+  * upperRoll (Point2D[])
+  * lowerRoll (Point2D[])
+* Use:
+
+  * thickness/2 offset
+  * small clearance (0.05–0.2)
+  * upper and lower mirrored
+
+NO EMPTY ARRAYS.
+
+========================
+
+2. BUILD CNC GENERATOR (NEW FILE)
+   Create:
+
+* gcodeLathe.ts
+
+Function:
+
+* generateLatheGcode()
+
+Must generate:
+
+* G21, G18
+* spindle start
+* toolpath using X/Z
+* feed moves using profile points
+* safe retract
+* M30
+
+NO EMPTY STRING.
+
+========================
+
+3. STORE AUTO-REPAIR (CRITICAL)
+   In useCncStore.ts:
+
+Add function:
+repairOrSynthesizeRollProfile()
+
+Logic:
+IF:
+
+* rollProfile missing OR
+* upperRoll empty OR
+* G-code empty
+
+THEN:
+➡️ regenerate using tooling engine
+
+Use:
+
+* sectionPoints
+* thickness
+* passLineY
+* roll diameters
+
+========================
+
+4. MIGRATION FIX
+   Upgrade migrate():
+
+It must:
+
+* repair ALL stations
+* not just shape fix
+* generate missing geometry
+
+========================
+
+5. VALIDATION STRICT
+   Do NOT weaken validation.
+
+VALID only if:
+
+* geometry + G-code both present
+
+========================
+
+6. EXPORT RULES
+   VALID:
+   → allow all exports
+
+BASIC:
+→ allow geometry only
+→ block CNC export with clear message
+
+MISSING_PROFILE:
+→ skip + console.warn()
+
+========================
+
+7. DEBUG OUTPUT (MANDATORY)
+
+After generation print:
+
+Station X:
+
+* upperRoll count
+* lowerRoll count
+* upperGcode length
+* lowerGcode length
+* status
+
+========================
+
+8. TEST (MANDATORY)
+
+Add test:
+
+Expect:
+
+* upperRoll.length > 1
+* lowerRoll.length > 1
+* G-code length > 20
+* status = VALID
+
+========================
+
+# 🚫 STRICT RULES
+
+* DO NOT fake data
+* DO NOT return empty arrays
+* DO NOT suppress errors
+* DO NOT mark BASIC as VALID
+
+========================
+
+# 🏁 SUCCESS CONDITION
+
+After fix:
+
+* No station remains BASIC (if section exists)
+* Export panel shows VALID
+* CNC export contains real G-code
+* No silent failures
+
+========================
+
+Output:
+
+* Full working code
+* File diffs
+* Explanation of fix

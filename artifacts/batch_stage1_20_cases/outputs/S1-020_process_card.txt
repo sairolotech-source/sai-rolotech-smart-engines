@@ -1,0 +1,38 @@
+==============================================================================================================
+  PROCESS CARD — S1-020  |  Machine: Roll Forming Machine
+  Material: Stainless Steel Austenitic (SS)  |  Thickness: 2.4 mm  |  Fy: 310 MPa  |  Bend Radius: 2.4 mm
+  Stations: 27  |  Peak Force: 226.581 kN  |  Peak Power: 75.53 kW  |  Max Strain: 33.33%
+  *** PRELIMINARY — NOT FOR PRODUCTION WITHOUT ENGINEERING SIGN-OFF ***
+==============================================================================================================
+  Stn   Label                        Stage                    Angle     SB     Gap   StripW    Force     Pwr  Strain% Risk    
+  ------------------------------------------------------------------------------------------------------------
+  0     Flat Strip (Entry)           flat                      0.0°   0.0°  2.500mm   380.7mm    0.00kN   0.00kW    0.00% NONE    
+  1     Station 1                    pre_bend                  0.4°   0.0°  2.550mm   380.7mm  226.58kN  75.53kW   33.33% HIGH    
+  2     Station 2                    initial_bend              1.7°   0.1°  2.550mm   372.7mm  221.85kN  73.95kW   33.33% HIGH    
+  3     Station 3                    initial_bend              3.7°   0.2°  2.550mm   364.8mm  217.12kN  72.37kW   33.33% HIGH    
+  4     Station 4                    initial_bend              6.4°   0.3°  2.550mm   356.8mm  212.39kN  70.80kW   33.33% HIGH    
+  5     Station 5                    initial_bend              9.8°   0.4°  2.550mm   348.9mm  207.66kN  69.22kW   33.33% HIGH    
+  6     Station 6                    initial_bend             13.6°   0.6°  2.550mm   340.9mm  202.93kN  67.64kW   33.33% HIGH    
+  7     Station 7                    progressive_forming      18.0°   0.8°  2.550mm   333.0mm  198.21kN  66.07kW   33.33% HIGH    
+  8     Station 8                    progressive_forming      22.7°   1.0°  2.550mm   325.1mm  193.48kN  64.49kW   33.33% HIGH    
+  9     Station 9                    progressive_forming      27.8°   1.2°  2.550mm   317.1mm  188.75kN  62.92kW   33.33% HIGH    
+  10    Station 10                   progressive_forming      33.1°   1.5°  2.550mm   309.2mm  184.02kN  61.34kW   33.33% HIGH    
+  11    Station 11                   progressive_forming      38.6°   1.7°  2.550mm   301.2mm  179.29kN  59.76kW   33.33% HIGH    
+  12    Station 12                   progressive_forming      44.2°   2.0°  2.550mm   293.3mm  174.56kN  58.19kW   33.33% HIGH    
+  13    Station 13                   progressive_forming      49.8°   2.2°  2.550mm   285.3mm  169.83kN  56.61kW   33.33% HIGH    
+  14    Station 14                   progressive_forming      55.4°   2.5°  2.550mm   277.4mm  165.10kN  55.03kW   33.33% HIGH    
+  15    Station 15                   progressive_forming      60.9°   2.7°  2.550mm   269.4mm  160.38kN  53.46kW   33.33% HIGH    
+  16    Station 16                   progressive_forming      66.2°   2.9°  2.550mm   261.5mm  155.65kN  51.88kW   33.33% HIGH    
+  17    Station 17                   progressive_forming      71.3°   3.2°  2.550mm   253.6mm  150.92kN  50.31kW   33.33% HIGH    
+  18    Station 18                   progressive_forming      76.0°   3.4°  2.550mm   245.6mm  146.19kN  48.73kW   33.33% HIGH    
+  19    Station 19                   progressive_forming      80.4°   3.6°  2.550mm   237.7mm  141.46kN  47.15kW   33.33% HIGH    
+  20    Station 20                   progressive_forming      84.2°   3.7°  2.550mm   229.7mm  136.73kN  45.58kW   33.33% HIGH    
+  21    Station 21                   progressive_forming      87.6°   3.9°  2.550mm   221.8mm  132.00kN  44.00kW   33.33% HIGH    
+  22    Station 22                   progressive_forming      90.3°   4.0°  2.550mm   213.8mm  127.27kN  42.42kW   33.33% HIGH    
+  23    Station 23                   progressive_forming      92.3°   4.1°  2.550mm   205.9mm  122.55kN  40.85kW   33.33% HIGH    
+  24    Station 24                   lip_forming              93.6°   4.2°  2.550mm   197.9mm  117.81kN  39.27kW   33.33% HIGH    
+  25    Station 25                   lip_forming              94.0°   4.2°  2.550mm   190.0mm  113.09kN  37.70kW   33.33% HIGH    
+  26    Station 26 (Calibration)     calibration              90.0°   0.0°  2.400mm   190.0mm   45.23kN  15.08kW   33.33% NONE    
+  ------------------------------------------------------------------------------------------------------------
+  Quality: GOOD (score 80/100)  |  HIGH risk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]  |  MEDIUM risk: []
+==============================================================================================================

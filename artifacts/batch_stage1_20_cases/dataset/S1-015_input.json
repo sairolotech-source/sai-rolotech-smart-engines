@@ -1,0 +1,12 @@
+{
+  "bend_count": 2,
+  "section_width_mm": 120,
+  "section_height_mm": 45,
+  "thickness": 0.8,
+  "material": "AL",
+  "profile_type": "z_section",
+  "return_bends_count": 1,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 9
+}

@@ -1,0 +1,35 @@
+{
+  "setupDate": "2026-03-19T21:12:53Z",
+  "system": {
+    "os": "Linux",
+    "arch": "x86_64",
+    "hostname": "ec677f082b59",
+    "kernel": "6.14.11"
+  },
+  "cpu": {
+    "model": "AMD EPYC 7B13",
+    "cores": 6,
+    "workerPoolSize": 5,
+    "performanceTier": "medium"
+  },
+  "gpu": {
+    "name": "Not detected",
+    "tier": "medium"
+  },
+  "memory": {
+    "totalGB": 62
+  },
+  "setup": {
+    "totalChecks": 34,
+    "passed": 32,
+    "failed": 0,
+    "status": "ready"
+  },
+  "features": {
+    "hardwareAcceleration": true,
+    "offlineAI": true,
+    "webWorkerPool": true,
+    "gpuRendering": true,
+    "cloudDependency": "minimal"
+  }
+}

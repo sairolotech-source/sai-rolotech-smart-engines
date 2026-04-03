@@ -1,0 +1,10 @@
+# Optional OSS CAD stack for contour-driven 3D tooling + validation.
+# Install on environments where advanced CAD/preview features are needed:
+#   pip install -r requirements.txt -r requirements-oss-cad.txt
+
+cadquery
+trimesh
+pyvista
+
+# Optional meshing / solver-prep (license review required before distribution).
+gmsh

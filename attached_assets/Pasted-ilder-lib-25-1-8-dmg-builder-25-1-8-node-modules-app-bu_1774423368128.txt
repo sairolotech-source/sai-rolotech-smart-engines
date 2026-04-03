@@ -1,0 +1,28 @@
+ilder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\winPackager.ts:106:74
+    at mapper (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\targets\targetFactory.ts:56:16)
+    at WinPackager.createTargets (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\winPackager.ts:106:9)
+    at createTargets (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\targets\targetFactory.ts:63:12)
+    at Packager.doBuild (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\packager.ts:457:41)
+    at executeFinally (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\builder-util@25.1.7\node_modules\builder-util\src\promise.ts:12:14)
+    at Packager.build (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\packager.ts:393:31)
+    at executeFinally (C:\Users\sai rolotech\sai-rolotech-smart-engines\node_modules\.pnpm\builder-util@25.1.7\node_modules\builder-util\src\promise.ts:12:14)
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ npx electron-builder --win nsis portable
+  • electron-builder  version=25.1.8 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • writing effective config  file=release\builder-effective-config.yaml
+  • executing @electron/rebuild  electronVersion=32.3.3 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=32.3.3 appOutDir=release\win-unpacked
+  • updating asar integrity executable resource  executablePath=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • default Electron icon is used  reason=application icon is not set
+  • signing with signtool.exe  path=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe archs=x64 oneClick=true perMachine=false
+  ⨯ cannot find specified resource "assets/icon.ico", nor relative to "C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\desktop\assets", neither relative to project dir ("C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\desktop")
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$

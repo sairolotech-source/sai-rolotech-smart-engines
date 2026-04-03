@@ -1,0 +1,12 @@
+{
+  "bend_count": 10,
+  "section_width_mm": 260,
+  "section_height_mm": 16,
+  "thickness": 1.4,
+  "material": "GI",
+  "profile_type": "shutter_slat",
+  "return_bends_count": 0,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 22
+}

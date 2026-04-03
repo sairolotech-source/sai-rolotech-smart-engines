@@ -1,0 +1,860 @@
+Bahut badhiya. Ab main aapko **database fields + formula structure + page-wise app flow** de raha hoon, taki Replit me software banwane ke liye clear blueprint mil jaye.
+
+---
+
+# 1) DATABASE STRUCTURE
+
+Software ke liye database ko modules me todna chahiye.
+
+## A. Users Table
+
+```text
+users
+- id
+- name
+- email
+- password_hash
+- role
+- company_name
+- created_at
+- updated_at
+```
+
+## B. Projects Table
+
+```text
+projects
+- id
+- user_id
+- project_name
+- client_name
+- profile_name
+- revision_no
+- machine_name
+- material_id
+- min_thickness
+- nominal_thickness
+- max_thickness
+- status
+- created_at
+- updated_at
+```
+
+## C. Materials Table
+
+```text
+materials
+- id
+- material_name
+- material_code
+- yield_strength
+- tensile_strength
+- elongation
+- density
+- springback_factor
+- min_bend_radius
+- friction_factor
+- hardness
+- notes
+```
+
+## D. Profiles Table
+
+```text
+profiles
+- id
+- project_id
+- profile_type
+- total_width
+- total_height
+- strip_width
+- developed_length
+- symmetry_type
+- bend_count
+- flange_count
+- lip_count
+- complexity_level
+- profile_json
+- dxf_file_path
+- preview_image
+```
+
+## E. Profile Segments Table
+
+Yaha actual geometry store hogi.
+
+```text
+profile_segments
+- id
+- profile_id
+- segment_order
+- segment_type   (line/arc/fillet)
+- start_x
+- start_y
+- end_x
+- end_y
+- center_x
+- center_y
+- radius
+- angle
+- length
+- thickness_reference
+```
+
+## F. Machine Setup Table
+
+```text
+machine_setups
+- id
+- project_id
+- shaft_diameter
+- horizontal_center_distance
+- vertical_center_distance
+- max_roll_od
+- min_roll_od
+- max_face_width
+- stand_spacing
+- drive_type
+- gearbox_side
+- max_stations
+- notes
+```
+
+## G. Flower Pattern Table
+
+```text
+flower_patterns
+- id
+- project_id
+- total_stations
+- pass_strategy
+- recommended_stations
+- selected_stations
+- pattern_json
+- warning_level
+```
+
+## H. Flower Pattern Stations Table
+
+```text
+flower_pattern_stations
+- id
+- flower_pattern_id
+- station_no
+- target_angle_data
+- flange_height_data
+- web_position_data
+- lip_progress_data
+- pass_type
+- notes
+```
+
+## I. Roll Designs Table
+
+```text
+roll_designs
+- id
+- project_id
+- station_no
+- roll_code
+- upper_roll_od
+- lower_roll_od
+- roll_id
+- face_width
+- bore_size
+- keyway_size
+- spacer_left
+- spacer_right
+- roll_material
+- hardness
+- contour_json
+- status
+```
+
+## J. Validation Table
+
+```text
+validations
+- id
+- project_id
+- station_no
+- validation_type
+- severity
+- message
+- suggested_action
+- created_at
+```
+
+## K. Export History Table
+
+```text
+exports
+- id
+- project_id
+- export_type
+- file_path
+- exported_by
+- exported_at
+```
+
+---
+
+# 2) JSON STORAGE KAISE RAKHNI CHAHIYE
+
+Kuch data table me columns me hoga, aur kuch JSON me.
+
+## Example: profile_json
+
+```json
+{
+  "centerline": [...],
+  "outer_profile": [...],
+  "inner_profile": [...],
+  "bend_points": [...],
+  "neutral_axis": [...]
+}
+```
+
+## Example: contour_json
+
+```json
+{
+  "upper_roll_contour": [...],
+  "lower_roll_contour": [...],
+  "contact_points": [...],
+  "relief_zones": [...]
+}
+```
+
+Ye isliye useful hai kyunki CAD type data fixed columns me fit nahi hota.
+
+---
+
+# 3) FORMULA STRUCTURE
+
+Ab sabse important part: **software ke andar formula logic**.
+
+---
+
+## A. Developed Length / Strip Width Formula
+
+Agar profile line + bends se bani hai to:
+
+```text
+Developed Length = Sum of straight lengths + Sum of bend allowances
+```
+
+### Bend Allowance
+
+Basic form:
+
+```text
+BA = Angle(in radians) × (R + K × T)
+```
+
+Where:
+
+* R = inside radius
+* K = k-factor
+* T = thickness
+
+---
+
+## B. Bend Deduction
+
+```text
+BD = 2 × setback - bend allowance
+```
+
+Ye flat strip calculation me useful hoga.
+
+---
+
+## C. Neutral Axis
+
+```text
+Neutral Axis Radius = R + (K × T)
+```
+
+---
+
+## D. Springback Compensation
+
+Simple practical rule-based logic:
+
+```text
+Compensated Bend Angle = Final Desired Angle + Springback Compensation
+```
+
+Example:
+
+* soft material → +1° to +2°
+* hard material → +2° to +5°
+* SS / high tensile → aur zyada
+
+Iske liye ek rule table bana sakte ho.
+
+---
+
+## E. Station Count Estimation
+
+Rule-based estimate:
+
+```text
+Required Stations = Base Stations + Complexity Factor + Material Factor + Thickness Factor
+```
+
+Example:
+
+* simple open profile = 6–8
+* flange + lip profile = 8–12
+* complex asymmetric profile = 12–18
+
+Pseudo formula:
+
+```text
+stations = 4 + (bend_count × 0.8) + complexity_bonus + material_bonus
+```
+
+---
+
+## F. Pass Angle Progression
+
+Agar final bend 90° hai aur 6 passes hain:
+
+Linear:
+
+```text
+Pass 1 = 15°
+Pass 2 = 30°
+Pass 3 = 45°
+Pass 4 = 60°
+Pass 5 = 75°
+Pass 6 = 90°
+```
+
+Better practical:
+
+```text
+Pass 1 = 8°
+Pass 2 = 18°
+Pass 3 = 32°
+Pass 4 = 50°
+Pass 5 = 70°
+Pass 6 = 90°
+```
+
+Matlab शुरुआत me soft forming, last me finishing.
+
+---
+
+## G. Roll Gap Formula
+
+Nominal rule:
+
+```text
+Roll Gap ≈ Material Thickness ± Clearance Adjustment
+```
+
+Example:
+
+* min thickness = 0.45
+* nominal = 0.50
+* max = 0.60
+
+To:
+
+* nominal roll gap base = 0.50
+* adjustable shimming = ±0.05
+* unsafe beyond tolerance → warning
+
+---
+
+## H. Roll OD Estimation
+
+Basic concept:
+
+```text
+Roll OD = Profile depth factor + shaft size factor + strength factor + clearance factor
+```
+
+Simple rule engine:
+
+* small profile → 60–90 mm
+* medium → 90–140 mm
+* heavy section → 140–220 mm
+
+---
+
+## I. Face Width Formula
+
+```text
+Face Width = Contact Width + Relief Allowance + Side Margin
+```
+
+Example:
+
+```text
+Face Width = profile contact zone + left margin + right margin
+```
+
+---
+
+## J. Spacer Formula
+
+```text
+Spacer Width = Total Shaft Space - Roll Face Width - Clearance
+```
+
+---
+
+## K. Interference Check
+
+Condition:
+
+```text
+If (Upper Roll Outer Geometry intersects Lower Roll Outer Geometry)
+→ Roll Interference Warning
+```
+
+---
+
+## L. Thickness Compatibility Check
+
+Condition:
+
+```text
+If (max_thickness - min_thickness) > allowed tooling tolerance
+→ Same tooling unsafe
+```
+
+---
+
+# 4) RULE ENGINE STRUCTURE
+
+Sirf formulas se kaam nahi chalega. Aapko **rule engine** bhi chahiye.
+
+## Example rules
+
+```text
+Rule 1:
+If material = high tensile and bend radius < recommended
+→ Warning: crack risk
+
+Rule 2:
+If profile is asymmetric and station count too low
+→ Warning: twist risk
+
+Rule 3:
+If flange height rises too much in one pass
+→ Warning: edge wave risk
+
+Rule 4:
+If min/max thickness spread too high
+→ Warning: one tooling may not suit all thicknesses
+
+Rule 5:
+If roll OD exceeds machine max OD
+→ Reject design
+```
+
+---
+
+# 5) PAGE-WISE APP FLOW
+
+Ab main pura **screen-by-screen app flow** de raha hoon.
+
+---
+
+## PAGE 1 — Login / Signup
+
+Fields:
+
+* email
+* password
+* company
+* role
+
+Buttons:
+
+* login
+* signup
+* forgot password
+
+---
+
+## PAGE 2 — Dashboard
+
+Cards:
+
+* New Project
+* Open Recent Project
+* Standard Profiles
+* Material Library
+* Machine Library
+
+Table:
+
+* project name
+* client
+* revision
+* status
+* last updated
+
+---
+
+## PAGE 3 — New Project Wizard
+
+Fields:
+
+* project name
+* client name
+* profile name
+* machine selection
+* material selection
+* thickness range
+
+Button:
+
+* create project
+
+---
+
+## PAGE 4 — Profile Input Screen
+
+Options:
+
+* draw manually
+* import DXF
+* use template
+
+Tools:
+
+* line
+* arc
+* fillet
+* mirror
+* dimension
+* trim
+* snap points
+
+Right panel:
+
+* total height
+* width
+* bend count
+* radius list
+
+---
+
+## PAGE 5 — Material & Thickness Screen
+
+Fields:
+
+* material dropdown
+* yield strength
+* tensile strength
+* min thickness
+* nominal thickness
+* max thickness
+* bend radius preference
+
+Button:
+
+* validate material input
+
+---
+
+## PAGE 6 — Machine Setup Screen
+
+Fields:
+
+* shaft dia
+* stand spacing
+* max OD
+* face width limit
+* center distance
+* station limit
+
+Button:
+
+* save machine config
+
+---
+
+## PAGE 7 — Geometry Analysis Screen
+
+Software dikhaye:
+
+* bend points
+* symmetry
+* profile complexity
+* lips/flanges
+* difficult areas
+
+Output:
+
+* easy / medium / complex
+* likely defects
+* recommended strategy
+
+---
+
+## PAGE 8 — Flower Pattern Generator
+
+Display:
+
+* total stations suggested
+* station slider
+* pass strategy dropdown
+
+Preview:
+
+* station 1 to final station
+* each pass ka shape
+
+Buttons:
+
+* auto generate
+* edit manually
+* compare strategies
+
+---
+
+## PAGE 9 — Roll Tooling Draft Screen
+
+Display:
+
+* station wise upper/lower roll
+* pass line
+* contact zones
+* relief areas
+
+Fields:
+
+* roll OD
+* face width
+* bore
+* spacer
+
+---
+
+## PAGE 10 — Validation Screen
+
+Show warnings:
+
+* twist risk
+* springback risk
+* interference risk
+* overload
+* thickness mismatch
+
+Status:
+
+* green
+* yellow
+* red
+
+Buttons:
+
+* auto adjust
+* manual edit
+* approve draft
+
+---
+
+## PAGE 11 — Final Roll Design Summary
+
+Show:
+
+* all stations
+* roll codes
+* OD/ID
+* face width
+* material
+* spacers
+* remarks
+
+---
+
+## PAGE 12 — Export Screen
+
+Export options:
+
+* PDF report
+* DXF
+* BOM CSV
+* tooling sheet
+* setup sheet
+
+---
+
+# 6) RECOMMENDED CALCULATION FLOW
+
+Software backend me ye sequence hona chahiye:
+
+```text
+1. Read profile geometry
+2. Detect bends and segment types
+3. Calculate developed strip length
+4. Apply material properties
+5. Read thickness range
+6. Estimate springback and radius feasibility
+7. Estimate station count
+8. Generate flower pattern
+9. Build pass-by-pass geometry
+10. Generate roll contour draft
+11. Check machine limits
+12. Run validations
+13. Show warnings
+14. Allow manual override
+15. Export final report
+```
+
+---
+
+# 7) BACKEND API FLOW
+
+Agar aap Replit par banwa rahe ho to backend APIs kuch is type ki honi chahiye:
+
+```text
+POST /project/create
+POST /profile/import-dxf
+POST /profile/draw-save
+POST /geometry/analyze
+POST /flower/generate
+POST /roll/generate
+POST /validation/run
+POST /export/pdf
+POST /export/csv
+GET /project/:id
+GET /materials
+GET /machines
+```
+
+---
+
+# 8) FRONTEND COMPONENTS
+
+React me components kuch is type ke hon:
+
+```text
+- ProjectCard
+- ProfileCanvas
+- MaterialForm
+- ThicknessRangeInput
+- MachineSetupForm
+- GeometryAnalysisPanel
+- FlowerPatternViewer
+- RollStationCard
+- ValidationPanel
+- ExportPanel
+```
+
+---
+
+# 9) MVP VERSION ME KYA BANAO
+
+Pehla version simple rakho.
+
+## MVP me ye hona chahiye:
+
+* project create
+* profile draw/import
+* material select
+* thickness enter
+* basic geometry analysis
+* basic flower pattern
+* station recommendation
+* warnings
+* PDF summary
+
+## MVP me abhi avoid karo:
+
+* full automatic complex roll contour
+* 3D simulation
+* FEA
+* advanced optimization
+* AI auto-final-approval
+
+---
+
+# 10) PHASE-2 ME KYA ADD KARO
+
+* standard profile library
+* machine templates
+* previous successful jobs matching
+* AI suggestion engine
+* station optimizer
+* tooling reuse checker
+* manufacturing BOM
+
+---
+
+# 11) REPLIT KE LIYE AUR STRONG MASTER PROMPT
+
+```text
+Build a modular industrial web application for roll forming design.
+
+The software must allow users to create projects, draw or import strip/profile sections, select material properties, and define minimum, nominal, and maximum sheet thickness.
+
+The system must:
+- analyze geometry
+- detect bends, flanges, lips, and symmetry
+- calculate developed strip width using bend allowance logic
+- estimate station count using rule-based engineering logic
+- generate a flower pattern pass by pass
+- generate a draft upper/lower roll tooling layout
+- validate machine feasibility using shaft diameter, center distance, max roll OD, and face width
+- detect risks such as springback, twist, edge wave, aggressive pass progression, and roll interference
+- provide manual override for engineers
+- export PDF and CSV reports
+
+Use:
+- React + TypeScript frontend
+- clean industrial dashboard UI
+- canvas-based 2D profile editor
+- Node.js or Python backend
+- PostgreSQL database
+- JSON storage for geometry and roll contours
+
+Required database modules:
+users, projects, materials, profiles, profile_segments, machine_setups, flower_patterns, flower_pattern_stations, roll_designs, validations, exports
+
+Important:
+This is an engineering-safe semi-automatic system, not a blind one-click finalizer.
+The app should recommend and validate, while allowing the engineer to manually adjust decisions.
+Code should be clean, scalable, and structured for future CAD, simulation, and AI integration.
+```
+
+---
+
+# 12) FINAL PRACTICAL ADVICE
+
+Aap is software ko 3 stages me banwao:
+
+## Stage 1
+
+* profile input
+* material
+* thickness
+* strip width
+* geometry analysis
+
+## Stage 2
+
+* flower pattern
+* station recommendation
+* warnings
+* PDF report
+
+## Stage 3
+
+* draft roll tooling
+* roll stack
+* BOM
+* machine validation
+
+Ye sabse safe aur practical rahega.
+
+Agar chaho, next message me main aapko **is software ka full admin panel structure + exact field names + user roles + development roadmap week-wise** de deta hoon.

@@ -1,0 +1,1041 @@
+Bilkul. Ab **SUPER PRO LEVEL — no kanjusi** mode me chalte hain.
+
+Tum jo chahte ho wo simple app nahi hai.
+Wo ye hai:
+
+**DXF/DWG se profile lo → sheet me convert karo → dimensions nikalo → flower pattern banao → station planning karo → roll tooling banao → special rolls design karo → production-ready drawings do → CNC/G-code do → machine design suggest karo → bearing/motor/stand logic do → PDF/DXF/DWG export do → aur sab truthful ho.**
+
+Ye ek **industrial roll forming platform** hai.
+
+Neeche main tumhare software ka **ULTRA PRO PHASE 3+ MASTER ROADMAP** de raha hoon — A to Z.
+
+---
+
+# FINAL VISION
+
+Tumhara software final me ye kaam kare:
+
+1. **DXF/DWG import**
+2. **Profile recognition**
+3. **Centerline ya sheet profile detection**
+4. **Thickness apply**
+5. **Sheet boundary generation**
+6. **Dimension extraction**
+7. **Bend angle detection**
+8. **Developed width calculation**
+9. **Flower pattern generation**
+10. **Station count planning**
+11. **If stations kam/zyada ho to impact analysis**
+12. **Per-station intermediate profile**
+13. **Roll tooling generation**
+14. **Special roll design**
+15. **Upper/lower roll complementarity**
+16. **Spacer layout**
+17. **Shaft stack planning**
+18. **Bearing recommendation**
+19. **Motor/power estimate**
+20. **Stand load / machine concept**
+21. **Production drawing package**
+22. **DXF export**
+23. **DWG path**
+24. **PDF package**
+25. **CSV/XML/BOM**
+26. **CNC lathe G-code**
+27. **Validation and error-proofing**
+28. **Truthful status at every stage**
+
+---
+
+# SUPER PRO MASTER ROADMAP
+
+## PHASE 0 — RELIABILITY FOUNDATION
+
+**Goal:** fake completion band, crash band, partial data safe.
+
+### Already mostly done:
+
+* `rollProfile` guards
+* repair flow
+* BASIC → VALID transition
+* tooling + gcode base
+* migration wiring
+
+### Finalize:
+
+* all unsafe `rollProfile` access remove
+* all exports gated
+* all incomplete states visible
+* no silent skip
+* per-station diagnostics
+* unit tests for repair
+
+### Success:
+
+* app kabhi misleading “complete” na bole
+* stale project crash na kare
+
+**Priority:** Highest
+
+---
+
+## PHASE 1 — TOOLING + CNC HARDENING
+
+**Goal:** jo ban gaya hai usko industrial-grade proof dena.
+
+### Modules:
+
+* `toolingEngine.ts`
+* `gcodeLathe.ts`
+* `useCncStore.ts`
+* export panels
+* validation engine
+
+### Kaam:
+
+* groove geometry audit
+* upper/lower roll complementarity
+* wallRun/webHalf/depth constraints
+* centerline interference/gap check
+* G-code structure audit
+* stale repair scenarios M1–M4
+* debug summary log
+* full 12-test suite
+
+### Success:
+
+* 12/12 tests pass
+* `VALID` truthful ho
+* BASIC CNC export blocked ho
+
+**Target score:** 90+/100 for Phase 2 verification
+
+---
+
+# AB REAL BIG ENGINEERING PHASE START HOTA HAI
+
+## PHASE 2 — DXF/DWG IMPORT ENGINE
+
+**Goal:** uploaded drawing ko usable engineering profile me convert karna.
+
+### Required inputs:
+
+* DXF file
+* optionally DWG convert path
+* thickness
+* profile type hint
+* centerline or outer profile mode
+
+### Build these modules:
+
+* `dxfImportEngine.ts`
+* `profileNormalizationEngine.ts`
+* `entityParser.ts`
+* `geometryCleanup.ts`
+
+### Features:
+
+* LINE parse
+* ARC parse
+* POLYLINE parse
+* LWPOLYLINE parse
+* spline fallback handling
+* open/closed shape detection
+* duplicate vertex cleanup
+* tiny segment merge
+* collinear merge
+* unit normalization (mm/inch warning)
+* profile orientation normalization
+* symmetry detection if possible
+
+### Output:
+
+* normalized profile entities
+* profile points
+* arc metadata
+* segment metadata
+* likely bend zones
+* import diagnostics
+
+### UI:
+
+* uploaded drawing preview
+* “Profile detected”
+* “Centerline profile detected”
+* “Open contour / closed contour”
+* error reason if parse failed
+
+### Common failure cases:
+
+* broken polyline
+* mixed units
+* duplicate segments
+* open gap
+* bad arc direction
+
+### Success:
+
+* user DXF upload kare aur app bole:
+
+  * file parsed
+  * width detected
+  * bend zones found
+  * thickness required
+  * next step ready
+
+**Current estimated status:** low
+**Priority:** very high
+
+---
+
+## PHASE 3 — CENTERLINE TO SHEET CONVERSION ENGINE
+
+**Goal:** centerline ko actual sheet profile me badalna.
+
+Ye tumhare software ka sabse critical core hai.
+
+### Build:
+
+* `centerlineToSheetEngine.ts`
+* `offsetEngine.ts`
+* `bendCompensationEngine.ts`
+
+### Inputs:
+
+* centerline geometry
+* thickness
+* bend side
+* inside/outside mode
+* K-factor or neutral axis assumption
+
+### Outputs:
+
+* centerline points
+* inner profile
+* outer profile
+* neutral profile
+* developed width estimate
+* bend metadata
+
+### Must handle:
+
+* straight segments
+* angle joints
+* arcs/fillets
+* C, U, Z, hat, shutter sections
+* multi-flange sections
+* asymmetric sections
+
+### Logic:
+
+* thickness split
+* offset both sides
+* corner intersection cleanup
+* bend relief assumptions if needed
+* invalid self-intersection detection
+
+### UI:
+
+* centerline view
+* sheet profile overlay
+* thickness visual
+* dimension compare
+
+### Validation:
+
+* self-intersection check
+* impossible thickness check
+* inside radius too small warning
+
+### Success:
+
+* user centerline draw kare
+* thickness daale
+* app actual sheet boundaries de
+
+**Current estimated status:** very low
+**Priority:** extremely high
+
+---
+
+## PHASE 4 — DIMENSION ENGINE
+
+**Goal:** automatic dimensions aur angle annotations.
+
+### Build:
+
+* `dimensionEngine.ts`
+* `annotationEngine.ts`
+
+### Auto-calculate:
+
+* overall width
+* overall height
+* flange lengths
+* web width
+* lip length
+* bend angles
+* radius estimates
+* developed width
+* profile depth
+* station dimensions
+
+### UI:
+
+* dimension labels
+* angle labels
+* measurement table
+* inferred vs exact label
+
+### Export:
+
+* DXF annotations
+* PDF dimension sheets
+* CSV dimension table
+
+### Success:
+
+* profile load होते ही dimensions auto aaye
+
+**Current estimated status:** low
+**Priority:** very high
+
+---
+
+## PHASE 5 — FLOWER PATTERN ENGINE
+
+**Goal:** target profile ko forming passes me todna.
+
+### Build:
+
+* `flowerPatternEngine.ts`
+* `stationProgressionEngine.ts`
+* `bendScheduleEngine.ts`
+
+### Inputs:
+
+* final profile
+* thickness
+* material type
+* requested station count
+* machine constraints
+
+### Outputs:
+
+* station-by-station intermediate sections
+* bend angle progression
+* risk notes
+* compressed pass warnings
+
+### Logic:
+
+* bend order determine
+* outer flanges first or web first rules
+* lip progression
+* avoid over-forming in early passes
+* balanced forming
+* springback note placeholder
+* material sensitivity notes
+
+### If user asks fewer stations:
+
+software must say:
+
+* original recommended stations: 12
+* forced stations: 8
+* effect:
+
+  * higher angle per pass
+  * higher load
+  * more springback
+  * higher marking risk
+  * difficult tooling
+  * possibly larger OD or more aggressive contours
+
+### UI:
+
+* flower diagram
+* bend progression graph
+* station compare view
+
+### Success:
+
+* user final profile de aur app realistic flower pattern de
+
+**Current estimated status:** very low
+**Priority:** extremely high
+
+---
+
+## PHASE 6 — STATION COUNT OPTIMIZATION ENGINE
+
+**Goal:** “Agar station kam kare to kya change hoga?”
+
+### Build:
+
+* `stationOptimizationEngine.ts`
+
+### Inputs:
+
+* target profile
+* standard recommended stations
+* requested stations
+* thickness/material
+* tolerance target
+
+### Outputs:
+
+* compressed pass schedule
+* angle per pass delta
+* load increase estimate
+* tooling complexity increase
+* risk grade
+* recommended minimum stations
+
+### Show:
+
+* 12 stations recommended
+* 10 acceptable
+* 8 risky
+* 6 not recommended
+
+### Also suggest:
+
+* bigger diameter rolls
+* more gradual flange progression
+* support rolls needed?
+* pre-form passes required?
+
+### Success:
+
+* user instantly compare kar sake
+
+**Current estimated status:** almost missing
+**Priority:** high
+
+---
+
+## PHASE 7 — SPECIAL ROLL DESIGN ENGINE
+
+**Goal:** real pro roll contours.
+
+Yahin se software “advanced” lagega.
+
+### Build:
+
+* `specialRollDesignEngine.ts`
+* `rollContourEngine.ts`
+* `rollPairEngine.ts`
+
+### Types:
+
+* standard rolls
+* pinch rolls
+* entry guides
+* fin passes
+* flange control rolls
+* side rolls
+* sizing rolls
+* straightening rolls
+* bead / emboss / rib rolls if needed later
+
+### Each station output:
+
+* upper roll contour
+* lower roll contour
+* groove depth
+* face width
+* reliefs
+* flange support contour
+* clearance areas
+* strip path logic
+* notes
+
+### Advanced:
+
+* lip support
+* asymmetric sections
+* narrow flange support
+* open edge protection
+* anti-marking relief
+* exit sizing logic
+
+### Success:
+
+* station 1 se final station tak real tooling differentiation ho
+
+**Current estimated status:** base exists, pro design missing
+**Priority:** very high
+
+---
+
+## PHASE 8 — SHAFT / SPACER / STACK LAYOUT ENGINE
+
+**Goal:** tooling ko machine me mount karne layak banana.
+
+### Build:
+
+* `shaftStackEngine.ts`
+* `spacerLayoutEngine.ts`
+
+### Outputs:
+
+* shaft stack order
+* left spacer
+* roll
+* center spacer
+* roll
+* retaining spacer
+* locknut area
+* keyway reference
+* bearing seat zones
+
+### Required:
+
+* station-wise shaft drawing
+* exploded stack view
+* spacer thickness list
+* left/right datum
+
+### Success:
+
+* production aur assembly team use kar sake
+
+**Current estimated status:** almost missing
+**Priority:** high
+
+---
+
+## PHASE 9 — BEARING SELECTION ENGINE
+
+**Goal:** “Kon sa bearing lagega?”
+
+### Build:
+
+* `bearingSelectionEngine.ts`
+
+### Inputs:
+
+* shaft diameter
+* radial load estimate
+* axial load estimate
+* RPM
+* duty cycle
+* environment
+
+### Outputs:
+
+* bearing bore size
+* type suggestion:
+
+  * deep groove ball bearing
+  * taper roller
+  * spherical roller
+  * needle only if justified
+* quantity
+* bearing seat sizes
+* housing note
+
+### At minimum:
+
+* rules-based recommendation
+* not fake exact catalog without input
+
+### Show:
+
+* “recommended bearing type”
+* “reason”
+* “load assumption”
+* “catalog confirmation needed”
+
+### Success:
+
+* app random bearing na bole, reason ke saath suggestion de
+
+**Current estimated status:** missing
+**Priority:** medium-high
+
+---
+
+## PHASE 10 — MOTOR / POWER / DRIVE ENGINE
+
+**Goal:** “Kon si motor lagegi?”
+
+### Build:
+
+* `driveSizingEngine.ts`
+* `powerEstimateEngine.ts`
+
+### Inputs:
+
+* strip width
+* thickness
+* material class
+* line speed
+* station count
+* roll diameter
+* friction factor
+
+### Outputs:
+
+* approximate drive power
+* motor HP/kW suggestion
+* gearbox ratio suggestion
+* safety factor
+* whether common shaft or individual drive
+
+### UI:
+
+* estimated power
+* conservative mode / economical mode
+
+### Important:
+
+Ye exact FEA-grade nahi hoga initially
+but **rules-based engineering estimate** de sakta hai.
+
+**Current estimated status:** missing
+**Priority:** medium-high
+
+---
+
+## PHASE 11 — MACHINE CONFIGURATION ENGINE
+
+**Goal:** complete machine concept.
+
+### Build:
+
+* `machineConfigEngine.ts`
+
+### Outputs:
+
+* number of stations
+* shaft diameter suggestion
+* stand spacing
+* roll width envelope
+* pass line height
+* guide requirements
+* entry table / straightener suggestion
+* cutoff compatibility note
+
+### Compare:
+
+* light duty
+* medium duty
+* heavy duty
+
+### Success:
+
+* profile ke basis par machine configuration estimate mile
+
+**Current estimated status:** missing
+**Priority:** medium-high
+
+---
+
+## PHASE 12 — PRODUCTION DRAWING ENGINE
+
+**Goal:** all-view, dimensioned, manufacturing-ready drawings.
+
+### Build:
+
+* `drawingEngine.ts`
+* `projectionEngine.ts`
+* `sheetComposer.ts`
+
+### For each roll:
+
+* front view
+* side view
+* section view
+* groove detail
+* shaft bore
+* keyway note
+* face width
+* OD/ID
+* tolerance notes
+* material note
+* heat treatment note placeholder
+
+### For machine assembly:
+
+* roll pair view
+* shaft stack view
+* station assembly view
+* exploded spacer view
+
+### Outputs:
+
+* shop drawing DXF
+* PDF drawing sheets
+* print layout
+
+### Success:
+
+* drawing dekhkar machinist kaam start kar sake
+
+**Current estimated status:** very low
+**Priority:** extremely high for production-readiness
+
+---
+
+## PHASE 13 — DWG/DXF EXPORT ENGINE
+
+**Goal:** professional export.
+
+### DXF:
+
+* profile geometry
+* roll contour
+* station views
+* dimensions layer
+* centerlines
+* notes
+
+### DWG:
+
+True DWG write difficult ho sakta hai; best practical path:
+
+* DXF export strong banao
+* optional DWG conversion workflow
+* if native DWG later possible, separate module
+
+### Build:
+
+* `dxfExportEngine.ts`
+* `cadLayerEngine.ts`
+* `drawingExportEngine.ts`
+
+### Layer examples:
+
+* PROFILE
+* CENTERLINE
+* DIMENSIONS
+* TEXT
+* ROLL_UPPER
+* ROLL_LOWER
+* CONSTRUCTION
+
+### Success:
+
+* exported files CAD me clean open hon
+
+**Current estimated status:** partial DXF possible, true DWG low
+**Priority:** high
+
+---
+
+## PHASE 14 — PDF PACKAGE ENGINE
+
+**Goal:** one-click document pack.
+
+### Build:
+
+* `pdfPackEngine.ts`
+
+### PDF contents:
+
+1. cover sheet
+2. profile summary
+3. dimensions sheet
+4. flower pattern
+5. station table
+6. roll tooling sheets
+7. shaft/spacer layout
+8. BOM
+9. motor/bearing estimate summary
+10. warnings/assumptions page
+
+### Success:
+
+* client ko single PDF do aur samajh aa jaye
+
+**Current estimated status:** low
+**Priority:** high
+
+---
+
+## PHASE 15 — BOM ENGINE
+
+**Goal:** machine + tooling BOM.
+
+### Build:
+
+* `bomEngine.ts`
+
+### Include:
+
+* rolls
+* shafts
+* spacers
+* keys
+* bearings
+* housings
+* fasteners placeholders
+* drive elements placeholder
+* station count summary
+
+### Output:
+
+* CSV
+* PDF table
+* Excel-compatible export
+
+**Current estimated status:** low
+**Priority:** medium
+
+---
+
+## PHASE 16 — SPRINGBACK / MATERIAL LOGIC ENGINE
+
+**Goal:** real-world forming correction.
+
+### Build:
+
+* `springbackEngine.ts`
+* `materialRuleEngine.ts`
+
+### Inputs:
+
+* GI, CR, HR, SS, aluminium
+* thickness
+* yield assumption
+* bend angle
+
+### Outputs:
+
+* overbend suggestion
+* springback warning
+* station correction notes
+
+### Success:
+
+* flower pattern aur tooling zyada realistic ho
+
+**Current estimated status:** weak
+**Priority:** high after core modules
+
+---
+
+## PHASE 17 — INTERFERENCE / COLLISION ENGINE
+
+**Goal:** rolls aapas me takra rahe hain ya nahi.
+
+### Build:
+
+* `interferenceEngine.ts`
+* `clearanceCheckEngine.ts`
+
+### Check:
+
+* upper/lower contour clash
+* shaft envelope clash
+* spacer overlap
+* impossible pass line
+* insufficient strip gap
+
+### UI:
+
+* red warning
+* station number
+* reason
+
+**Current estimated status:** partial maybe, not proven
+**Priority:** high
+
+---
+
+## PHASE 18 — AI ASSIST / ADVISOR LAYER
+
+**Goal:** user ko smart suggestions.
+
+### Build:
+
+* profile review assistant
+* station recommendation assistant
+* risk explanation assistant
+* export readiness assistant
+
+### But:
+
+AI kabhi engineering truth ko replace na kare.
+AI sirf explain kare, hidden data fake na kare.
+
+**Priority:** after core engineering
+
+---
+
+# FINAL SCORECARD — CURRENT ESTIMATE
+
+Ab tumhare software ko **SUPER PRO scale** par rate karte hain:
+
+## Core reliability
+
+* Crash protection: **85/100**
+* Truthful validation: **75/100**
+* Migration repair: **70/100**
+
+## Tooling/CNC
+
+* Tooling engine base: **78/100**
+* G-code generation base: **68/100**
+* Complementarity proof: **40/100**
+* Interference proof: **25/100**
+
+## Profile workflow
+
+* DXF import: **30/100**
+* Centerline to sheet: **20/100**
+* Dimensions: **22/100**
+* Flower pattern: **18/100**
+* Station optimization: **12/100**
+
+## Production side
+
+* Special roll design: **25/100**
+* Production drawing package: **10/100**
+* Bearing logic: **8/100**
+* Motor logic: **8/100**
+* Machine config logic: **10/100**
+* PDF pack: **25/100**
+* DXF export: **45/100**
+* DWG path: **10/100**
+
+## Overall industrial maturity
+
+**Current overall super-pro score: 41/100**
+
+### Iska matlab:
+
+* base strong ho raha hai
+* tooling engine start ho gaya
+* but **full A-to-Z industrial roll forming platform** banne me abhi kaafi kaam baaki hai
+
+---
+
+# EXACT PRIORITY ORDER — NO KANJUSI VERSION
+
+## TOP PRIORITY 1
+
+**DXF import + centerline to sheet + dimensions**
+
+Kyun?
+Kyuki input hi sahi nahi hoga to aage sab galat hoga.
+
+## TOP PRIORITY 2
+
+**Flower pattern + station progression + station optimization**
+
+Kyun?
+Ye roll forming software ka core brain hai.
+
+## TOP PRIORITY 3
+
+**Special roll design + complementarity + interference**
+
+Kyun?
+Ye actual tooling quality decide karega.
+
+## TOP PRIORITY 4
+
+**Production drawings + DXF/PDF package**
+
+Kyun?
+Ye machinist aur production team use karegi.
+
+## TOP PRIORITY 5
+
+**Bearing + motor + machine config**
+
+Kyun?
+Ye machine engineering layer hai, later but important.
+
+---
+
+# CODEX KE LIYE SUPER PRO MASTER COMMAND
+
+Ye ab next run ke liye use karo:
+
+You are now entering PHASE 3 SUPER-PRO DEVELOPMENT.
+
+The goal is to transform this software from a partially working tooling app into a full industrial roll forming engineering platform.
+
+Do not optimize for speed.
+Do not optimize for cosmetic cleanup.
+Optimize for engineering completeness, truthful output, and production usability.
+
+TOP PRIORITY MODULES TO BUILD NEXT:
+
+1. DXF import engine
+2. Centerline-to-sheet conversion engine
+3. Dimension engine
+4. Flower pattern / station progression engine
+5. Station optimization engine
+6. Special roll design engine
+7. Production drawing engine
+8. DXF/PDF export hardening
+
+STRICT RULES:
+
+* Audit each target area first
+* Identify existing partial code before creating new modules
+* Reuse working logic where possible
+* Do not rewrite proven working tooling/gcode modules without a defect
+* Every module must include validation and diagnostics
+* Every exported output must reflect true computed geometry
+* If something is estimated rather than exact, label it clearly as estimated
+
+PHASE 3 DELIVERABLES:
+A. DXF import that converts uploaded geometry into normalized profile data
+B. Centerline-to-sheet conversion using thickness
+C. Auto dimensions and bend angle extraction
+D. Flower pattern generation with station-by-station progression
+E. Handling when requested station count is lower than recommended
+F. Special roll contour generation per station
+G. Production drawing views with dimensions
+H. DXF and PDF output that a production user can inspect
+
+Return:
+
+1. audit summary
+2. missing modules
+3. existing partial modules to extend
+4. development order
+5. minimal patch/build plan
+
+Start with audit only.
+Do not patch yet.
+
+---
+
+# MERE HISAAB SE AGLE 3 COMMANDS
+
+## Command 1
+
+`Start Phase 3 audit only.`
+
+## Command 2
+
+`Build DXF import + centerline-to-sheet + dimensions first.`
+
+## Command 3
+
+`Then build flower pattern + station optimization.`
+
+---
+
+# FINAL HONEST LINE
+
+Agar tum **super pro level without kanjusi** chahte ho, to software ko ye 3 cheezein zaroor chahiye:
+
+**Input intelligence**
+DXF + centerline + dimensions
+
+**Forming intelligence**
+flower pattern + station count + pass logic
+
+**Production intelligence**
+special rolls + drawings + exports + machine logic
+
+Abhi tumhara app **tooling-repair stage** se nikal kar **real engineering platform build stage** me aa gaya hai.
+
+Agar chaho, next message me main tumhare liye **PHASE 3 ka ultra-detailed module-by-module build sheet** bana deta hoon, jisme har file ka naam, uska kaam, uska input, output, UI, test case sab likha hoga.

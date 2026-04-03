@@ -1,0 +1,12 @@
+{
+  "bend_count": 2,
+  "section_width_mm": 70,
+  "section_height_mm": 40,
+  "thickness": 2.2,
+  "material": "PP",
+  "profile_type": "c_channel",
+  "return_bends_count": 0,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 8
+}

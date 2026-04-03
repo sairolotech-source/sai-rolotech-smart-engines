@@ -1,0 +1,36 @@
+cked\SAI Rolotech Smart Engines.exe
+  • default Electron icon is used  reason=application icon is not set
+  • downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z size=5.6 MB parts=1
+  • downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z duration=1.562s
+  • signing with signtool.exe  path=release\win-unpacked\SAI Rolotech Smart Engines.exe
+  • deprecated field  fields=["publisherName"] reason=please move to win.signtoolOptions.<field_name>
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=release\SAI-Rolotech-Smart-Engines-Setup-2.2.23.exe archs=x64 oneClick=true perMachine=false
+  ⨯ cannot find specified resource "assets/icon.ico", nor relative to "C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\desktop\assets", neither relative to project dir ("C:\Users\sai rolotech\sai-rolotech-smart-engines\artifacts\desktop")
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ [200~cd ~/sai-rolotech-smart-engines
+bash: [200~cd: command not found
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ git pull origin main
+remote: Enumerating objects: 6, done.
+remote: Counting objects: 100% (6/6), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 4 (delta 2), reused 4 (delta 2), pack-reused 0 (from 0)
+Unpacking objects: 100% (4/4), 1.59 KiB | 90.00 KiB/s, done.
+From https://github.com/sairolotech-source/sai-rolotech-smart-engines
+ * branch            main       -> FETCH_HEAD
+   1ec462d..2dfa4b5  main       -> origin/main
+Updating 1ec462d..2dfa4b5
+Fast-forward
+ ...Data-Local-electron-builder-C_1774422564025.txt | 73 ++++++++++++++++++++++
+ 1 file changed, 73 insertions(+)
+ create mode 100644 attached_assets/Pasted-d-C-Users-sai-rolotech-AppData-Local-electron-builder-C_1774422564025.txt
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ cd artifacts/desktop
+bash: cd: artifacts/desktop: No such file or directory
+
+sai rolotech@DESKTOP-I3HOMMS MINGW64 ~/sai-rolotech-smart-engines/artifacts/desktop (main)
+$ npx electron-builder --win nsis portable

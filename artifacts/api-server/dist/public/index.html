@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        }).catch(function () {});
+        if (typeof caches !== "undefined") {
+          caches.keys().then(function(ks) {
+            ks.forEach(function(k) { caches.delete(k); });
+          }).catch(function() {});
+        }
+      }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>Sai Rolotech Smart Engines</title>
+    <meta name="description" content="Professional Roll Forming Design Suite — CNC G-Code, Power Pattern, Digital Twin, AI Diagnostics" />
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <style>
+      html, body { background: #070710; margin: 0; }
+      #splash-native {
+        position: fixed; inset: 0; z-index: 99999;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: #070710; font-family: Inter, system-ui, sans-serif;
+        transition: opacity 0.6s ease;
+      }
+      #splash-native.fade-out { opacity: 0; pointer-events: none; }
+      @keyframes pulse-ring {
+        0%   { transform: scale(0.9); opacity: 0.6; }
+        100% { transform: scale(1.3); opacity: 0; }
+      }
+      .pulse-ring {
+        position: absolute;
+        width: 56px; height: 56px;
+        border-radius: 14px;
+        border: 2px solid rgba(249,115,22,0.5);
+        animation: pulse-ring 1.4s ease-out infinite;
+      }
+      .pulse-ring:nth-child(2) { animation-delay: 0.4s; }
+      .pulse-ring:nth-child(3) { animation-delay: 0.8s; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-Bw2SXhXz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BCbtXm5l.css">
+  </head>
+  <body>
+    <div id="root">
+      <div id="splash-native">
+        <div style="position:relative;width:56px;height:56px;margin-bottom:24px;">
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring"></div>
+          <div style="position:relative;width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#f97316,#d97706);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(249,115,22,0.4);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
+        </div>
+
+        <div style="color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px;">
+          Sai Rolotech Smart Engines
+        </div>
+        <div style="color:#71717a;font-size:12px;font-weight:500;margin-bottom:24px;">
+          Roll Forming Engineering Suite
+        </div>
+
+        <div style="width:200px;height:3px;border-radius:3px;background:#1a1a2e;overflow:hidden;">
+          <div id="splash-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#f97316,#d97706);width:5%;transition:width 0.4s ease;"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <script>
+      (function () {
+        var bar = document.getElementById("splash-bar");
+        var splash = document.getElementById("splash-native");
+        var start = Date.now();
+        var hidden = false;
+
+        // Animate progress bar 5% → 90% while JS loads
+        var iv = setInterval(function () {
+          var pct = Math.min(90, 5 + ((Date.now() - start) / 2000) * 85);
+          if (bar) bar.style.width = pct + "%";
+        }, 80);
+
+        // Called by React on mount — fill to 100% then hide
+        window.__hideSplashNative = function () {
+          if (hidden) return;
+          hidden = true;
+          clearInterval(iv);
+          if (bar) bar.style.width = "100%";
+          setTimeout(function () {
+            if (splash) {
+              splash.classList.add("fade-out");
+              setTimeout(function () {
+                if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+              }, 700);
+            }
+          }, 200);
+        };
+
+        // Hard failsafe — hide after 8s regardless (slow connections)
+        setTimeout(window.__hideSplashNative, 8000);
+      })();
+    </script>
+  </body>
+</html>

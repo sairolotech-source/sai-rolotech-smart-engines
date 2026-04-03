@@ -1,0 +1,12 @@
+{
+  "bend_count": 4,
+  "section_width_mm": 260,
+  "section_height_mm": 42,
+  "thickness": 3.2,
+  "material": "HSLA",
+  "profile_type": "hat_section",
+  "return_bends_count": 0,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 22
+}

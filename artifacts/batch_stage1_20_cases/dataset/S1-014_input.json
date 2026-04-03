@@ -1,0 +1,12 @@
+{
+  "bend_count": 8,
+  "section_width_mm": 210,
+  "section_height_mm": 20,
+  "thickness": 2.6,
+  "material": "HR",
+  "profile_type": "shutter_slat",
+  "return_bends_count": 0,
+  "lips_present": false,
+  "lip_mm": 0.0,
+  "n_stations": 22
+}

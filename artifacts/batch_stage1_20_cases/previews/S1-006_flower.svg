@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="340" viewBox="0 0 900 340">
+  <rect width="100%" height="100%" fill="#0a0f1e"/>
+  <text x="10" y="20" fill="#f8fafc" font-size="14" font-weight="bold" font-family="sans-serif">Flower Pattern — c_channel (80×70 mm) · 10 stations · shapely-computed 2D polygons</text>
+  <path d="M 345.07 229.62 L 554.93 229.62 L 738.32 219.37 L 738.61 224.61 L 555.07 234.88 L 344.93 234.88 L 161.39 224.61 L 161.68 219.37 L 345.07 229.62 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 345.27 229.62 L 554.73 229.62 L 734.47 192.73 L 735.52 197.87 L 555.27 234.88 L 344.73 234.88 L 164.48 197.87 L 165.53 192.73 L 345.27 229.62 Z" fill="#6b7280" fill-opacity="0.55" stroke="#6b7280" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 345.56 229.62 L 554.44 229.62 L 721.93 155.41 L 724.06 160.21 L 555.56 234.88 L 344.44 234.88 L 175.94 160.21 L 178.07 155.41 L 345.56 229.62 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 345.91 229.62 L 554.09 229.62 L 697.37 116.06 L 700.63 120.17 L 555.91 234.88 L 344.09 234.88 L 199.37 120.17 L 202.63 116.06 L 345.91 229.62 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 346.33 229.62 L 553.67 229.62 L 661.93 82.79 L 666.15 85.91 L 556.33 234.88 L 343.67 234.88 L 233.85 85.91 L 238.07 82.79 L 346.33 229.62 Z" fill="#7c3aed" fill-opacity="0.70" stroke="#7c3aed" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 346.77 229.62 L 553.23 229.62 L 621.10 60.78 L 625.97 62.74 L 556.77 234.88 L 343.23 234.88 L 274.03 62.74 L 278.90 60.78 L 346.77 229.62 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 347.22 229.62 L 552.78 229.62 L 583.06 50.64 L 588.23 51.51 L 557.22 234.88 L 342.78 234.88 L 311.77 51.51 L 316.94 50.64 L 347.22 229.62 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 347.57 229.62 L 552.43 229.62 L 556.22 48.49 L 561.47 48.60 L 557.57 234.88 L 342.43 234.88 L 338.53 48.60 L 343.78 48.49 L 347.57 229.62 Z" fill="#6366f1" fill-opacity="0.80" stroke="#6366f1" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 347.62 229.62 L 552.38 229.62 L 552.38 48.50 L 557.62 48.50 L 557.62 234.88 L 342.38 234.88 L 342.38 48.50 L 347.62 48.50 L 347.62 229.62 Z" fill="#3b82f6" fill-opacity="0.90" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.9"/>
+  <path d="M 347.62 229.62 L 552.38 229.62 L 552.38 48.50 L 557.62 48.50 L 557.62 234.88 L 342.38 234.88 L 342.38 48.50 L 347.62 48.50 L 347.62 229.62 Z" fill="#22c55e" fill-opacity="0.85" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.9"/>
+  <line x1="149.9" y1="250.2" x2="750.1" y2="250.2" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="450.0" y="264.2" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="monospace">Flat strip = 228.7 mm</text>
+  <rect x="50" y="308" width="12" height="8" fill="#6b7280" rx="2"/>
+  <text x="66" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Flat / pre-bend</text>
+  <rect x="210" y="308" width="12" height="8" fill="#7c3aed" rx="2"/>
+  <text x="226" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Early forming</text>
+  <rect x="370" y="308" width="12" height="8" fill="#6366f1" rx="2"/>
+  <text x="386" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Mid forming</text>
+  <rect x="530" y="308" width="12" height="8" fill="#3b82f6" rx="2"/>
+  <text x="546" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Final form</text>
+  <rect x="690" y="308" width="12" height="8" fill="#22c55e" rx="2"/>
+  <text x="706" y="316" fill="#94a3b8" font-size="10" font-family="monospace">Calibration</text>
+  <text x="50" y="62" fill="#f8fafc" font-size="11" font-family="monospace">Profile: c_channel</text>
+  <text x="185" y="62" fill="#fbbf24" font-size="11" font-family="monospace">Web = 80 mm</text>
+  <text x="320" y="62" fill="#4ade80" font-size="11" font-family="monospace">Flange = 70 mm</text>
+  <text x="455" y="62" fill="#f87171" font-size="11" font-family="monospace">t = 2.0 mm</text>
+  <text x="590" y="62" fill="#94a3b8" font-size="11" font-family="monospace">Material = CR</text>
+  <text x="725" y="62" fill="#c084fc" font-size="11" font-family="monospace">Stations = 10</text>
+</svg>

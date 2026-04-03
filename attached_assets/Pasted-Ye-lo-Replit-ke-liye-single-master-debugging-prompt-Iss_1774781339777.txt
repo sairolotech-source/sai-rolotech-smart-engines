@@ -1,0 +1,309 @@
+Ye lo, Replit ke liye **single master debugging prompt**. Isse app ko patch-mode me chalwao:
+
+```text
+You are now acting as a SENIOR FULL-STACK DEBUGGING + QA + ARCHITECT ENGINEER for a production-grade roll forming software.
+
+PROJECT GOAL:
+This software must reliably handle strip calculation, bend angle logic, material/thickness input, dimension confirmation, profile generation, and downstream tooling/export flow without crashes.
+
+CURRENT REAL ISSUE:
+When tested directly, the strip calculation logic gives correct answers.
+But during actual software use, the app crashes in the dimension-confirm view.
+
+Known runtime error:
+Cannot read properties of undefined (reading 'forEach')
+
+This means:
+- the math/calculation engine may be correct,
+- but the software pipeline, state flow, render guards, normalization, or UI contract is broken.
+
+YOUR TASK:
+Do a complete root-cause audit and patch the app so it becomes stable, defensive, and production-safe.
+
+==================================================
+PHASE 1 — ROOT CAUSE TRACE
+==================================================
+
+Trace the full data flow step by step:
+
+Input Form
+-> validation
+-> calculation engine
+-> strip result object
+-> normalized result model
+-> state storage / props passing
+-> dimension-confirm view
+-> child components
+-> export / final render
+
+For every step, inspect:
+1. actual input payload
+2. expected schema
+3. actual returned schema
+4. nullable fields
+5. arrays that may be undefined
+6. async timing issues
+7. state reset issues
+8. stale props issues
+9. parser failures
+10. naming mismatches
+
+Show exactly where the contract breaks.
+
+==================================================
+PHASE 2 — FIND ALL CRASH POINTS
+==================================================
+
+Search all files related to:
+- dimension-confirm view
+- strip calculation
+- profile result rendering
+- DXF/profile parser
+- material/thickness/angle forms
+- export/result pages
+
+Find every unsafe use of:
+- .forEach()
+- .map()
+- .filter()
+- .reduce()
+- .length
+- object.property access without guards
+- destructuring on possibly undefined objects
+
+Especially check:
+- dimensions
+- bendAngles
+- bends
+- stripData
+- profileData
+- resultData
+- segment list
+- validation arrays
+- warnings/errors arrays
+- tooling steps
+- flower stages
+- roll pass data
+
+==================================================
+PHASE 3 — DEFENSIVE PATCHING
+==================================================
+
+Patch the code using production-safe patterns:
+
+A. Array safety
+Replace unsafe patterns like:
+data.forEach(...)
+data.map(...)
+
+with guarded logic:
+const safeData = Array.isArray(data) ? data : [];
+
+B. Object safety
+Use optional chaining and defaults:
+const dimensions = result?.dimensions ?? [];
+
+C. Render blocking
+Do not render dimension-confirm view until all required data is valid.
+
+D. Empty state
+If critical data is missing, show a user-friendly message instead of crashing:
+- “Calculation data missing”
+- “Dimensions could not be generated”
+- “Please recalculate profile”
+- “Input incomplete”
+
+E. Validation layer
+Before entering confirm screen, validate:
+- angle
+- thickness
+- material
+- bend count
+- profile geometry
+- dimensions array
+- strip width
+- segment count
+- developed length
+
+F. Runtime logging
+Add structured console logs for:
+- incoming input
+- normalized result
+- missing keys
+- invalid values
+- render-block reason
+
+==================================================
+PHASE 4 — NORMALIZATION LAYER
+==================================================
+
+Create a strict normalization function before data reaches the UI.
+
+Example concept:
+normalizeCalculationResult(rawResult) => {
+  return {
+    stripWidth: valid number or 0,
+    developedLength: valid number or 0,
+    dimensions: safe array,
+    bends: safe array,
+    warnings: safe array,
+    errors: safe array,
+    material: safe object/null,
+    thickness: valid number/null,
+    angleData: safe array,
+    profileSegments: safe array
+  }
+}
+
+No UI component should directly trust raw engine output.
+All components must consume only normalized data.
+
+==================================================
+PHASE 5 — TYPE + SCHEMA ENFORCEMENT
+==================================================
+
+If using TypeScript:
+- define strict interfaces for calculation result
+- remove any/unknown where dangerous
+- add type guards
+
+If using JavaScript:
+- add runtime schema validation
+- create helper guards like:
+  isValidArray
+  isValidNumber
+  isValidObject
+  isNonEmptyString
+
+==================================================
+PHASE 6 — ASYNC / STATE AUDIT
+==================================================
+
+Check whether crash happens because:
+- state is initially undefined
+- calculation is async and render happens too early
+- previous state is cleared before next state is set
+- navigation occurs before payload is ready
+- recover/full reload path restores incomplete state
+- session storage/local storage payload is stale/corrupt
+
+Patch all such cases.
+
+==================================================
+PHASE 7 — UX SAFETY
+==================================================
+
+Improve UX so users never see raw crashes.
+
+Implement:
+1. Error boundary around critical views
+2. Safe fallback screen
+3. Retry button
+4. Recalculate button
+5. Return-to-input button
+6. Clear explanation of missing field
+
+==================================================
+PHASE 8 — TEST CASES
+==================================================
+
+Run and verify with all these test cases:
+
+1. Normal case:
+   angle valid, thickness valid, material valid
+
+2. Missing material
+
+3. Missing thickness
+
+4. Empty dimensions array
+
+5. Undefined result object
+
+6. Partial DXF/profile parse
+
+7. Invalid angle type (string instead of number)
+
+8. Null bends array
+
+9. Empty profile segments
+
+10. Reload after calculation
+
+11. Recover after crash
+
+12. Navigation to confirm screen without recalculation
+
+13. Old saved state in session/local storage
+
+14. Edge geometry with multi-bend profile
+
+15. Very thin and very thick strip cases
+
+==================================================
+PHASE 9 — FINAL OUTPUT FORMAT
+==================================================
+
+Return your answer in this strict format:
+
+1. ROOT CAUSE FOUND
+- exact file
+- exact function/component
+- exact broken variable
+- why it becomes undefined
+
+2. DATA FLOW BREAKPOINT
+- where valid data becomes invalid or missing
+
+3. PATCH APPLIED
+- list of code changes
+
+4. DEFENSIVE IMPROVEMENTS
+- validation
+- normalization
+- guards
+- fallback UI
+- logging
+
+5. TEST RESULTS
+- which test cases passed
+
+6. REMAINING RISKS
+- anything still needing architectural improvement
+
+7. FINAL CORRECTED CODE
+- include full patched code for all changed files
+
+IMPORTANT RULES:
+- Do not only hide the error.
+- Fix root cause.
+- Do not assume data exists.
+- Do not allow any critical view to crash from undefined/null data.
+- Preserve existing business logic and formulas unless clearly wrong.
+- Keep calculation accuracy intact.
+- Make the app production-safe.
+
+PRIORITY:
+Stability > correctness of UI rendering > defensive coding > clean logging > UX fallback
+
+Start now by identifying the dimension-confirm component and tracing the incoming payload end-to-end.
+```
+
+Iske baad Replit ko ek aur chhota follow-up prompt do:
+
+```text
+Do not stop at explanation only.
+Apply the patch directly in code.
+Then run through the failing user flow again and confirm whether the crash is gone.
+```
+
+Aur agar aap chaho, agle message me main iska **aur bhi powerful version** bana dunga jo specifically:
+
+* roll forming engine
+* DXF upload
+* center line to sheet converter
+* flower generation
+* roll tooling
+* export engine
+
+sab par same time audit karega.

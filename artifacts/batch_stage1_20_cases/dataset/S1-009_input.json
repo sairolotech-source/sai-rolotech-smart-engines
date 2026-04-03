@@ -1,0 +1,12 @@
+{
+  "bend_count": 4,
+  "section_width_mm": 110,
+  "section_height_mm": 50,
+  "thickness": 1.8,
+  "material": "TI",
+  "profile_type": "lipped_channel",
+  "return_bends_count": 0,
+  "lips_present": true,
+  "lip_mm": 15.0,
+  "n_stations": 18
+}

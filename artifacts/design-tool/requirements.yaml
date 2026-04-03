@@ -1,0 +1,13 @@
+packages:
+  "konva": "Canvas rendering engine"
+  "react-konva": "React bindings for Konva canvas"
+  "zustand": "Global state management for canvas objects and history"
+  "react-colorful": "Color picker for shape properties"
+  "uuid": "Generating unique IDs for canvas shapes"
+  "file-saver": "Exporting canvas to images and JSON"
+  "clsx": "Utility for constructing className strings"
+  "tailwind-merge": "Utility for merging tailwind classes"
+
+notes:
+  - This is a fully client-side design tool, storing data in localStorage.
+  - Using react-konva for high-performance 2D canvas rendering.

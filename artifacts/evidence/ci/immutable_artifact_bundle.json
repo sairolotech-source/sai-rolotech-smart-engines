@@ -1,0 +1,9 @@
+{
+  "ci_provider": "local-runtime-proof",
+  "artifact_bundle_id": "local-20260403T092637Z",
+  "artifact_paths": [
+    "/workspace/sai-rolotech-smart-engines/artifacts/evidence/runtime_trace/benchmark_runtime_trace.json",
+    "/workspace/sai-rolotech-smart-engines/artifacts/evidence/benchmark/benchmark_outputs_A_to_G.json",
+    "/workspace/sai-rolotech-smart-engines/artifacts/evidence/negative_cases/negative_fixture_machine_limit.json"
+  ]
+}

@@ -198,6 +198,8 @@ def validate_profile_on_machine(
     """
     Check whether a profile can be manufactured on a given machine.
 
+    Checks MACHINE_REGISTRY first, then falls back to persisted custom machines.
+
     Returns a dict with:
       feasible: bool
       warnings: List[str]
@@ -205,11 +207,11 @@ def validate_profile_on_machine(
       adjusted_params: Dict  (e.g. clipped station count)
       machine_utilisation: Dict  (% of limits used)
     """
-    mc = MACHINE_REGISTRY.get(machine_id)
+    mc = MACHINE_REGISTRY.get(machine_id) or get_machine(machine_id)
     if not mc:
         return {
             "feasible": False,
-            "blocking_reasons": [f"Machine '{machine_id}' not found in registry"],
+            "blocking_reasons": [f"Machine '{machine_id}' not found in registry or persisted store"],
             "warnings": [],
             "adjusted_params": {},
             "machine_utilisation": {},

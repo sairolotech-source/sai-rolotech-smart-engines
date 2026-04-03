@@ -1,0 +1,26 @@
+{
+  "generated_at_utc": "2026-04-03T09:26:37.606439+00:00",
+  "count": 5,
+  "entries": [
+    {
+      "file": "artifacts/evidence/runtime_trace/benchmark_runtime_trace.json",
+      "sha256": "9ae1690f7838217d2c4f64c58834fc329517bf79d2737c0da987f09346143c1a"
+    },
+    {
+      "file": "artifacts/evidence/benchmark/benchmark_input.json",
+      "sha256": "345e4b85cbed28ad80efa3cf1ab4189d151a2eefbda0bcf790f7bfc899b6dc4c"
+    },
+    {
+      "file": "artifacts/evidence/benchmark/benchmark_outputs_A_to_G.json",
+      "sha256": "a33cccc94064d84e170a25fa3cea2ec389ad4e7c7e4d16b741977f6ec4d85056"
+    },
+    {
+      "file": "artifacts/evidence/negative_cases/negative_fixture_machine_limit.json",
+      "sha256": "b04180b39009789e68a6c7ef2a3d546d070dd5c85ab12b081e8027a6ab1241eb"
+    },
+    {
+      "file": "artifacts/evidence/ci/immutable_artifact_bundle.json",
+      "sha256": "60d50f741d1975ac19e059e88b5e18a12dba6d34f0b40d1736e953bc40dac423"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "profile": "c_channel",
+  "section_width_mm": 100.0,
+  "section_height_mm": 50.0,
+  "bend_count": 2,
+  "return_bends_count": 0,
+  "material": "GI",
+  "sheet_thickness_mm": 1.5,
+  "flat_blank_mm": 200.0,
+  "machine_id": "SAI-STD-20",
+  "machine_context": "standard_20_stand",
+  "target_benchmark": "c_channel_100x50_GI_1.5mm"
+}

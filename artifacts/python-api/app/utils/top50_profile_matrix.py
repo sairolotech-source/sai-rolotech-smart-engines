@@ -25,7 +25,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from app.utils.machine_config_store import validate_profile_on_machine, MACHINE_REGISTRY
-from app.utils.tooling_library import get_best_match
+from app.utils.tooling_library import get_best_match, get_best_match_for_machine
 
 logger = logging.getLogger("top50_profile_matrix")
 
@@ -655,27 +655,114 @@ TOP50_PROFILES: List[Dict[str, Any]] = [
 
 # ─── MACHINE COMPATIBILITY GENERATOR ─────────────────────────────────────────
 
-def _validate_all_machines(profile: Dict[str, Any]) -> Dict[str, Any]:
-    """Run validate_profile_on_machine for all 4 machines for a given profile."""
-    results: Dict[str, Any] = {}
-    for mid in MACHINES:
-        v = validate_profile_on_machine(
-            mid,
-            profile["profile_type"],
-            profile["thickness_mm"],
-            profile["flat_blank_mm"],
-            profile["bend_count"],
-            profile["material"],
-            required_stations=max(profile["bend_count"] * 3, 8),
-            max_roll_od_needed_mm=0.0,
+def _check_machine_with_tooling(
+    machine_id: str,
+    profile: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Full per-machine compatibility check: machine limits + tooling shaft/OD.
+
+    Hard rules (user requirement):
+      1. Machine dimension/material/station checks (via validate_profile_on_machine)
+      2. Tooling shaft mismatch  → blocked (not validated)
+      3. Tooling OD mismatch     → blocked (not validated)
+      4. No tooling in library   → blocked (not validated)
+
+    Returns a dict with:
+      feasible             : bool  (True only if machine AND tooling both pass)
+      tooling_id           : str | None   (from live get_best_match_for_machine)
+      tooling_shaft_dia_mm : int  | None
+      tooling_max_od_mm    : float| None
+      machine_shaft_dia_mm : int
+      machine_max_od_mm    : float
+      machine_class        : str
+      blocking_reasons     : List[str]  (machine-level + tooling-level combined)
+      warnings             : List[str]
+    """
+    mc = MACHINE_REGISTRY[machine_id]
+    machine_shaft = mc["shaft_diameter_mm"]
+    machine_max_od = mc["max_roll_od_mm"]
+
+    # ── Step 1: Machine dimension / material / station check ──────────────────
+    v = validate_profile_on_machine(
+        machine_id,
+        profile["profile_type"],
+        profile["thickness_mm"],
+        profile["flat_blank_mm"],
+        profile["bend_count"],
+        profile["material"],
+        required_stations=max(profile["bend_count"] * 3, 8),
+        max_roll_od_needed_mm=0.0,
+    )
+    blocking: List[str] = list(v["blocking_reasons"])
+    warnings: List[str] = list(v["warnings"])
+
+    # ── Step 2: Live tooling compatibility (shaft + OD) ───────────────────────
+    tool = get_best_match_for_machine(
+        profile["profile_type"],
+        profile["material"],
+        profile["thickness_mm"],
+        machine_shaft,
+        machine_max_od,
+    )
+
+    tooling_id: Optional[str] = None
+    tooling_shaft: Optional[int] = None
+    tooling_max_od: Optional[float] = None
+    tooling_feasible = False
+
+    if tool is None:
+        # No library entry fits this machine's shaft + OD constraints
+        blocking.append(
+            f"No tooling in library fits machine shaft={machine_shaft}mm "
+            f"/ max_OD={machine_max_od}mm for {profile['profile_type']} "
+            f"{profile['material']} t={profile['thickness_mm']}mm — "
+            f"custom tooling required (shaft bore mismatch)"
         )
-        results[mid] = {
-            "feasible":         v["feasible"],
-            "blocking_reasons": v["blocking_reasons"],
-            "warnings":         v["warnings"],
-            "machine_class":    MACHINE_REGISTRY[mid]["machine_class"],
-        }
-    return results
+    else:
+        tooling_id = tool["id"]
+        tooling_shaft = tool.get("shaft_dia_mm")
+        tooling_max_od = tool.get("roll_od_max_mm")
+
+        # Hard rule: shaft mismatch blocks
+        if tooling_shaft is not None and tooling_shaft > machine_shaft:
+            blocking.append(
+                f"Tooling shaft {tooling_shaft}mm > machine shaft {machine_shaft}mm "
+                f"(tooling_id={tooling_id}) — shaft bore mismatch, NOT validated"
+            )
+        # Hard rule: OD mismatch blocks
+        elif tooling_max_od is not None and tooling_max_od > machine_max_od:
+            blocking.append(
+                f"Tooling max OD {tooling_max_od}mm > machine max OD {machine_max_od}mm "
+                f"(tooling_id={tooling_id}) — OD mismatch, NOT validated"
+            )
+        else:
+            tooling_feasible = True
+            # Pass through any tooling constraint warnings (non-blocking)
+            if "_machine_constraint_warning" in tool:
+                warnings.append(tool["_machine_constraint_warning"])
+
+    overall_feasible = v["feasible"] and tooling_feasible
+
+    return {
+        "feasible":             overall_feasible,
+        "tooling_id":           tooling_id,
+        "tooling_shaft_dia_mm": tooling_shaft,
+        "tooling_max_od_mm":    tooling_max_od,
+        "machine_shaft_dia_mm": machine_shaft,
+        "machine_max_od_mm":    machine_max_od,
+        "machine_class":        mc["machine_class"],
+        "blocking_reasons":     blocking,
+        "warnings":             warnings,
+    }
+
+
+def _validate_all_machines(profile: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Run full compatibility check (machine limits + tooling shaft/OD) for all 4 machines.
+    Returns per-machine result dict from _check_machine_with_tooling.
+    """
+    return {mid: _check_machine_with_tooling(mid, profile) for mid in MACHINES}
 
 
 def get_profile_matrix(include_machine_compat: bool = True) -> List[Dict[str, Any]]:
@@ -683,10 +770,16 @@ def get_profile_matrix(include_machine_compat: bool = True) -> List[Dict[str, An
     Return the full top-50 profile matrix.
 
     If include_machine_compat=True, each entry includes:
-      - machine_compat: per-machine feasibility
-      - validation_status: 'validated' (≥1 machine feasible) | 'rejected_all'
-      - capable_machines: list of machine_ids that can run the profile
-      - recommended_machine: lowest-utilisation capable machine
+      - machine_compat       : per-machine result (machine limits + tooling shaft/OD)
+      - validation_status    : 'validated' (≥1 machine feasible) | 'rejected_all'
+      - capable_machines     : list of machine_ids where both machine AND tooling pass
+      - recommended_machine  : first capable machine
+      - tooling_id           : live tooling_id for recommended machine (NOT static)
+
+    Hard rules applied:
+      shaft mismatch  → machine not capable
+      OD mismatch     → machine not capable
+      no library tool → machine not capable
     """
     matrix = []
     for p in TOP50_PROFILES:
@@ -694,10 +787,19 @@ def get_profile_matrix(include_machine_compat: bool = True) -> List[Dict[str, An
         if include_machine_compat:
             compat = _validate_all_machines(p)
             capable = [mid for mid, r in compat.items() if r["feasible"]]
+            rec_machine = capable[0] if capable else None
+
+            # tooling_id = live result for recommended machine; None if no capable machine
+            live_tooling_id = (
+                compat[rec_machine]["tooling_id"] if rec_machine else None
+            )
+
             entry["machine_compat"]       = compat
             entry["capable_machines"]     = capable
-            entry["recommended_machine"]  = capable[0] if capable else None
+            entry["recommended_machine"]  = rec_machine
             entry["validation_status"]    = "validated" if capable else "rejected_all"
+            # Override static tooling_id with live per-machine result
+            entry["tooling_id"]           = live_tooling_id
         matrix.append(entry)
     return matrix
 
@@ -711,30 +813,37 @@ def get_profile_by_id(profile_id: str) -> Optional[Dict[str, Any]]:
 
 
 def matrix_summary() -> Dict[str, Any]:
-    """Return high-level summary of the top-50 matrix."""
+    """
+    Return high-level summary of the top-50 matrix.
+    All counts recomputed from live matrix (not from static profile list).
+    """
     matrix = get_profile_matrix(include_machine_compat=True)
-    validated   = [p for p in matrix if p["validation_status"] == "validated"]
-    rejected    = [p for p in matrix if p["validation_status"] == "rejected_all"]
+    validated = [p for p in matrix if p["validation_status"] == "validated"]
+    rejected  = [p for p in matrix if p["validation_status"] == "rejected_all"]
 
     by_section: Dict[str, int] = {}
     for p in TOP50_PROFILES:
         pt = p["profile_type"]
         by_section[pt] = by_section.get(pt, 0) + 1
 
+    # Machine coverage: count from live capable_machines (not static data)
     machine_coverage: Dict[str, int] = {mid: 0 for mid in MACHINES}
     for p in matrix:
         for mid in p.get("capable_machines", []):
-            machine_coverage[mid] = machine_coverage.get(mid, 0) + 1
+            machine_coverage[mid] += 1
+
+    # Tooling IDs: collect from live matrix results (per recommended machine)
+    live_tooling_ids = sorted(set(
+        p["tooling_id"] for p in matrix if p.get("tooling_id")
+    ))
 
     return {
-        "total_profiles":        len(TOP50_PROFILES),
+        "total_profiles":        len(matrix),
         "validated_count":       len(validated),
         "rejected_count":        len(rejected),
         "profiles_by_section":   by_section,
         "machine_coverage":      machine_coverage,
-        "tooling_ids_used":      sorted(set(
-            p["tooling_id"] for p in TOP50_PROFILES if p.get("tooling_id")
-        )),
+        "tooling_ids_used":      live_tooling_ids,
         "materials_represented": sorted(set(p["material"] for p in TOP50_PROFILES)),
         "thickness_range_mm": {
             "min": min(p["thickness_mm"] for p in TOP50_PROFILES),

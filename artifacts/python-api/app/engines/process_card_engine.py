@@ -70,20 +70,25 @@ def generate_process_card(
     bend_radius_mm: float = 2.0,
     machine_name: str = "Roll Forming Machine",
     project_ref: str = "PRJ-001",
+    machine_constraints: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Generate a per-station process card from simulation engine output.
 
     Args:
-        simulation_result: Output of simulation_engine.run_simulation()
-        thickness_mm:      Sheet thickness (mm)
-        material:          Material code
-        bend_radius_mm:    Inner bend radius (mm)
-        machine_name:      Machine identifier for header
-        project_ref:       Project reference number for header
+        simulation_result:   Output of simulation_engine.run_simulation()
+        thickness_mm:        Sheet thickness (mm)
+        material:            Material code
+        bend_radius_mm:      Inner bend radius (mm)
+        machine_name:        Machine identifier for header
+        project_ref:         Project reference number for header
+        machine_constraints: Optional dict from machine_aware_validator.process_constraints;
+                             includes machine_id, calibration offsets, line speed, motor kW,
+                             shaft_diameter_mm, max_roll_od_mm, effective_station_count.
 
     Returns:
-        pass_response with process_card header and station_cards list
+        pass_response with process_card header (incl. machine setup constraints)
+        and station_cards list.
     """
     if not simulation_result or simulation_result.get("status") != "pass":
         return fail_response("process_card_engine", "Simulation result missing or failed")
@@ -157,9 +162,35 @@ def generate_process_card(
     high_risk  = [s["station_no"] for s in station_cards if s["defect_risk"] == "HIGH"]
     med_risk   = [s["station_no"] for s in station_cards if s["defect_risk"] == "MEDIUM"]
 
+    # ── Machine setup constraints (Phase C) ───────────────────────────────────
+    machine_id_str   = machine_name
+    setup_constraints: Dict[str, Any] = {}
+    if machine_constraints:
+        mid = machine_constraints.get("machine_id", "")
+        if mid:
+            machine_id_str = f"{mid} — {machine_constraints.get('machine_display_name', machine_name)}"
+        setup_constraints = {
+            "machine_id":              machine_constraints.get("machine_id", ""),
+            "machine_class":           machine_constraints.get("machine_class", ""),
+            "max_stand_count":         machine_constraints.get("max_stand_count", ""),
+            "effective_station_count": machine_constraints.get("effective_station_count", len(station_cards)),
+            "roll_gap_correction_mm":  machine_constraints.get("roll_gap_correction_mm", 0),
+            "angle_correction_deg":    machine_constraints.get("angle_correction_deg", 0),
+            "strip_tension_factor":    machine_constraints.get("strip_tension_factor", 1.0),
+            "max_line_speed_mpm":      machine_constraints.get("max_line_speed_mpm", ""),
+            "motor_power_kw":          machine_constraints.get("motor_power_kw", ""),
+            "min_bend_radius_x_t":     machine_constraints.get("min_bend_radius_x_t", ""),
+            "shaft_diameter_mm":       machine_constraints.get("shaft_diameter_mm", ""),
+            "bearing_series":          machine_constraints.get("bearing_series", ""),
+            "max_roll_od_mm":          machine_constraints.get("max_roll_od_mm", ""),
+            "allow_tube_profiles":     machine_constraints.get("allow_tube_profiles", False),
+        }
+
     header = {
         "project_ref": project_ref,
-        "machine_name": machine_name,
+        "machine_name": machine_id_str,
+        "machine_id": machine_constraints.get("machine_id", "") if machine_constraints else "",
+        "setup_constraints": setup_constraints,
         "material": mat,
         "material_name": mat_name,
         "thickness_mm": thickness_mm,

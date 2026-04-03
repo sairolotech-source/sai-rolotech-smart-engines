@@ -1,20 +1,13 @@
 """
-station_engine.py — Station Estimation Engine  v2.0
+station_engine.py — Station Estimation Engine  v2.1  (machine-aware)
 
-Root-cause fix (v2.0): Previous formula used bend_count as direct base,
-giving unrealistically low counts (e.g. 4 for GI 1.5mm 2-bend C-section).
-
-This version computes stations from passes_per_bend × bend_count, where
-passes_per_bend = ceil(primary_bend_angle / max_angle_per_pass) and
-max_angle_per_pass is material + thickness specific.
-
-Before/After for GI 1.5mm C-section (2 bends, 90°):
-  v1.0: base=2 + complexity=0 + thickness=2 + material=0 = 4  ← wrong
-  v2.0: ppb=ceil(90/25)=4, forming=4×2=8, +entry+calib = 10, min=8  ← correct
+v2.0: Passes-per-bend formula replacing incorrect bend_count base.
+v2.1: Optional machine_config — clamps station count to machine stand_count,
+      applies calibration offsets, rejects profiles that exceed machine limits.
 """
 import math
 import logging
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 from app.utils.response import pass_response
 
@@ -81,6 +74,7 @@ def estimate(
     profile_result: Dict[str, Any],
     input_result: Dict[str, Any],
     flower_result: Dict[str, Any],
+    machine_config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     bend_count   = max(1, int(profile_result.get("bend_count", 1)))
     thickness    = float(input_result.get("sheet_thickness_mm", 1.0))
@@ -150,13 +144,60 @@ def estimate(
         "premium_extra_calib":       extra_calib_premium,
     }
 
+    # ── Machine-aware clamping (v2.1) ─────────────────────────────────────────
+    machine_id      = None
+    machine_warnings: list = []
+    machine_blocking: list = []
+    machine_clamped  = False
+
+    if machine_config:
+        machine_id  = machine_config.get("machine_id", "UNKNOWN")
+        stand_limit = int(machine_config.get("stand_count", 9999))
+        plr         = machine_config.get("pass_limit_rules", {})
+        max_bends   = int(plr.get("max_bends_per_profile", 9999))
+        t_min       = float(machine_config.get("thickness_min_mm", 0))
+        t_max       = float(machine_config.get("thickness_max_mm", 9999))
+        supp_mats   = [m.upper() for m in machine_config.get("supported_materials", [])]
+
+        if thickness < t_min or thickness > t_max:
+            machine_blocking.append(
+                f"Thickness {thickness}mm out of machine range [{t_min}–{t_max}mm]"
+            )
+        if supp_mats and material not in supp_mats:
+            machine_blocking.append(
+                f"Material {material} not supported (machine supports: {supp_mats})"
+            )
+        if bend_count > max_bends:
+            machine_blocking.append(
+                f"Profile has {bend_count} bends > machine limit {max_bends}"
+            )
+        if recommended > stand_limit:
+            machine_warnings.append(
+                f"Computed {recommended} stations exceeds machine stand_count {stand_limit}; "
+                f"clamped to {stand_limit}"
+            )
+            recommended  = stand_limit
+            premium      = min(premium, stand_limit)
+            minimum      = min(minimum, stand_limit)
+            machine_clamped = True
+        elif recommended > stand_limit * 0.90:
+            machine_warnings.append(
+                f"Station utilisation {recommended}/{stand_limit} = "
+                f"{recommended/stand_limit*100:.0f}% — near machine capacity"
+            )
+
+        offsets = machine_config.get("calibration_offsets", {})
+        reason_log["machine_gap_correction_mm"]   = offsets.get("roll_gap_correction_mm", 0)
+        reason_log["machine_angle_correction_deg"] = offsets.get("angle_correction_deg", 0)
+
     logger.info(
-        "[station_engine v2.0] bends=%d mat=%s t=%.2f ppb=%d forming=%d "
-        "→ min=%d recommended=%d premium=%d",
+        "[station_engine v2.1] bends=%d mat=%s t=%.2f ppb=%d forming=%d "
+        "→ min=%d recommended=%d premium=%d machine=%s",
         bend_count, material, thickness, ppb, forming_passes, minimum, recommended, premium,
+        machine_id or "none",
     )
 
-    return pass_response("station_engine", {
+    result = {
         "min_station_count":         minimum,
         "recommended_station_count": recommended,
         "premium_station_count":     premium,
@@ -164,4 +205,12 @@ def estimate(
         "section_type":              section_type,
         "reason_log":                reason_log,
         "confidence_level":          "high",
-    })
+    }
+    if machine_id:
+        result["machine_id"]           = machine_id
+        result["machine_clamped"]      = machine_clamped
+        result["machine_warnings"]     = machine_warnings
+        result["machine_blocking"]     = machine_blocking
+        result["machine_feasible"]     = len(machine_blocking) == 0
+
+    return pass_response("station_engine", result)

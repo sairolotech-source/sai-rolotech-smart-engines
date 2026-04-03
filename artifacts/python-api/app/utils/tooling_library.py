@@ -737,3 +737,97 @@ def library_summary() -> Dict[str, Any]:
             "max": max(e["shaft_dia_mm"] for e in TOOLING_LIBRARY),
         },
     }
+
+
+# ── MACHINE-AWARE MATCHING (Phase C) ──────────────────────────────────────────
+
+def get_best_match_for_machine(
+    section_type: str,
+    material_code: str,
+    thickness_mm: float,
+    machine_shaft_dia_mm: int,
+    machine_max_od_mm: float,
+) -> Optional[Dict[str, Any]]:
+    """
+    Return best tooling entry that fits within machine constraints.
+
+    Filters by section_type + material + thickness, then rejects any entry
+    where shaft_dia_mm > machine_shaft_dia_mm or roll_od_max_mm > machine_max_od_mm.
+
+    Falls back to looser material matching if needed.
+    Returns None if no tooling entry is compatible with the machine.
+    """
+    candidates = query_tooling_library(section_type, material_code, thickness_mm)
+    if not candidates:
+        candidates = query_tooling_library(section_type=section_type, thickness_mm=thickness_mm)
+    if not candidates:
+        candidates = query_tooling_library(section_type=section_type)
+
+    # Filter by machine constraints
+    compatible = [
+        e for e in candidates
+        if e.get("shaft_dia_mm", 0) <= machine_shaft_dia_mm
+        and e.get("roll_od_max_mm", 0) <= machine_max_od_mm
+    ]
+
+    if compatible:
+        return compatible[0]
+
+    # Partial match: shaft fits but OD exceeds — flag with warning
+    shaft_ok = [e for e in candidates if e.get("shaft_dia_mm", 0) <= machine_shaft_dia_mm]
+    if shaft_ok:
+        entry = dict(shaft_ok[0])
+        entry["_machine_constraint_warning"] = (
+            f"Standard tooling OD {shaft_ok[0].get('roll_od_max_mm')}mm "
+            f"exceeds machine max {machine_max_od_mm}mm — custom OD reduction required"
+        )
+        return entry
+
+    # Nothing fits: return None so caller knows no valid tooling exists
+    if candidates:
+        logger.warning(
+            "[tooling_library] Machine constraint violation: shaft_dia=%d > all candidates "
+            "(min shaft in library for %s = %d)",
+            machine_shaft_dia_mm, section_type,
+            min(e.get("shaft_dia_mm", 0) for e in candidates),
+        )
+    return None
+
+
+def check_tooling_machine_compatibility(
+    tooling_entry_id: str,
+    machine_shaft_dia_mm: int,
+    machine_max_od_mm: float,
+) -> Dict[str, Any]:
+    """
+    Check a specific tooling entry against machine constraints.
+    Returns a compatibility dict with pass/warn/fail status.
+    """
+    entry = get_tooling_entry(tooling_entry_id)
+    if not entry:
+        return {"compatible": False, "reason": f"Tooling entry '{tooling_entry_id}' not found"}
+
+    shaft_ok = entry.get("shaft_dia_mm", 0) <= machine_shaft_dia_mm
+    od_ok    = entry.get("roll_od_max_mm", 0) <= machine_max_od_mm
+
+    status = "pass" if (shaft_ok and od_ok) else "fail"
+    warnings = []
+    if not shaft_ok:
+        warnings.append(
+            f"Tooling shaft {entry['shaft_dia_mm']}mm > machine shaft {machine_shaft_dia_mm}mm"
+        )
+    if not od_ok:
+        warnings.append(
+            f"Tooling OD {entry['roll_od_max_mm']}mm > machine max OD {machine_max_od_mm}mm"
+        )
+
+    return {
+        "compatible":            status == "pass",
+        "status":                status,
+        "tooling_id":            tooling_entry_id,
+        "tooling_shaft_dia_mm":  entry.get("shaft_dia_mm"),
+        "tooling_max_od_mm":     entry.get("roll_od_max_mm"),
+        "machine_shaft_dia_mm":  machine_shaft_dia_mm,
+        "machine_max_od_mm":     machine_max_od_mm,
+        "warnings":              warnings,
+    }

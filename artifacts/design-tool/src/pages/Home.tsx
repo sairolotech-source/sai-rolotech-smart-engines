@@ -1032,6 +1032,7 @@ export default function Home({ onBackToDashboard }: HomeProps) {
                 <div className="space-y-2">
                   {[
                     { ver: "2.2.16", title: "Pura Saaf + Naya Install System", desc: "irm | iex one-liner — purana delete, naya shortcut, browser mein open" },
+                    { ver: "2.2.24", title: "New Features Banner on Main Screen", desc: "Version-based banner now appears on Home after app upgrade" },
                     { ver: "2.2.11", title: "Auto-Update Engine + IPC Fix", desc: "downloadUpdate IPC, hard-reset conflict resolver, ElectronAutoUpdate UI" },
                     { ver: "2.2.9",  title: "One-Command Windows Installer", desc: "install.ps1, auto-kill old version, Desktop + Start Menu shortcut guarantee" },
                     { ver: "2.2.0",  title: "GitHub Auto-Update System", desc: "Live GitHub pull, version tracking, Admin panel update controls" },

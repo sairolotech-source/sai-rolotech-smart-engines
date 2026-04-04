@@ -183,6 +183,8 @@ const VALIDATION_GATED_TABS = new Set<AppTab>([
   "admin-dashboard",   // Admin dashboard — production pipeline review
 ]);
 
+const LAST_SEEN_VERSION_STORAGE_KEY = "rt:last-seen-app-version";
+
 function ValidationGateBanner({ onGoToValidation }: { onGoToValidation: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center h-full bg-[#080812] gap-4 px-8 text-center">
@@ -226,12 +228,30 @@ export default function Home({ onBackToDashboard }: HomeProps) {
   const [showAIKeyModal, setShowAIKeyModal] = useState(false);
   const { hasKey: hasPersonalKey } = usePersonalAIKey();
   const [activeCatId, setActiveCatId] = useState(() => TAB_TO_CAT[activeTab] ?? "design");
+  const [showNewFeaturesBanner, setShowNewFeaturesBanner] = useState(false);
+  const [lastSeenVersion, setLastSeenVersion] = useState<string | null>(null);
   // sectionModel is now driven from the store (persisted across sessions)
   const sectionModel = storeSectionModel;
   const [showSectionSelector, setShowSectionSelector] = useState(
     // Show mandatory selector on first load if model not yet chosen
     () => !storeSectionModel
   );
+
+  useEffect(() => {
+    try {
+      const storedVersion = localStorage.getItem(LAST_SEEN_VERSION_STORAGE_KEY);
+      if (!storedVersion) {
+        localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, APP_VERSION_TAG);
+        return;
+      }
+      if (storedVersion !== APP_VERSION_TAG) {
+        setLastSeenVersion(storedVersion);
+        setShowNewFeaturesBanner(true);
+      }
+    } catch {
+      // Storage may be unavailable in hardened browser contexts.
+    }
+  }, []);
 
   useEffect(() => {
     const cat = TAB_TO_CAT[activeTab];
@@ -241,6 +261,25 @@ export default function Home({ onBackToDashboard }: HomeProps) {
   const handleLogout = async () => {
     await logout();
     toast({ title: "Signed out", description: "You have been logged out successfully." });
+  };
+
+  const markCurrentVersionAsSeen = () => {
+    try {
+      localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, APP_VERSION_TAG);
+    } catch {
+      // Storage may be unavailable in hardened browser contexts.
+    }
+  };
+
+  const handleOpenWhatsNew = () => {
+    markCurrentVersionAsSeen();
+    setShowNewFeaturesBanner(false);
+    setShowAbout(true);
+  };
+
+  const handleDismissWhatsNew = () => {
+    markCurrentVersionAsSeen();
+    setShowNewFeaturesBanner(false);
   };
 
   const prevAutoAIStep = useRef(autoMode.status.step);
@@ -762,6 +801,52 @@ export default function Home({ onBackToDashboard }: HomeProps) {
           )}
         </div>
       </header>
+
+      {showNewFeaturesBanner && (
+        <div className="px-3 py-2" style={{ background: "rgba(245,158,11,0.08)", borderBottom: "1px solid rgba(245,158,11,0.22)" }}>
+          <div
+            className="flex items-center justify-between gap-3 rounded-xl px-3 py-2"
+            style={{
+              background: "linear-gradient(135deg, rgba(245,158,11,0.18), rgba(217,119,6,0.12))",
+              border: "1px solid rgba(245,158,11,0.28)",
+            }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(245,158,11,0.2)", border: "1px solid rgba(245,158,11,0.35)" }}
+              >
+                <Zap className="w-4 h-4" style={{ color: "#fbbf24" }} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-white">New Features Added in {APP_VERSION_TAG}</div>
+                <div className="text-[11px]" style={{ color: "#fcd34d" }}>
+                  {lastSeenVersion
+                    ? `Updated from ${lastSeenVersion}. Changelog check karke latest improvements dekhein.`
+                    : "Latest improvements available. Changelog check karke nayi updates dekhein."}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleOpenWhatsNew}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110"
+                style={{ background: "rgba(255,255,255,0.92)", color: "#9a3412" }}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                View Details
+              </button>
+              <button
+                onClick={handleDismissWhatsNew}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:bg-white/10"
+                style={{ color: "#fde68a" }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           MAIN BODY = slim icon sidebar + tool panel + content

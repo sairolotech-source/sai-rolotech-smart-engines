@@ -202,7 +202,7 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
     } = req.body;
 
     // ── Extract new Phase-1 contract fields ──────────────────────────────────
-    const body = req.body as Record<string, unknown>;
+    const body = req.body as unknown as Record<string, unknown>;
     const thicknessBandMin = typeof body.thicknessBandMin === "number" ? body.thicknessBandMin : undefined;
     const thicknessBandMax = typeof body.thicknessBandMax === "number" ? body.thicknessBandMax : undefined;
     const profileSourceType = typeof body.profileSourceType === "string" ? body.profileSourceType : "centerline";

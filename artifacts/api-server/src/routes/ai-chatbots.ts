@@ -94,7 +94,7 @@ async function callExternalAI(
       return data.content?.[0]?.text ?? null;
     }
 
-    const activeModel = provider === "gemini" ? "gemini-2.5-pro" : cfg.model;
+    const activeModel = cfg.model;
     const isClaude = activeModel.toLowerCase().includes("claude");
 
     // Claude extended thinking: temperature MUST be 1, add thinking block
@@ -364,12 +364,7 @@ async function getOnlineExpertResponse(
   }
 
   const providerChain: { provider: AIProvider; label: string }[] = [
-    { provider: "gemini", label: "gemini-2.5-pro" },
-    { provider: "sambanova", label: "sambanova-llama-70b" },
-    { provider: "openrouter", label: "deepseek-r1" },
-    { provider: "anthropic", label: "claude-opus" },
-    { provider: "kimi", label: "kimi-moonshot-32k" },
-    { provider: "nvidia", label: "nvidia-llama-70b" },
+    { provider: "openrouter", label: "claude-sonnet-4.6" },
   ];
 
   for (const { provider, label } of providerChain) {

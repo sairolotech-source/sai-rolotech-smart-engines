@@ -267,7 +267,7 @@ def run_stage1(output_root: Path) -> Dict[str, Any]:
                     profile_result=pipeline.get("profile_analysis_engine", {}),
                     machine_layout_result=pipeline.get("machine_layout_engine", {}),
                 )
-                checks["cad_export_pass"] = cad_result.get("status") == "pass"
+                checks["cad_export_pass"] = cad_result.get("status") in {"pass", "partial"}
                 case_log_lines.append(f"cad_export_status={cad_result.get('status')}")
 
                 copied_exports, missing_exports = _copy_export_files(
@@ -282,6 +282,7 @@ def run_stage1(output_root: Path) -> Dict[str, Any]:
 
                 checks["dxf_exists"] = any(Path(p).suffix.lower() == ".dxf" for p in copied_exports)
                 checks["step_exists"] = any(Path(p).suffix.lower() in {".stp", ".step"} for p in copied_exports)
+                checks["cad_export_pass"] = checks["cad_export_pass"] and checks["dxf_exists"] and checks["step_exists"]
 
                 flower_svg_result = generate_flower_svg(
                     profile_result=pipeline.get("profile_analysis_engine", {}),
@@ -674,4 +675,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

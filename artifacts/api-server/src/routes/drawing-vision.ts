@@ -152,7 +152,8 @@ router.post("/drawing-vision/analyze", upload.single("image"), async (req: Reque
       model = "Gemini 2.5 Pro Vision";
     } else {
       const form = new FormData();
-      const blob = new Blob([file.buffer], { type: "application/octet-stream" });
+      const fileBytes = Uint8Array.from(file.buffer);
+      const blob = new Blob([fileBytes], { type: "application/octet-stream" });
       form.append("file", blob, file.originalname);
 
       const pyRes = await fetch(`${PYTHON_API}/preview-dxf`, {
@@ -174,6 +175,7 @@ router.post("/drawing-vision/analyze", upload.single("image"), async (req: Reque
 
       const profileResult = (pyData["profile_analysis_engine"] ?? {}) as Record<string, unknown>;
       const entitySummary = (pyData["entity_summary"] ?? {}) as Record<string, unknown>;
+      const profilePoints = Array.isArray(profileResult["profile_points"]) ? profileResult["profile_points"] : [];
 
       const dxfText = `
 DXF File: ${file.originalname}
@@ -188,7 +190,7 @@ Profile Analysis:
   - Flange lengths: ${JSON.stringify(profileResult["flange_lengths_mm"] ?? [])}
   - Web height: ${profileResult["web_height_mm"] ?? "N/A"} mm
   - Symmetry: ${profileResult["is_symmetric"] ?? "N/A"}
-  - Raw profile points: ${JSON.stringify((profileResult["profile_points"] ?? []).slice(0, 20))}
+  - Raw profile points: ${JSON.stringify(profilePoints.slice(0, 20))}
 `.trim();
 
       analysis = await callGeminiText(dxfText, question ?? "");

@@ -139,7 +139,7 @@ export const ROLE_META: Record<UserRole, {
 
 type TransitionKey = `${ApprovalState}→${ApprovalState}`;
 
-export const ALLOWED_TRANSITIONS: Record<TransitionKey, UserRole[]> = {
+export const ALLOWED_TRANSITIONS: Partial<Record<TransitionKey, UserRole[]>> = {
   "draft→under_review":                   ["designer", "admin"],
   "under_review→checked":                 ["checker", "admin"],
   "under_review→draft":                   ["designer", "admin"],

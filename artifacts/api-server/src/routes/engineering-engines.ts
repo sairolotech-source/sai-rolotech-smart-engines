@@ -26,6 +26,10 @@ import type { ProfileGeometry } from "../lib/dxf-parser-util";
 
 const router: IRouter = Router();
 
+function routeParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
 // ─── POST /api/dxf/normalize ─────────────────────────────────────────────────
 router.post("/dxf/normalize", (req: Request, res: Response) => {
   try {
@@ -89,7 +93,7 @@ router.post("/dxf/convert-profile", (req: Request, res: Response) => {
       return;
     }
     const result = convertProfile({ geometry, inputType, thicknessMm });
-    res.json({ success: result.success, ...result });
+    res.json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Profile conversion failed";
     res.status(400).json({ error: msg });
@@ -285,7 +289,7 @@ router.get("/pipeline/sessions", (_req: Request, res: Response) => {
 });
 
 router.get("/pipeline/session/:id", (req: Request, res: Response) => {
-  const session = getSession(req.params["id"] ?? "");
+  const session = getSession(routeParam(req.params["id"]));
   if (!session) {
     res.status(404).json({ error: "Session not found" });
     return;
@@ -294,9 +298,10 @@ router.get("/pipeline/session/:id", (req: Request, res: Response) => {
 });
 
 router.get("/pipeline/report/:id", (req: Request, res: Response) => {
-  const report = generateDebugReport(req.params["id"] ?? "");
+  const reportId = routeParam(req.params["id"]);
+  const report = generateDebugReport(reportId);
   res.setHeader("Content-Type", "text/plain");
-  res.setHeader("Content-Disposition", `attachment; filename="pipeline-report-${req.params["id"]}.txt"`);
+  res.setHeader("Content-Disposition", `attachment; filename="pipeline-report-${reportId}.txt"`);
   res.send(report);
 });
 

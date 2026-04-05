@@ -5,6 +5,10 @@ import type { AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
 
+function routeParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
 router.get("/tools", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.authUser!.uid;
@@ -38,8 +42,9 @@ router.get("/tools", async (req: AuthenticatedRequest, res: Response) => {
 router.get("/tools/:id", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.authUser!.uid;
+    const toolId = routeParam(req.params.id);
     const [tool] = await db.select().from(cncTools)
-      .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
+      .where(and(eq(cncTools.id, toolId), eq(cncTools.userId, userId)));
     if (!tool) { res.status(404).json({ success: false, error: "Tool not found" }); return; }
 
     const cuttingData = await db.select().from(cncToolCuttingData)
@@ -73,11 +78,12 @@ router.post("/tools", async (req: AuthenticatedRequest, res: Response) => {
 router.put("/tools/:id", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.authUser!.uid;
+    const toolId = routeParam(req.params.id);
     const { cuttingData, ...toolData } = req.body;
 
     const [tool] = await db.update(cncTools)
       .set({ ...toolData, updatedAt: new Date() })
-      .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)))
+      .where(and(eq(cncTools.id, toolId), eq(cncTools.userId, userId)))
       .returning();
 
     if (!tool) { res.status(404).json({ success: false, error: "Tool not found" }); return; }
@@ -98,9 +104,10 @@ router.put("/tools/:id", async (req: AuthenticatedRequest, res: Response): Promi
 router.delete("/tools/:id", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.authUser!.uid;
+    const toolId = routeParam(req.params.id);
     const [tool] = await db.update(cncTools)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)))
+      .where(and(eq(cncTools.id, toolId), eq(cncTools.userId, userId)))
       .returning();
 
     if (!tool) { res.status(404).json({ success: false, error: "Tool not found" }); return; }
@@ -113,8 +120,9 @@ router.delete("/tools/:id", async (req: AuthenticatedRequest, res: Response): Pr
 router.get("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.authUser!.uid;
+    const toolId = routeParam(req.params.id);
     const [tool] = await db.select().from(cncTools)
-      .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
+      .where(and(eq(cncTools.id, toolId), eq(cncTools.userId, userId)));
     if (!tool) { res.status(404).json({ success: false, error: "Tool not found" }); return; }
 
     const data = await db.select().from(cncToolCuttingData)
@@ -128,8 +136,9 @@ router.get("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Res
 router.post("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.authUser!.uid;
+    const toolId = routeParam(req.params.id);
     const [tool] = await db.select().from(cncTools)
-      .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
+      .where(and(eq(cncTools.id, toolId), eq(cncTools.userId, userId)));
     if (!tool) { res.status(404).json({ success: false, error: "Tool not found" }); return; }
 
     const [entry] = await db.insert(cncToolCuttingData)
@@ -144,13 +153,15 @@ router.post("/tools/:id/cutting-data", async (req: AuthenticatedRequest, res: Re
 router.put("/tools/:id/cutting-data/:cdId", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.authUser!.uid;
+    const toolId = routeParam(req.params.id);
+    const cuttingDataId = routeParam(req.params.cdId);
     const [tool] = await db.select().from(cncTools)
-      .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
+      .where(and(eq(cncTools.id, toolId), eq(cncTools.userId, userId)));
     if (!tool) { res.status(404).json({ success: false, error: "Tool not found" }); return; }
 
     const [entry] = await db.update(cncToolCuttingData)
       .set(req.body)
-      .where(and(eq(cncToolCuttingData.id, req.params.cdId), eq(cncToolCuttingData.toolId, tool.id)))
+      .where(and(eq(cncToolCuttingData.id, cuttingDataId), eq(cncToolCuttingData.toolId, tool.id)))
       .returning();
     if (!entry) { res.status(404).json({ success: false, error: "Cutting data entry not found" }); return; }
     res.json({ success: true, cuttingData: entry });
@@ -162,12 +173,14 @@ router.put("/tools/:id/cutting-data/:cdId", async (req: AuthenticatedRequest, re
 router.delete("/tools/:id/cutting-data/:cdId", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.authUser!.uid;
+    const toolId = routeParam(req.params.id);
+    const cuttingDataId = routeParam(req.params.cdId);
     const [tool] = await db.select().from(cncTools)
-      .where(and(eq(cncTools.id, req.params.id), eq(cncTools.userId, userId)));
+      .where(and(eq(cncTools.id, toolId), eq(cncTools.userId, userId)));
     if (!tool) { res.status(404).json({ success: false, error: "Tool not found" }); return; }
 
     const [entry] = await db.delete(cncToolCuttingData)
-      .where(and(eq(cncToolCuttingData.id, req.params.cdId), eq(cncToolCuttingData.toolId, tool.id)))
+      .where(and(eq(cncToolCuttingData.id, cuttingDataId), eq(cncToolCuttingData.toolId, tool.id)))
       .returning();
     if (!entry) { res.status(404).json({ success: false, error: "Cutting data entry not found" }); return; }
     res.json({ success: true });

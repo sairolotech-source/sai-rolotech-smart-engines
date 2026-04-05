@@ -4,7 +4,7 @@ import {
   Activity, CheckCircle2, XCircle, AlertCircle,
   RefreshCw, Link, Send, Terminal, Zap,
 } from "lucide-react";
-import { detectLaptopHardware, connectToSerialPort, sendGCodeToSerial, type LaptopHardwareInfo } from "../../lib/laptop-hardware";
+import { detectLaptopHardware, connectToSerialPort, sendGCodeToSerial, type LaptopHardwareInfo, type WebSerialPort } from "../../lib/laptop-hardware";
 
 const C = {
   bg: "#0a0a0f",
@@ -60,7 +60,7 @@ export default function LaptopHardwareView() {
   const [hw, setHw] = useState<LaptopHardwareInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [serverHw, setServerHw] = useState<any>(null);
-  const [serialPort, setSerialPort] = useState<SerialPort | null>(null);
+  const [serialPort, setSerialPort] = useState<WebSerialPort | null>(null);
   const [serialConnected, setSerialConnected] = useState(false);
   const [gcode, setGcode] = useState("G28 ; Home all axes\nG1 X10 Y10 F1000\nM114 ; Get position");
   const [serialLog, setSerialLog] = useState<string[]>([]);

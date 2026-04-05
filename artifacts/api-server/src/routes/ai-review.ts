@@ -71,7 +71,8 @@ router.post("/ai-review", async (req: Request, res: Response) => {
       model,
       messages,
       max_completion_tokens: 1024,
-    } as Parameters<typeof openai.chat.completions.create>[0]);
+      stream: false,
+    });
 
     const text = completion.choices?.[0]?.message?.content ?? "";
 

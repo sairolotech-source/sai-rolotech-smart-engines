@@ -2250,17 +2250,18 @@ export function LeftPanel() {
       {error && (() => {
         // Root-cause fix for "Î” [object Object]": error state may receive a non-string value
         // via `as any` cast paths. Extract a safe scalar string before any display or style logic.
+        const rawError: unknown = error;
         const errStr: string = (() => {
-          if (typeof error === "string") return error;
-          if (error instanceof Error) return error.message;
-          if (error !== null && typeof error === "object") {
-            const o = error as Record<string, unknown>;
+          if (typeof rawError === "string") return rawError;
+          if (rawError instanceof Error) return rawError.message;
+          if (rawError !== null && typeof rawError === "object") {
+            const o = rawError as Record<string, unknown>;
             if (typeof o.issue === "string")   return o.issue;
             if (typeof o.message === "string") return o.message;
             if (typeof o.detail === "string")  return o.detail;
             return JSON.stringify(o);
           }
-          return String(error);
+          return String(rawError);
         })();
         const style = getNotificationStyle(errStr);
         return (

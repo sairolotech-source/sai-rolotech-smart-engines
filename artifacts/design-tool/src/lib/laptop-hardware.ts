@@ -49,6 +49,13 @@ export interface LaptopHardwareInfo {
   } | null;
 }
 
+export interface WebSerialPort {
+  open(options: { baudRate: number }): Promise<void>;
+  close(): Promise<void>;
+  readable?: ReadableStream<Uint8Array>;
+  writable?: WritableStream<Uint8Array>;
+}
+
 export async function detectLaptopHardware(): Promise<LaptopHardwareInfo> {
   const ua = navigator.userAgent;
 
@@ -190,19 +197,19 @@ export async function detectLaptopHardware(): Promise<LaptopHardwareInfo> {
   };
 }
 
-export async function listSerialPorts(): Promise<SerialPort[]> {
+export async function listSerialPorts(): Promise<WebSerialPort[]> {
   if (!("serial" in navigator)) throw new Error("WebSerial API not supported. Use Chrome or Edge browser.");
-  return await (navigator as any).serial.getPorts();
+  return await (navigator as any).serial.getPorts() as WebSerialPort[];
 }
 
-export async function connectToSerialPort(baudRate = 115200): Promise<SerialPort> {
+export async function connectToSerialPort(baudRate = 115200): Promise<WebSerialPort> {
   if (!("serial" in navigator)) throw new Error("WebSerial API not supported. Use Chrome or Edge browser.");
-  const port = await (navigator as any).serial.requestPort();
+  const port = await (navigator as any).serial.requestPort() as WebSerialPort;
   await port.open({ baudRate });
   return port;
 }
 
-export async function sendGCodeToSerial(port: SerialPort, gcode: string): Promise<void> {
+export async function sendGCodeToSerial(port: WebSerialPort, gcode: string): Promise<void> {
   if (!port.writable) throw new Error("Serial port not writable");
   const writer = port.writable.getWriter();
   const encoder = new TextEncoder();

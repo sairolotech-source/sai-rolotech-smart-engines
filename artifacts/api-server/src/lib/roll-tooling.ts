@@ -159,6 +159,19 @@ const K_FACTORS: Record<string, number> = {
   HSLA: 0.45,   // was 0.43
 };
 
+const STRIP_WIDTH_K_FACTORS: Record<string, number> = {
+  GI: 0.38,
+  CR: 0.40,
+  HR: 0.42,
+  SS: 0.44,
+  AL: 0.39,
+  MS: 0.38,
+  CU: 0.37,
+  TI: 0.45,
+  PP: 0.36,
+  HSLA: 0.43,
+};
+
 const SHAFT_YIELD_MPA: Record<string, number> = {
   C45: 400, "En8": 380, "En24": 540, "En36": 580, "42CrMo4": 650, "SCM440": 640,
 };
@@ -820,7 +833,7 @@ export function calcStripWidth(
 ): number {
   const mat = materialType.toUpperCase();
   const t = parseFloat(String(thickness)) || 1.0;
-  const K = K_FACTORS[mat] ?? 0.44;
+  const K = STRIP_WIDTH_K_FACTORS[mat] ?? 0.38;
 
   const bendAllowances = bends.map(b => {
     const r = b.radius;
@@ -856,15 +869,9 @@ export function calcBomFromTooling(
       material: matSpec,
     });
     bom.push({
-      item: `Shaft ${t.stationId}`,
-      qty: 1,
-      spec: shaftSpec,
-      material: sc.recommendedMaterial,
-    });
-    bom.push({
       item: `Bearing Set ${t.stationId}`,
       qty: 4,
-      spec: `SKF/FAG ${t.bearing.designation} | Ø${t.bearing.boreMm}×${t.bearing.odMm}×${t.bearing.widthMm}mm | C=${t.bearing.C_kN}kN | Seat:${sc.surfaceFinish.bearingSeat}`,
+      spec: `SKF/FAG ${t.bearing.designation} | Ø${t.bearing.boreMm}×${t.bearing.odMm}×${t.bearing.widthMm}mm | C=${t.bearing.C_kN}kN | Seat:${sc.surfaceFinish.bearingSeat} | Shaft:${shaftSpec}`,
       material: "Bearing Steel 52100 (2RS Sealed)",
     });
   }

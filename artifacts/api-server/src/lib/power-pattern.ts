@@ -35,6 +35,8 @@ export interface FlowerPattern {
   numStations: number;
   validation?: ValidationResult;
   stretchedWidth?: number;
+  _synthesizedAngles?: boolean;
+  _synthesizedNote?: string;
 }
 
 /**

@@ -16,7 +16,23 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 
 const execAsync = promisify(exec);
 
-const REPO_ROOT = path.resolve("/home/runner/workspace");
+function resolveRepoRoot(): string {
+  const candidates = [
+    process.env["REPO_ROOT"],
+    process.env["PWD"],
+    process.cwd(),
+    "/home/runner/workspace",
+  ].filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+
+  for (const candidate of candidates) {
+    const abs = path.resolve(candidate);
+    if (fs.existsSync(path.join(abs, ".git"))) return abs;
+  }
+
+  return path.resolve(process.cwd());
+}
+
+const REPO_ROOT = resolveRepoRoot();
 const GITHUB_REPO = "adminsairolotech-bit/sai-rolotech-smart-engines";
 
 export type UpdateSource = "git-pull" | "github-archive" | "google-drive";

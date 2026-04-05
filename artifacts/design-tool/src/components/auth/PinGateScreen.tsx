@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Lock, ShieldAlert } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { APP_VERSION_TAG } from "@/lib/appVersion";
 
 const CORRECT_PIN = "1164";
 
@@ -142,7 +143,7 @@ export function PinGateScreen({ onUnlocked }: Props) {
         </div>
 
         <p className="text-center text-[10px] text-zinc-700 mt-4">
-          SAI Rolotech Smart Engines v2.2.23
+          SAI Rolotech Smart Engines {APP_VERSION_TAG}
         </p>
       </div>
 

@@ -3,6 +3,7 @@ import https from "https";
 
 const router = Router();
 const GITHUB_REPO = "adminsairolotech-bit/sai-rolotech-smart-engines";
+const LATEST_KNOWN_TAG = "v2.2.24";
 
 function ghHeaders(): Record<string, string> {
   const h: Record<string, string> = { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" };
@@ -91,7 +92,7 @@ router.get("/install", async (req: Request, res: Response) => {
   const serverBase = `${proto}://${host}`;
 
   // Best-effort GitHub release fetch — fallback to defaults if API unreachable
-  let tag = "v2.2.23";
+  let tag = LATEST_KNOWN_TAG;
   let githubUrl = `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v", "")}.exe`;
   let sizeMB = 85;
   let assetId: number | null = null;
@@ -230,7 +231,7 @@ router.get("/download-page", async (_req: Request, res: Response) => {
   try {
     const release = await fetchLatestRelease();
 
-    const tag = release.tag_name ?? "v2.2.18";
+    const tag = release.tag_name ?? LATEST_KNOWN_TAG;
     const setupAsset   = getSetupAsset(release.assets ?? []);
     const portableAsset = (release.assets ?? []).find((a: any) => a.name.includes("Portable") && a.name.endsWith(".exe"));
     const setupUrl    = setupAsset?.browser_download_url ?? "";

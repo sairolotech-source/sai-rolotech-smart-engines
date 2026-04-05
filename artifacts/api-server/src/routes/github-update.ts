@@ -16,8 +16,25 @@ import {
 const router: IRouter = Router();
 const execAsync = promisify(exec);
 
-const REPO_ROOT = path.resolve("/home/runner/workspace");
+function resolveRepoRoot(): string {
+  const candidates = [
+    process.env["REPO_ROOT"],
+    process.env["PWD"],
+    process.cwd(),
+    "/home/runner/workspace",
+  ].filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+
+  for (const candidate of candidates) {
+    const abs = path.resolve(candidate);
+    if (fs.existsSync(path.join(abs, ".git"))) return abs;
+  }
+
+  return path.resolve(process.cwd());
+}
+
+const REPO_ROOT = resolveRepoRoot();
 const GITHUB_REPO = "adminsairolotech-bit/sai-rolotech-smart-engines";
+const LATEST_KNOWN_TAG = "v2.2.24";
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/commits/main`;
 
 const AUTO_CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -892,7 +909,7 @@ router.get("/system/install", async (_req: Request, res: Response) => {
       headers: { "User-Agent": "SAI-Rolotech-UpdateAgent/1.0" }
     });
     const release = await ghRes.json() as { tag_name: string; assets: { name: string; browser_download_url: string; size: number }[] };
-    const tag = release.tag_name ?? "v2.2.11";
+    const tag = release.tag_name ?? LATEST_KNOWN_TAG;
     const asset = release.assets?.find((a) => a.name.endsWith(".exe") && !a.name.endsWith(".blockmap"));
     const url = asset?.browser_download_url ?? `https://github.com/${GITHUB_REPO}/releases/download/${tag}/SAI-Rolotech-Smart-Engines-Setup-${tag.replace("v","")}.exe`;
     const sizeMB = asset ? Math.round(asset.size / 1024 / 1024) : 83;

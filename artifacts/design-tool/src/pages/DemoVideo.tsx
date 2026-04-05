@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { APP_VERSION_TAG } from "@/lib/appVersion";
 
 const COLORS = {
   bg: '#0a0f1a',
@@ -347,7 +348,7 @@ function Scene1Intro() {
         transition={{ delay: 2.5, duration: 1 }}
         style={{ marginTop: '4vh', fontSize: '1.5vw', color: COLORS.textMuted, letterSpacing: '0.2em' }}
       >
-        SMART ENGINES V2.2.23
+        SMART ENGINES {APP_VERSION_TAG.toUpperCase()}
       </motion.div>
     </motion.div>
   );

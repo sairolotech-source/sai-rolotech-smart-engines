@@ -41,6 +41,8 @@ import auditLogRouter from "./audit-log";
 import rbacInfoRouter from "./rbac-info";
 import engineeringEnginesRouter from "./engineering-engines";
 import codexEngineerRouter from "./codex-engineer";
+import profileRouter from "./profile";
+import simulationRouter from "./simulation";
 
 const router: IRouter = Router();
 
@@ -96,6 +98,8 @@ router.use(autoPipelineRouter);
 router.use(testCasesRouter);
 router.use(engineeringEnginesRouter);
 router.use(codexEngineerRouter);
+router.use(profileRouter);
+router.use(simulationRouter);
 
 startAutoBackup(600);
 startAutoUpdate();

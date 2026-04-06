@@ -9,6 +9,10 @@
     "build": "tsx --tsconfig tsconfig.json build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --tsconfig tsconfig.json src/tests/calc-validator.test.ts && tsx --tsconfig tsconfig.json src/tests/engineering-integration.test.ts && tsx --tsconfig tsconfig.json src/tests/production-integration.test.ts",
+    "test:phase1": "tsx --tsconfig tsconfig.json src/tests/phase1-profile-flower.test.ts",
+    "test:phase2": "tsx --tsconfig tsconfig.json src/tests/phase2-roll-tooling.test.ts",
+    "test:phase3": "tsx --tsconfig tsconfig.json src/tests/phase3-simulation.test.ts",
+    "test:phase4": "tsx --tsconfig tsconfig.json src/tests/phase4-optimization.test.ts",
     "test:calc": "tsx --tsconfig tsconfig.json src/tests/calc-validator.test.ts",
     "test:integration": "tsx --tsconfig tsconfig.json src/tests/engineering-integration.test.ts",
     "test:production": "tsx --tsconfig tsconfig.json src/tests/production-integration.test.ts"

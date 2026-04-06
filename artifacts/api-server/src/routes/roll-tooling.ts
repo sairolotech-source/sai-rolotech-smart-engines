@@ -1,10 +1,11 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { generateFlowerPattern } from "../lib/power-pattern";
+import { generateFlowerPattern, type FlowerPassPhysics, type FlowerStation } from "../lib/power-pattern";
 import {
   generateRollTooling, calculateRollGaps, calcStripWidth, calcBomFromTooling,
   calcRequiredMotorPower,
   DEFAULT_GCODE_PROFILE, DELTA_GCODE_PROFILE, type GcodeProfile, type RollToolingResult,
 } from "../lib/roll-tooling";
+import { generatePhase2RollTooling } from "../lib/phase2-roll-tooling-engine";
 import type { ProfileGeometry, Segment } from "../lib/dxf-parser-util";
 
 const router: IRouter = Router();
@@ -243,13 +244,17 @@ function resolveGcodeProfile(postProcessorId?: string): GcodeProfile {
 }
 
 interface RollToolingBody {
-  geometry: ProfileGeometry;
+  geometry?: ProfileGeometry;
+  flower?: { stations: FlowerStation[]; passes?: FlowerPassPhysics[] };
   numStations: number | string;
   stationPrefix?: string;
+  material?: string;
   materialThickness?: number | string;
   rollDiameter?: number | string;
   shaftDiameter?: number | string;
   clearance?: number | string;
+  clearanceMm?: number | string;
+  toleranceMm?: number | string;
   materialType?: string;
   postProcessorId?: string;
   openSectionType?: string;
@@ -258,6 +263,70 @@ interface RollToolingBody {
   motorRpm?: number | string;
   lineSpeedMpm?: number | string;   // target line speed m/min for motor calc
 }
+
+router.post("/generate-roll-tooling-phase2", (req: Request<unknown, unknown, RollToolingBody>, res: Response) => {
+  try {
+    const {
+      geometry,
+      flower,
+      numStations,
+      stationPrefix,
+      material,
+      materialType,
+      materialThickness,
+      toleranceMm,
+      clearanceMm,
+    } = req.body;
+
+    const thickness = parseFloat(String(materialThickness)) || 1.0;
+    const requestedMaterial = String(material || materialType || "GI");
+    const tolerance = Number.isFinite(parseFloat(String(toleranceMm)))
+      ? parseFloat(String(toleranceMm))
+      : undefined;
+    const clearance = Number.isFinite(parseFloat(String(clearanceMm)))
+      ? parseFloat(String(clearanceMm))
+      : undefined;
+
+    let flowerStations: FlowerStation[] = [];
+    let flowerPasses: FlowerPassPhysics[] | undefined;
+
+    if (flower && Array.isArray(flower.stations) && flower.stations.length > 0) {
+      flowerStations = flower.stations;
+      flowerPasses = Array.isArray(flower.passes) ? flower.passes : undefined;
+    } else {
+      if (!geometry || !Array.isArray(geometry.segments) || geometry.segments.length === 0) {
+        res.status(400).json({
+          error: "Provide either flower.stations or geometry for Phase-2 tooling generation",
+        });
+        return;
+      }
+      const stations = Math.max(1, Math.min(30, parseInt(String(numStations)) || 5));
+      const prefix = stationPrefix || "S";
+      const flowerResult = generateFlowerPattern(geometry, stations, prefix, requestedMaterial, thickness);
+      flowerStations = flowerResult.stations;
+      flowerPasses = flowerResult.passes;
+    }
+
+    const phase2 = generatePhase2RollTooling({
+      flowerStations,
+      flowerPasses,
+      profileGeometry: geometry,
+      material: requestedMaterial,
+      thickness,
+      toleranceMm: tolerance,
+      clearanceMm: clearance,
+    });
+
+    res.json({
+      success: true,
+      ...phase2,
+      rollModel: "phase2_roll_tooling_engine_v1",
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Phase-2 roll tooling generation failed";
+    res.status(400).json({ error: message });
+  }
+});
 
 router.post("/generate-roll-tooling", (req: Request<unknown, unknown, RollToolingBody>, res: Response) => {
   try {

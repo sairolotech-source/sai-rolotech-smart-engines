@@ -8,6 +8,7 @@ import {
   sanitizeNumber,
   type ValidationResult,
 } from "./calc-validator.js";
+import { resolveMaterialInput } from "./material-model.js";
 
 export interface FlowerStation {
   stationId: string;
@@ -21,13 +22,36 @@ export interface FlowerStation {
   rollDiameter: number;
   formingForce: number;
   description: string;
+  bendRadius?: number;
+  neutralAxisRadius?: number;
+  strain?: number;
+  strainLimit?: number;
+  riskLevel?: "LOW" | "MEDIUM" | "HIGH";
   upperRollWidth?: number;
   lowerRollWidth?: number;
   passLineHeight?: number;
 }
 
+export interface FlowerPassPhysics {
+  stationIndex: number;
+  stationId: string;
+  bendAngle: number;
+  cumulativeBendAngle: number;
+  bendRadius: number;
+  neutralAxisRadius: number;
+  strain: number;
+  strainLimit: number;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+}
+
 export interface FlowerPattern {
   stations: FlowerStation[];
+  passes?: FlowerPassPhysics[];
+  strainPerPass?: number[];
+  riskPerPass?: Array<"LOW" | "MEDIUM" | "HIGH">;
+  riskLevel?: "LOW" | "MEDIUM" | "HIGH";
+  overallRisk?: "LOW" | "MEDIUM" | "HIGH";
+  materialUsed?: string;
   totalBendAngle: number;
   stripWidth: number;
   materialType: string;
@@ -37,6 +61,9 @@ export interface FlowerPattern {
   stretchedWidth?: number;
   _synthesizedAngles?: boolean;
   _synthesizedNote?: string;
+  _distributionMode?: "progressive";
+  _angleCapped?: boolean;
+  _angleCapNote?: string;
 }
 
 /**
@@ -158,10 +185,113 @@ const MAX_ANGLE_PER_STATION: Record<string, { open: number; closed: number }> = 
   HSLA: { open: 12, closed: 10 }, // FIX: HSLA high-strength — limit to 12° (was 15°)
 };
 
+function classifyPassRisk(strain: number, strainLimit: number): "LOW" | "MEDIUM" | "HIGH" {
+  if (strain < strainLimit * 0.6) return "LOW";
+  if (strain < strainLimit * 0.85) return "MEDIUM";
+  return "HIGH";
+}
+
 export interface FlowerPatternOptions {
   thicknessBandMin?: number;  // conservative strip width (tightest fit)
   thicknessBandMax?: number;  // conservative roll gap (widest fit)
   profileSourceType?: string; // informational — offset applied upstream by client
+}
+
+interface ProgressiveAnglesResult {
+  stationAngles: number[];
+  targetTotalAngle: number;
+  clippedByStationLimit: boolean;
+}
+
+function buildProgressivePassAngles(
+  totalBendAngle: number,
+  numStations: number,
+  maxAnglePerStation: number,
+): ProgressiveAnglesResult {
+  const n = Math.max(1, numStations);
+  const theoreticalMax = maxAnglePerStation * n;
+  const targetTotalAngle = Math.min(totalBendAngle, theoreticalMax);
+  const clippedByStationLimit = totalBendAngle > theoreticalMax;
+
+  if (n === 1) {
+    return {
+      stationAngles: [parseFloat(targetTotalAngle.toFixed(3))],
+      targetTotalAngle,
+      clippedByStationLimit,
+    };
+  }
+
+  // Progressive curve: lighter entry/exit and stronger middle passes.
+  const center = (n - 1) / 2;
+  const width = Math.max(1, n * 0.33);
+  const weights = Array.from({ length: n }, (_, index) => {
+    const x = (index - center) / width;
+    const bell = Math.exp(-0.5 * x * x);
+    const edgeScale = index === 0 || index === n - 1 ? 0.82 : 1.0;
+    return Math.max(0.1, (0.25 + bell) * edgeScale);
+  });
+
+  const stationAngles = Array.from({ length: n }, () => 0);
+  let remaining = targetTotalAngle;
+  let guard = 0;
+
+  while (remaining > 1e-8 && guard < 16) {
+    const activeIndices = stationAngles
+      .map((value, index) => ({ value, index }))
+      .filter(item => maxAnglePerStation - item.value > 1e-8)
+      .map(item => item.index);
+    if (activeIndices.length === 0) break;
+
+    const activeWeightSum = activeIndices.reduce((sum, index) => sum + (weights[index] ?? 0), 0);
+    if (activeWeightSum <= 0) break;
+
+    let stepGain = 0;
+    for (const index of activeIndices) {
+      const current = stationAngles[index] ?? 0;
+      const room = maxAnglePerStation - current;
+      const share = remaining * ((weights[index] ?? 0) / activeWeightSum);
+      const add = Math.min(room, share);
+      if (add > 0) {
+        stationAngles[index] = current + add;
+        stepGain += add;
+      }
+    }
+
+    if (stepGain <= 1e-9) break;
+    remaining = targetTotalAngle - stationAngles.reduce((sum, value) => sum + value, 0);
+    guard += 1;
+  }
+
+  if (remaining > 1e-8) {
+    const roomByStation = stationAngles
+      .map((value, index) => ({ index, room: maxAnglePerStation - value }))
+      .sort((a, b) => b.room - a.room);
+    for (const slot of roomByStation) {
+      if (remaining <= 1e-8) break;
+      if (slot.room <= 1e-8) continue;
+      const add = Math.min(slot.room, remaining);
+      stationAngles[slot.index] = (stationAngles[slot.index] ?? 0) + add;
+      remaining -= add;
+    }
+  }
+
+  const rounded = stationAngles.map(angle => parseFloat(angle.toFixed(3)));
+  const roundedTotal = rounded.reduce((sum, value) => sum + value, 0);
+  const correction = parseFloat((targetTotalAngle - roundedTotal).toFixed(3));
+  if (Math.abs(correction) >= 0.001) {
+    const targetIndex = rounded
+      .map((angle, index) => ({ index, room: maxAnglePerStation - angle }))
+      .sort((a, b) => b.room - a.room)[0]?.index;
+    if (targetIndex !== undefined) {
+      rounded[targetIndex] = parseFloat((rounded[targetIndex]! + correction).toFixed(3));
+    }
+  }
+
+  return {
+    stationAngles: rounded,
+    targetTotalAngle,
+    clippedByStationLimit,
+  };
 }
 
 export function generateFlowerPattern(
@@ -172,7 +302,8 @@ export function generateFlowerPattern(
   materialThickness = 1.0,
   options: FlowerPatternOptions = {}
 ): FlowerPattern {
-  const mat = (materialType ?? "GI").toUpperCase();
+  const materialModel = resolveMaterialInput(materialType);
+  const mat = materialModel.code;
   const t = sanitizeNumber(materialThickness, 1.0, 0.1, 20.0);
   // Conservative thickness band — use bandMax for roll gap, bandMin for strip width
   const tBandMin = options.thicknessBandMin && options.thicknessBandMin > 0 ? options.thicknessBandMin : t;
@@ -181,9 +312,9 @@ export function generateFlowerPattern(
 
   const K  = K_FACTORS[mat]  ?? 0.44;
   const sbFactor = SPRINGBACK_FACTORS[mat] ?? 1.05;
-  const uts = UTS[mat] ?? 350;
-  const Sy  = YIELD_STRENGTH[mat]  ?? 280;
-  const E   = ELASTIC_MODULUS[mat] ?? 200000;
+  const uts = materialModel.utsMPa ?? UTS[mat] ?? 350;
+  const Sy  = materialModel.yieldStrengthMPa ?? YIELD_STRENGTH[mat] ?? 280;
+  const E   = materialModel.elasticModulusMPa ?? ELASTIC_MODULUS[mat] ?? 200000;
   const gapOversize = ROLL_GAP_OVERSIZE[mat] ?? 1.05;
   const maxAngleOpen = MAX_ANGLE_PER_STATION[mat]?.open ?? 15;
 
@@ -202,12 +333,8 @@ export function generateFlowerPattern(
   const rawTotalBend = safeBends.reduce((sum, b) => sum + Math.abs(b.angle || 0), 0);
   const totalBendAngle = rawTotalBend > 0 ? rawTotalBend : n * maxAngleOpen * 0.7;
 
-  /**
-   * FIX #24: anglePerStation clamped to material-specific max
-   * Previously unclamped — could exceed 15°/station for SS/TI without warning
-   */
-  const rawAnglePerStation = totalBendAngle / n;
-  const anglePerStation = Math.min(rawAnglePerStation, maxAngleOpen);
+  const angleDistribution = buildProgressivePassAngles(totalBendAngle, n, maxAngleOpen);
+  const actualTotalBendAngle = angleDistribution.stationAngles.reduce((sum, angle) => sum + angle, 0);
 
   /**
    * FIX #25: Roll OD formula — engineering-based instead of arbitrary t×60
@@ -241,16 +368,18 @@ export function generateFlowerPattern(
   const inputValidation = validateFlowerInputs({
     thickness: t,
     numStations: n,
-    totalBendAngle,
+    totalBendAngle: actualTotalBendAngle,
     stripWidth: baseStripWidth,
     materialType: mat,
   });
 
   const stations: FlowerStation[] = [];
+  const matStrainLimit = materialModel.maxStrain;
+  let cumulativeBendAngle = 0;
 
   for (let i = 1; i <= n; i++) {
-    const bendAngle = anglePerStation;
-    const cumulativeBendAngle = anglePerStation * i;
+    const bendAngle = angleDistribution.stationAngles[i - 1] ?? 0;
+    cumulativeBendAngle += bendAngle;
 
     const rollDiameter = parseFloat((baseRollOD + (i - 1) * 2).toFixed(1));
 
@@ -259,6 +388,10 @@ export function generateFlowerPattern(
      * Inner radius at each station = roll groove radius ≈ rollOD × 0.05 + minInnerRadius
      */
     const bendRadius = Math.max(t * Kr, rollDiameter * 0.05);
+    const outerRadius = bendRadius + t;
+    const neutralAxisRadius = (bendRadius + outerRadius) / 2;
+    const strain = t / (2 * bendRadius);
+    const passRisk = classifyPassRisk(strain, matStrainLimit);
 
     const { springbackAngle, springbackFactor } = computeSpringback(
       bendAngle,
@@ -297,7 +430,7 @@ export function generateFlowerPattern(
       {
         thickness: t,
         numStations: n,
-        totalBendAngle,
+        totalBendAngle: actualTotalBendAngle,
         stripWidth: baseStripWidth,
         materialType: mat,
       },
@@ -324,13 +457,45 @@ export function generateFlowerPattern(
       rollGap: parseFloat(rollGap.toFixed(4)),
       rollDiameter,
       formingForce,
+      bendRadius: parseFloat(bendRadius.toFixed(4)),
+      neutralAxisRadius: parseFloat(neutralAxisRadius.toFixed(4)),
+      strain: parseFloat(strain.toFixed(6)),
+      strainLimit: parseFloat(matStrainLimit.toFixed(6)),
+      riskLevel: passRisk,
       description,
     });
   }
 
+  const passes: FlowerPassPhysics[] = stations.map((station) => ({
+    stationIndex: station.stationIndex,
+    stationId: station.stationId,
+    bendAngle: station.bendAngle,
+    cumulativeBendAngle: station.cumulativeBendAngle,
+    bendRadius: station.bendRadius ?? 0,
+    neutralAxisRadius: station.neutralAxisRadius ?? 0,
+    strain: station.strain ?? 0,
+    strainLimit: station.strainLimit ?? matStrainLimit,
+    riskLevel: station.riskLevel ?? "LOW",
+  }));
+
+  const strainPerPass = passes.map(pass => parseFloat(pass.strain.toFixed(6)));
+  const riskPerPass = passes.map(pass => pass.riskLevel);
+  const riskLevel: "LOW" | "MEDIUM" | "HIGH" =
+    passes.some(pass => pass.riskLevel === "HIGH")
+      ? "HIGH"
+      : passes.some(pass => pass.riskLevel === "MEDIUM")
+      ? "MEDIUM"
+      : "LOW";
+
   return {
     stations,
-    totalBendAngle: parseFloat(totalBendAngle.toFixed(3)),
+    passes,
+    strainPerPass,
+    riskPerPass,
+    riskLevel,
+    overallRisk: riskLevel,
+    materialUsed: materialModel.materialUsed,
+    totalBendAngle: parseFloat(actualTotalBendAngle.toFixed(3)),
     stripWidth: parseFloat(baseStripWidth.toFixed(3)),
     materialType: mat,
     thickness: t,
@@ -339,6 +504,13 @@ export function generateFlowerPattern(
     stretchedWidth: parseFloat(baseStripWidth.toFixed(3)),
     // FIX P0-2: mark when angles were synthesized (no bends in geometry) so UI can warn operator
     _synthesizedAngles: rawTotalBend === 0,
-    _synthesizedNote: rawTotalBend === 0 ? `No bend angles found in geometry — ${n}-station schedule estimated at ${anglePerStation.toFixed(1)}°/station. Verify by loading a DXF with explicit bend entities or entering angles manually.` : undefined,
+    _synthesizedNote: rawTotalBend === 0
+      ? `No bend angles found in geometry — generated progressive ${n}-station schedule. Verify by loading a DXF with explicit bend entities or entering angles manually.`
+      : undefined,
+    _distributionMode: "progressive",
+    _angleCapped: angleDistribution.clippedByStationLimit,
+    _angleCapNote: angleDistribution.clippedByStationLimit
+      ? `Requested bend angle ${totalBendAngle.toFixed(2)}° exceeded ${n} × ${maxAngleOpen.toFixed(2)}° station limit for ${mat}.`
+      : undefined,
   };
 }

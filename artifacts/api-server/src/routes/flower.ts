@@ -10,6 +10,7 @@ interface FlowerBody {
   geometry: ProfileGeometry;
   numStations: number | string;
   stationPrefix?: string;
+  material?: string;
   materialType?: string;
   materialThickness?: number | string;
   openSectionType?: string;
@@ -197,7 +198,7 @@ function applyOpenSectionRules(stations: FlowerStation[]): FlowerStation[] {
 router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res: Response) => {
   try {
     const {
-      geometry, numStations, stationPrefix, materialType, materialThickness,
+      geometry, numStations, stationPrefix, material, materialType, materialThickness,
       openSectionType, sectionModel,
     } = req.body;
 
@@ -225,7 +226,7 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
 
     const stations = Math.max(1, Math.min(30, parseInt(String(numStations)) || 5));
     const prefix = stationPrefix || "S";
-    const matType = materialType || "GI";
+    const matType = material || materialType || "GI";
     const matThickness = parseFloat(String(materialThickness)) || 1.0;
     const sectionType = openSectionType || "C-Section";
 
@@ -287,6 +288,24 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
       return st;
     });
 
+    const phase15Passes = autoFixedStations.map((st) => ({
+      stationIndex: st.stationIndex,
+      stationId: st.stationId,
+      bendAngle: st.bendAngle,
+      cumulativeBendAngle: st.cumulativeBendAngle,
+      bendRadius: st.bendRadius ?? 0,
+      neutralAxisRadius: st.neutralAxisRadius ?? 0,
+      strain: st.strain ?? 0,
+      strainLimit: st.strainLimit ?? 0,
+      riskLevel: st.riskLevel ?? "LOW",
+    }));
+    const strainPerPass = phase15Passes.map(pass => pass.strain);
+    const riskPerPass = phase15Passes.map(pass => pass.riskLevel);
+    const phase15RiskLevel =
+      phase15Passes.some(pass => pass.riskLevel === "HIGH") ? "HIGH"
+      : phase15Passes.some(pass => pass.riskLevel === "MEDIUM") ? "MEDIUM"
+      : "LOW";
+
     const totalChecks = deepResult.checks.length || 1;
     const passed = deepResult.checks.filter(c => c.status === "ok").length;
     // FIX P0-4: score is 0-100, not 2-100 — floor of 2 was misleading when all checks fail
@@ -312,6 +331,12 @@ router.post("/generate-flower", (req: Request<unknown, unknown, FlowerBody>, res
       hasWarnings: hasInputIssues,
       ...result,
       stations: autoFixedStations,
+      passes: phase15Passes,
+      strainPerPass,
+      riskPerPass,
+      riskLevel: phase15RiskLevel,
+      overallRisk: phase15RiskLevel,
+      materialUsed: result.materialUsed ?? matType.toUpperCase(),
       sectionModelUsed: sectionModel ?? "auto",
       modelNote,
       _verification: {
